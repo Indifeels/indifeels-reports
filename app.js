@@ -199,7 +199,7 @@
     const log = JSON.parse(await decryptFile("r/stock_moves.bin", keys.stock));
     const { data, error } = await sb.from("stock_ticks").select("*");
     if (error) throw new Error(error.message);
-    SM = { moves: log.moves || [], now: log.now || {}, ticks: Object.fromEntries((data || []).map((t) => [t.move_id, t])) };
+    SM = { moves: log.moves || [], fixes: log.fixes || [], now: log.now || {}, ticks: Object.fromEntries((data || []).map((t) => [t.move_id, t])) };
     return SM;
   }
   const smPending = () => SM.moves.filter((m) => !SM.ticks[m.id]?.finalised_at).sort((a, b) => b.moved_at.localeCompare(a.moved_at));
@@ -227,6 +227,9 @@
     $("#sm-list").innerHTML = p.map((m) => smRow(m, false)).join("");
     $("#sm-status").hidden = p.length > 0; $("#sm-status").textContent = "Nothing to move right now. New moves appear here after each order.";
     $("#sm-done-wrap").hidden = !d.length; $("#sm-done").innerHTML = d.map((m) => smRow(m, true)).join("");
+    const fx = (SM.fixes || []).slice().sort((a, b) => b.at.localeCompare(a.at));
+    $("#sm-fix-wrap").hidden = !fx.length; $("#sm-fix-sum").textContent = `Website stock numbers corrected (${fx.length})`;
+    $("#sm-fix").innerHTML = fx.slice(0, 100).map((f) => `<div class="sm-fx"><span class="sm-main"><b>${esc(f.product)}</b><span class="vp">${esc(f.variant || "One size")}</span><span class="sub">${esc(f.sku)} · ${fmtTime(f.at)}</span><span class="sub">${esc(f.why)}</span></span><span class="sm-ch"><s>ST ${esc(f.was)}</s><b>ST ${esc(f.now)}</b></span></div>`).join("");
     const t = p.filter((m) => SM.ticks[m.id]?.ticked).length;
     $("#sm-bar").hidden = !p.length; $("#sm-count").textContent = `${t} of ${p.length} ticked`; $("#sm-final").disabled = !t;
     $("#sm-final").textContent = "Stock finalised"; delete $("#sm-final").dataset.confirm;

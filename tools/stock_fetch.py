@@ -19,8 +19,27 @@ LEVELS = """query($after:String){ location(id:"%s"){ inventoryLevels(first:250, 
  nodes{ q: quantities(names:["available"]){quantity} item{ id s: inventoryLevel(locationId:"%s"){ q: quantities(names:["available"]){quantity} } } } } } }""" % (BACKUP, SHOPLOC)
 MOVE = """mutation($input: InventoryAdjustQuantitiesInput!, $key: String!){ inventoryAdjustQuantities(input:$input) @idempotent(key:$key){
  inventoryAdjustmentGroup{ id } userErrors{ field message code } } }"""
-ITEMS = """query($ids:[ID!]!){ nodes(ids:$ids){ ... on InventoryItem { id sku variant { title image { url }
+ITEMS = """query($ids:[ID!]!){ nodes(ids:$ids){ ... on InventoryItem { id sku variant { id title image { url }
  product { title status featuredMedia { preview { image { url } } } } } } } }"""
+
+SETMF = """mutation($m:[MetafieldsSetInput!]!){ metafieldsSet(metafields:$m){ userErrors{ field message code } } }"""
+VARCHECK = """query($after:String){ productVariants(first:100, after:$after){ pageInfo{hasNextPage endCursor} nodes{ id
+ m: metafield(namespace:"custom", key:"melbourne_stock"){value} st: metafield(namespace:"custom", key:"storage_stock"){value}
+ inventoryItem{ id s: inventoryLevel(locationId:"%s"){ quantities(names:["available"]){quantity} }
+ b: inventoryLevel(locationId:"%s"){ quantities(names:["available"]){quantity} } } } } }""" % (SHOPLOC, BACKUP)
+
+
+def set_st(pairs):
+    """pairs: [(variant_id, shop, backup)] -> writes custom.melbourne_stock / custom.storage_stock (front-end ST: shop-backup)."""
+    bad = []
+    for i in range(0, len(pairs), 12):
+        mf = []
+        for vid, sh, bk in pairs[i:i + 12]:
+            mf += [{"ownerId": vid, "namespace": "custom", "key": "melbourne_stock", "type": "number_integer", "value": str(sh)},
+                   {"ownerId": vid, "namespace": "custom", "key": "storage_stock", "type": "number_integer", "value": str(bk)}]
+        errs = gql(SETMF, {"m": mf})["data"]["metafieldsSet"]["userErrors"]
+        if errs: bad.append(errs[0].get("message"))
+    if bad: raise RuntimeError("could not update front-end ST numbers: " + bad[0])
 
 
 def gql(query, variables):
@@ -81,8 +100,35 @@ def main():
         moved.append(it)
     for m in log["moves"]:
         if m["item"] in lv: log["now"][m["item"]] = {"shop": lv[m["item"]][0], "backup": lv[m["item"]][1]}
-    stock_moves.save(r_dir, key, log)
+    stock_moves.save(r_dir, key, log)   # save moves before anything else can fail
     print(f"moved: {len(moved)}")
+    # front-end ST numbers for moved variants (Shopify Flow doesn't run for API stock changes)
+    set_st([(info[i]["variant_id"], lv[i][0], lv[i][1]) for i in moved if info.get(i, {}).get("variant_id")])
+    # 7am / 3pm full check: every variant's ST numbers vs real stock; fix and register each mismatch
+    if os.environ.get("FULL_CHECK") == "1":
+        q = lambda x: ((x or {}).get("quantities") or [{}])[0].get("quantity") or 0
+        mv = lambda x: int(x["value"]) if x and x.get("value") not in (None, "") else 0
+        bad, after = [], None
+        while True:
+            pg = gql(VARCHECK, {"after": after})["data"]["productVariants"]
+            for v in pg["nodes"]:
+                it = v["inventoryItem"]; sh, bk = q(it.get("s")), q(it.get("b"))
+                if it["id"] in moved: continue
+                if (mv(v.get("m")), mv(v.get("st"))) != (sh, bk):
+                    bad.append((it["id"], v["id"], sh, bk, f'{mv(v.get("m"))}-{mv(v.get("st"))}'))
+            if not pg["pageInfo"]["hasNextPage"]: break
+            after = pg["pageInfo"]["endCursor"]
+        if bad:
+            finfo = {}
+            ids = [b[0] for b in bad]
+            for i in range(0, len(ids), 100):
+                for nd in gql(ITEMS, {"ids": ids[i:i + 100]})["data"]["nodes"]:
+                    if nd: finfo[nd["id"]] = stock_moves.item_info(nd)
+            set_st([(b[1], b[2], b[3]) for b in bad])
+            for iid, vid, sh, bk, was in bad:
+                stock_moves.record_fix(log, iid, finfo.get(iid, {}), was, f"{sh}-{bk}", "Scheduled check: front end didn't match Shopify stock")
+            stock_moves.save(r_dir, key, log)
+        print(f"ST check: {len(bad)} fixed")
     # report reflects stock after the moves
     for f in os.listdir(data): os.remove(os.path.join(data, f))
     nodes = [{"q": [{"quantity": bk}], "item": {"id": i, "s": {"q": [{"quantity": sh}]}}} for i, (sh, bk) in lv.items()]
