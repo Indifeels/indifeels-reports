@@ -424,7 +424,10 @@ lab();b.addEventListener('click',function(){{var n=cur()==='dark'?'light':'dark'
 open(sys.argv[2],"w").write(page)
 if os.environ.get("SUMMARY_DIR"):
     _cm=rows[-1][1]
-    json.dump(dict(updated=NOW.strftime("%-d %b %Y, %-I:%M %p"),month=rows[-1][0].rstrip("*"),np=_cm["np"],roas=_cm["roas"],rev=_cm["r"],spend=_cm["s"],
+    _cum=[];_c=0
+    for _n,_d in rows: _c+=_d["np"]; _cum.append(round(_c,2))
+    SPARK=[[round(d["np"],2) for _,d in rows],[round(d["roas"] or 0,2) for _,d in rows],[round(d["s"],2) for _,d in rows],_cum]
+    json.dump(dict(spark=SPARK,updated=NOW.strftime("%-d %b %Y, %-I:%M %p"),month=rows[-1][0].rstrip("*"),np=_cm["np"],roas=_cm["roas"],rev=_cm["r"],spend=_cm["s"],
                    total_np=T["np"],since=dt.date.fromisoformat(months[0]+"-01").strftime("%b %Y"),
                    sig=RS["code"],sig_label=PANEL_LABEL,reason=RS["reason"]),open(os.path.join(os.environ["SUMMARY_DIR"],"monthly.json"),"w"))
 for n,d in rows: print(n,d["sig"]["label"],"|",d["sig"]["reason"][:90])

@@ -116,13 +116,38 @@
     if (e1 || e2) throw new Error((e1 || e2).message);
     reports = reps || []; keys = Object.fromEntries((ks || []).map((k) => [k.report_id, k.key_b64]));
   }
-  // Fixed colour per report, so each tile always looks the same.
-  const TILE_COLORS = { daily: "#1D4ED8", monthly: "#17694A", stock: "#B45309" };
-  const SPARE = ["#6D28D9", "#0F766E", "#BE123C", "#4338CA", "#A16207"];
-  function tileColor(id) {
-    if (TILE_COLORS[id]) return TILE_COLORS[id];
+  // Fixed look per report, so each tile always looks the same.
+  const I = {
+    mega: '<path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
+    trend: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+    box: '<path d="M12 3 3 7.5v9L12 21l9-4.5v-9z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/>',
+    alert: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
+    dollar: '<circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .8-3 2s1.3 1.7 3 2 3 .9 3 2.1-1.3 1.9-3 1.9c-1.4 0-2.5-.5-3-1.5M12 6.5v11"/>',
+    msg: '<path d="M4 5h16v11H9l-5 4z"/>',
+    bag: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
+    bars: '<path d="M5 20V12M10 20V7M15 20v-5M20 20V4"/>',
+    tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    chart: '<path d="M4 20V4M4 20h16"/><path d="M8 16l4-5 3 3 5-6"/>',
+  };
+  const svg = (k, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k] || I.chart}</svg>`;
+  const LOOK = {
+    daily: { c: "blue", icon: "mega", stat: ["dollar", "msg", "bag", "bars"], line: ["blue", "purple", "green", "blue"] },
+    monthly: { c: "green", icon: "trend", stat: [null, null, null, null], line: ["green", "blue", "orange", "green"] },
+    stock: { c: "orange", icon: "box", stat: ["box", "box", "tag"], line: [] },
+  };
+  const SPARE = ["purple", "teal", "rose"];
+  function look(id) {
+    if (LOOK[id]) return LOOK[id];
     let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    return SPARE[h % SPARE.length];
+    return { c: SPARE[h % SPARE.length], icon: "chart", stat: [], line: [] };
+  }
+  function spark(vals, color) {
+    const v = (vals || []).map(Number).filter((x) => isFinite(x));
+    if (v.length < 2) return "";
+    const lo = Math.min(...v), hi = Math.max(...v), rg = hi - lo || 1;
+    const pts = v.map((x, i) => `${(i / (v.length - 1) * 100).toFixed(1)},${(23 - (x - lo) / rg * 20).toFixed(1)}`).join(" ");
+    return `<svg class="sp" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true"><polyline style="--lc:var(--${color})" points="${pts}"/></svg>`;
   }
   // Refresh health: explicit failure from r/status.json, or no successful refresh within the expected window.
   const MAX_AGE_H = { daily: 26, monthly: 26, stock: 10 };
@@ -138,18 +163,17 @@
     if (age > (MAX_AGE_H[id] || 26)) return { title: "Refresh overdue", text: `No successful refresh since ${s.last_ok ? fmtTime(s.last_ok) : "it was set up"}. Check the scheduled task.` };
     return null;
   }
-  const ALERT_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 2 1 21h22L12 2zm0 6 .01 0c.55 0 1 .45 1 1v5a1 1 0 1 1-2 0V9c0-.55.44-1 .99-1zM12 16.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5z"/></svg>';
   function tileHTML(r, meta) {
-    const hl = health(r.id);
-    const badge = hl ? `<span class="alert-dot" role="img" aria-label="${esc(hl.title)}">${ALERT_SVG}</span>` : "";
-    const alertBox = hl ? `<div class="alert"><b>${ALERT_SVG}${esc(hl.title)}</b><span>${esc(hl.text)}</span></div>` : "";
-    const stats = (meta?.stats || []).slice(0, 4).map((s) => `<div class="st"><b>${esc(s[0])}</b><span>${esc(s[1])}</span></div>`).join("");
-    const sig = meta?.signal ? `<p class="sig"><span class="pl ${esc(meta.signal.code)}">${esc(meta.signal.label)}</span>${esc(meta.signal.reason)}</p>` : "";
+    const L = look(r.id), hl = health(r.id);
+    const alertBox = hl ? `<div class="alert">${svg("alert")}<div><b>${esc(hl.title)}</b>${esc(hl.text)}</div></div>` : "";
+    const st = (meta?.stats || []).slice(0, 4);
+    const stats = st.map((s, i) => `<div class="st" style="--sc:var(--${L.line[i] || L.c})">${L.stat[i] ? svg(L.stat[i], "si") : ""}<b>${esc(s[0])}</b><span>${esc(s[1])}</span>${spark(meta?.spark?.[i], L.line[i] || L.c)}</div>`).join("");
+    const sig = meta?.signal ? `<p class="sig"><span class="pl">${esc(meta.signal.label)}</span>${esc(meta.signal.reason)}</p>` : "";
     const upd = meta?.updated ? `Updated ${esc(meta.updated)}` : "Waiting for the next update";
-    const warn = meta?.warn ? `<span class="warn">${esc(meta.warn)}</span>` : "";
-    return `<button class="tile${hl ? " failed" : ""}" type="button" data-id="${esc(r.id)}" style="--c:${tileColor(r.id)}">
-      <div class="th"><h3>${badge}${esc(r.title)}</h3><span class="open" aria-hidden="true">Open <span class="ar">&rsaquo;</span></span></div>
-      <div class="tb">${alertBox}<p class="ds">${esc(r.description || "")}</p>${stats ? `<div class="sts">${stats}</div>` : ""}${sig}<div class="ft"><span>${upd}</span>${warn}</div></div></button>`;
+    const warn = meta?.warn ? `<span class="wn">${svg("alert")}${esc(meta.warn)}</span>` : "";
+    return `<button class="tile t-${L.c}${hl ? " alerted" : ""}" type="button" data-id="${esc(r.id)}">
+      <div class="th"><span class="ic">${svg(hl ? "alert" : L.icon)}</span><h3>${esc(r.title)}</h3><span class="open" aria-hidden="true">Open <span class="ar">&rsaquo;</span></span><p class="ds">${esc(r.description || "")}</p></div>
+      ${alertBox}${stats ? `<div class="sts n${st.length}">${stats}</div>` : ""}${sig}<div class="ft"><span class="u">${svg("clock")}${upd}</span>${warn}</div></button>`;
   }
   async function renderHome() {
     const box = $("#tiles");

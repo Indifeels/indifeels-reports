@@ -30,12 +30,12 @@ if d:
     metas["daily"] = dict(updated=d["updated"], stats=[[money(d["t_s"], 2), "spent today"], [str(int(d["t_m"])), "messages today"],
                      [money(d["m_sales"]), "FB sales this month"], [f'{d["m_roas"]:.2f}x' if d["m_roas"] else "—", "ROAS this month"]],
                      signal=dict(code=SIG.get(d["sig"], "hold"), label=d["sig_label"], reason=d["reason"]),
-                     warn=f'{d["unatt"]} orders need a source' if d.get("unatt") else "")
+                     warn=f'{d["unatt"]} orders need a source' if d.get("unatt") else "", spark=d.get("spark"))
 m = load("monthly")
 if m:
     metas["monthly"] = dict(updated=m["updated"], stats=[[money(m["np"]), f'net profit, {m["month"]}'], [f'{m["roas"]:.2f}x', "ROAS this month"],
                        [money(m["spend"]), "spend this month"], [money(m["total_np"]), f'net profit since {m["since"]}']],
-                       signal=dict(code=SIG.get(m["sig"], "hold"), label=m["sig_label"], reason=m["reason"]))
+                       signal=dict(code=SIG.get(m["sig"], "hold"), label=m["sig_label"], reason=m["reason"]), spark=m.get("spark"))
 
 k = load("stock")
 if k:
