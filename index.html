@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Indifeels Reports</title>
+<meta name="description" content="Indifeels performance reports">
+<meta name="theme-color" content="#14213D">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Indifeels">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="app">
+  <!-- Login -->
+  <section id="v-login" class="auth" hidden>
+    <div class="auth-card">
+      <div class="brand"><span class="rail"></span><div><h1>Indifeels Reports</h1><p>Sign in with the username and password you were given.</p></div></div>
+      <form id="f-login" novalidate>
+        <label for="l-user">Username</label>
+        <input id="l-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        <label for="l-pass">Password</label>
+        <div class="pw"><input id="l-pass" name="password" type="password" autocomplete="current-password" required><button type="button" class="eye" data-for="l-pass">Show</button></div>
+        <p class="err" id="l-err" role="alert" hidden></p>
+        <button class="btn primary" type="submit" id="l-btn">Sign in</button>
+      </form>
+      <button class="link" type="button" id="to-reset">Request password reset</button>
+    </div>
+  </section>
+
+  <!-- Reset request -->
+  <section id="v-reset" class="auth" hidden>
+    <div class="auth-card">
+      <div class="brand"><span class="rail"></span><div><h1>Request password reset</h1><p>Your admin gets your request by email, sets a new password and shares it with you.</p></div></div>
+      <form id="f-reset" novalidate>
+        <label for="r-user">Username</label>
+        <input id="r-user" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        <label for="r-note">Message for your admin <span class="opt">(optional)</span></label>
+        <textarea id="r-note" rows="3" maxlength="300" placeholder="For example: best way to reach me"></textarea>
+        <p class="err" id="r-err" role="alert" hidden></p>
+        <p class="ok" id="r-ok" hidden>Request sent. Your admin will set a new password and share it with you.</p>
+        <button class="btn primary" type="submit" id="r-btn">Send request</button>
+      </form>
+      <button class="link" type="button" id="to-login">Back to sign in</button>
+    </div>
+  </section>
+
+  <!-- Signed-in shell -->
+  <section id="v-shell" hidden>
+    <header class="bar">
+      <button class="icon-btn" id="b-back" type="button" aria-label="Back to reports" hidden>&larr;</button>
+      <div class="bar-title"><span class="rail sm"></span><span id="bar-text">Indifeels Reports</span></div>
+      <div class="menu-wrap">
+        <button class="icon-btn" id="b-menu" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Account menu"><span id="me-initial">S</span></button>
+        <div class="menu" id="menu" hidden>
+          <p class="me" id="me-name"></p>
+          <button type="button" data-go="home">Reports</button>
+          <button type="button" data-go="admin" id="m-admin" hidden>Admin</button>
+          <button type="button" data-go="password">Change password</button>
+          <button type="button" id="m-theme">Dark mode</button>
+          <button type="button" id="m-install" hidden>Install app</button>
+          <button type="button" id="m-out">Sign out</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="v-home" class="page" hidden>
+      <div class="page-head"><h2 id="hello">Your reports</h2><p id="home-sub">Refreshed every night at 10 pm Sydney time.</p></div>
+      <div id="tiles" class="tiles"></div>
+      <p id="no-reports" class="empty" hidden>No reports are switched on for your account yet. Ask your admin to give you access.</p>
+    </main>
+
+    <div id="v-report" class="report" hidden>
+      <p id="rep-status" class="rep-status">Opening report…</p>
+      <iframe id="rep-frame" title="Report" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" hidden></iframe>
+    </div>
+
+    <main id="v-password" class="page narrow" hidden>
+      <div class="page-head"><h2>Change password</h2><p>Use at least 8 characters.</p></div>
+      <form id="f-pw" class="card form" novalidate>
+        <label for="p-new">New password</label>
+        <div class="pw"><input id="p-new" type="password" autocomplete="new-password" required minlength="8"><button type="button" class="eye" data-for="p-new">Show</button></div>
+        <label for="p-new2">Confirm new password</label>
+        <input id="p-new2" type="password" autocomplete="new-password" required minlength="8">
+        <p class="err" id="p-err" role="alert" hidden></p>
+        <p class="ok" id="p-ok" hidden>Password changed.</p>
+        <button class="btn primary" type="submit" id="p-btn">Change password</button>
+      </form>
+    </main>
+
+    <main id="v-admin" class="page" hidden>
+      <div class="page-head"><h2>Admin</h2><p>Add people, choose which reports they see, and reset passwords.</p></div>
+      <div class="tabs" role="tablist">
+        <button role="tab" id="t-users" aria-selected="true" type="button">Users</button>
+        <button role="tab" id="t-resets" aria-selected="false" type="button">Reset requests <span class="badge" id="reset-count" hidden></span></button>
+      </div>
+      <div id="p-users">
+        <details class="card add" id="add-card">
+          <summary>Add a user</summary>
+          <form id="f-add" class="form grid2" novalidate>
+            <div><label for="a-user">Username</label><input id="a-user" autocapitalize="none" spellcheck="false" placeholder="e.g. rahul" required></div>
+            <div><label for="a-name">Name</label><input id="a-name" placeholder="e.g. Rahul Sharma"></div>
+            <div><label for="a-email">Email <span class="opt">(optional)</span></label><input id="a-email" type="email" placeholder="name@example.com"></div>
+            <div><label for="a-pass">First password</label><div class="pw"><input id="a-pass" required minlength="8"><button type="button" class="eye gen" id="a-gen">Generate</button></div></div>
+            <fieldset class="full"><legend>Reports they can see</legend><div id="a-reports" class="checks"></div></fieldset>
+            <label class="chk full"><input type="checkbox" id="a-admin"> Make this person an admin (sees every report and this screen)</label>
+            <p class="err full" id="a-err" role="alert" hidden></p>
+            <p class="ok full" id="a-ok" hidden></p>
+            <div class="full"><button class="btn primary" type="submit" id="a-btn">Add user</button></div>
+          </form>
+        </details>
+        <div id="users" class="users"></div>
+      </div>
+      <div id="p-resets" hidden><div id="resets" class="users"></div></div>
+    </main>
+  </section>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+</div>
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
