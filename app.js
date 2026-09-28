@@ -116,16 +116,45 @@
     if (e1 || e2) throw new Error((e1 || e2).message);
     reports = reps || []; keys = Object.fromEntries((ks || []).map((k) => [k.report_id, k.key_b64]));
   }
+  // Fixed colour per report, so each tile always looks the same.
+  const TILE_COLORS = { daily: "#1D4ED8", monthly: "#17694A", stock: "#B45309" };
+  const SPARE = ["#6D28D9", "#0F766E", "#BE123C", "#4338CA", "#A16207"];
+  function tileColor(id) {
+    if (TILE_COLORS[id]) return TILE_COLORS[id];
+    let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return SPARE[h % SPARE.length];
+  }
+  // Refresh health: explicit failure from r/status.json, or no successful refresh within the expected window.
+  const MAX_AGE_H = { daily: 26, monthly: 26, stock: 10 };
+  let status = {};
+  async function loadStatus() {
+    try { const res = await fetch(`r/status.json?t=${Date.now()}`, { cache: "no-store" }); status = res.ok ? await res.json() : {}; } catch (_) { status = {}; }
+  }
+  const fmtTime = (iso) => new Date(iso).toLocaleString("en-AU", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+  function health(id) {
+    const s = status[id]; if (!s) return null;
+    if (s.ok === false) return { title: "Last refresh failed", text: `${s.reason || "The refresh didn't finish."}${s.last_ok ? ` Showing data from ${fmtTime(s.last_ok)}.` : ""}` };
+    const age = s.last_ok ? (Date.now() - new Date(s.last_ok).getTime()) / 36e5 : Infinity;
+    if (age > (MAX_AGE_H[id] || 26)) return { title: "Refresh overdue", text: `No successful refresh since ${s.last_ok ? fmtTime(s.last_ok) : "it was set up"}. Check the scheduled task.` };
+    return null;
+  }
+  const ALERT_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 2 1 21h22L12 2zm0 6 .01 0c.55 0 1 .45 1 1v5a1 1 0 1 1-2 0V9c0-.55.44-1 .99-1zM12 16.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5z"/></svg>';
   function tileHTML(r, meta) {
+    const hl = health(r.id);
+    const badge = hl ? `<span class="alert-dot" role="img" aria-label="${esc(hl.title)}">${ALERT_SVG}</span>` : "";
+    const alertBox = hl ? `<div class="alert"><b>${ALERT_SVG}${esc(hl.title)}</b><span>${esc(hl.text)}</span></div>` : "";
     const stats = (meta?.stats || []).slice(0, 4).map((s) => `<div class="st"><b>${esc(s[0])}</b><span>${esc(s[1])}</span></div>`).join("");
     const sig = meta?.signal ? `<p class="sig"><span class="pl ${esc(meta.signal.code)}">${esc(meta.signal.label)}</span>${esc(meta.signal.reason)}</p>` : "";
-    const upd = meta?.updated ? `Updated ${esc(meta.updated)}` : "Waiting for tonight's update";
-    const warn = meta?.warn ? ` &nbsp;<span class="warn">${esc(meta.warn)}</span>` : "";
-    return `<button class="tile" type="button" data-id="${esc(r.id)}"><h3>${esc(r.title)}</h3><p class="ds">${esc(r.description || "")}</p>${stats ? `<div class="sts">${stats}</div>` : ""}${sig}<div class="ft"><span>${upd}${warn}</span><span class="go">Open report</span></div></button>`;
+    const upd = meta?.updated ? `Updated ${esc(meta.updated)}` : "Waiting for the next update";
+    const warn = meta?.warn ? `<span class="warn">${esc(meta.warn)}</span>` : "";
+    return `<button class="tile${hl ? " failed" : ""}" type="button" data-id="${esc(r.id)}" style="--c:${tileColor(r.id)}">
+      <div class="th"><h3>${badge}${esc(r.title)}</h3><span class="open" aria-hidden="true">Open <span class="ar">&rsaquo;</span></span></div>
+      <div class="tb">${alertBox}<p class="ds">${esc(r.description || "")}</p>${stats ? `<div class="sts">${stats}</div>` : ""}${sig}<div class="ft"><span>${upd}</span>${warn}</div></div></button>`;
   }
   async function renderHome() {
     const box = $("#tiles");
     $("#hello").textContent = me.display_name ? `Hi ${me.display_name.split(" ")[0]}, here are your reports` : "Your reports";
+    await loadStatus();
     box.innerHTML = reports.map((r) => tileHTML(r, null)).join("");
     $("#no-reports").hidden = reports.length > 0;
     box.querySelectorAll(".tile").forEach((t) => t.addEventListener("click", () => openReport(t.dataset.id)));
