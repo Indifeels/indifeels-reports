@@ -1,0 +1,43 @@
+name: Stock report refresh
+
+# Rebuilds the "Shop restock from Backup" report.
+# Triggered by Shopify Flow after every new order (repository_dispatch "shopify-order"),
+# or by hand from the Actions tab.
+on:
+  repository_dispatch:
+    types: [shopify-order]
+  workflow_dispatch:
+
+concurrency:
+  group: stock-report
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install cryptography
+      - name: Build stock report
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
+          STOCK_KEY: ${{ secrets.STOCK_KEY }}
+        run: python3 tools/stock_fetch.py
+      - name: Publish
+        if: always()
+        run: |
+          git config user.name "Indifeels stock bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add r/stock.bin r/stock.meta.bin r/status.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Stock report (order ${{ github.event.client_payload.order || 'manual' }})"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push -q origin HEAD:main && exit 0; sleep 5; done
+          exit 1
