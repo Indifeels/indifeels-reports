@@ -1,6 +1,6 @@
 """Encrypts report pages and tile summaries for the Indifeels Reports app.
 Usage: python3 encrypt.py KEYS_JSON SUMMARY_DIR HUB_DIR OUT_DIR
-KEYS_JSON : JSON object {"daily": "<base64 key>", "monthly": "<base64 key>"} (or a path to a file containing it)
+KEYS_JSON : JSON object {"daily": "<key>", "monthly": "<key>", "stock": "<key>"} (base64) (or a path to a file containing it)
 Writes OUT_DIR/<id>.bin (gzipped report HTML) and OUT_DIR/<id>.meta.bin (tile summary JSON), each = 12-byte IV + AES-256-GCM ciphertext.
 """
 import base64, gzip, json, os, sys
@@ -36,6 +36,12 @@ if m:
     metas["monthly"] = dict(updated=m["updated"], stats=[[money(m["np"]), f'net profit, {m["month"]}'], [f'{m["roas"]:.2f}x', "ROAS this month"],
                        [money(m["spend"]), "spend this month"], [money(m["total_np"]), f'net profit since {m["since"]}']],
                        signal=dict(code=SIG.get(m["sig"], "hold"), label=m["sig_label"], reason=m["reason"]))
+
+k = load("stock")
+if k:
+    metas["stock"] = dict(updated=k["updated"], stats=[[str(k["variants"]), "variants to move"], [str(k["units"]), "units at Backup"],
+                     [str(k["products"]), "products"]],
+                     warn=f'{k["variants"]} variants out of stock at Shop location' if k["variants"] else "")
 
 done = []
 for rid in KEYS:

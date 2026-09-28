@@ -1,7 +1,7 @@
 """Builds the Indifeels reports hub.
 Usage: python3 hub.py SUMMARY_DIR HUB_DIR
 SUMMARY_DIR holds daily.json / monthly.json written by build.py and monthly.py (SUMMARY_DIR env var).
-HUB_DIR holds daily.html and monthly.html; this writes HUB_DIR/index.html and adds a back link to each report page.
+HUB_DIR holds daily.html, monthly.html and stock.html; this writes HUB_DIR/index.html and adds a back link to each report page.
 """
 import json, os, sys, html
 SUM, HUB = sys.argv[1], sys.argv[2]
@@ -15,7 +15,7 @@ def money(v, dp=0):
     return ("−" if v < 0 else "") + (f"${abs(v):,.{dp}f}")
 
 SIGC = {"up": "scale", "hold": "hold", "down": "cut"}
-d, m = load("daily"), load("monthly")
+d, m, k = load("daily"), load("monthly"), load("stock")
 
 def stat(v, lab): return f'<div class="st"><b>{v}</b><span>{lab}</span></div>'
 def pill(s):
@@ -37,8 +37,14 @@ if m:
 <div class="sts">{stat(money(m["np"]), f'net profit, {html.escape(m["month"])}')}{stat(f'{m["roas"]:.2f}x', "ROAS this month")}{stat(money(m["spend"]), "spend this month")}{stat(money(m["total_np"]), f'net profit since {html.escape(m["since"])}')}</div>
 {pill(m)}
 <div class="ft"><span>Updated {html.escape(m["updated"])}</span><span class="go">Open report</span></div></a>''')
+if k:
+    tiles.append(f'''<a class="tile" href="stock.html">
+<h2>Shop restock from Backup</h2>
+<p class="ds">Variants with no stock at Shop location that have stock at Backup, with image, product, variant and both stock counts.</p>
+<div class="sts">{stat(k["variants"], "variants to move")}{stat(k["units"], "units at Backup")}{stat(k["products"], "products")}</div>
+<div class="ft"><span>Updated {html.escape(k["updated"])}</span><span class="go">Open report</span></div></a>''')
 
-upd = (d or m or {}).get("updated", "")
+upd = (d or m or k or {}).get("updated", "")
 page = f'''<title>Indifeels Reports</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -90,7 +96,7 @@ lab();b.addEventListener('click',function(){{var n=cur()==='dark'?'light':'dark'
 open(os.path.join(HUB, "index.html"), "w").write(page)
 
 BACK = '<a href="./" style="display:inline-block;margin:0 0 14px;font:600 13.5px Figtree,system-ui,sans-serif;color:var(--muted);text-decoration:none">&larr; All reports</a>'
-for fn in ("daily.html", "monthly.html"):
+for fn in ("daily.html", "monthly.html", "stock.html"):
     p = os.path.join(HUB, fn)
     if not os.path.exists(p): continue
     s = open(p).read()
