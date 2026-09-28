@@ -30,7 +30,7 @@
 
   // ---------- views ----------
   const VIEWS = ["login", "reset", "shell"];
-  const PAGES = ["home", "report", "password", "admin"];
+  const PAGES = ["home", "report", "stock", "password", "admin"];
   function view(v) { VIEWS.forEach((x) => ($("#v-" + x).hidden = x !== v)); }
   function page(p, title) {
     PAGES.forEach((x) => ($("#v-" + x).hidden = x !== p));
@@ -186,16 +186,82 @@
       if (!keys[r.id]) return;
       try {
         const meta = JSON.parse(await decryptFile(`r/${r.id}.meta.bin`, keys[r.id]));
+        if (r.id === "stock") { try { await loadMoves(); Object.assign(meta, stockStats()); } catch (_) {} }
         const el = box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`);
         if (el) { el.outerHTML = tileHTML(r, meta); box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`).addEventListener("click", () => openReport(r.id)); }
       } catch (_) { /* no published summary yet */ }
     }));
   }
 
+  // ---------- stock move tick list ----------
+  let SM = { moves: [], now: {}, ticks: {} };
+  async function loadMoves() {
+    const log = JSON.parse(await decryptFile("r/stock_moves.bin", keys.stock));
+    const { data, error } = await sb.from("stock_ticks").select("*");
+    if (error) throw new Error(error.message);
+    SM = { moves: log.moves || [], now: log.now || {}, ticks: Object.fromEntries((data || []).map((t) => [t.move_id, t])) };
+    return SM;
+  }
+  const smPending = () => SM.moves.filter((m) => !SM.ticks[m.id]?.finalised_at).sort((a, b) => b.moved_at.localeCompare(a.moved_at));
+  const smDone = () => SM.moves.filter((m) => SM.ticks[m.id]?.finalised_at).sort((a, b) => SM.ticks[b.id].finalised_at.localeCompare(SM.ticks[a.id].finalised_at)).slice(0, 40);
+  const smSold = (m) => (SM.now[m.item]?.shop ?? m.shop_after) < 0;
+  function stockStats() {
+    const p = smPending(), t = p.filter((m) => SM.ticks[m.id]?.ticked).length, sold = p.filter(smSold).length;
+    return { stats: [[String(p.length - t), "to move and tick"], [String(t), "ticked, not finalised"], [String(sold), "sold before moved"]],
+      warn: sold ? `${sold} sold before they were moved` : "" };
+  }
+  function smRow(m, done) {
+    const tk = SM.ticks[m.id] || {}, now = SM.now[m.item] || { shop: m.shop_after, backup: m.backup_after }, sold = now.shop < 0;
+    const thumb = m.img ? `<img src="${esc(m.img + (m.img.includes("?") ? "&" : "?") + "width=160")}" alt="" loading="lazy" width="64" height="80">` : `<span class="ph"></span>`;
+    const who = done ? `Finalised by ${esc(tk.finalised_by_name || "—")}, ${fmtTime(tk.finalised_at)}` : tk.ticked ? `Ticked by ${esc(tk.ticked_by_name || "—")}, ${fmtTime(tk.ticked_at)}` : `Moved in Shopify ${fmtTime(m.moved_at)}`;
+    return `<label class="sm-row${tk.ticked ? " on" : ""}${sold ? " sold" : ""}">
+      <input type="checkbox" data-mid="${esc(m.id)}" ${tk.ticked ? "checked" : ""} ${done ? "disabled" : ""} aria-label="Moved to shop: ${esc(m.product)} ${esc(m.variant)}">
+      ${thumb}
+      <span class="sm-main"><b>${esc(m.product)}</b><span class="vp">${esc(m.variant || "One size")}</span><span class="sub">${esc(m.sku)}</span>
+        <span class="sub">${who}</span>${sold ? `<span class="sm-flag">${svg("alert")}Sold before it was moved. Shop location is ${now.shop}.</span>` : ""}</span>
+      <span class="sm-q"><span><b class="${now.shop < 0 ? "neg" : ""}">${now.shop}</b>Shop</span><span><b>${now.backup}</b>Backup</span></span></label>`;
+  }
+  function renderStock() {
+    const p = smPending(), d = smDone(), st = stockStats();
+    $("#sm-sum").innerHTML = st.stats.map((s) => `<div class="st"><b>${esc(s[0])}</b><span>${esc(s[1])}</span></div>`).join("");
+    $("#sm-list").innerHTML = p.map((m) => smRow(m, false)).join("");
+    $("#sm-status").hidden = p.length > 0; $("#sm-status").textContent = "Nothing to move right now. New moves appear here after each order.";
+    $("#sm-done-wrap").hidden = !d.length; $("#sm-done").innerHTML = d.map((m) => smRow(m, true)).join("");
+    const t = p.filter((m) => SM.ticks[m.id]?.ticked).length;
+    $("#sm-bar").hidden = !p.length; $("#sm-count").textContent = `${t} of ${p.length} ticked`; $("#sm-final").disabled = !t;
+    $("#sm-final").textContent = "Stock finalised"; delete $("#sm-final").dataset.confirm;
+    $$("#sm-list input[data-mid]").forEach((c) => c.addEventListener("change", async () => {
+      c.disabled = true;
+      const { error } = await sb.rpc("tick_stock_move", { mid: c.dataset.mid, on_: c.checked });
+      if (error) { toast(error.message); c.checked = !c.checked; c.disabled = false; return; }
+      SM.ticks[c.dataset.mid] = { ...(SM.ticks[c.dataset.mid] || {}), ticked: c.checked, ticked_by_name: me.display_name || me.username, ticked_at: new Date().toISOString() };
+      renderStock();
+    }));
+  }
+  $("#sm-final").addEventListener("click", async () => {
+    const b = $("#sm-final");
+    if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Tap again to confirm"; setTimeout(() => { if (b.dataset.confirm === "1") { delete b.dataset.confirm; b.textContent = "Stock finalised"; } }, 4000); return; }
+    b.disabled = true; b.textContent = "Saving…";
+    const { data, error } = await sb.rpc("finalise_stock_moves");
+    if (error) { toast(error.message); renderStock(); return; }
+    toast(`${data} move${data === 1 ? "" : "s"} finalised`);
+    try { await loadMoves(); } catch (_) {}
+    renderStock();
+  });
+  $("#sm-report").addEventListener("click", () => openReport("stock", true));
+  async function openStock(r) {
+    page("stock", r.title);
+    $("#sm-list").innerHTML = ""; $("#sm-sum").innerHTML = ""; $("#sm-bar").hidden = true; $("#sm-done-wrap").hidden = true;
+    const st = $("#sm-status"); st.hidden = false; st.textContent = "Loading…";
+    try { await loadMoves(); renderStock(); }
+    catch (e) { st.textContent = e.message === "not-published" ? "No moves have been logged yet." : "The move list couldn't be loaded. Pull down to refresh."; }
+  }
+
   // ---------- report viewer ----------
-  async function openReport(id) {
+  async function openReport(id, full) {
     const r = reports.find((x) => x.id === id); if (!r) return go("home");
     if (location.hash !== "#" + id) history.pushState(null, "", "#" + id);
+    if (id === "stock" && !full) return openStock(r);
     page("report", r.title);
     const st = $("#rep-status"), fr = $("#rep-frame");
     st.hidden = false; st.textContent = "Opening report…"; fr.hidden = true;

@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Indifeels">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=4">
+<link rel="stylesheet" href="app.css?v=5">
 </head>
 <body>
 <div id="app">
@@ -82,6 +82,16 @@
       <iframe id="rep-frame" title="Report" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" hidden></iframe>
     </div>
 
+    <main id="v-stock" class="page" hidden>
+      <div class="page-head"><h2>Shop restock from Backup</h2><p>When a variant hits 0 at Shop location, Shopify moves 1 unit from Backup automatically. Tick each item once it's physically on the shop floor, then press <b>Stock finalised</b>.</p></div>
+      <div class="sm-sum" id="sm-sum"></div>
+      <p id="sm-status" class="rep-status">Loading…</p>
+      <div id="sm-list" class="sm-list"></div>
+      <div class="sm-bar" id="sm-bar" hidden><span id="sm-count">0 ticked</span><button class="btn primary" id="sm-final" type="button" disabled>Stock finalised</button></div>
+      <details class="sm-done" id="sm-done-wrap" hidden><summary>Finalised moves</summary><div id="sm-done" class="sm-list"></div></details>
+      <button class="link" id="sm-report" type="button">Open the full stock report</button>
+    </main>
+
     <main id="v-password" class="page narrow" hidden>
       <div class="page-head"><h2>Change password</h2><p>Use at least 8 characters.</p></div>
       <form id="f-pw" class="card form" novalidate>
@@ -126,6 +136,6 @@
 </div>
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

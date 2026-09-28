@@ -1,11 +1,15 @@
 name: Stock report refresh
 
-# Rebuilds the "Shop restock from Backup" report.
-# Triggered by Shopify Flow after every new order (repository_dispatch "shopify-order"),
-# or by hand from the Actions tab.
+# Moves 1 unit Backup -> Shop location for variants that hit 0 at Shop location, logs the moves for the
+# app's tick list, and rebuilds the "Shop restock from Backup" report.
+# Runs after every new order (Shopify Flow -> repository_dispatch "shopify-order"), around 7am and 3pm
+# Sydney time (catches manual stock changes such as stock takes; both AEST and AEDT hours are listed, and
+# an extra run is harmless), or by hand from the Actions tab.
 on:
   repository_dispatch:
     types: [shopify-order]
+  schedule:
+    - cron: "55 19,20,3,4 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -30,13 +34,14 @@ jobs:
           SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
           SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
           STOCK_KEY: ${{ secrets.STOCK_KEY }}
+          ORDER: ${{ github.event.client_payload.order || github.event_name }}
         run: python3 tools/stock_fetch.py
       - name: Publish
         if: always()
         run: |
           git config user.name "Indifeels stock bot"
           git config user.email "actions@users.noreply.github.com"
-          git add r/stock.bin r/stock.meta.bin r/status.json
+          git add r/stock.bin r/stock.meta.bin r/stock_moves.bin r/status.json
           git diff --cached --quiet && exit 0
           git commit -m "Stock report (order ${{ github.event.client_payload.order || 'manual' }})"
           for i in 1 2 3; do git pull --rebase -q origin main && git push -q origin HEAD:main && exit 0; sleep 5; done
