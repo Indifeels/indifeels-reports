@@ -591,7 +591,7 @@ def _r7(k):
     s_=sum(spd.get(x,0) for x in ks); return round(sum(rvd.get(x,0) for x in ks)/s_,2) if s_ else 0
 SPARK=[[round(spd.get(k,0),2) for k in _D14],[msd.get(k,0) for k in _D14],[round(rvd.get(k,0),2) for k in _D14],[_r7(k) for k in _D14]]
 if os.environ.get("SUMMARY_DIR"):
-    json.dump(dict(spark=SPARK,updated=NOW.strftime("%-d %b %Y, %-I:%M %p"),t_s=t["s"],t_m=t["m"],t_cpm=cpm(t["s"],t["m"]) if t["m"] else None,
+    json.dump(dict(spark=SPARK,updated=NOW.strftime("%-d %b %Y, %-I:%M %p"),today_date=TODAY.strftime("%-d %b"),t_s=t["s"],t_m=t["m"],t_cpm=cpm(t["s"],t["m"]) if t["m"] else None,
                    m_s=p["s"],m_sales=p["sv"],m_roas=p["r"],m_cpm=cpm(p["s"],p["m"]),active=len(act),
                    unatt=len(u48)+len(u7),sig=RS["code"],sig_label=SIG[1],reason=SIG[2]),open(os.path.join(os.environ["SUMMARY_DIR"],"daily.json"),"w"))
 print("PUSH: "+f"Non-tracked {TODAY.strftime('%-d %b')} | Today ${t['s']:.0f}, {int(t['m'])} msgs, {fcpm(cpm(t['s'],t['m']))}/msg, FB sales {money(t['sv']) if t['sv'] else '$0'} | MTD ROAS {roasf(p['r'])} | {SIG[1]}"+(f" | {len(u48)+len(u7)} orders need a source" if (u48 or u7) else ""))

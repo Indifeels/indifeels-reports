@@ -12,7 +12,7 @@ Page query (Backup location, 250 per page):
       nodes { q: quantities(names:["available"]) { quantity }
               item { id s: inventoryLevel(locationId:"gid://shopify/Location/99623436645") { q: quantities(names:["available"]) { quantity } } } } } } }
 Items query:
-  { nodes(ids:[...]) { ... on InventoryItem { id sku variant { title image { url } product { title status featuredMedia { preview { image { url } } } } } } } }
+  { nodes(ids:[...]) { ... on InventoryItem { id sku variant { title image { url } product { title status onlineStoreUrl featuredMedia { preview { image { url } } } } } } } }
 """
 import json, html, glob, os, sys, datetime as dt
 from zoneinfo import ZoneInfo
@@ -67,7 +67,8 @@ for iid, (shop, backup) in M.items():
     p = v.get("product") or {}
     img = (v.get("image") or {}).get("url") or (((p.get("featuredMedia") or {}).get("preview") or {}).get("image") or {}).get("url") or ""
     vt = v.get("title") or ""
-    rows.append(dict(img=img, name=p.get("title") or "(unknown product)", variant="" if vt == "Default Title" else vt,
+    product_url = p.get("onlineStoreUrl") or ""
+    rows.append(dict(img=img, product_url=product_url, name=p.get("title") or "(unknown product)", variant="" if vt == "Default Title" else vt,
                      sku=n.get("sku") or "", status=(p.get("status") or "").title(), shop=shop, backup=backup))
 rows.sort(key=lambda r: (r["name"].lower(), r["variant"]))
 units = sum(r["backup"] for r in rows)
@@ -76,14 +77,15 @@ UPD = NOW.strftime("%a %-d %b %Y, %-I:%M %p").replace("AM", "am").replace("PM", 
 e = html.escape
 
 
-def thumb(u):
+def thumb(u, pu=""):
     if not u: return '<div class="ph" aria-hidden="true"></div>'
     src = u + ("&" if "?" in u else "?") + "width=160"
-    return f'<a href="{e(u)}" target="_blank" rel="noopener"><img src="{e(src)}" alt="" loading="lazy" width="72" height="90"></a>'
+    href = pu if pu else u
+    return f'<a href="{e(href)}" target="_blank" rel="noopener" title="View product on website"><img src="{e(src)}" alt="" loading="lazy" width="72" height="90"></a>'
 
 
 trs = "".join(
-    f'<tr><td class="im">{thumb(r["img"])}</td><td><b>{e(r["name"])}</b>'
+    f'<tr><td class="im">{thumb(r["img"], r["product_url"])}</td><td><b>{e(r["name"])}</b>'
     f'<span class="vm">{e(r["variant"]) or "—"}</span><span class="sub">{e(r["sku"])}{" · " + e(r["status"]) if r["status"] and r["status"] != "Active" else ""}</span></td>'
     f'<td class="vc">{e(r["variant"]) or "—"}</td><td class="n zero">{r["shop"]}</td><td class="n pos">{r["backup"]}</td></tr>'
     for r in rows)

@@ -57,7 +57,7 @@ tiles = []
 if d:
     tiles.append(tile("daily", "daily.html", "Non-tracked campaigns, daily",
         "Spend, messages and cost per message by campaign for today, this week, this month and lifetime, with FB sales, ROAS and orders still to attribute.",
-        [(money(d["t_s"], 2), "spent today"), (f'{int(d["t_m"])}', "messages today"), (money(d["m_sales"]), "FB sales this month"),
+        [(money(d["t_s"], 2), f'spent {d.get("today_date","today")}'), (f'{int(d["t_m"])}', f'msgs {d.get("today_date","today")}'), (money(d["m_sales"]), "FB sales this month"),
          (f'{d["m_roas"]:.2f}x' if d["m_roas"] else "—", "ROAS this month")],
         d.get("spark"), (d["sig_label"], d["reason"]) if d.get("sig") else None,
         f'{d["unatt"]} orders need a source' if d.get("unatt") else "", d["updated"]))
