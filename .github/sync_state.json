@@ -1,9 +1,9 @@
 {
- "r/daily.bin": "fa38cfdfb63782eea16405762b72744a584d16d94fe22ca805f34e1fc3494e85",
- "r/daily.meta.bin": "d3758034ad677a2cee2202547a71114fd258eb57ae577ff5965e752b37d79ae7",
- "r/monthly.bin": "f1f13019eeba8f6bfeaf06679d9fd4c37a84c3729632ba404e16245ab2e87bea",
- "r/monthly.meta.bin": "8919c1477773414bf28283c7b22d494b7fd7b2164af9ee369441222b540ea90d",
- "r/status.json": "bec71a8e0f9dd45e97d3fd2d5fddc2b41370263a0a9b85be06406ecfe4d67a0b",
+ "r/daily.bin": "a37b5eec7cf5844d69539b1c9ad2c7d984641f39e0396ea19fedf644f1494fb0",
+ "r/daily.meta.bin": "8be1d49a47a74605eed544d292a06fdd9dcc5e1f0a60353ce34d16e8faaf273e",
+ "r/monthly.bin": "f5a978331aba82cf4044d7ca0d0d33a898ac029298bc8556a9dfc0f6092c875d",
+ "r/monthly.meta.bin": "31ccfe6702b2fa8362e1ab7db260e2a9d83a2054e74f3e66da6ebcf1541b5a75",
+ "r/status.json": "3347f5bf23788c1a0fd88a14e77a29efdbb58668a93c0fa83ff374a8aef48b59",
  "r/stock.bin": "c0f98355963ac74a6d00acd4ba727847e1bfaddd5f4f4f59f5765711249d48f3",
  "r/stock.meta.bin": "2bc9cb3a939eeff140faa7ea06f1b7e3f16b4a227f1de5f0fd5f273f7864d19f"
 }
