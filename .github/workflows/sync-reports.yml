@@ -1,0 +1,64 @@
+name: Sync reports from Supabase
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # every 30 minutes; only commits when files changed
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-reports
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pull files from Supabase outbox
+        env:
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, os, urllib.request
+          url = "https://yrigvovwyfpaybibfjva.supabase.co/rest/v1/rpc/sync_get_files"
+          key = "sb_publishable_8xv46B6mvnAN2McGDc4VEg_pNF0qHvD"
+          req = urllib.request.Request(url, method="POST",
+              data=json.dumps({"p_token": os.environ["SYNC_READ_TOKEN"]}).encode(),
+              headers={"apikey": key, "Content-Type": "application/json"})
+          rows = json.load(urllib.request.urlopen(req, timeout=60))
+          # Only write files that were uploaded since the last sync, so files
+          # updated by other workflows (e.g. the stock job) are never overwritten.
+          state_path = ".github/sync_state.json"
+          state = json.load(open(state_path)) if os.path.exists(state_path) else {}
+          batches, n = set(), 0
+          for r in rows:
+              path = r["path"]
+              assert path.startswith("r/") and "/" not in path[2:] and ".." not in path, path
+              if state.get(path) == r["sha256"]:
+                  continue
+              raw = base64.b64decode(r["content_b64"])
+              assert hashlib.sha256(raw).hexdigest() == r["sha256"], "checksum " + path
+              os.makedirs("r", exist_ok=True)
+              open(path, "wb").write(raw)
+              state[path] = r["sha256"]
+              batches.add(r["batch"]); n += 1
+          json.dump(state, open(state_path, "w"), indent=1, sort_keys=True)
+          open(os.environ["GITHUB_ENV"], "a").write("BATCH=" + " / ".join(sorted(batches)) + "\n")
+          print(f"new files: {n} of {len(rows)}")
+          PY
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add r .github/sync_state.json
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "${BATCH:-Report sync}"
+            git push
+          fi
