@@ -38,12 +38,23 @@ jobs:
           for r in rows:
               path = r["path"]
               assert path.startswith("r/") and "/" not in path[2:] and ".." not in path, path
+              if path in ("r/stock.bin", "r/stock.meta.bin", "r/stock_moves.bin"):
+                  continue  # stock report is owned by the "Stock report refresh" workflow
               if state.get(path) == r["sha256"]:
                   continue
               raw = base64.b64decode(r["content_b64"])
               assert hashlib.sha256(raw).hexdigest() == r["sha256"], "checksum " + path
               os.makedirs("r", exist_ok=True)
-              open(path, "wb").write(raw)
+              if path == "r/status.json":
+                  # merge only the daily/monthly entries; keep the stock entry from the stock workflow
+                  new = json.loads(raw)
+                  cur = json.load(open(path)) if os.path.exists(path) else {}
+                  for k in ("daily", "monthly"):
+                      if k in new:
+                          cur[k] = new[k]
+                  json.dump(cur, open(path, "w"), indent=1, sort_keys=True)
+              else:
+                  open(path, "wb").write(raw)
               state[path] = r["sha256"]
               batches.add(r["batch"]); n += 1
           json.dump(state, open(state_path, "w"), indent=1, sort_keys=True)
