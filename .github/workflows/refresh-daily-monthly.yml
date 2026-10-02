@@ -1,0 +1,97 @@
+name: Refresh Daily and Monthly reports
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-daily-monthly
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout reports
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install cryptography
+
+      - name: Fetch live read-only inputs
+        env:
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
+        run: |
+          mkdir -p .refresh/data .refresh/hub .refresh/sum .refresh/out
+          python3 tools/fetch_reports.py .refresh/data
+
+      - name: Build existing reports
+        env:
+          SUMMARY_DIR: .refresh/sum
+        run: |
+          python3 tools/build.py .refresh/data .refresh/hub/daily.html
+          python3 tools/monthly.py .refresh/data .refresh/hub/monthly.html
+
+      - name: Encrypt reports
+        env:
+          DAILY_KEY: ${{ secrets.DAILY_KEY }}
+          MONTHLY_KEY: ${{ secrets.MONTHLY_KEY }}
+        run: |
+          test -n "$DAILY_KEY"
+          test -n "$MONTHLY_KEY"
+
+          python3 - <<'PY'
+          import json, os
+          json.dump({
+              "daily": os.environ["DAILY_KEY"],
+              "monthly": os.environ["MONTHLY_KEY"]
+          }, open(".refresh/keys.json", "w"))
+          PY
+
+          python3 tools/encrypt.py \
+            .refresh/keys.json \
+            .refresh/sum \
+            .refresh/hub \
+            .refresh/out
+
+          test -s .refresh/out/daily.bin
+          test -s .refresh/out/daily.meta.bin
+          test -s .refresh/out/monthly.bin
+          test -s .refresh/out/monthly.meta.bin
+
+      - name: Publish only after successful validation
+        run: |
+          cp .refresh/out/daily.bin r/daily.bin
+          cp .refresh/out/daily.meta.bin r/daily.meta.bin
+          cp .refresh/out/monthly.bin r/monthly.bin
+          cp .refresh/out/monthly.meta.bin r/monthly.meta.bin
+
+          python3 tools/status.py r daily ok
+          python3 tools/status.py r monthly ok
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+
+          git add \
+            r/daily.bin \
+            r/daily.meta.bin \
+            r/monthly.bin \
+            r/monthly.meta.bin \
+            r/status.json
+
+          if git diff --cached --quiet; then
+            echo "No report changes"
+          else
+            git commit -m "Refresh Daily and Monthly reports"
+            git push
+          fi
