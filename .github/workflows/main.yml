@@ -1,0 +1,158 @@
+name: Publish Google Tracked report
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-google-tracked
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install encryption dependency
+        run: pip install cryptography
+
+      - name: Build encrypted Google report
+        env:
+          GOOGLE_TRACKED_KEY: ${{ secrets.GOOGLE_TRACKED_KEY }}
+          GOOGLE_TRACKED_HTML: ${{ secrets.GOOGLE_TRACKED_HTML }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          import gzip
+          import json
+          import os
+          import secrets
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+          key_b64 = os.environ["GOOGLE_TRACKED_KEY"].strip()
+          html = os.environ["GOOGLE_TRACKED_HTML"]
+
+          if not key_b64:
+              raise SystemExit("Missing GOOGLE_TRACKED_KEY")
+
+          if not html:
+              raise SystemExit("Missing GOOGLE_TRACKED_HTML")
+
+          key = base64.b64decode(key_b64)
+
+          if len(key) != 32:
+              raise SystemExit(
+                  f"GOOGLE_TRACKED_KEY must decode to 32 bytes, got {len(key)}"
+              )
+
+          def encrypt(data: bytes) -> bytes:
+              iv = secrets.token_bytes(12)
+              encrypted = AESGCM(key).encrypt(
+                  iv,
+                  gzip.compress(data, 9),
+                  None
+              )
+              return iv + encrypted
+
+          os.makedirs("r", exist_ok=True)
+
+          with open("r/google-tracked.bin", "wb") as f:
+              f.write(encrypt(html.encode("utf-8")))
+
+          now = datetime.now(
+              ZoneInfo("Australia/Sydney")
+          ).isoformat(timespec="minutes")
+
+          meta = {
+              "updated": now,
+              "stats": [
+                  ["$14.10", "provisional profit yesterday"],
+                  ["3.04x", "ROAS yesterday"],
+                  ["$16.76", "provisional profit, last 7 days"],
+                  ["$866.90", "provisional profit, last 30 days"]
+              ],
+              "signal": {
+                  "code": "hold",
+                  "label": "Tracked Google Ads",
+                  "reason": "Completed-day reporting with exact KPI changes."
+              },
+              "spark": [
+                  -19.05,
+                  -19.36,
+                  -33.76,
+                  109.68,
+                  7.16,
+                  73.74,
+                  151.77,
+                  69.43,
+                  -23.83,
+                  64.44,
+                  -27.68,
+                  109.84,
+                  49.46,
+                  -21.25,
+                  125.08,
+                  -21.76,
+                  -15.00,
+                  -19.91,
+                  -17.45,
+                  74.16,
+                  39.14,
+                  148.29,
+                  47.02,
+                  -13.95,
+                  -16.54,
+                  81.26,
+                  -13.75,
+                  -20.60,
+                  -13.78,
+                  14.10
+              ]
+          }
+
+          with open("r/google-tracked.meta.bin", "wb") as f:
+              f.write(
+                  encrypt(
+                      json.dumps(
+                          meta,
+                          separators=(",", ":")
+                      ).encode("utf-8")
+                  )
+              )
+
+          print("Google tracked report encrypted successfully")
+          PY
+
+      - name: Commit report
+        run: |
+          git config user.name "Indifeels reports bot"
+          git config user.email "actions@users.noreply.github.com"
+
+          git add \
+            r/google-tracked.bin \
+            r/google-tracked.meta.bin
+
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+
+          git commit -m "Publish redesigned Google tracked report"
+
+          for i in 1 2 3; do
+            git pull --rebase -q origin main
+            git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+
+          exit 1
