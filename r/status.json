@@ -1,15 +1,15 @@
 {
  "daily": {
-  "at": "2026-10-03T00:34+10:00",
-  "last_ok": "2026-10-02T00:46+10:00",
-  "ok": false,
-  "reason": "Windsor.ai connector returned Denied by user; Meta Ads data unavailable"
+  "at": "2026-10-03T09:57+10:00",
+  "last_ok": "2026-10-03T09:57+10:00",
+  "ok": true,
+  "reason": ""
  },
  "monthly": {
-  "at": "2026-10-03T00:34+10:00",
-  "last_ok": "2026-10-02T00:46+10:00",
-  "ok": false,
-  "reason": "Windsor.ai connector returned Denied by user; Meta Ads data unavailable"
+  "at": "2026-10-03T09:57+10:00",
+  "last_ok": "2026-10-03T09:57+10:00",
+  "ok": true,
+  "reason": ""
  },
  "stock": {
   "at": "2026-10-03T06:55+10:00",
