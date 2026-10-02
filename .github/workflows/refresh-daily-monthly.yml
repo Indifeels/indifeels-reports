@@ -42,20 +42,21 @@ jobs:
           python3 tools/build.py .refresh/data .refresh/hub/daily.html
           python3 tools/monthly.py .refresh/data .refresh/hub/monthly.html
 
-      - name: Encrypt reports
+      - name: Retrieve existing report keys and encrypt
         env:
-          DAILY_KEY: ${{ secrets.DAILY_KEY }}
-          MONTHLY_KEY: ${{ secrets.MONTHLY_KEY }}
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
         run: |
-          test -n "$DAILY_KEY"
-          test -n "$MONTHLY_KEY"
-
           python3 - <<'PY'
-          import json, os
-          json.dump({
-              "daily": os.environ["DAILY_KEY"],
-              "monthly": os.environ["MONTHLY_KEY"]
-          }, open(".refresh/keys.json", "w"))
+          import json, os, urllib.request
+          url="https://yrigvovwyfpaybibfjva.supabase.co/rest/v1/rpc/sync_get_report_keys"
+          key="sb_publishable_8xv46B6mvnAN2McGDc4VEg_pNF0qHvD"
+          body=json.dumps({"p_token":os.environ["SYNC_READ_TOKEN"],"p_report_ids":["daily","monthly"]}).encode()
+          req=urllib.request.Request(url,data=body,headers={"apikey":key,"Content-Type":"application/json"})
+          rows=json.load(urllib.request.urlopen(req,timeout=60))
+          keys={r["report_id"]:r["key_b64"] for r in rows}
+          if set(keys)!= {"daily","monthly"}:
+              raise RuntimeError("Missing existing report encryption key")
+          json.dump(keys,open(".refresh/keys.json","w"))
           PY
 
           python3 tools/encrypt.py \
