@@ -16,7 +16,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: product-visibility
+  # Shared repository write lock: prevents report workflows from changing r/* and status.json at the same time.
+  group: indifeels-reports-repo-write
   cancel-in-progress: false
 
 permissions:
