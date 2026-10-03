@@ -7,7 +7,12 @@ from zoneinfo import ZoneInfo
 
 OUT=sys.argv[1]
 os.makedirs(OUT,exist_ok=True)
-end=(datetime.now(ZoneInfo("Australia/Sydney")).date()-timedelta(days=1)).isoformat()
+tz=ZoneInfo("Australia/Sydney")
+if os.environ.get("REPORT_NOW"):
+    report_now=datetime.fromisoformat(os.environ["REPORT_NOW"]).astimezone(tz)
+    end=report_now.date().isoformat()
+else:
+    end=(datetime.now(tz).date()-timedelta(days=1)).isoformat()
 start=os.environ.get("REPORT_START","2026-03-01")
 acct=os.environ.get("WINDSOR_FACEBOOK_ACCOUNT","1634084963432990")
 
@@ -18,7 +23,12 @@ with urllib.request.urlopen("https://connectors.windsor.ai/facebook?"+params,tim
 rows=w.get("data",w) if isinstance(w,dict) else w
 if not isinstance(rows,list) or not rows:
     raise RuntimeError("Windsor returned no Meta rows")
-# This report is strictly Non-Tracked Meta messaging campaigns. Never mix Tracked campaigns.\nrows=[r for r in rows if ("non tracked" in (r.get("campaign") or "").lower().replace("-"," ") and "tracked |" not in (r.get("campaign") or "").lower().replace("non tracked",""))]\nif not rows:\n    raise RuntimeError("Windsor returned no Non-Tracked Meta rows")\nw = dict(w, data=rows) if isinstance(w,dict) else rows\njson.dump(w,open(os.path.join(OUT,"windsor_01.json"),"w"))
+# This report is strictly Non-Tracked Meta messaging campaigns. Never mix Tracked campaigns.
+rows=[r for r in rows if ("non tracked" in (r.get("campaign") or "").lower().replace("-"," ") and "tracked |" not in (r.get("campaign") or "").lower().replace("non tracked",""))]
+if not rows:
+    raise RuntimeError("Windsor returned no Non-Tracked Meta rows")
+w = dict(w, data=rows) if isinstance(w,dict) else rows
+json.dump(w,open(os.path.join(OUT,"windsor_01.json"),"w"))
 
 shop=os.environ.get("SHOPIFY_SHOP","bvdxj3-r8.myshopify.com")
 api="https://"+shop+"/admin/api/2026-04/graphql.json"
