@@ -10,7 +10,7 @@ S=sys.argv[1]; OUT=sys.argv[2]; EMAIL=sys.argv[3] if len(sys.argv)>3 else None; 
 TZ=ZoneInfo("Australia/Sydney"); NOW=dt.datetime.now(TZ)
 if os.environ.get("REPORT_NOW"): NOW=dt.datetime.fromisoformat(os.environ["REPORT_NOW"]).astimezone(TZ)
 TODAY=NOW.date(); D=dt.timedelta
-YEST=TODAY-D(1); WS=TODAY-D(TODAY.weekday()); MS=TODAY.replace(day=1)
+# Final-report cutoff: the latest fully completed Sydney calendar day.\n# When REPORT_NOW is supplied as 23:59 on yesterday, TODAY intentionally becomes that completed day.\nYEST=TODAY-D(1); WS=TODAY-D(TODAY.weekday()); MS=TODAY.replace(day=1)
 PMS=(MS-D(1)).replace(day=1); PME=min(PMS.replace(day=min(TODAY.day,(MS-D(1)).day)),MS-D(1))
 M="actions_onsite_conversion_messaging_conversation_started_7d"
 def unwrap(x):
