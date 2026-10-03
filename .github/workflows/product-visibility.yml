@@ -1,0 +1,73 @@
+name: Product visibility report
+
+# Unlisted in-stock products + active in-stock products with sales channels switched off.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/product_visibility.py"
+      - ".github/workflows/product-visibility.yml"
+  schedule:
+    # Duplicate UTC hours handle Sydney AEST/AEDT; the gate keeps only 7am, 3pm and 8pm local.
+    - cron: "50 20,21,4,5,9,10 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: product-visibility
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Sydney time gate
+        id: gate
+        run: |
+          H=$(TZ=Australia/Sydney date +%H)
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "$H" = "07" ] || [ "$H" = "15" ] || [ "$H" = "20" ]; then
+            echo "go=1" >> $GITHUB_OUTPUT
+          else
+            echo "Not a Sydney run hour ($H), skipping"
+            echo "go=0" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.go == '1'
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.go == '1'
+        with:
+          python-version: "3.12"
+
+      - name: Install report dependency
+        if: steps.gate.outputs.go == '1'
+        run: pip install cryptography
+
+      - name: Build product visibility report
+        if: steps.gate.outputs.go == '1'
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
+          STOCK_KEY: ${{ secrets.STOCK_KEY }}
+        run: python3 tools/product_visibility.py
+
+      - name: Publish report
+        if: always() && steps.gate.outputs.go == '1'
+        run: |
+          git config user.name "Indifeels visibility bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add r/status.json
+          [ -f r/product-visibility.bin ] && git add r/product-visibility.bin || true
+          [ -f r/product-visibility.meta.bin ] && git add r/product-visibility.meta.bin || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh product visibility report"
+          for i in 1 2 3; do
+            git pull --rebase -q origin main
+            git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
