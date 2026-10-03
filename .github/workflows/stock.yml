@@ -54,6 +54,8 @@ jobs:
           SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
           ORDER_ID: ${{ github.event.client_payload.order_id }}
           ORDER_SOURCE: ${{ github.event.client_payload.source }}
+          ORDER_EMAIL: ${{ github.event.client_payload.email }}
+          ORDER_PHONE: ${{ github.event.client_payload.phone }}
           CALLBACK_TOKEN: ${{ github.event.client_payload.callback_token }}
         run: python3 tools/order_attribution_sync.py
 
