@@ -280,7 +280,7 @@
 
   async function loadAttribution() {
     const { data, error } = await sb.from("order_attribution_queue")
-      .select("order_id,legacy_id,order_name,created_at,customer_name,total,currency,shopify_source,products,order_source,sync_status,sync_error,updated_at")
+      .select("order_id,legacy_id,order_name,created_at,customer_name,contact_email,contact_phone,total,currency,shopify_source,products,order_source,sync_status,sync_error,updated_at")
       .order("created_at", { ascending: false }).limit(150);
     if (error) throw new Error(error.message);
     OA.rows = data || [];
@@ -304,7 +304,7 @@
     const syncing = r.sync_status === "syncing", failed = r.sync_status === "error";
     const opts = ['<option value="">Choose source…</option>'].concat(ORDER_SOURCES.map((x) => `<option value="${esc(x)}" ${r.order_source === x ? "selected" : ""}>${esc(x)}</option>`)).join("");
     const stat = syncing ? '<span class="oa-state syncing">Syncing…</span>' : failed ? '<span class="oa-state error">Sync failed</span>' : r.order_source ? '<span class="oa-state done">Synced</span>' : '<span class="oa-state pending">Pending</span>';
-    const retry = failed && r.order_source ? `<button class="btn sm oa-retry" type="button" data-order="${esc(r.order_id)}" data-source="${esc(r.order_source)}">Retry</button>` : "";
+    const saveText = syncing ? "Saving…" : failed ? "Retry Shopify" : "Save to Shopify";
     return `<div class="oa-row ${failed ? "has-error" : ""}" data-order="${esc(r.order_id)}">
       <div class="oa-top">
         <a class="oa-order" href="https://admin.shopify.com/store/bvdxj3-r8/orders/${esc(r.legacy_id)}" target="_blank" rel="noopener">${esc(r.order_name)}</a>
@@ -313,11 +313,15 @@
       </div>
       <div class="oa-meta">${esc((r.shopify_source || "Shopify").toUpperCase())} · ${fmtTime(r.created_at)}${r.customer_name ? " · " + esc(r.customer_name) : ""}</div>
       <div class="oa-products">${oaProducts(r)}</div>
-      <div class="oa-actions">
-        <select class="oa-source" data-order="${esc(r.order_id)}" aria-label="Order source for ${esc(r.order_name)}" ${syncing ? "disabled" : ""}>${opts}</select>
-        ${retry}
+      <div class="oa-fields">
+        <label class="oa-field"><span>Phone <em>optional</em></span><input class="oa-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="04xx xxx xxx" value="${esc(r.contact_phone || "")}" ${syncing ? "disabled" : ""}></label>
+        <label class="oa-field"><span>Email <em>optional</em></span><input class="oa-email" type="email" inputmode="email" autocomplete="email" placeholder="customer@example.com" value="${esc(r.contact_email || "")}" ${syncing ? "disabled" : ""}></label>
       </div>
-      ${failed ? `<div class="oa-error">${esc(r.sync_error || "Shopify did not accept the update. Retry or choose another source.")}</div>` : ""}
+      <div class="oa-actions">
+        <select class="oa-source" aria-label="Order source for ${esc(r.order_name)}" ${syncing ? "disabled" : ""}>${opts}</select>
+        <button class="btn oa-save" type="button" data-order="${esc(r.order_id)}" ${syncing ? "disabled" : ""}>${saveText}</button>
+      </div>
+      ${failed ? `<div class="oa-error">${esc(r.sync_error || "Shopify did not accept the update. Check the details and retry.")}</div>` : ""}
     </div>`;
   }
   function renderAttribution() {
@@ -332,15 +336,26 @@
     $("#oa-status").textContent = "All current orders are attributed.";
     $("#oa-done-wrap").hidden = !d.length;
     $("#oa-done").innerHTML = d.map(oaRow).join("");
-    $(".oa-source").forEach((sel) => sel.addEventListener("change", () => { if (sel.value) syncAttribution(sel.dataset.order, sel.value); }));
-    $(".oa-retry").forEach((b) => b.addEventListener("click", () => syncAttribution(b.dataset.order, b.dataset.source)));
+    $$(".oa-save").forEach((b) => b.addEventListener("click", () => {
+      const card = b.closest(".oa-row");
+      const source = card.querySelector(".oa-source").value;
+      const emailEl = card.querySelector(".oa-email");
+      const email = emailEl.value.trim();
+      const phone = card.querySelector(".oa-phone").value.trim();
+      if (!source) return toast("Choose an order source first");
+      if (email && !emailEl.checkValidity()) return toast("Enter a valid email address or leave it blank");
+      syncAttribution(b.dataset.order, source, email, phone);
+    }));
   }
-  async function syncAttribution(orderId, source) {
+  async function syncAttribution(orderId, source, email = "", phone = "") {
     const row = OA.rows.find((r) => r.order_id === orderId);
     if (!row || !source) return;
-    row.order_source = source; row.sync_status = "syncing"; row.sync_error = null; renderAttribution();
+    row.order_source = source;
+    if (email) row.contact_email = email;
+    if (phone) row.contact_phone = phone;
+    row.sync_status = "syncing"; row.sync_error = null; renderAttribution();
     try {
-      const { data, error } = await sb.functions.invoke("order-attribution", { body: { action: "update", order_id: orderId, source } });
+      const { data, error } = await sb.functions.invoke("order-attribution", { body: { action: "update", order_id: orderId, source, email, phone } });
       if (error) {
         let msg = error.message; try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
         throw new Error(msg);
