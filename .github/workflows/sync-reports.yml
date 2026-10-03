@@ -9,7 +9,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: sync-reports
+  # Shared repository write lock: prevents report workflows from changing r/* and status.json at the same time.
+  group: indifeels-reports-repo-write
   cancel-in-progress: false
 
 jobs:
