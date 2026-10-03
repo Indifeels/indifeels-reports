@@ -2,6 +2,10 @@ name: Refresh Daily and Monthly reports
 
 on:
   workflow_dispatch:
+  schedule:
+    # GitHub cron is UTC. These pairs cover Sydney standard/daylight time;
+    # the Sydney-time gate below allows only 20:00 and 00:00 local.
+    - cron: "0 9,10,13,14 * * *"
 
 permissions:
   contents: write
@@ -35,14 +39,20 @@ jobs:
           mkdir -p .refresh/data .refresh/hub .refresh/sum .refresh/out
           python3 tools/fetch_reports.py .refresh/data
 
-      - name: Set completed-day cutoff
+      - name: Set Sydney report cutoff
         run: |
           python3 - <<'PY' >> "$GITHUB_ENV"
           from datetime import datetime, timedelta, time
           from zoneinfo import ZoneInfo
           tz=ZoneInfo("Australia/Sydney")
-          yesterday=datetime.now(tz).date()-timedelta(days=1)
-          cutoff=datetime.combine(yesterday,time(23,59,59),tzinfo=tz)
+          now=datetime.now(tz)
+          if now.hour == 20:
+              # 8 PM preview: current Sydney day through refresh time.
+              cutoff=now
+          else:
+              # Midnight final (and manual runs): latest fully completed Sydney day.
+              yesterday=now.date()-timedelta(days=1)
+              cutoff=datetime.combine(yesterday,time(23,59,59),tzinfo=tz)
           print("REPORT_NOW="+cutoff.isoformat())
           PY
 
