@@ -45,13 +45,18 @@ query ProductVisibility($after:String,$q:String!){
       id title handle status totalInventory onlineStoreUrl publishedAt
       featuredMedia{preview{image{url}}}
       variants(first:100){nodes{id title sku inventoryQuantity}}
-      unpublishedPublications(first:50){nodes{id catalog{title}}}
     }
   }
 }
 """
 
-SALES_CHANNEL_FILTERS = [\n    ("Online Store", "published_status:unpublished"),\n    ("Shop", "published_status:shop-72-hidden"),\n    ("Point of Sale", "published_status:pos-hidden"),\n    ("Google & YouTube", "published_status:google-hidden"),\n    ("Facebook & Instagram", "published_status:facebook-ads-hidden"),\n]
+SALES_CHANNEL_FILTERS = [
+    ("Online Store", "published_status:unpublished"),
+    ("Shop", "published_status:shop-72-hidden"),
+    ("Point of Sale", "published_status:pos-hidden"),
+    ("Google & YouTube", "published_status:google-hidden"),
+    ("Facebook & Instagram", "published_status:facebook-ads-hidden"),
+]
 
 
 def gql(query, variables):
