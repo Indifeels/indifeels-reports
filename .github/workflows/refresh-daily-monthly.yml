@@ -14,7 +14,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: refresh-daily-monthly
+  # Shared repository write lock: prevents report workflows from changing r/* and status.json at the same time.
+  group: indifeels-reports-repo-write
   cancel-in-progress: false
 
 jobs:
@@ -58,12 +59,12 @@ jobs:
           from zoneinfo import ZoneInfo
           tz=ZoneInfo("Australia/Sydney")
           now=datetime.now(tz)
-          if os.environ.get("EVENT_NAME") == "schedule" and now.hour == 0:
-              # Midnight final: freeze the just-completed Sydney day.
+          if now.hour == 0:
+              # Midnight final, including a manual recovery run: freeze the just-completed Sydney day.
               yesterday=now.date()-timedelta(days=1)
               cutoff=datetime.combine(yesterday,time(23,59,59),tzinfo=tz)
           else:
-              # 8 PM preview and manual refreshes: current Sydney day through refresh time.
+              # 8 PM preview and other manual refreshes: current Sydney day through refresh time.
               cutoff=now
           print("REPORT_NOW="+cutoff.isoformat())
           PY
