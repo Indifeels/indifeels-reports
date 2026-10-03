@@ -1,0 +1,2 @@
+Manual refresh trigger for IndiFeels Daily/Monthly reports.
+Last requested: 2026-10-03 Australia/Melbourne.
