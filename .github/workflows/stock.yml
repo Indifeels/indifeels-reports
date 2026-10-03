@@ -1,20 +1,18 @@
 name: Stock report refresh
 
-# Moves 1 unit Backup -> Shop location for variants that hit 0 at Shop location, logs the moves for the
-# app's tick list, and rebuilds the "Shop restock from Backup" report.
-# Runs after every new order (Shopify Flow -> repository_dispatch "shopify-order"), at 7am, 3pm and 8pm
-# Sydney time (each scheduled run starts about 6:40am / 2:40pm / 7:40pm so it's done by the hour; it also
-# does the full website ST-number check), or by hand from the Actions tab.
-# Cron is UTC, so both the AEST and AEDT hours are listed and the "Sydney time gate" step keeps only the right one.
+# Handles two real-time Shopify jobs:
+# 1) after a new order, update stock movement/report;
+# 2) after an attribution choice, write custom.order_source back to Shopify.
+# It also runs stock checks at 7am, 3pm and 8pm Sydney time.
 on:
   repository_dispatch:
-    types: [shopify-order]
+    types: [shopify-order, order-attribution-update]
   schedule:
     - cron: "40 19,20,3,4,8,9 * * *"
   workflow_dispatch:
 
 concurrency:
-  group: stock-report
+  group: shopify-ops-${{ github.event.client_payload.order_id || 'stock' }}
   cancel-in-progress: false
 
 permissions:
@@ -37,9 +35,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install cryptography
-        if: steps.gate.outputs.go == '1'
+        if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
+
       - name: Build stock report
-        if: steps.gate.outputs.go == '1'
+        if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
         env:
           SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
           SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
@@ -47,8 +46,19 @@ jobs:
           ORDER: ${{ github.event.client_payload.order || github.event_name }}
           FULL_CHECK: ${{ github.event_name != 'repository_dispatch' && '1' || '0' }}
         run: python3 tools/stock_fetch.py
-      - name: Publish
-        if: always() && steps.gate.outputs.go == '1'
+
+      - name: Sync order attribution to Shopify
+        if: steps.gate.outputs.go == '1' && github.event_name == 'repository_dispatch' && github.event.action == 'order-attribution-update'
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
+          ORDER_ID: ${{ github.event.client_payload.order_id }}
+          ORDER_SOURCE: ${{ github.event.client_payload.source }}
+          CALLBACK_TOKEN: ${{ github.event.client_payload.callback_token }}
+        run: python3 tools/order_attribution_sync.py
+
+      - name: Publish stock changes
+        if: always() && steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
         run: |
           git config user.name "Indifeels stock bot"
           git config user.email "actions@users.noreply.github.com"
