@@ -30,7 +30,7 @@
 
   // ---------- views ----------
   const VIEWS = ["login", "reset", "shell"];
-  const PAGES = ["home", "report", "stock", "password", "admin"];
+  const PAGES = ["home", "report", "stock", "attribution", "password", "admin"];
   function view(v) { VIEWS.forEach((x) => ($("#v-" + x).hidden = x !== v)); }
   function page(p, title) {
     PAGES.forEach((x) => ($("#v-" + x).hidden = x !== p));
@@ -135,6 +135,7 @@
     daily: { c: "blue", icon: "mega", stat: ["dollar", "msg", "bag", "bars"], line: ["blue", "purple", "green", "blue"] },
     monthly: { c: "green", icon: "trend", stat: [null, null, null, null], line: ["green", "blue", "orange", "green"] },
     stock: { c: "orange", icon: "box", stat: ["box", "box", "tag"], line: [] },
+    "order-attribution": { c: "teal", icon: "tag", stat: ["tag", "clock", "dollar"], line: ["teal", "purple", "green"] },
   };
   const SPARE = ["purple", "teal", "rose"];
   function look(id) {
@@ -183,6 +184,15 @@
     $("#no-reports").hidden = reports.length > 0;
     box.querySelectorAll(".tile").forEach((t) => t.addEventListener("click", () => openReport(t.dataset.id)));
     await Promise.all(reports.map(async (r) => {
+      if (r.id === "order-attribution") {
+        try {
+          await loadAttribution();
+          const meta = attributionStats();
+          const el = box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`);
+          if (el) { el.outerHTML = tileHTML(r, meta); box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`).addEventListener("click", () => openReport(r.id)); }
+        } catch (_) {}
+        return;
+      }
       if (!keys[r.id]) return;
       try {
         const meta = JSON.parse(await decryptFile(`r/${r.id}.meta.bin`, keys[r.id]));
@@ -260,11 +270,137 @@
     catch (e) { st.textContent = e.message === "not-published" ? "No moves have been logged yet." : "The move list couldn't be loaded. Pull down to refresh."; }
   }
 
+
+  // ---------- order attribution ----------
+  const ORDER_SOURCES = ["Google Online Orders - WEB","Google CALLS MEL - SALE","Google Direction MEL - Store Visit","FB Online Orders - WEB","FB CALLS MEL - SALE","FB/IG PAGE MSGS MEL - SALE","FB WHATSAPP MSGS MEL - SALE","Organic Orders","Repeat Customer","Word of Mouth","Marketplace MEL","Marketplace SYD","Marketplace BRN","AI","Direct order","Invalid","Unknown Online","Unknown Offline"];
+  let OA = { rows: [], channel: null };
+  const oaPending = () => OA.rows.filter((r) => !r.order_source || r.sync_status !== "synced");
+  const oaDone = () => OA.rows.filter((r) => r.order_source && r.sync_status === "synced").slice(0, 40);
+  const oaMoney = (v, c = "AUD") => new Intl.NumberFormat("en-AU", { style: "currency", currency: c, maximumFractionDigits: 2 }).format(Number(v || 0));
+
+  async function loadAttribution() {
+    const { data, error } = await sb.from("order_attribution_queue")
+      .select("order_id,legacy_id,order_name,created_at,customer_name,total,currency,shopify_source,products,order_source,sync_status,sync_error,updated_at")
+      .order("created_at", { ascending: false }).limit(150);
+    if (error) throw new Error(error.message);
+    OA.rows = data || [];
+    return OA.rows;
+  }
+  function attributionStats() {
+    const p = oaPending(), syncing = p.filter((r) => r.sync_status === "syncing").length;
+    const value = p.reduce((a, r) => a + Number(r.total || 0), 0);
+    const newest = OA.rows[0]?.updated_at || OA.rows[0]?.created_at;
+    return {
+      stats: [[String(p.length), "orders need a source"], [String(syncing), "syncing now"], [oaMoney(value), "pending order value"]],
+      warn: p.length ? \`\${p.length} order\${p.length === 1 ? "" : "s"} need attribution\` : "",
+      updated: newest ? fmtTime(newest) : "",
+    };
+  }
+  function oaProducts(r) {
+    const a = Array.isArray(r.products) ? r.products : [];
+    return a.length ? a.map((p) => \`\${esc(p.title || "Item")}\${Number(p.quantity || 1) > 1 ? \` × \${Number(p.quantity)}\` : ""}\`).join(" · ") : "Order details";
+  }
+  function oaRow(r) {
+    const syncing = r.sync_status === "syncing", failed = r.sync_status === "error";
+    const opts = ['<option value="">Choose source…</option>'].concat(ORDER_SOURCES.map((x) => \`<option value="\${esc(x)}" \${r.order_source === x ? "selected" : ""}>\${esc(x)}</option>\`)).join("");
+    const stat = syncing ? '<span class="oa-state syncing">Syncing…</span>' : failed ? '<span class="oa-state error">Sync failed</span>' : r.order_source ? '<span class="oa-state done">Synced</span>' : '<span class="oa-state pending">Pending</span>';
+    const retry = failed && r.order_source ? \`<button class="btn sm oa-retry" type="button" data-order="\${esc(r.order_id)}" data-source="\${esc(r.order_source)}">Retry</button>\` : "";
+    return \`<div class="oa-row \${failed ? "has-error" : ""}" data-order="\${esc(r.order_id)}">
+      <div class="oa-top">
+        <a class="oa-order" href="https://admin.shopify.com/store/bvdxj3-r8/orders/\${esc(r.legacy_id)}" target="_blank" rel="noopener">\${esc(r.order_name)}</a>
+        <b class="oa-total">\${oaMoney(r.total, r.currency)}</b>
+        \${stat}
+      </div>
+      <div class="oa-meta">\${esc((r.shopify_source || "Shopify").toUpperCase())} · \${fmtTime(r.created_at)}\${r.customer_name ? " · " + esc(r.customer_name) : ""}</div>
+      <div class="oa-products">\${oaProducts(r)}</div>
+      <div class="oa-actions">
+        <select class="oa-source" data-order="\${esc(r.order_id)}" aria-label="Order source for \${esc(r.order_name)}" \${syncing ? "disabled" : ""}>\${opts}</select>
+        \${retry}
+      </div>
+      \${failed ? \`<div class="oa-error">\${esc(r.sync_error || "Shopify did not accept the update. Retry or choose another source.")}</div>\` : ""}
+    </div>\`;
+  }
+  function renderAttribution() {
+    const p = oaPending(), d = oaDone(), value = p.reduce((a, r) => a + Number(r.total || 0), 0);
+    $("#oa-sum").innerHTML = [
+      [p.length, "pending orders"],
+      [p.filter((r) => r.sync_status === "syncing").length, "syncing"],
+      [oaMoney(value), "pending value"],
+    ].map((x) => \`<div class="st"><b>\${esc(x[0])}</b><span>\${esc(x[1])}</span></div>\`).join("");
+    $("#oa-pending").innerHTML = p.map(oaRow).join("");
+    $("#oa-status").hidden = p.length > 0;
+    $("#oa-status").textContent = "All current orders are attributed.";
+    $("#oa-done-wrap").hidden = !d.length;
+    $("#oa-done").innerHTML = d.map(oaRow).join("");
+    $(".oa-source").forEach((sel) => sel.addEventListener("change", () => { if (sel.value) syncAttribution(sel.dataset.order, sel.value); }));
+    $(".oa-retry").forEach((b) => b.addEventListener("click", () => syncAttribution(b.dataset.order, b.dataset.source)));
+  }
+  async function syncAttribution(orderId, source) {
+    const row = OA.rows.find((r) => r.order_id === orderId);
+    if (!row || !source) return;
+    row.order_source = source; row.sync_status = "syncing"; row.sync_error = null; renderAttribution();
+    try {
+      const { data, error } = await sb.functions.invoke("order-attribution", { body: { action: "update", order_id: orderId, source } });
+      if (error) {
+        let msg = error.message; try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
+        throw new Error(msg);
+      }
+      if (data?.error) throw new Error(data.error);
+      toast(\`\${row.order_name} syncing to Shopify\`);
+    } catch (e) {
+      row.sync_status = "error"; row.sync_error = e.message; renderAttribution(); toast(e.message);
+    }
+  }
+  async function openAttribution(r) {
+    page("attribution", r.title);
+    $("#oa-pending").innerHTML = ""; $("#oa-sum").innerHTML = ""; $("#oa-done-wrap").hidden = true;
+    const st = $("#oa-status"); st.hidden = false; st.textContent = "Loading…";
+    try { await loadAttribution(); renderAttribution(); } catch (e) { st.textContent = "The order queue couldn't be loaded. Pull down to refresh."; }
+    updateOrderNotifyButton();
+  }
+  function updateOrderNotifyButton() {
+    const b = $("#oa-notify"); if (!b) return;
+    if (!("Notification" in window)) { b.hidden = true; return; }
+    b.hidden = false;
+    b.disabled = Notification.permission === "granted";
+    b.textContent = Notification.permission === "granted" ? "Notifications on" : Notification.permission === "denied" ? "Notifications blocked" : "Enable notifications";
+  }
+  async function enableOrderNotifications() {
+    if (!("Notification" in window)) return toast("Notifications aren't supported on this device.");
+    const p = await Notification.requestPermission();
+    updateOrderNotifyButton();
+    toast(p === "granted" ? "New-order notifications enabled" : "Notification permission wasn't enabled");
+  }
+  $("#oa-notify").addEventListener("click", enableOrderNotifications);
+  async function notifyNewOrder(r) {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const items = Array.isArray(r.products) ? r.products : [];
+    const body = \`\${items[0]?.title || "New Shopify order"} · \${oaMoney(r.total, r.currency)}\`;
+    const data = { url: location.origin + location.pathname + "#order-attribution" };
+    try {
+      if ("serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.showNotification(\`New order \${r.order_name}\`, { body, icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: "order-" + r.legacy_id, data });
+      } else new Notification(\`New order \${r.order_name}\`, { body });
+    } catch (_) {}
+  }
+  function startAttributionRealtime() {
+    if (OA.channel || !reports.some((r) => r.id === "order-attribution")) return;
+    OA.channel = sb.channel("order-attribution-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_attribution_queue" }, async (payload) => {
+        if (payload.eventType === "INSERT" && payload.new) notifyNewOrder(payload.new);
+        try { await loadAttribution(); } catch (_) { return; }
+        if (!$("#v-attribution").hidden) renderAttribution();
+        if (!$("#v-home").hidden) renderHome();
+      }).subscribe();
+  }
+
   // ---------- report viewer ----------
   async function openReport(id, full) {
     const r = reports.find((x) => x.id === id); if (!r) return go("home");
     if (location.hash !== "#" + id) history.pushState(null, "", "#" + id);
     if (id === "stock" && !full) return openStock(r);
+    if (id === "order-attribution") return openAttribution(r);
     page("report", r.title);
     const st = $("#rep-status"), fr = $("#rep-frame");
     st.hidden = false; st.textContent = "Opening report…"; fr.hidden = true;
@@ -379,6 +515,7 @@
     $("#m-admin").hidden = !prof.is_admin;
     view("shell");
     try { await loadReports(); } catch (e) { toast(e.message); }
+    startAttributionRealtime(); updateOrderNotifyButton();
     const id = location.hash.slice(1);
     if (id && reports.some((r) => r.id === id)) openReport(id); else { page("home"); renderHome(); }
   }
