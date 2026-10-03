@@ -1,18 +1,20 @@
 """Fix product visibility in Shopify.
 
 Actions:
-  check      Verify the GitHub Shopify token has the write scopes required by Fix Now/Fix All.
+  check      Verify the GitHub Shopify token scopes.
   fix-one    Set one product ACTIVE and publish it to all normal Indifeels sales channels.
   fix-all    Re-scan live Shopify and fix every in-stock UNLISTED product and every active
              in-stock product hidden from one or more normal sales channels.
+  ignore     Archive one product so it no longer appears in this visibility report.
+  delete     Permanently delete one product from Shopify.
 
 Stock/inventory is never mutated by this script.
 
 Env:
   SHOPIFY_TOKEN
   SHOPIFY_SHOP
-  FIX_ACTION      fix-one | fix-all (optional when CLI command is supplied)
-  PRODUCT_ID      gid://shopify/Product/... for fix-one
+  FIX_ACTION      fix-one | fix-all | ignore | delete (optional when CLI command is supplied)
+  PRODUCT_ID      gid://shopify/Product/... for fix-one, ignore or delete
 """
 import json
 import os
@@ -59,6 +61,12 @@ PUBLISH = """mutation PublishProduct($id:ID!,$input:[PublicationInput!]!){
   userErrors{field message}
  }
 }"""
+DELETE = """mutation DeleteProduct($input:ProductDeleteInput!){
+ productDelete(input:$input,synchronous:true){
+  deletedProductId
+  userErrors{field message}
+ }
+}"""
 
 
 def gql(query, variables=None):
@@ -93,9 +101,9 @@ def access_scopes():
     return {x["handle"] for x in rows}
 
 
-def require_scopes():
+def require_scopes(needed=None):
     scopes = access_scopes()
-    needed = {"write_products", "write_publications"}
+    needed = set(needed or {"write_products", "write_publications"})
     missing = sorted(needed - scopes)
     print(json.dumps({
         "required": sorted(needed),
@@ -129,6 +137,25 @@ def errors(payload):
     return payload.get("userErrors") or []
 
 
+def product_id_from_env():
+    product_id = os.environ.get("PRODUCT_ID", "").strip()
+    if not product_id.startswith("gid://shopify/Product/"):
+        raise RuntimeError("PRODUCT_ID is missing or invalid")
+    return product_id
+
+
+def archive_product(product_id):
+    out = gql(UPDATE, {"product": {"id": product_id, "status": "ARCHIVED"}})["data"]["productUpdate"]
+    if errors(out):
+        raise RuntimeError("Could not archive product: " + "; ".join(x["message"] for x in errors(out)))
+
+
+def delete_product(product_id):
+    out = gql(DELETE, {"input": {"id": product_id}})["data"]["productDelete"]
+    if errors(out):
+        raise RuntimeError("Could not delete product: " + "; ".join(x["message"] for x in errors(out)))
+
+
 def fix_product(product_id):
     up = gql(UPDATE, {"product": {"id": product_id, "status": "ACTIVE"}})["data"]["productUpdate"]
     if errors(up):
@@ -148,16 +175,29 @@ def main():
         print("visibility fix scopes: ok")
         return
 
-    require_scopes()
+    if action == "ignore":
+        require_scopes({"write_products"})
+        product_id = product_id_from_env()
+        archive_product(product_id)
+        print(json.dumps({"ignored": 1, "product_id": product_id}))
+        return
+
+    if action == "delete":
+        require_scopes({"write_products"})
+        product_id = product_id_from_env()
+        delete_product(product_id)
+        print(json.dumps({"deleted": 1, "product_id": product_id}))
+        return
+
     if action == "fix-one":
-        product_id = os.environ.get("PRODUCT_ID", "").strip()
-        if not product_id.startswith("gid://shopify/Product/"):
-            raise RuntimeError("PRODUCT_ID is missing or invalid")
+        require_scopes({"write_products", "write_publications"})
+        product_id = product_id_from_env()
         fix_product(product_id)
         print(json.dumps({"fixed": 1, "product_id": product_id}))
         return
 
     if action == "fix-all":
+        require_scopes({"write_products", "write_publications"})
         rows = candidates()
         fixed, failed = 0, []
         for product in rows:
@@ -172,7 +212,7 @@ def main():
             raise RuntimeError(f"{len(failed)} product(s) could not be fully fixed")
         return
 
-    raise RuntimeError("FIX_ACTION must be fix-one or fix-all")
+    raise RuntimeError("FIX_ACTION must be fix-one, fix-all, ignore or delete")
 
 
 if __name__ == "__main__":
