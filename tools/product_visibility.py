@@ -4,7 +4,7 @@ Section 1: UNLISTED products with stock available.
 Section 2: ACTIVE products with stock where one or more merchant sales channels are off.
 
 Env:
-  SHOPIFY_TOKEN  Admin API token with read_products/read_publications access
+  SHOPIFY_TOKEN  Admin API token with read_products access
   SHOPIFY_SHOP   myshopify domain
   STOCK_KEY      base64 AES-256 key reused from the Stock report access group
 
