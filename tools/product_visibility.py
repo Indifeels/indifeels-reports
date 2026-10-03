@@ -255,7 +255,8 @@ def set_status(ok, reason=""):
 
 
 def build():
-    fix_ready = fix_available()\n    unlisted = fetch_products("status:unlisted inventory_total:>0")
+    fix_ready = fix_available()
+    unlisted = fetch_products("status:unlisted inventory_total:>0")
     channel_rows = channel_issue_products()
     channel_counter = Counter()
     for _, channels in channel_rows:
