@@ -44,7 +44,7 @@ query ProductVisibility($after:String,$q:String!){
     nodes{
       id title handle status totalInventory onlineStoreUrl publishedAt
       featuredMedia{preview{image{url}}}
-      variants(first:100){nodes{id title sku inventoryQuantity}}
+      variants(first:100){nodes{id title sku inventoryQuantity}}\n      collections(first:50){nodes{id title handle}}
     }
   }
 }
@@ -148,7 +148,21 @@ def variant_chips(product):
     )
 
 
-def product_card(product, channels=None):
+def product_collections(product):
+    return sorted(
+        product.get("collections", {}).get("nodes", []),
+        key=lambda x: (x.get("title") or "").lower(),
+    )
+
+
+def collection_chips(product):
+    vals = product_collections(product)
+    if not vals:
+        return '<span class="muted">No collection assigned</span>'
+    return "".join(f'<span class="chip">{e(x.get("title") or "Untitled")}</span>' for x in vals)
+
+
+def product_card(product, channels=None, issue="channels"):
     img = image_url(product)
     thumb = (
         f'<img src="{e(img + ("&" if "?" in img else "?") + "width=220")}" alt="" loading="lazy">'
@@ -169,19 +183,25 @@ def product_card(product, channels=None):
         if website
         else ""
     )
+    cols = product_collections(product)
+    col_ids = "|".join(x.get("id") or "" for x in cols)
     search_text = " ".join(
         [
             product.get("title") or "",
             product.get("handle") or "",
             " ".join(v.get("title") or "" for v in in_stock_variants(product)),
             " ".join(channels),
+            " ".join(x.get("title") or "" for x in cols),
+            "unlisted" if issue == "unlisted" else "channel off",
         ]
     ).lower()
-    return f"""<article class="item" data-search="{e(search_text)}">
+    issue_badge = '<span class="issue unlisted">UNLISTED</span>' if issue == "unlisted" else '<span class="issue channel">CHANNEL OFF</span>'
+    return f"""<article class="item" data-search="{e(search_text)}" data-collections="{e(col_ids)}">
       <div class="pic">{thumb}</div>
       <div class="main">
         <div class="name-row">
           <div>
+            <div class="badges">{issue_badge}</div>
             <a class="name" href="{e(admin_url(product))}" target="_blank" rel="noopener">{e(product.get("title"))}</a>
             <div class="links">{website_link}<a class="small-link" href="{e(admin_url(product))}" target="_blank" rel="noopener">Open in Shopify</a></div>
           </div>
@@ -189,9 +209,10 @@ def product_card(product, channels=None):
         </div>
         {channel_html}
         <div class="variants"><span class="label">In-stock variants</span>{variant_chips(product)}</div>
+        <div class="collections"><span class="label">Collections</span>{collection_chips(product)}</div>
+        <div class="actions"><button class="fix-one" type="button" data-product-id="{e(product.get("id"))}">Fix Now</button></div>
       </div>
     </article>"""
-
 
 def encrypt(key_b64, payload):
     key = base64.b64decode(key_b64)
@@ -233,13 +254,24 @@ def build():
     channel_units = sum(int(p.get("totalInventory") or 0) for p, _ in channel_rows)
     updated = NOW.strftime("%d %b %Y, %H:%M")
 
+    all_products = list(unlisted) + [p for p, _ in channel_rows]
+    collection_map = {}
+    for product in all_products:
+        for col in product_collections(product):
+            if col.get("id"):
+                collection_map[col["id"]] = col.get("title") or "Untitled"
+    collection_options = "".join(
+        f'<option value="{e(cid)}">{e(title)}</option>'
+        for cid, title in sorted(collection_map.items(), key=lambda x: x[1].lower())
+    )
+
     section1 = (
-        "".join(product_card(p) for p in unlisted)
+        "".join(product_card(p, issue="unlisted") for p in unlisted)
         if unlisted
         else '<p class="empty good">No unlisted products currently have stock.</p>'
     )
     section2 = (
-        "".join(product_card(p, channels) for p, channels in channel_rows)
+        "".join(product_card(p, channels, issue="channels") for p, channels in channel_rows)
         if channel_rows
         else '<p class="empty good">All active in-stock products are published to the checked sales channels.</p>'
     )
@@ -256,7 +288,15 @@ main{{max-width:1050px;margin:auto;padding:24px 14px 48px}} h1{{font-size:30px;l
 .lead,.sub,.muted{{color:var(--muted)}} .lead{{max-width:760px}} .sub{{font-size:13.5px;margin-bottom:12px}}
 .kpis{{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0 8px}} .kpi{{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px}}
 .kpi b{{display:block;font-size:24px}} .kpi span{{color:var(--muted);font-size:12.5px}}
-.search{{margin:18px 0 4px}} .search input{{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit}}
+.tools{{display:grid;grid-template-columns:minmax(180px,260px) 1fr auto;gap:8px;margin:18px 0 4px}}
+.tools input,.tools select{{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit}}
+.tools button,.fix-one{{border:0;border-radius:10px;background:var(--blue);color:#fff;font:700 13px/1 system-ui;padding:11px 14px;cursor:pointer}}
+.tools button:disabled,.fix-one:disabled{{opacity:.55;cursor:default}}
+.fix-note{{margin:9px 2px 0;color:var(--muted);font-size:13px}}
+.badges{{margin-bottom:4px}} .issue{{display:inline-block;border-radius:999px;padding:3px 7px;font-size:10.5px;font-weight:800;letter-spacing:.04em}}
+.issue.unlisted{{background:var(--redbg);color:var(--red)}} .issue.channel{{background:var(--soft);color:var(--muted);border:1px solid var(--line)}}
+.collections{{display:flex;align-items:center;gap:6px;flex-wrap:wrap}} .collections .label{{flex-basis:100%;margin-bottom:0}}
+.actions{{display:flex;justify-content:flex-end;margin-top:10px}}
 .list{{display:grid;gap:10px}} .item{{display:grid;grid-template-columns:88px 1fr;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}}
 .pic img,.ph{{display:flex;width:88px;height:108px;object-fit:cover;border-radius:9px;background:var(--soft);align-items:center;justify-content:center;color:var(--muted);font-size:11px;text-align:center}}
 .main{{min-width:0}} .name-row{{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}} .name{{font-weight:750;color:var(--ink);text-decoration:none;font-size:16px}}
@@ -267,7 +307,7 @@ main{{max-width:1050px;margin:auto;padding:24px 14px 48px}} h1{{font-size:30px;l
 .empty{{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;color:var(--muted)}} .empty.good{{color:var(--green)}}
 .note{{margin-top:16px;color:var(--muted);font-size:12.5px}}
 .hidden{{display:none!important}}
-@media(max-width:680px){{.kpis{{grid-template-columns:repeat(2,1fr)}} .item{{grid-template-columns:68px 1fr}} .pic img,.ph{{width:68px;height:86px}} .name-row{{display:block}} .stock{{display:inline-block;margin-top:6px}} h1{{font-size:26px}}}}
+@media(max-width:680px){{.kpis{{grid-template-columns:repeat(2,1fr)}} .tools{{grid-template-columns:1fr}} .item{{grid-template-columns:68px 1fr}} .pic img,.ph{{width:68px;height:86px}} .name-row{{display:block}} .stock{{display:inline-block;margin-top:6px}} h1{{font-size:26px}}}}
 </style></head><body><main>
 <h1>Product visibility</h1>
 <p class="lead">Products that can be missed because they are unlisted or because a sales channel is switched off. Only products with stock are included.</p>
@@ -277,14 +317,40 @@ main{{max-width:1050px;margin:auto;padding:24px 14px 48px}} h1{{font-size:30px;l
   <div class="kpi"><b>{len(channel_rows)}</b><span>products with a channel off</span></div>
   <div class="kpi"><b>{channel_units}</b><span>units on channel-issue products</span></div>
 </div>
-<div class="search"><input id="q" type="search" placeholder="Search product, variant or channel…" aria-label="Search report"></div>
+<div class="tools">
+  <select id="collection-filter" aria-label="Filter by collection"><option value="">All collections</option>{collection_options}</select>
+  <input id="q" type="search" placeholder="Search product, variant or channel…" aria-label="Search report">
+  <button id="fix-all" type="button">Fix All</button>
+</div>
+<p id="fix-note" class="fix-note" hidden></p>
 
 <section><h2>1. Unlisted products with stock</h2><p class="sub">Shopify status is UNLISTED and at least one variant has stock.</p><div class="list">{section1}</div></section>
 <section><h2>2. Listed products with a sales channel off</h2><p class="sub">Active products with stock where Online Store or another merchant sales channel is not published.</p><div class="list">{section2}</div></section>
 <p class="note">Updated {e(updated)} Australia/Sydney. Inbox and Shopify GraphiQL App are ignored because they are utility/app publications, not storefront sales channels.</p>
 <script>
-const q=document.getElementById("q");
-q.addEventListener("input",()=>{{const s=q.value.trim().toLowerCase();document.querySelectorAll(".item").forEach(x=>x.classList.toggle("hidden",s && !x.dataset.search.includes(s)));}});
+const q=document.getElementById("q"), cf=document.getElementById("collection-filter"), note=document.getElementById("fix-note");
+function applyFilters(){{
+  const s=q.value.trim().toLowerCase(), col=cf.value;
+  document.querySelectorAll(".item").forEach(x=>{{
+    const textOk=!s || x.dataset.search.includes(s);
+    const cols=(x.dataset.collections||"").split("|");
+    const colOk=!col || cols.includes(col);
+    x.classList.toggle("hidden",!(textOk&&colOk));
+  }});
+}}
+q.addEventListener("input",applyFilters); cf.addEventListener("change",applyFilters);
+function startFix(action, productId, button){{
+  if(button){{button.disabled=true;button.dataset.old=button.textContent;button.textContent="Fixing…";}}
+  note.hidden=false; note.textContent=action==="fix-all"?"Fix All started…":"Fix started…";
+  window.parent.postMessage({{type:"product-visibility-fix",action,product_id:productId||null}},"*");
+}}
+document.querySelectorAll(".fix-one").forEach(b=>b.addEventListener("click",()=>startFix("fix-one",b.dataset.productId,b)));
+document.getElementById("fix-all").addEventListener("click",e=>startFix("fix-all",null,e.currentTarget));
+window.addEventListener("message",e=>{{
+  const d=e.data||{{}}; if(d.type!=="product-visibility-fix-result") return;
+  note.hidden=false; note.textContent=d.ok ? (d.message||"Fix started. The report will refresh automatically.") : (d.error||"Fix could not be started.");
+  if(!d.ok) document.querySelectorAll(".fix-one,#fix-all").forEach(b=>{{b.disabled=false;b.textContent=b.dataset.old||b.textContent;}});
+}});
 </script>
 </main></body></html>"""
 
