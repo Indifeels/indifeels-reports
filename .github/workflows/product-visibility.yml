@@ -52,14 +52,6 @@ jobs:
         if: steps.gate.outputs.go == '1'
         run: pip install cryptography
 
-      - name: Check visibility fix permissions
-        if: steps.gate.outputs.go == '1' && github.event_name == 'push'
-        continue-on-error: true
-        env:
-          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
-          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
-        run: python3 tools/product_visibility_fix.py check
-
       - name: Fix Shopify product visibility
         if: steps.gate.outputs.go == '1' && github.event_name == 'repository_dispatch' && github.event.action == 'product-visibility-fix'
         env:
