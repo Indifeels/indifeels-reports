@@ -292,33 +292,33 @@
     const newest = OA.rows[0]?.updated_at || OA.rows[0]?.created_at;
     return {
       stats: [[String(p.length), "orders need a source"], [String(syncing), "syncing now"], [oaMoney(value), "pending order value"]],
-      warn: p.length ? \`\${p.length} order\${p.length === 1 ? "" : "s"} need attribution\` : "",
+      warn: p.length ? `${p.length} order${p.length === 1 ? "" : "s"} need attribution` : "",
       updated: newest ? fmtTime(newest) : "",
     };
   }
   function oaProducts(r) {
     const a = Array.isArray(r.products) ? r.products : [];
-    return a.length ? a.map((p) => \`\${esc(p.title || "Item")}\${Number(p.quantity || 1) > 1 ? \` × \${Number(p.quantity)}\` : ""}\`).join(" · ") : "Order details";
+    return a.length ? a.map((p) => `${esc(p.title || "Item")}${Number(p.quantity || 1) > 1 ? ` × ${Number(p.quantity)}` : ""}`).join(" · ") : "Order details";
   }
   function oaRow(r) {
     const syncing = r.sync_status === "syncing", failed = r.sync_status === "error";
-    const opts = ['<option value="">Choose source…</option>'].concat(ORDER_SOURCES.map((x) => \`<option value="\${esc(x)}" \${r.order_source === x ? "selected" : ""}>\${esc(x)}</option>\`)).join("");
+    const opts = ['<option value="">Choose source…</option>'].concat(ORDER_SOURCES.map((x) => `<option value="${esc(x)}" ${r.order_source === x ? "selected" : ""}>${esc(x)}</option>`)).join("");
     const stat = syncing ? '<span class="oa-state syncing">Syncing…</span>' : failed ? '<span class="oa-state error">Sync failed</span>' : r.order_source ? '<span class="oa-state done">Synced</span>' : '<span class="oa-state pending">Pending</span>';
-    const retry = failed && r.order_source ? \`<button class="btn sm oa-retry" type="button" data-order="\${esc(r.order_id)}" data-source="\${esc(r.order_source)}">Retry</button>\` : "";
-    return \`<div class="oa-row \${failed ? "has-error" : ""}" data-order="\${esc(r.order_id)}">
+    const retry = failed && r.order_source ? `<button class="btn sm oa-retry" type="button" data-order="${esc(r.order_id)}" data-source="${esc(r.order_source)}">Retry</button>` : "";
+    return `<div class="oa-row ${failed ? "has-error" : ""}" data-order="${esc(r.order_id)}">
       <div class="oa-top">
-        <a class="oa-order" href="https://admin.shopify.com/store/bvdxj3-r8/orders/\${esc(r.legacy_id)}" target="_blank" rel="noopener">\${esc(r.order_name)}</a>
-        <b class="oa-total">\${oaMoney(r.total, r.currency)}</b>
-        \${stat}
+        <a class="oa-order" href="https://admin.shopify.com/store/bvdxj3-r8/orders/${esc(r.legacy_id)}" target="_blank" rel="noopener">${esc(r.order_name)}</a>
+        <b class="oa-total">${oaMoney(r.total, r.currency)}</b>
+        ${stat}
       </div>
-      <div class="oa-meta">\${esc((r.shopify_source || "Shopify").toUpperCase())} · \${fmtTime(r.created_at)}\${r.customer_name ? " · " + esc(r.customer_name) : ""}</div>
-      <div class="oa-products">\${oaProducts(r)}</div>
+      <div class="oa-meta">${esc((r.shopify_source || "Shopify").toUpperCase())} · ${fmtTime(r.created_at)}${r.customer_name ? " · " + esc(r.customer_name) : ""}</div>
+      <div class="oa-products">${oaProducts(r)}</div>
       <div class="oa-actions">
-        <select class="oa-source" data-order="\${esc(r.order_id)}" aria-label="Order source for \${esc(r.order_name)}" \${syncing ? "disabled" : ""}>\${opts}</select>
-        \${retry}
+        <select class="oa-source" data-order="${esc(r.order_id)}" aria-label="Order source for ${esc(r.order_name)}" ${syncing ? "disabled" : ""}>${opts}</select>
+        ${retry}
       </div>
-      \${failed ? \`<div class="oa-error">\${esc(r.sync_error || "Shopify did not accept the update. Retry or choose another source.")}</div>\` : ""}
-    </div>\`;
+      ${failed ? `<div class="oa-error">${esc(r.sync_error || "Shopify did not accept the update. Retry or choose another source.")}</div>` : ""}
+    </div>`;
   }
   function renderAttribution() {
     const p = oaPending(), d = oaDone(), value = p.reduce((a, r) => a + Number(r.total || 0), 0);
@@ -326,7 +326,7 @@
       [p.length, "pending orders"],
       [p.filter((r) => r.sync_status === "syncing").length, "syncing"],
       [oaMoney(value), "pending value"],
-    ].map((x) => \`<div class="st"><b>\${esc(x[0])}</b><span>\${esc(x[1])}</span></div>\`).join("");
+    ].map((x) => `<div class="st"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join("");
     $("#oa-pending").innerHTML = p.map(oaRow).join("");
     $("#oa-status").hidden = p.length > 0;
     $("#oa-status").textContent = "All current orders are attributed.";
@@ -346,7 +346,7 @@
         throw new Error(msg);
       }
       if (data?.error) throw new Error(data.error);
-      toast(\`\${row.order_name} syncing to Shopify\`);
+      toast(`${row.order_name} syncing to Shopify`);
     } catch (e) {
       row.sync_status = "error"; row.sync_error = e.message; renderAttribution(); toast(e.message);
     }
@@ -375,13 +375,13 @@
   async function notifyNewOrder(r) {
     if (!("Notification" in window) || Notification.permission !== "granted") return;
     const items = Array.isArray(r.products) ? r.products : [];
-    const body = \`\${items[0]?.title || "New Shopify order"} · \${oaMoney(r.total, r.currency)}\`;
+    const body = `${items[0]?.title || "New Shopify order"} · ${oaMoney(r.total, r.currency)}`;
     const data = { url: location.origin + location.pathname + "#order-attribution" };
     try {
       if ("serviceWorker" in navigator) {
         const reg = await navigator.serviceWorker.ready;
-        await reg.showNotification(\`New order \${r.order_name}\`, { body, icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: "order-" + r.legacy_id, data });
-      } else new Notification(\`New order \${r.order_name}\`, { body });
+        await reg.showNotification(`New order ${r.order_name}`, { body, icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: "order-" + r.legacy_id, data });
+      } else new Notification(`New order ${r.order_name}`, { body });
     } catch (_) {}
   }
   function startAttributionRealtime() {
