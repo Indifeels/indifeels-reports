@@ -340,7 +340,7 @@ main{{max-width:1050px;margin:auto;padding:24px 14px 48px}} h1{{font-size:30px;l
 <div class="tools">
   <select id="collection-filter" aria-label="Filter by collection"><option value="">All collections</option>{collection_options}</select>
   <input id="q" type="search" placeholder="Search product, variant or channel…" aria-label="Search report">
-  <button id="fix-all" type="button" {"disabled" if not fix_ready else ""}>Fix All</button>
+  <button id="fix-all" type="button" data-action="fix-all" data-fix-ready="{"1" if fix_ready else "0"}" {"disabled" if not fix_ready else ""}>Fix All</button>
 </div>
 <p id="fix-note" class="fix-note" {"hidden" if fix_ready else ""}>{"Fix buttons are ready." if fix_ready else "Ignore and Delete are available. Fix Now and Fix All need the Shopify write_publications permission before they can safely turn every sales channel on."}</p>
 
@@ -380,7 +380,7 @@ window.addEventListener("message",e=>{{
   note.hidden=false; note.textContent=d.ok ? (d.message||"Fix started. The report will refresh automatically.") : (d.error||"Fix could not be started.");
   if(!d.ok){{
     document.querySelectorAll(".product-action,#fix-all").forEach(b=>{{
-      if(b.id==="fix-all" || b.dataset.action!=="fix-one" || b.dataset.fixReady==="1") b.disabled=false;
+      if((b.dataset.action!=="fix-one" && b.dataset.action!=="fix-all") || b.dataset.fixReady==="1") b.disabled=false;
       b.textContent=b.dataset.old||b.textContent;
     }});
   }}
