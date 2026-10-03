@@ -59,6 +59,8 @@ SALES_CHANNEL_FILTERS = [
 ]
 
 
+SCOPES = """query VisibilityFixScopes { currentAppInstallation { accessScopes { handle } } }"""
+
 def gql(query, variables):
     body = json.dumps({"query": query, "variables": variables}).encode()
     for attempt in range(5):
@@ -84,6 +86,15 @@ def gql(query, variables):
             raise RuntimeError("Shopify query error: " + json.dumps(out["errors"])[:240])
         return out
     raise RuntimeError("Shopify API kept throttling")
+
+
+def fix_available():
+    try:
+        rows = gql(SCOPES, {})["data"]["currentAppInstallation"]["accessScopes"]
+        scopes = {x["handle"] for x in rows}
+        return {"write_products", "write_publications"}.issubset(scopes)
+    except Exception:
+        return False
 
 
 def fetch_products(search):
@@ -162,7 +173,7 @@ def collection_chips(product):
     return "".join(f'<span class="chip">{e(x.get("title") or "Untitled")}</span>' for x in vals)
 
 
-def product_card(product, channels=None, issue="channels"):
+def product_card(product, channels=None, issue="channels", fix_ready=True):
     img = image_url(product)
     thumb = (
         f'<img src="{e(img + ("&" if "?" in img else "?") + "width=220")}" alt="" loading="lazy">'
@@ -210,7 +221,7 @@ def product_card(product, channels=None, issue="channels"):
         {channel_html}
         <div class="variants"><span class="label">In-stock variants</span>{variant_chips(product)}</div>
         <div class="collections"><span class="label">Collections</span>{collection_chips(product)}</div>
-        <div class="actions"><button class="fix-one" type="button" data-product-id="{e(product.get("id"))}">Fix Now</button></div>
+        <div class="actions"><button class="fix-one" type="button" data-product-id="{e(product.get("id"))}" {"disabled" if not fix_ready else ""}>Fix Now</button></div>
       </div>
     </article>"""
 
@@ -244,7 +255,7 @@ def set_status(ok, reason=""):
 
 
 def build():
-    unlisted = fetch_products("status:unlisted inventory_total:>0")
+    fix_ready = fix_available()\n    unlisted = fetch_products("status:unlisted inventory_total:>0")
     channel_rows = channel_issue_products()
     channel_counter = Counter()
     for _, channels in channel_rows:
@@ -266,12 +277,12 @@ def build():
     )
 
     section1 = (
-        "".join(product_card(p, issue="unlisted") for p in unlisted)
+        "".join(product_card(p, issue="unlisted", fix_ready=fix_ready) for p in unlisted)
         if unlisted
         else '<p class="empty good">No unlisted products currently have stock.</p>'
     )
     section2 = (
-        "".join(product_card(p, channels, issue="channels") for p, channels in channel_rows)
+        "".join(product_card(p, channels, issue="channels", fix_ready=fix_ready) for p, channels in channel_rows)
         if channel_rows
         else '<p class="empty good">All active in-stock products are published to the checked sales channels.</p>'
     )
@@ -320,9 +331,9 @@ main{{max-width:1050px;margin:auto;padding:24px 14px 48px}} h1{{font-size:30px;l
 <div class="tools">
   <select id="collection-filter" aria-label="Filter by collection"><option value="">All collections</option>{collection_options}</select>
   <input id="q" type="search" placeholder="Search product, variant or channel…" aria-label="Search report">
-  <button id="fix-all" type="button">Fix All</button>
+  <button id="fix-all" type="button" {"disabled" if not fix_ready else ""}>Fix All</button>
 </div>
-<p id="fix-note" class="fix-note" hidden></p>
+<p id="fix-note" class="fix-note" {"hidden" if fix_ready else ""}>{"Fix buttons are ready." if fix_ready else "Fix buttons need the Shopify write_publications permission before they can safely turn every sales channel on."}</p>
 
 <section><h2>1. Unlisted products with stock</h2><p class="sub">Shopify status is UNLISTED and at least one variant has stock.</p><div class="list">{section1}</div></section>
 <section><h2>2. Listed products with a sales channel off</h2><p class="sub">Active products with stock where Online Store or another merchant sales channel is not published.</p><div class="list">{section2}</div></section>
@@ -378,7 +389,7 @@ window.addEventListener("message",e=>{{
                 "unlisted_products": len(unlisted),
                 "unlisted_units": unlisted_units,
                 "channel_issue_products": len(channel_rows),
-                "channel_counts": dict(channel_counter),
+                "channel_counts": dict(channel_counter),\n                "fix_available": fix_ready,
             },
             sort_keys=True,
         )
