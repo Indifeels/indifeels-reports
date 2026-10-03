@@ -37,6 +37,8 @@ jobs:
 
       - uses: actions/checkout@v4
         if: steps.gate.outputs.go == '1'
+        with:
+          ref: main
 
       - uses: actions/setup-python@v5
         if: steps.gate.outputs.go == '1'
