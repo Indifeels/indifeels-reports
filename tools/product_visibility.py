@@ -222,7 +222,11 @@ def product_card(product, channels=None, issue="channels", fix_ready=True):
         {channel_html}
         <div class="variants"><span class="label">In-stock variants</span>{variant_chips(product)}</div>
         <div class="collections"><span class="label">Collections</span>{collection_chips(product)}</div>
-        <div class="actions"><button class="fix-one" type="button" data-product-id="{e(product.get("id"))}" {"disabled" if not fix_ready else ""}>Fix Now</button></div>
+        <div class="actions">
+          <button class="product-action ignore" type="button" data-action="ignore" data-product-id="{e(product.get("id"))}" data-product-title="{e(product.get("title"))}">Ignore</button>
+          <button class="product-action delete" type="button" data-action="delete" data-product-id="{e(product.get("id"))}" data-product-title="{e(product.get("title"))}">Delete</button>
+          <button class="product-action fix-one" type="button" data-action="fix-one" data-fix-ready="{"1" if fix_ready else "0"}" data-product-id="{e(product.get("id"))}" data-product-title="{e(product.get("title"))}" {"disabled" if not fix_ready else ""}>Fix Now</button>
+        </div>
       </div>
     </article>"""
 
@@ -303,13 +307,16 @@ main{{max-width:1050px;margin:auto;padding:24px 14px 48px}} h1{{font-size:30px;l
 .kpi b{{display:block;font-size:24px}} .kpi span{{color:var(--muted);font-size:12.5px}}
 .tools{{display:grid;grid-template-columns:minmax(180px,260px) 1fr auto;gap:8px;margin:18px 0 4px}}
 .tools input,.tools select{{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit}}
-.tools button,.fix-one{{border:0;border-radius:10px;background:var(--blue);color:#fff;font:700 13px/1 system-ui;padding:11px 14px;cursor:pointer}}
-.tools button:disabled,.fix-one:disabled{{opacity:.55;cursor:default}}
+.tools button,.product-action{{border-radius:10px;font:700 13px/1 system-ui;padding:11px 14px;cursor:pointer}}
+.tools button,.product-action.fix-one{{border:0;background:var(--blue);color:#fff}}
+.product-action.ignore{{background:var(--soft);color:var(--ink);border:1px solid var(--line)}}
+.product-action.delete{{background:var(--redbg);color:var(--red);border:1px solid var(--line)}}
+.tools button:disabled,.product-action:disabled{{opacity:.48;cursor:default}}
 .fix-note{{margin:9px 2px 0;color:var(--muted);font-size:13px}}
 .badges{{margin-bottom:4px}} .issue{{display:inline-block;border-radius:999px;padding:3px 7px;font-size:10.5px;font-weight:800;letter-spacing:.04em}}
 .issue.unlisted{{background:var(--redbg);color:var(--red)}} .issue.channel{{background:var(--soft);color:var(--muted);border:1px solid var(--line)}}
 .collections{{display:flex;align-items:center;gap:6px;flex-wrap:wrap}} .collections .label{{flex-basis:100%;margin-bottom:0}}
-.actions{{display:flex;justify-content:flex-end;margin-top:10px}}
+.actions{{display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-top:10px}}
 .list{{display:grid;gap:10px}} .item{{display:grid;grid-template-columns:88px 1fr;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}}
 .pic img,.ph{{display:flex;width:88px;height:108px;object-fit:cover;border-radius:9px;background:var(--soft);align-items:center;justify-content:center;color:var(--muted);font-size:11px;text-align:center}}
 .main{{min-width:0}} .name-row{{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}} .name{{font-weight:750;color:var(--ink);text-decoration:none;font-size:16px}}
@@ -335,7 +342,7 @@ main{{max-width:1050px;margin:auto;padding:24px 14px 48px}} h1{{font-size:30px;l
   <input id="q" type="search" placeholder="Search product, variant or channel…" aria-label="Search report">
   <button id="fix-all" type="button" {"disabled" if not fix_ready else ""}>Fix All</button>
 </div>
-<p id="fix-note" class="fix-note" {"hidden" if fix_ready else ""}>{"Fix buttons are ready." if fix_ready else "Fix buttons need the Shopify write_publications permission before they can safely turn every sales channel on."}</p>
+<p id="fix-note" class="fix-note" {"hidden" if fix_ready else ""}>{"Fix buttons are ready." if fix_ready else "Ignore and Delete are available. Fix Now and Fix All need the Shopify write_publications permission before they can safely turn every sales channel on."}</p>
 
 <section><h2>1. Unlisted products with stock</h2><p class="sub">Shopify status is UNLISTED and at least one variant has stock.</p><div class="list">{section1}</div></section>
 <section><h2>2. Listed products with a sales channel off</h2><p class="sub">Active products with stock where Online Store or another merchant sales channel is not published.</p><div class="list">{section2}</div></section>
@@ -352,17 +359,31 @@ function applyFilters(){{
   }});
 }}
 q.addEventListener("input",applyFilters); cf.addEventListener("change",applyFilters);
-function startFix(action, productId, button){{
-  if(button){{button.disabled=true;button.dataset.old=button.textContent;button.textContent="Fixing…";}}
-  note.hidden=false; note.textContent=action==="fix-all"?"Fix All started…":"Fix started…";
+function startAction(action, productId, button){{
+  if(action==="delete"){{
+    const title=button?.dataset.productTitle||"this product";
+    if(!confirm('Permanently delete "'+title+'" from Shopify? This cannot be undone.')) return;
+  }}
+  if(button){{
+    button.disabled=true;
+    button.dataset.old=button.textContent;
+    button.textContent=action==="delete"?"Deleting…":action==="ignore"?"Ignoring…":"Fixing…";
+  }}
+  note.hidden=false;
+  note.textContent=action==="fix-all"?"Fix All started…":action==="delete"?"Delete started…":action==="ignore"?"Ignore started…":"Fix started…";
   window.parent.postMessage({{type:"product-visibility-fix",action,product_id:productId||null}},"*");
 }}
-document.querySelectorAll(".fix-one").forEach(b=>b.addEventListener("click",()=>startFix("fix-one",b.dataset.productId,b)));
-document.getElementById("fix-all").addEventListener("click",e=>startFix("fix-all",null,e.currentTarget));
+document.querySelectorAll(".product-action").forEach(b=>b.addEventListener("click",()=>startAction(b.dataset.action,b.dataset.productId,b)));
+document.getElementById("fix-all").addEventListener("click",e=>startAction("fix-all",null,e.currentTarget));
 window.addEventListener("message",e=>{{
   const d=e.data||{{}}; if(d.type!=="product-visibility-fix-result") return;
   note.hidden=false; note.textContent=d.ok ? (d.message||"Fix started. The report will refresh automatically.") : (d.error||"Fix could not be started.");
-  if(!d.ok) document.querySelectorAll(".fix-one,#fix-all").forEach(b=>{{b.disabled=false;b.textContent=b.dataset.old||b.textContent;}});
+  if(!d.ok){{
+    document.querySelectorAll(".product-action,#fix-all").forEach(b=>{{
+      if(b.id==="fix-all" || b.dataset.action!=="fix-one" || b.dataset.fixReady==="1") b.disabled=false;
+      b.textContent=b.dataset.old||b.textContent;
+    }});
+  }}
 }});
 </script>
 </main></body></html>"""
