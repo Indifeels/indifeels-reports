@@ -8,7 +8,7 @@ on:
   repository_dispatch:
     types: [shopify-order, order-attribution-update]
   schedule:
-    - cron: "40 19,20,3,4,8,9 * * *"
+    - cron: "40 20,21,4,5,9,10 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -27,7 +27,7 @@ jobs:
         id: gate
         run: |
           H=$(TZ=Australia/Sydney date +%H)
-          if [ "${{ github.event_name }}" != "schedule" ] || [ "$H" = "06" ] || [ "$H" = "14" ] || [ "$H" = "19" ]; then echo "go=1" >> $GITHUB_OUTPUT; else echo "Not a Sydney run hour ($H), skipping"; echo "go=0" >> $GITHUB_OUTPUT; fi
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "$H" = "07" ] || [ "$H" = "15" ] || [ "$H" = "20" ]; then echo "go=1" >> $GITHUB_OUTPUT; else echo "Not a Sydney run hour ($H), skipping"; echo "go=0" >> $GITHUB_OUTPUT; fi
       - uses: actions/checkout@v4
         if: steps.gate.outputs.go == '1'
       - uses: actions/setup-python@v5
