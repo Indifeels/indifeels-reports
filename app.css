@@ -224,3 +224,16 @@ legend{font-weight:600;font-size:13.5px;padding:0;margin-bottom:6px}
   .oa-sum{grid-template-columns:1fr 1fr}.oa-sum .st:last-child{grid-column:1/-1}
   .oa-row{padding:12px}.oa-actions{align-items:stretch;flex-direction:column}.oa-retry{align-self:flex-start}
 }
+
+.oa-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.oa-field{display:flex;flex-direction:column;gap:5px;margin:0;font-size:12.5px;font-weight:700;color:var(--muted)}
+.oa-field span{display:flex;gap:5px;align-items:baseline}
+.oa-field em{font-style:normal;font-weight:500;color:var(--muted);opacity:.8}
+.oa-field input{padding:9px 10px;font-size:15px;background:var(--bg)}
+.oa-actions{align-items:stretch}
+.oa-save{flex:none;background:var(--teal);border-color:var(--teal);color:#fff;white-space:nowrap}
+.oa-save:disabled{opacity:.6}
+@media(max-width:600px){
+  .oa-fields{grid-template-columns:1fr}
+  .oa-save{width:100%}
+}
