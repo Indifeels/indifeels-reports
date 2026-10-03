@@ -44,7 +44,8 @@ query ProductVisibility($after:String,$q:String!){
     nodes{
       id title handle status totalInventory onlineStoreUrl publishedAt
       featuredMedia{preview{image{url}}}
-      variants(first:100){nodes{id title sku inventoryQuantity}}\n      collections(first:50){nodes{id title handle}}
+      variants(first:100){nodes{id title sku inventoryQuantity}}
+      collections(first:50){nodes{id title handle}}
     }
   }
 }
@@ -390,7 +391,8 @@ window.addEventListener("message",e=>{{
                 "unlisted_products": len(unlisted),
                 "unlisted_units": unlisted_units,
                 "channel_issue_products": len(channel_rows),
-                "channel_counts": dict(channel_counter),\n                "fix_available": fix_ready,
+                "channel_counts": dict(channel_counter),
+                "fix_available": fix_ready,
             },
             sort_keys=True,
         )
