@@ -35,6 +35,17 @@ jobs:
           mkdir -p .refresh/data .refresh/hub .refresh/sum .refresh/out
           python3 tools/fetch_reports.py .refresh/data
 
+      - name: Set completed-day cutoff
+        run: |
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          from datetime import datetime, timedelta, time
+          from zoneinfo import ZoneInfo
+          tz=ZoneInfo("Australia/Sydney")
+          yesterday=datetime.now(tz).date()-timedelta(days=1)
+          cutoff=datetime.combine(yesterday,time(23,59,59),tzinfo=tz)
+          print("REPORT_NOW="+cutoff.isoformat())
+          PY
+
       - name: Build existing reports
         env:
           SUMMARY_DIR: .refresh/sum
