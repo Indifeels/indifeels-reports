@@ -55,6 +55,13 @@ jobs:
           STOCK_KEY: ${{ secrets.STOCK_KEY }}
         run: python3 tools/product_visibility.py
 
+      - name: Verify report files
+        if: steps.gate.outputs.go == '1'
+        run: |
+          test -s r/product-visibility.bin
+          test -s r/product-visibility.meta.bin
+          grep -q '"product-visibility"' r/status.json
+
       - name: Publish report
         if: always() && steps.gate.outputs.go == '1'
         run: |
