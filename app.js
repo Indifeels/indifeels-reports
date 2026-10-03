@@ -428,6 +428,53 @@
     }
   }
 
+  // ---------- product visibility fixes ----------
+  window.addEventListener("message", async (event) => {
+    const fr = $("#rep-frame");
+    if (!fr || event.source !== fr.contentWindow) return;
+    const d = event.data || {};
+    if (d.type !== "product-visibility-fix") return;
+    const action = String(d.action || "");
+    const productId = d.product_id ? String(d.product_id) : null;
+    if (!["fix-one", "fix-all"].includes(action)) return;
+
+    const send = (payload) => {
+      try { fr.contentWindow?.postMessage({ type: "product-visibility-fix-result", ...payload }, "*"); } catch (_) {}
+    };
+
+    try {
+      const { data, error } = await sb.functions.invoke("product-visibility-fix", {
+        body: { action, product_id: productId },
+      });
+      if (error) {
+        let msg = error.message || "Could not start the fix.";
+        try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
+        send({ ok: false, error: msg });
+        toast(msg);
+        return;
+      }
+      if (!data?.ok) {
+        const msg = data?.error || "Could not start the fix.";
+        send({ ok: false, error: msg });
+        toast(msg);
+        return;
+      }
+      const msg = action === "fix-all"
+        ? "Fix All started. Shopify will be updated and this report will refresh automatically."
+        : "Fix started. Shopify will be updated and this report will refresh automatically.";
+      send({ ok: true, message: msg });
+      toast(action === "fix-all" ? "Fix All started" : "Fix started");
+
+      // The authenticated endpoint queues the GitHub/Shopify job. Refresh the report after it has had time to rebuild.
+      setTimeout(() => { if (location.hash === "#product-visibility") openReport("product-visibility"); }, 12000);
+      setTimeout(() => { if (location.hash === "#product-visibility") openReport("product-visibility"); }, 26000);
+    } catch (err) {
+      const msg = err?.message || "Could not start the fix.";
+      send({ ok: false, error: msg });
+      toast(msg);
+    }
+  });
+
   // ---------- admin ----------
   async function adminCall(body) {
     const { data, error } = await sb.functions.invoke("admin", { body });
