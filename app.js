@@ -436,7 +436,7 @@
     if (d.type !== "product-visibility-fix") return;
     const action = String(d.action || "");
     const productId = d.product_id ? String(d.product_id) : null;
-    if (!["fix-one", "fix-all"].includes(action)) return;
+    if (!["fix-one", "fix-all", "ignore", "delete"].includes(action)) return;
 
     const send = (payload) => {
       try { fr.contentWindow?.postMessage({ type: "product-visibility-fix-result", ...payload }, "*"); } catch (_) {}
@@ -461,9 +461,13 @@
       }
       const msg = action === "fix-all"
         ? "Fix All started. Shopify will be updated and this report will refresh automatically."
-        : "Fix started. Shopify will be updated and this report will refresh automatically.";
-      send({ ok: true, message: msg });
-      toast(action === "fix-all" ? "Fix All started" : "Fix started");
+        : action === "delete"
+          ? "Delete started. The product will be permanently removed from Shopify and this report will refresh automatically."
+          : action === "ignore"
+            ? "Ignore started. The product will be archived in Shopify and removed from this report."
+            : "Fix started. Shopify will be updated and this report will refresh automatically.";
+      send({ ok: true, message: msg, action, product_id: productId });
+      toast(action === "fix-all" ? "Fix All started" : action === "delete" ? "Delete started" : action === "ignore" ? "Product archived" : "Fix started");
 
       // The authenticated endpoint queues the GitHub/Shopify job. Refresh the report after it has had time to rebuild.
       setTimeout(() => { if (location.hash === "#product-visibility") openReport("product-visibility"); }, 12000);
