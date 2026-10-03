@@ -7,8 +7,8 @@ on:
       - ".github/manual-refresh-daily-monthly.txt"
   schedule:
     # GitHub cron is UTC. These four UTC candidates cover Sydney standard/daylight time.
-    # The Sydney-time gate below allows only 20:00 and 00:00 local.
-    - cron: "0 9,10,13,14 * * *"
+    # The Sydney-time gate below allows only 20:00 and 06:00 local.
+    - cron: "0 9,10,19,20 * * *"
 
 permissions:
   contents: write
@@ -27,10 +27,10 @@ jobs:
         id: gate
         run: |
           H=$(TZ=Australia/Sydney date +%H)
-          if [ "${{ github.event_name }}" != "schedule" ] || [ "$H" = "20" ] || [ "$H" = "00" ]; then
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "$H" = "20" ] || [ "$H" = "06" ]; then
             echo "go=1" >> "$GITHUB_OUTPUT"
           else
-            echo "Not a Sydney 20:00/00:00 run hour ($H); skipping"
+            echo "Not a Sydney 20:00/06:00 run hour ($H); skipping"
             echo "go=0" >> "$GITHUB_OUTPUT"
           fi
 
@@ -59,8 +59,8 @@ jobs:
           from zoneinfo import ZoneInfo
           tz=ZoneInfo("Australia/Sydney")
           now=datetime.now(tz)
-          if now.hour == 0:
-              # Midnight final, including a manual recovery run: freeze the just-completed Sydney day.
+          if now.hour == 6:
+              # 6 AM final: freeze the previous completed Sydney day.
               yesterday=now.date()-timedelta(days=1)
               cutoff=datetime.combine(yesterday,time(23,59,59),tzinfo=tz)
           else:
