@@ -2,10 +2,13 @@ name: Product visibility report
 
 # Unlisted in-stock products + active in-stock products with sales channels switched off.
 on:
+  repository_dispatch:
+    types: [product-visibility-fix]
   push:
     branches: [main]
     paths:
       - "tools/product_visibility.py"
+      - "tools/product_visibility_fix.py"
       - ".github/workflows/product-visibility.yml"
   schedule:
     # Duplicate UTC hours handle Sydney AEST/AEDT; the gate keeps only 7am, 3pm and 8pm local.
@@ -14,7 +17,7 @@ on:
 
 concurrency:
   group: product-visibility
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -49,6 +52,23 @@ jobs:
         if: steps.gate.outputs.go == '1'
         run: pip install cryptography
 
+      - name: Check visibility fix permissions
+        if: steps.gate.outputs.go == '1' && github.event_name == 'push'
+        continue-on-error: true
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
+        run: python3 tools/product_visibility_fix.py check
+
+      - name: Fix Shopify product visibility
+        if: steps.gate.outputs.go == '1' && github.event_name == 'repository_dispatch' && github.event.action == 'product-visibility-fix'
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
+          FIX_ACTION: ${{ github.event.client_payload.action }}
+          PRODUCT_ID: ${{ github.event.client_payload.product_id }}
+        run: python3 tools/product_visibility_fix.py
+
       - name: Build product visibility report
         if: steps.gate.outputs.go == '1'
         env:
@@ -63,6 +83,10 @@ jobs:
           test -s r/product-visibility.bin
           test -s r/product-visibility.meta.bin
           grep -q '"product-visibility"' r/status.json
+
+      - name: Record visibility fix failure
+        if: failure() && steps.gate.outputs.go == '1' && github.event_name == 'repository_dispatch'
+        run: python3 tools/status.py r product-visibility fail "Visibility fix failed; check Shopify write scopes and the Actions log"
 
       - name: Publish report
         if: always() && steps.gate.outputs.go == '1'
