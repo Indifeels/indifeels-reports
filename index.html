@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Indifeels">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=6">
+<link rel="stylesheet" href="app.css?v=7">
 </head>
 <body>
 <div id="app">
@@ -93,6 +93,20 @@
       <button class="link" id="sm-report" type="button">Open the full stock report</button>
     </main>
 
+    <main id="v-attribution" class="page" hidden>
+      <div class="page-head oa-page-head">
+        <div><h2>Order Attribution</h2><p>Review new Shopify orders and save the correct order source. Changes sync back to Shopify automatically.</p></div>
+        <button class="btn sm" id="oa-notify" type="button">Enable notifications</button>
+      </div>
+      <div class="oa-sum" id="oa-sum"></div>
+      <p id="oa-status" class="rep-status">Loading…</p>
+      <div id="oa-pending" class="oa-list"></div>
+      <details class="oa-done" id="oa-done-wrap" hidden>
+        <summary>Recently attributed</summary>
+        <div id="oa-done" class="oa-list"></div>
+      </details>
+    </main>
+
     <main id="v-password" class="page narrow" hidden>
       <div class="page-head"><h2>Change password</h2><p>Use at least 8 characters.</p></div>
       <form id="f-pw" class="card form" novalidate>
@@ -137,6 +151,6 @@
 </div>
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
