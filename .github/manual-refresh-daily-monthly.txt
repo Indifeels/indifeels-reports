@@ -1,2 +1,3 @@
 Manual refresh trigger for IndiFeels Daily/Monthly reports.
-Last requested: 2026-10-03 Australia/Melbourne.
+Last requested: 2026-10-04 00:29 Australia/Melbourne.
+Reason: recover failed scheduled refresh after repository-write serialization fix.
