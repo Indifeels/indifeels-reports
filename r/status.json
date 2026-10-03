@@ -12,10 +12,10 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-10-03T18:19+10:00",
-  "last_ok": null,
-  "ok": false,
-  "reason": "Product visibility refresh failed: Shopify query error: [{\"message\": \"Access denied for unpublishedPublications field. Required access: `read_publications` access scope.\", \"locations\": [{\"line\": 9, \"column\": 7}], \"extensions\": {\"code\": \"ACCESS_DENIED\", \"documentation\": \"https://shopify.dev/api/u. Ch"
+  "at": "2026-10-03T18:24+10:00",
+  "last_ok": "2026-10-03T18:24+10:00",
+  "ok": true,
+  "reason": ""
  },
  "stock": {
   "at": "2026-10-03T17:49+10:00",
