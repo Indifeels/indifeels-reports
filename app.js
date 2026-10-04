@@ -193,6 +193,7 @@
         } catch (_) {}
         return;
       }
+      if (r.id === "footwear") { try { const meta = seoMeta(await loadSeoRankingsData()); const el = box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`); if (el) { el.outerHTML = tileHTML(r, meta); box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`).addEventListener("click", () => openReport(r.id)); } } catch (_) {} return; }
       if (!keys[r.id]) return;
       try {
         const meta = JSON.parse(await decryptFile(`r/${r.id}.meta.bin`, keys[r.id]));
@@ -410,12 +411,87 @@
       }).subscribe();
   }
 
+
+  // ---------- unified SEO rankings ----------
+  let SEO_CACHE = null;
+  async function loadSeoRankingsData(force) {
+    if (SEO_CACHE && !force) return SEO_CACHE;
+    const a = await Promise.all([
+      sb.from("seo_rank_categories").select("*").order("sort"),
+      sb.from("seo_rank_products").select("*").order("title"),
+      sb.from("seo_rank_snapshots").select("*").order("snapshot_date")
+    ]);
+    const e = a[0].error || a[1].error || a[2].error;
+    if (e) throw new Error(e.message);
+    SEO_CACHE = { categories:a[0].data||[], products:a[1].data||[], snapshots:a[2].data||[] };
+    return SEO_CACHE;
+  }
+  function seoSummary(d) {
+    const ps=d.products||[], live=ps.filter(function(p){return p.published;});
+    const known=live.filter(function(p){return p.current_indexed!==null && p.current_indexed!==undefined;});
+    const cats=d.categories||[];
+    return {
+      cats:cats.length, products:ps.length, live:live.length,
+      indexed:known.filter(function(p){return p.current_indexed===true;}).length,
+      known:known.length,
+      bad:live.filter(function(p){return p.current_indexed===false;}).length,
+      unknown:live.filter(function(p){return p.current_indexed==null;}).length,
+      clicks:ps.reduce(function(a,p){return a+Number(p.current_clicks||0);},0),
+      imps:ps.reduce(function(a,p){return a+Number(p.current_impressions||0);},0),
+      refreshed:cats.map(function(c){return c.refreshed_at;}).filter(Boolean).sort().slice(-1)[0],
+      through:cats.map(function(c){return c.gsc_settled_through;}).filter(Boolean).sort().slice(-1)[0]
+    };
+  }
+  function seoMeta(d) {
+    const s=seoSummary(d);
+    return {
+      updated:s.refreshed?fmtTime(s.refreshed):"",
+      stats:[[String(s.cats),"collections"],[String(s.products),"products tracked"],[Number(s.imps).toLocaleString("en-AU"),"GSC impressions (28d)"],[Number(s.clicks).toLocaleString("en-AU"),"GSC clicks (28d)"]],
+      warn:s.bad?(s.bad+" live page"+(s.bad===1?"":"s")+" not indexed"):(s.unknown?(s.unknown+" live URL"+(s.unknown===1?"":"s")+" awaiting index check"):""),
+      signal:{code:s.bad?"down":"hold",label:s.bad?"CHECK INDEXING":"TRACKING",reason:s.through?("GSC settled through "+new Date(s.through+"T00:00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short",year:"numeric"})+"."):"Daily SEO tracking is active."}
+    };
+  }
+  function seoReportHTML(d) {
+    const cats=d.categories||[], ps=d.products||[], s=seoSummary(d), cmap={};
+    cats.forEach(function(c){cmap[c.id]=c;});
+    const num=function(v){return v==null?"—":Number(v).toLocaleString("en-AU");};
+    const pos=function(v){return v==null?"—":Number(v).toFixed(1);};
+    const date=function(v){return v?new Date(v+"T00:00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short"}):"—";};
+    const delta=function(p){return p.current_avg_position==null||p.baseline_avg_position==null?null:Number(p.baseline_avg_position)-Number(p.current_avg_position);};
+    const movers=ps.filter(function(p){return delta(p)!=null && Number(p.current_impressions||0)>0;}).sort(function(a,b){return delta(b)-delta(a);});
+    let filters='<button class="f on" data-cat="all">All</button>';
+    cats.forEach(function(c){filters+='<button class="f" data-cat="'+seoEsc(c.id)+'">'+seoEsc(c.title)+'</button>';});
+    let rows='';
+    ps.forEach(function(p){
+      const dlt=delta(p), cls=dlt==null?"":(dlt>0.05?"up":(dlt<-.05?"down":""));
+      const mv=dlt==null?"":('<span class="mv '+cls+'">'+(dlt>0?"▲":(dlt<0?"▼":"•"))+' '+Math.abs(dlt).toFixed(1)+'</span>');
+      const idx=p.current_indexed===true?'<span class="pill ok">Indexed</span>':(p.current_indexed===false?'<span class="pill bad">Not indexed</span>':'<span class="pill unk">Index ?</span>');
+      const st=p.published?'<span class="pill live">Live</span>':('<span class="pill off">'+seoEsc(p.shopify_status||"Not live")+'</span>');
+      const img=p.image_url?('<img src="'+seoEsc(p.image_url)+(p.image_url.indexOf("?")>=0?"&":"?")+'width=160" alt="" loading="lazy">'):'<div class="ph">No image</div>';
+      rows+='<article class="prod" data-cat="'+seoEsc(p.category_id)+'" data-status="'+(p.published?"live":"other")+'"><div class="pic">'+img+'</div><div class="pbody"><div class="ptop"><div><span class="cat">'+seoEsc((cmap[p.category_id]||{}).title||p.category_id)+'</span><a href="'+seoEsc(p.url)+'" target="_blank" rel="noopener">'+seoEsc(p.title)+'</a></div><div class="badges">'+st+idx+'</div></div><div class="kw"><b>Target</b> '+seoEsc(p.target_keyword||"—")+'</div><div class="kw"><b>Top query</b> '+seoEsc(p.current_top_query||"—")+(p.current_top_query_position!=null?' <span class="muted">#'+pos(p.current_top_query_position)+'</span>':'')+'</div><div class="metrics"><div><b>'+num(p.current_clicks)+'</b><span>clicks</span></div><div><b>'+num(p.current_impressions)+'</b><span>impressions</span></div><div><b>'+pos(p.current_avg_position)+'</b><span>avg position</span></div><div><b>'+pos(p.current_target_position)+'</b><span>target pos.</span></div></div><div class="progress"><span>Baseline '+date(p.baseline_date)+': '+pos(p.baseline_avg_position)+'</span>'+mv+'</div></div></article>';
+    });
+    const ml=function(arr,down){if(!arr.length)return '<p class="empty2">More history is needed.</p>';return arr.map(function(p){return '<div class="move-row"><span>'+seoEsc(p.title)+'</span><b class="'+(down?"neg":"pos")+'">'+(down?"▼":"▲")+' '+Math.abs(delta(p)).toFixed(1)+'</b></div>';}).join("");};
+    const through=s.through?new Date(s.through+"T00:00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short",year:"numeric"}):"—";
+    const css=':root{color-scheme:dark;--card:#0e1b2c;--line:#233851;--text:#eef6ff;--muted:#91a5bb;--blue:#4aa3ff;--green:#45d483;--red:#ff6875}*{box-sizing:border-box}body{margin:0;background:#07111f;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;padding:14px}.wrap{max-width:1180px;margin:auto}h1{font-size:24px;margin:0 0 4px}.sub{color:var(--muted);font-size:12px;margin-bottom:12px}.filters{display:flex;gap:7px;overflow:auto;padding:2px 0 12px;position:sticky;top:0;background:#07111ff2;z-index:5}.f{border:1px solid var(--line);background:#0d1b2d;color:var(--muted);border-radius:999px;padding:8px 12px;font-weight:700;white-space:nowrap}.f.on{color:white;border-color:#458fe4;background:#15375c}.top{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}.k{background:#0e1b2c;border:1px solid var(--line);border-radius:14px;padding:11px}.k b{display:block;font-size:18px}.k span{font-size:10px;color:var(--muted)}.moves{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}.movebox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px}.movebox h3{font-size:13px;margin:0 0 7px}.move-row{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid #16283c;font-size:11px}.pos{color:var(--green)}.neg{color:var(--red)}.toolbar{display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px}.toolbar h2{font-size:16px;margin:0}.toolbar select{background:#0d1b2d;color:white;border:1px solid var(--line);border-radius:9px;padding:7px}.list{display:grid;gap:8px}.prod{display:grid;grid-template-columns:82px 1fr;gap:11px;background:var(--card);border:1px solid var(--line);border-radius:15px;padding:9px}.prod.hide{display:none}.pic{width:82px;height:102px;border-radius:10px;overflow:hidden;background:#0a1524;display:flex;align-items:center;justify-content:center}.pic img{width:100%;height:100%;object-fit:cover}.ph{font-size:9px;color:var(--muted)}.ptop{display:flex;justify-content:space-between;gap:9px}.ptop a{display:block;color:white;text-decoration:none;font-weight:800;font-size:13px;line-height:1.25}.cat{font-size:9px;color:var(--blue);text-transform:uppercase}.badges{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.pill{font-size:8px;font-weight:800;border-radius:999px;padding:4px 6px;background:#16283c;color:var(--muted)}.pill.ok{background:#123525;color:#71e8a5}.pill.bad{background:#3b1920;color:#ff8891}.pill.unk{background:#332b18;color:#ffd278}.pill.live{background:#142f52;color:#79baff}.kw{font-size:10px;color:var(--muted);margin-top:4px}.kw b{color:#bdd0e5}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}.metrics div{background:#0a1625;border-radius:8px;padding:6px}.metrics b{display:block;font-size:12px}.metrics span{font-size:8px;color:var(--muted)}.progress{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:6px;color:var(--muted);font-size:9px}.mv{font-weight:800}.mv.up{color:var(--green)}.mv.down{color:var(--red)}.muted{color:var(--muted)}.foot{margin:14px 2px;color:var(--muted);font-size:10px}@media(max-width:720px){body{padding:10px}.top{grid-template-columns:repeat(2,1fr)}.top .k:last-child{grid-column:1/-1}.moves{grid-template-columns:1fr}.prod{grid-template-columns:70px 1fr}.pic{width:70px;height:90px}.metrics{grid-template-columns:repeat(2,1fr)}.ptop{display:block}.badges{justify-content:flex-start;margin-top:4px}}';
+    const js='let cat="all",status="all";function ap(){document.querySelectorAll(".prod").forEach(function(x){x.classList.toggle("hide",!((cat==="all"||x.dataset.cat===cat)&&(status==="all"||x.dataset.status===status)));});}document.querySelectorAll("[data-cat]").forEach(function(b){b.addEventListener("click",function(){document.querySelectorAll("[data-cat]").forEach(function(x){x.classList.remove("on");});b.classList.add("on");cat=b.dataset.cat;ap();});});document.getElementById("statusf").addEventListener("change",function(e){status=e.target.value;ap();});';
+    return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style></head><body><div class="wrap"><h1>SEO Rankings</h1><div class="sub">Google Search Console progress across collections · data settled through '+through+'</div><div class="filters">'+filters+'</div><div class="top"><div class="k"><b>'+s.cats+'</b><span>collections</span></div><div class="k"><b>'+s.products+'</b><span>products tracked</span></div><div class="k"><b>'+num(s.imps)+'</b><span>GSC impressions (28d)</span></div><div class="k"><b>'+num(s.clicks)+'</b><span>GSC clicks (28d)</span></div><div class="k"><b>'+s.indexed+'/'+s.known+'</b><span>indexed where checked</span></div></div><div class="moves"><div class="movebox"><h3>Biggest ranking gains</h3>'+ml(movers.slice(0,5),false)+'</div><div class="movebox"><h3>Biggest ranking drops</h3>'+ml(movers.slice().reverse().slice(0,5),true)+'</div></div><div class="toolbar"><h2>Products</h2><select id="statusf"><option value="all">All statuses</option><option value="live">Live only</option><option value="other">Not live / unlisted</option></select></div><div class="list">'+rows+'</div><div class="foot">Baselines: Men’s Footwear 1 Oct 2026; Bangles 4 Oct 2026. Product images come from Shopify. Ranking movement compares the saved 28-day GSC window with the product baseline.</div></div><script>'+js+'<\/script></body></html>';
+  }
+  async function openSeoRankings(r) {
+    page("report", r.title);
+    const st=$("#rep-status"), fr=$("#rep-frame");
+    st.hidden=false; st.textContent="Loading SEO rankings…"; fr.hidden=true;
+    try { fr.srcdoc=seoReportHTML(await loadSeoRankingsData(true)); fr.hidden=false; st.hidden=true; }
+    catch(e){ st.textContent="The SEO Rankings report couldn't be loaded. Pull down to refresh."; }
+  }
+
+
   // ---------- report viewer ----------
   async function openReport(id, full) {
     const r = reports.find((x) => x.id === id); if (!r) return go("home");
     if (location.hash !== "#" + id) history.pushState(null, "", "#" + id);
     if (id === "stock" && !full) return openStock(r);
     if (id === "order-attribution") return openAttribution(r);
+    if (id === "footwear") return openSeoRankings(r);
     page("report", r.title);
     const st = $("#rep-status"), fr = $("#rep-frame");
     st.hidden = false; st.textContent = "Opening report…"; fr.hidden = true;
