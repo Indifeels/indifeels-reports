@@ -10,6 +10,9 @@ on:
   schedule:
     - cron: "40 20,21,4,5,9,10 * * *"
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/manual-refresh-stock.txt"
 
 concurrency:
   # Shared repository write lock: prevents report workflows from changing r/* and status.json at the same time.
