@@ -64,12 +64,15 @@ jobs:
           from zoneinfo import ZoneInfo
           tz=ZoneInfo("Australia/Sydney")
           now=datetime.now(tz)
-          if now.hour == 6:
-              # 6 AM final: freeze the previous completed Sydney day.
+          event=os.environ.get("EVENT_NAME","")
+          # Morning scheduled run, or a manual/push recovery before noon:
+          # publish the previous completed Sydney day to the front tiles.
+          if now.hour == 6 or (event != "schedule" and now.hour < 12):
               yesterday=now.date()-timedelta(days=1)
               cutoff=datetime.combine(yesterday,time(23,59,59),tzinfo=tz)
           else:
-              # 8 PM preview and other manual refreshes: current Sydney day through refresh time.
+              # 8 PM preview and afternoon/evening manual refreshes:
+              # current Sydney day through refresh time.
               cutoff=now
           print("REPORT_NOW="+cutoff.isoformat())
           PY
