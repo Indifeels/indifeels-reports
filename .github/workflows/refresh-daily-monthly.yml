@@ -6,9 +6,9 @@ on:
     paths:
       - ".github/manual-refresh-daily-monthly.txt"
   schedule:
-    # GitHub cron is UTC. These four UTC candidates cover Sydney standard/daylight time.
-    # The Sydney-time gate below allows only 20:00 and 06:00 local.
-    - cron: "0 9,10,19,20 * * *"
+    # GitHub cron is UTC. These candidates cover Sydney 20:00 and 06:00 across AEST/AEDT.
+    # The Sydney-time gate below is authoritative and skips all non-matching local hours.
+    - cron: "0 7,9,10,19,20,21 * * *"
 
 permissions:
   contents: write
