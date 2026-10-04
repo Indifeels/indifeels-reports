@@ -6,9 +6,9 @@ on:
     paths:
       - ".github/manual-refresh-daily-monthly.txt"
   schedule:
-    # GitHub cron is UTC. These candidates cover Sydney 20:00 and 06:00 across AEST/AEDT.
-    # The Sydney-time gate below is authoritative and skips all non-matching local hours.
-    - cron: "0 7,9,10,19,20,21 * * *"
+    # GitHub cron is UTC. Candidate hours cover 20:00 and 06:00 in both AEST (UTC+10) and AEDT (UTC+11).
+    # A tolerance window in the Sydney-time gate handles GitHub schedule delivery delays.
+    - cron: "0 9,10,19,20 * * *"
 
 permissions:
   contents: write
@@ -26,11 +26,16 @@ jobs:
       - name: Sydney time gate
         id: gate
         run: |
-          H=$(TZ=Australia/Sydney date +%H)
-          if [ "${{ github.event_name }}" != "schedule" ] || [ "$H" = "20" ] || [ "$H" = "06" ]; then
+          HM=$(TZ=Australia/Sydney date +%H%M)
+          # GitHub scheduled workflows can start late. Accept the first 45 minutes
+          # after the intended 20:00 and 06:00 Sydney starts, while rejecting the
+          # DST fallback candidate that lands one hour away.
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "go=1" >> "$GITHUB_OUTPUT"
+          elif { [ "$HM" -ge 2000 ] && [ "$HM" -le 2045 ]; } || { [ "$HM" -ge 0600 ] && [ "$HM" -le 0645 ]; }; then
             echo "go=1" >> "$GITHUB_OUTPUT"
           else
-            echo "Not a Sydney 20:00/06:00 run hour ($H); skipping"
+            echo "Not within Sydney 20:00-20:45 or 06:00-06:45 ($HM); skipping"
             echo "go=0" >> "$GITHUB_OUTPUT"
           fi
 
