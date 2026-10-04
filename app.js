@@ -129,6 +129,8 @@
     tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     chart: '<path d="M4 20V4M4 20h16"/><path d="M8 16l4-5 3 3 5-6"/>',
+    eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
   };
   const svg = (k, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k] || I.chart}</svg>`;
   const LOOK = {
@@ -136,6 +138,8 @@
     monthly: { c: "green", icon: "trend", stat: [null, null, null, null], line: ["green", "blue", "orange", "green"] },
     stock: { c: "orange", icon: "box", stat: ["box", "box", "tag"], line: [] },
     "order-attribution": { c: "teal", icon: "tag", stat: ["tag", "clock", "dollar"], line: ["teal", "purple", "green"] },
+    "product-visibility": { c: "purple", icon: "eye", stat: ["eye", "tag", "alert"], line: ["purple", "teal", "rose"] },
+    footwear: { c: "rose", icon: "search", stat: ["search", "bars", "trend"], line: ["rose", "purple", "green"] },
   };
   const SPARE = ["purple", "teal", "rose"];
   function look(id) {
@@ -166,15 +170,16 @@
   }
   function tileHTML(r, meta) {
     const L = look(r.id), hl = health(r.id);
-    const alertBox = hl ? `<div class="alert">${svg("alert")}<div><b>${esc(hl.title)}</b>${esc(hl.text)}</div></div>` : "";
-    const st = (meta?.stats || []).slice(0, 4);
+    const alertBox = hl ? `<div class="alert">${svg("alert")}<div><b>${esc(hl.title)}</b><span>${esc(hl.text)}</span></div></div>` : "";
+    const healthBadge = hl ? `<span class="health bad">${svg("alert")}Attention</span>` : (meta ? `<span class="health good"><i></i>Healthy</span>` : "");
+    const st = (meta?.stats || []).slice(0, 3);
     const stats = st.map((s, i) => `<div class="st" style="--sc:var(--${L.line[i] || L.c})">${L.stat[i] ? svg(L.stat[i], "si") : ""}<b>${esc(s[0])}</b><span>${esc(s[1])}</span>${spark(meta?.spark?.[i], L.line[i] || L.c)}</div>`).join("");
     const sig = meta?.signal ? `<p class="sig"><span class="pl">${esc(meta.signal.label)}</span>${esc(meta.signal.reason)}</p>` : "";
     const upd = meta?.updated ? `Updated ${esc(meta.updated)}` : "Waiting for the next update";
     const warn = meta?.warn ? `<span class="wn">${svg("alert")}${esc(meta.warn)}</span>` : "";
     return `<button class="tile t-${L.c}${hl ? " alerted" : ""}" type="button" data-id="${esc(r.id)}">
-      <div class="th"><span class="ic">${svg(hl ? "alert" : L.icon)}</span><h3>${esc(r.title)}</h3><span class="open" aria-hidden="true">Open <span class="ar">&rsaquo;</span></span><p class="ds">${esc(r.description || "")}</p></div>
-      ${alertBox}${stats ? `<div class="sts n${st.length}">${stats}</div>` : ""}${sig}<div class="ft"><span class="u">${svg("clock")}${upd}</span>${warn}</div></button>`;
+      <div class="th"><span class="ic">${svg(L.icon)}</span><div class="tt"><h3>${esc(r.title)}</h3><p class="ds">${esc(r.description || "")}</p></div>${healthBadge}</div>
+      ${alertBox}${stats ? `<div class="sts n${st.length}">${stats}</div>` : ""}${sig}<div class="ft"><span class="u">${svg("clock")}${upd}</span>${warn}<span class="open" aria-hidden="true">Open <span class="ar">&rsaquo;</span></span></div></button>`;
   }
   async function renderHome() {
     const box = $("#tiles");
