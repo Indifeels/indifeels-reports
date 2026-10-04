@@ -31,12 +31,15 @@ jobs:
       - name: Sydney time gate
         id: gate
         run: |
-          H=$(TZ=Australia/Sydney date +%H)
-          if [ "${{ github.event_name }}" != "schedule" ] || [ "$H" = "07" ] || [ "$H" = "15" ] || [ "$H" = "20" ]; then
-            echo "go=1" >> $GITHUB_OUTPUT
+
+          HM=$(TZ=Australia/Sydney date +%H%M)
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "go=1" >> "$GITHUB_OUTPUT"
+          elif { [ "$HM" -ge 0700 ] && [ "$HM" -le 0745 ]; } || { [ "$HM" -ge 1500 ] && [ "$HM" -le 1545 ]; } || { [ "$HM" -ge 2000 ] && [ "$HM" -le 2045 ]; }; then
+            echo "go=1" >> "$GITHUB_OUTPUT"
           else
-            echo "Not a Sydney run hour ($H), skipping"
-            echo "go=0" >> $GITHUB_OUTPUT
+            echo "Not within Sydney 07:00-07:45, 15:00-15:45 or 20:00-20:45 ($HM); skipping"
+            echo "go=0" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/checkout@v4
