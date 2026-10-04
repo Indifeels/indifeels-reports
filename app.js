@@ -414,6 +414,7 @@
 
   // ---------- unified SEO rankings ----------
   let SEO_CACHE = null;
+  const seoEsc = esc;
   async function loadSeoRankingsData(force) {
     if (SEO_CACHE && !force) return SEO_CACHE;
     const a = await Promise.all([
