@@ -1,2 +1,2 @@
 Manual refresh trigger for IndiFeels Daily/Monthly reports.
-Request: catch up missed scheduled refresh after scheduler fix.
+Request: morning recovery; publish previous completed Sydney day to front tiles.
