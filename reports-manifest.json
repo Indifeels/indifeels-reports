@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "manifest_version": "2026-10-06.1",
+  "timezone": "Australia/Melbourne",
+  "policy": {
+    "source_of_truth_branch": "main",
+    "publish_mode": "validate_then_atomic_commit",
+    "preserve_last_good_on_failure": true,
+    "shared_write_lock": "indifeels-reports-repo-write",
+    "code_owner": "Code/Claude",
+    "refresh_owner": "scheduled GitHub automation operated by ChatGPT"
+  },
+  "reports": [
+    {
+      "id": "daily",
+      "title": "Daily Report",
+      "workflow": "refresh-daily-monthly.yml",
+      "refresh_times": [
+        "20:00",
+        "06:00"
+      ],
+      "required_env": [
+        "WINDSOR_API_KEY",
+        "SHOPIFY_TOKEN",
+        "SYNC_READ_TOKEN"
+      ],
+      "builders": [
+        "tools/fetch_reports.py",
+        "tools/reconcile_order_attribution.py",
+        "tools/build.py",
+        "tools/encrypt.py"
+      ],
+      "outputs": [
+        "r/daily.bin",
+        "r/daily.meta.bin"
+      ],
+      "supabase_sync": true
+    },
+    {
+      "id": "monthly",
+      "title": "Monthly Report",
+      "workflow": "refresh-daily-monthly.yml",
+      "refresh_times": [
+        "20:00",
+        "06:00"
+      ],
+      "required_env": [
+        "WINDSOR_API_KEY",
+        "SHOPIFY_TOKEN",
+        "SYNC_READ_TOKEN"
+      ],
+      "builders": [
+        "tools/fetch_reports.py",
+        "tools/reconcile_order_attribution.py",
+        "tools/monthly.py",
+        "tools/encrypt.py"
+      ],
+      "outputs": [
+        "r/monthly.bin",
+        "r/monthly.meta.bin"
+      ],
+      "supabase_sync": true
+    },
+    {
+      "id": "google-tracked",
+      "title": "Google Tracked",
+      "workflow": "main.yml",
+      "refresh_times": [
+        "20:00",
+        "06:00"
+      ],
+      "required_env": [
+        "WINDSOR_API_KEY",
+        "GOOGLE_TRACKED_KEY"
+      ],
+      "builders": [
+        "tools/fetch_google_tracked.py",
+        "tools/google_tracked.py"
+      ],
+      "outputs": [
+        "r/google-tracked.bin",
+        "r/google-tracked.meta.bin"
+      ],
+      "supabase_sync": true
+    },
+    {
+      "id": "stock",
+      "title": "Stock / Restock",
+      "workflow": "stock.yml",
+      "refresh_times": [
+        "07:00",
+        "15:00",
+        "20:00"
+      ],
+      "required_env": [
+        "SHOPIFY_TOKEN",
+        "STOCK_KEY"
+      ],
+      "builders": [
+        "tools/stock_fetch.py"
+      ],
+      "outputs": [
+        "r/stock.bin",
+        "r/stock.meta.bin",
+        "r/stock_moves.bin"
+      ],
+      "supabase_sync": false
+    },
+    {
+      "id": "product-visibility",
+      "title": "Product Visibility",
+      "workflow": "product-visibility.yml",
+      "refresh_times": [
+        "07:00",
+        "15:00",
+        "20:00"
+      ],
+      "required_env": [
+        "SHOPIFY_TOKEN",
+        "STOCK_KEY"
+      ],
+      "builders": [
+        "tools/product_visibility.py"
+      ],
+      "outputs": [
+        "r/product-visibility.bin",
+        "r/product-visibility.meta.bin"
+      ],
+      "supabase_sync": false
+    },
+    {
+      "id": "footwear",
+      "title": "Footwear SEO",
+      "workflow": null,
+      "refresh_times": [],
+      "required_env": [],
+      "builders": [],
+      "outputs": [
+        "r/footwear.bin",
+        "r/footwear.meta.bin"
+      ],
+      "supabase_sync": true
+    },
+    {
+      "id": "tech-availability",
+      "title": "Tech Availability",
+      "workflow": "supabase-cron",
+      "refresh_times": [
+        "continuous"
+      ],
+      "required_env": [],
+      "builders": [],
+      "outputs": [],
+      "supabase_sync": false,
+      "delivery": "supabase_live"
+    }
+  ]
+}
