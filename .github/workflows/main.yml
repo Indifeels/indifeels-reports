@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: indifeels-google-tracked
+  group: indifeels-reports-repo-write
   cancel-in-progress: false
 
 jobs:
@@ -68,6 +68,13 @@ jobs:
           print("REPORT_NOW="+cutoff.isoformat())
           PY
 
+      - name: Validate report contract
+        if: steps.gate.outputs.go == '1'
+        env:
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          GOOGLE_TRACKED_KEY: ${{ secrets.GOOGLE_TRACKED_KEY }}
+        run: python3 tools/report_preflight.py --phase pre google-tracked
+
       - name: Fetch live Google Ads data
         if: steps.gate.outputs.go == '1'
         env:
@@ -116,6 +123,7 @@ jobs:
         run: |
           cp .refresh/out/google-tracked.bin r/google-tracked.bin
           cp .refresh/out/google-tracked.meta.bin r/google-tracked.meta.bin
+          python3 tools/report_preflight.py --phase post google-tracked
           python3 tools/status.py r google-tracked ok
 
           git config user.name "github-actions[bot]"
