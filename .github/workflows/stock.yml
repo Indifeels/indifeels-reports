@@ -68,6 +68,11 @@ jobs:
           ORDER_SOURCE: ${{ github.event.client_payload.source }}
           ORDER_EMAIL: ${{ github.event.client_payload.email }}
           ORDER_PHONE: ${{ github.event.client_payload.phone }}
+          CAMPAIGN_PLATFORM: ${{ github.event.client_payload.campaign_platform }}
+          CAMPAIGN_ID: ${{ github.event.client_payload.campaign_id }}
+          CAMPAIGN_NAME: ${{ github.event.client_payload.campaign_name }}
+          ADSET_ID: ${{ github.event.client_payload.adset_id }}
+          ADSET_NAME: ${{ github.event.client_payload.adset_name }}
           CALLBACK_TOKEN: ${{ github.event.client_payload.callback_token }}
         run: python3 tools/order_attribution_sync.py
 
