@@ -74,8 +74,46 @@ body{min-height:100vh}.shell{width:min(760px,calc(100% - 24px));margin:0 auto;pa
 (function(){
   "use strict";
   var code="",product=null,pc=null,dc=null,stream=null,muted=false,closeTimer=null;
-  var PRODUCT_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-product";
   var VOICE_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-session";
+  var TEST_PRODUCTS={
+    "green-embroidered-anarkali-gown":{
+      id:"gid://shopify/Product/9699982672229",
+      title:"Green Embroidered Anarkali Gown with Dupatta",
+      handle:"green-embroidered-anarkali-gown",
+      vendor:"IndiFeels Australia",
+      price:"$110.00 AUD",
+      featured_image:"https://cdn.shopify.com/s/files/1/0880/3398/4869/files/New-Project-2021-09-16T121359.702.jpg?v=1775923324",
+      page_url:"https://indifeels.com/products/green-embroidered-anarkali-gown",
+      variants:[
+        {title:"XS-34",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"S-36",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"M-38",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"L-40",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"XL-42",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"XXL-44",available:false,inventory_quantity:0,price:"$110.00 AUD"},
+        {title:"3XL-46",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"4XL-48",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"5XL-50",available:false,inventory_quantity:0,price:"$110.00 AUD"}
+      ]
+    },
+    "pink-floral-printed-festival-wear-palazzo-suit":{
+      id:"gid://shopify/Product/9700048011621",
+      title:"Floral Printed Festival Wear Palazzo Suit",
+      handle:"pink-floral-printed-festival-wear-palazzo-suit",
+      vendor:"IndiFeels Australia",
+      price:"$130.00 AUD",
+      featured_image:"https://cdn.shopify.com/s/files/1/0880/3398/4869/files/6698_9cf22a00-f7c1-48e7-a11d-b6ce3fbb2bb2.jpg?v=1775953515",
+      page_url:"https://indifeels.com/products/pink-floral-printed-festival-wear-palazzo-suit",
+      variants:[
+        {title:"S-36",available:true,inventory_quantity:1,price:"$130.00 AUD"},
+        {title:"M-38",available:true,inventory_quantity:1,price:"$130.00 AUD"},
+        {title:"L-40",available:true,inventory_quantity:1,price:"$130.00 AUD"},
+        {title:"XL-42",available:true,inventory_quantity:2,price:"$130.00 AUD"},
+        {title:"XXL-44",available:true,inventory_quantity:1,price:"$130.00 AUD"},
+        {title:"3XL-46",available:true,inventory_quantity:1,price:"$130.00 AUD"}
+      ]
+    }
+  };
   var $=function(id){return document.getElementById(id)};
   var authCard=$("authCard"),lab=$("lab"),access=$("accessCode"),unlock=$("unlock"),authMsg=$("authMsg"),productInput=$("productInput"),loadProductBtn=$("loadProduct"),productMsg=$("productMsg"),productCard=$("productCard"),productView=$("productView"),voiceBox=$("voiceBox"),voiceStatus=$("voiceStatus"),startBtn=$("startVoice"),muteBtn=$("muteVoice"),endBtn=$("endVoice"),transcript=$("transcript"),userText=$("userText"),assistantText=$("assistantText"),audio=$("audio");
 
@@ -86,18 +124,13 @@ body{min-height:100vh}.shell{width:min(760px,calc(100% - 24px));margin:0 auto;pa
   function waitIce(c,ms){if(c.iceGatheringState==="complete")return Promise.resolve();return new Promise(function(resolve){var done=false,t=setTimeout(finish,ms||10000);function finish(){if(done)return;done=true;clearTimeout(t);c.removeEventListener("icegatheringstatechange",change);resolve()}function change(){if(c.iceGatheringState==="complete")finish()}c.addEventListener("icegatheringstatechange",change)})}
 
   async function fetchProduct(handle){
-    var res=await fetch(PRODUCT_API+"?handle="+encodeURIComponent(handle),{headers:{"X-IndiFeels-Test-Key":code},cache:"no-store"});
-    var data=await res.json().catch(function(){return{}});
-    if(!res.ok){
-      if(data.error==="invalid_lab_code")throw new Error("Incorrect access code.");
-      if(data.error==="product_not_found")throw new Error("I couldn't find that IndiFeels product.");
-      throw new Error("Could not load the product.");
-    }
-    return data.product;
+    var p=TEST_PRODUCTS[handle];
+    if(!p)throw new Error("For this first test, choose one of the two sample products below.");
+    return JSON.parse(JSON.stringify(p));
   }
   function renderProduct(){
-    var variants=(product.variants||[]).map(function(v){return '<span class="variant '+(v.available?'ok':'no')+'">'+esc(v.title)+(v.available?' · available':' · sold out')+'</span>'}).join("");
-    productView.innerHTML='<img src="'+esc(product.featured_image)+'" alt=""><div><h3>'+esc(product.title)+'</h3><div class="price">'+esc(product.price)+'</div><div class="variants">'+variants+'</div><p class="small">Verified from the live IndiFeels product feed. Exact quantity is not exposed by the public feed yet, so the lab only says available/sold out.</p></div>';
+    var variants=(product.variants||[]).map(function(v){return '<span class="variant '+(v.available?'ok':'no')+'">'+esc(v.title)+(v.available?' · '+v.inventory_quantity+' available':' · sold out')+'</span>'}).join("");
+    productView.innerHTML='<img src="'+esc(product.featured_image)+'" alt=""><div><h3>'+esc(product.title)+'</h3><div class="price">'+esc(product.price)+'</div><div class="variants">'+variants+'</div><p class="small">Test data is from the current Shopify inventory snapshot. Exact live Shopify tool-calling comes in the next lab step.</p></div>';
     productCard.classList.remove("hidden");
     startBtn.disabled=false;
     state("","Ready to test");
