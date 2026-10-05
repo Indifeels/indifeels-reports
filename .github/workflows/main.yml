@@ -1,158 +1,151 @@
-name: Publish Google Tracked report
+name: Refresh Google Tracked report
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/manual-refresh-google-tracked.txt"
+  schedule:
+    # Candidate UTC hours cover Sydney 20:00 and 06:00 across AEST/AEDT.
+    - cron: "0 9,10,19,20 * * *"
 
 permissions:
   contents: write
 
 concurrency:
-  group: publish-google-tracked
+  group: indifeels-reports-repo-write
   cancel-in-progress: false
 
 jobs:
-  publish:
+  refresh:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Sydney time gate
+        id: gate
+        run: |
+          HM=$(TZ=Australia/Sydney date +%H%M)
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "go=1" >> "$GITHUB_OUTPUT"
+          elif { [ "$HM" -ge 2000 ] && [ "$HM" -le 2045 ]; } || { [ "$HM" -ge 0600 ] && [ "$HM" -le 0645 ]; }; then
+            echo "go=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "Not within Sydney 20:00-20:45 or 06:00-06:45 ($HM); skipping"
+            echo "go=0" >> "$GITHUB_OUTPUT"
+          fi
 
-      - uses: actions/setup-python@v5
+      - name: Checkout reports
+        if: steps.gate.outputs.go == '1'
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: steps.gate.outputs.go == '1'
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install encryption dependency
+      - name: Install dependency
+        if: steps.gate.outputs.go == '1'
         run: pip install cryptography
 
-      - name: Build encrypted Google report
+      - name: Set Sydney report cutoff
+        if: steps.gate.outputs.go == '1'
         env:
-          GOOGLE_TRACKED_KEY: ${{ secrets.GOOGLE_TRACKED_KEY }}
-          GOOGLE_TRACKED_HTML: ${{ secrets.GOOGLE_TRACKED_HTML }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          python3 - <<'PY'
-          import base64
-          import gzip
-          import json
+          python3 - <<'PY' >> "$GITHUB_ENV"
           import os
-          import secrets
-          from datetime import datetime
+          from datetime import datetime, timedelta, time
           from zoneinfo import ZoneInfo
-          from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-
-          key_b64 = os.environ["GOOGLE_TRACKED_KEY"].strip()
-          html = os.environ["GOOGLE_TRACKED_HTML"]
-
-          if not key_b64:
-              raise SystemExit("Missing GOOGLE_TRACKED_KEY")
-
-          if not html:
-              raise SystemExit("Missing GOOGLE_TRACKED_HTML")
-
-          key = base64.b64decode(key_b64)
-
-          if len(key) != 32:
-              raise SystemExit(
-                  f"GOOGLE_TRACKED_KEY must decode to 32 bytes, got {len(key)}"
-              )
-
-          def encrypt(data: bytes) -> bytes:
-              iv = secrets.token_bytes(12)
-              encrypted = AESGCM(key).encrypt(
-                  iv,
-                  gzip.compress(data, 9),
-                  None
-              )
-              return iv + encrypted
-
-          os.makedirs("r", exist_ok=True)
-
-          with open("r/google-tracked.bin", "wb") as f:
-              f.write(encrypt(html.encode("utf-8")))
-
-          now = datetime.now(
-              ZoneInfo("Australia/Sydney")
-          ).isoformat(timespec="minutes")
-
-          meta = {
-              "updated": now,
-              "stats": [
-                  ["$14.10", "provisional profit yesterday"],
-                  ["3.04x", "ROAS yesterday"],
-                  ["$16.76", "provisional profit, last 7 days"],
-                  ["$866.90", "provisional profit, last 30 days"]
-              ],
-              "signal": {
-                  "code": "hold",
-                  "label": "Tracked Google Ads",
-                  "reason": "Completed-day reporting with exact KPI changes."
-              },
-              "spark": [
-                  -19.05,
-                  -19.36,
-                  -33.76,
-                  109.68,
-                  7.16,
-                  73.74,
-                  151.77,
-                  69.43,
-                  -23.83,
-                  64.44,
-                  -27.68,
-                  109.84,
-                  49.46,
-                  -21.25,
-                  125.08,
-                  -21.76,
-                  -15.00,
-                  -19.91,
-                  -17.45,
-                  74.16,
-                  39.14,
-                  148.29,
-                  47.02,
-                  -13.95,
-                  -16.54,
-                  81.26,
-                  -13.75,
-                  -20.60,
-                  -13.78,
-                  14.10
-              ]
-          }
-
-          with open("r/google-tracked.meta.bin", "wb") as f:
-              f.write(
-                  encrypt(
-                      json.dumps(
-                          meta,
-                          separators=(",", ":")
-                      ).encode("utf-8")
-                  )
-              )
-
-          print("Google tracked report encrypted successfully")
+          tz=ZoneInfo("Australia/Sydney")
+          now=datetime.now(tz)
+          event=os.environ.get("EVENT_NAME","")
+          if now.hour == 6 or (event != "schedule" and now.hour < 12):
+              day=now.date()-timedelta(days=1)
+              cutoff=datetime.combine(day,time(23,59,59),tzinfo=tz)
+          else:
+              cutoff=now
+          print("REPORT_NOW="+cutoff.isoformat())
           PY
 
-      - name: Commit report
+      - name: Fetch live Google Ads data
+        if: steps.gate.outputs.go == '1'
+        env:
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          WINDSOR_GOOGLE_ACCOUNT: "788-887-6041"
         run: |
-          git config user.name "Indifeels reports bot"
-          git config user.email "actions@users.noreply.github.com"
+          mkdir -p .refresh/google
+          python3 tools/fetch_google_tracked.py .refresh/google/data.json
 
-          git add \
-            r/google-tracked.bin \
-            r/google-tracked.meta.bin
+      - name: Build live Google report
+        if: steps.gate.outputs.go == '1'
+        run: |
+          python3 tools/google_tracked.py \
+            .refresh/google/data.json \
+            .refresh/google/google-tracked.html \
+            .refresh/google/google-tracked.meta.json
+
+      - name: Encrypt Google report
+        if: steps.gate.outputs.go == '1'
+        env:
+          GOOGLE_TRACKED_KEY: ${{ secrets.GOOGLE_TRACKED_KEY }}
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, json, os, secrets
+          from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+          key=base64.b64decode(os.environ["GOOGLE_TRACKED_KEY"].strip())
+          if len(key) != 32:
+              raise SystemExit("GOOGLE_TRACKED_KEY must decode to 32 bytes")
+
+          def enc(data):
+              iv=secrets.token_bytes(12)
+              return iv + AESGCM(key).encrypt(iv, gzip.compress(data,9), None)
+
+          html=open(".refresh/google/google-tracked.html","rb").read()
+          meta=open(".refresh/google/google-tracked.meta.json","rb").read()
+          os.makedirs(".refresh/out",exist_ok=True)
+          open(".refresh/out/google-tracked.bin","wb").write(enc(html))
+          open(".refresh/out/google-tracked.meta.bin","wb").write(enc(meta))
+          PY
+          test -s .refresh/out/google-tracked.bin
+          test -s .refresh/out/google-tracked.meta.bin
+
+      - name: Publish Google report
+        if: steps.gate.outputs.go == '1'
+        run: |
+          cp .refresh/out/google-tracked.bin r/google-tracked.bin
+          cp .refresh/out/google-tracked.meta.bin r/google-tracked.meta.bin
+          python3 tools/status.py r google-tracked ok
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898273+github-actions[bot]@users.noreply.github.com"
+          git add r/google-tracked.bin r/google-tracked.meta.bin r/status.json
 
           if git diff --cached --quiet; then
-            echo "No changes"
-            exit 0
+            echo "No Google report changes"
+          else
+            git commit -m "Refresh Google tracked report"
+            for i in 1 2 3; do
+              git pull --rebase -q origin main
+              git push -q origin HEAD:main && exit 0
+              sleep 5
+            done
+            exit 1
           fi
 
-          git commit -m "Publish redesigned Google tracked report"
-
+      - name: Record failed Google refresh
+        if: failure() && steps.gate.outputs.go == '1'
+        run: |
+          python3 tools/status.py r google-tracked fail "Google tracked refresh failed; check GitHub Actions"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898273+github-actions[bot]@users.noreply.github.com"
+          git add r/status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record failed Google tracked refresh"
           for i in 1 2 3; do
             git pull --rebase -q origin main
             git push -q origin HEAD:main && exit 0
             sleep 5
           done
-
-          exit 1
+          exit 0
