@@ -140,6 +140,7 @@
     "order-attribution": { c: "teal", icon: "tag", stat: ["tag", "clock", "dollar"], line: ["teal", "purple", "green"] },
     "product-visibility": { c: "purple", icon: "eye", stat: ["eye", "tag", "alert"], line: ["purple", "teal", "rose"] },
     footwear: { c: "rose", icon: "search", stat: ["search", "bars", "trend"], line: ["rose", "purple", "green"] },
+    "tech-availability": { c: "teal", icon: "alert", stat: ["bars", "alert", "alert"], line: ["teal", "orange", "rose"] },
   };
   const SPARE = ["purple", "teal", "rose"];
   function look(id) {
@@ -169,15 +170,16 @@
     return null;
   }
   function tileHTML(r, meta) {
-    const L = look(r.id), hl = health(r.id);
-    const alertBox = hl ? `<div class="alert">${svg("alert")}<div><b>${esc(hl.title)}</b><span>${esc(hl.text)}</span></div></div>` : "";
-    const healthBadge = hl ? `<span class="health bad">${svg("alert")}Attention</span>` : (meta ? `<span class="health good"><i></i>Healthy</span>` : "");
+    const L = look(r.id), hl = health(r.id), metaBad = meta?.health === "bad";
+    const alertBox = hl ? `<div class="alert">${svg("alert")}<div><b>${esc(hl.title)}</b><span>${esc(hl.text)}</span></div></div>`
+      : metaBad ? `<div class="alert">${svg("alert")}<div><b>Infrastructure issue</b><span>${esc(meta.health_text || "One or more services are affecting IndiFeels.")}</span></div></div>` : "";
+    const healthBadge = (hl || metaBad) ? `<span class="health bad">${svg("alert")}Attention</span>` : (meta ? `<span class="health good"><i></i>Healthy</span>` : "");
     const st = (meta?.stats || []).slice(0, 3);
     const stats = st.map((s, i) => `<div class="st" style="--sc:var(--${L.line[i] || L.c})">${L.stat[i] ? svg(L.stat[i], "si") : ""}<b>${esc(s[0])}</b><span>${esc(s[1])}</span>${spark(meta?.spark?.[i], L.line[i] || L.c)}</div>`).join("");
     const sig = meta?.signal ? `<p class="sig"><span class="pl">${esc(meta.signal.label)}</span>${esc(meta.signal.reason)}</p>` : "";
     const upd = meta?.updated ? `Updated ${esc(meta.updated)}` : "Waiting for the next update";
     const warn = meta?.warn ? `<span class="wn">${svg("alert")}${esc(meta.warn)}</span>` : "";
-    return `<button class="tile t-${L.c}${hl ? " alerted" : ""}" type="button" data-id="${esc(r.id)}">
+    return `<button class="tile t-${L.c}${(hl || metaBad) ? " alerted" : ""}" type="button" data-id="${esc(r.id)}">
       <div class="th"><span class="ic">${svg(L.icon)}</span><div class="tt"><h3>${esc(r.title)}</h3><p class="ds">${esc(r.description || "")}</p></div>${healthBadge}</div>
       ${alertBox}${stats ? `<div class="sts n${st.length}">${stats}</div>` : ""}${sig}<div class="ft"><span class="u">${svg("clock")}${upd}</span>${warn}<span class="open" aria-hidden="true">Open <span class="ar">&rsaquo;</span></span></div></button>`;
   }
@@ -199,6 +201,7 @@
         return;
       }
       if (r.id === "footwear") { try { const meta = seoMeta(await loadSeoRankingsData()); const el = box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`); if (el) { el.outerHTML = tileHTML(r, meta); box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`).addEventListener("click", () => openReport(r.id)); } } catch (_) {} return; }
+      if (r.id === "tech-availability") { try { const meta = techMeta(await loadTechAvailability()); const el = box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`); if (el) { el.outerHTML = tileHTML(r, meta); box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`).addEventListener("click", () => openReport(r.id)); } } catch (_) {} return; }
       if (!keys[r.id]) return;
       try {
         const meta = JSON.parse(await decryptFile(`r/${r.id}.meta.bin`, keys[r.id]));
@@ -784,6 +787,82 @@
   }
 
 
+
+  // ---------- tech availability ----------
+  async function loadTechAvailability() {
+    const { data, error } = await sb.from("tech_availability")
+      .select("id,name,usage_pct,usage_label,status,impact,detail,checked_at,source,status_url,auto_detected,sort")
+      .order("sort");
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+  function techMeta(rows) {
+    const healthy = rows.filter((x) => x.status === "operational").length;
+    const issues = rows.filter((x) => x.status === "degraded" || x.status === "outage").length;
+    const impacting = rows.filter((x) => x.impact).length;
+    const unknown = rows.filter((x) => x.status === "unknown").length;
+    const latest = rows.map((x) => x.checked_at).filter(Boolean).sort().at(-1);
+    const bad = impacting > 0;
+    const first = rows.find((x) => x.impact);
+    return {
+      stats: [[`${healthy}/${rows.length}`, "systems operational"], [String(issues), "current issues"], [String(impacting), "impacting IndiFeels"]],
+      updated: latest ? fmtTime(latest) : "not checked yet",
+      warn: unknown ? `${unknown} service${unknown === 1 ? "" : "s"} could not be verified` : "",
+      signal: { label: bad ? "Attention" : "All clear", reason: bad ? `${first?.name || "A service"} is currently affecting IndiFeels.` : "No monitored infrastructure outage is affecting IndiFeels." },
+      health: bad ? "bad" : "good",
+      health_text: bad ? `${impacting} service${impacting === 1 ? "" : "s"} currently impacting reports or operations.` : ""
+    };
+  }
+  function techReportHTML(rows) {
+    const healthy = rows.filter((x) => x.status === "operational").length;
+    const issues = rows.filter((x) => x.status === "degraded" || x.status === "outage").length;
+    const impacting = rows.filter((x) => x.impact).length;
+    const unknown = rows.filter((x) => x.status === "unknown").length;
+    const latest = rows.map((x) => x.checked_at).filter(Boolean).sort().at(-1);
+    const label = (s) => s === "operational" ? "Operational" : s === "degraded" ? "Degraded" : s === "outage" ? "Outage" : "Unknown";
+    const pct = (x) => x == null || !isFinite(Number(x)) ? null : Math.max(0, Math.min(100, Number(x)));
+    const cards = rows.map((r) => {
+      const p = pct(r.usage_pct);
+      const usage = p == null
+        ? `<div class="usage na"><b>N/A</b><span>${esc(r.usage_label || "Not exposed")}</span></div>`
+        : `<div class="usage"><div class="uv"><b>${p.toFixed(p < 10 ? 1 : 0)}%</b><span>${esc(r.usage_label || "")}</span></div><div class="bar"><i style="width:${p}%"></i></div></div>`;
+      const link = r.status_url ? `<a href="${esc(r.status_url)}" target="_blank" rel="noopener">Official status ↗</a>` : "";
+      const auto = r.auto_detected ? '<span class="auto">Auto-detected</span>' : "";
+      return `<article class="svc ${esc(r.status)}">
+        <div class="top"><div><h2>${esc(r.name)} ${auto}</h2><div class="meta">Checked ${esc(fmtTime(r.checked_at))} · ${esc(r.source || "monitor")}</div></div><span class="status ${esc(r.status)}">${label(r.status)}</span></div>
+        <div class="grid"><div><span class="k">Usage %</span>${usage}</div><div><span class="k">Impact</span><span class="impact ${r.impact ? "yes" : "no"}">${r.impact ? "Yes" : "No"}</span></div></div>
+        <div class="detail"><span class="k">Detail</span><p>${esc(r.detail || "No detail available.")}</p>${link}</div>
+      </article>`;
+    }).join("");
+    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><style>
+      :root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:light dark}
+      *{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#17191d}.wrap{max-width:1120px;margin:auto;padding:24px 18px 56px}
+      h1{font-size:30px;margin:0 0 6px}.sub{color:#666;margin:0 0 20px}.sum{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 18px}
+      .sum div,.svc{background:#fff;border:1px solid #e2e5ea;border-radius:14px}.sum div{padding:14px}.sum b{display:block;font-size:25px}.sum span,.meta,.k,.usage span{color:#6b7078;font-size:12px}
+      .list{display:grid;gap:12px}.svc{padding:16px;border-left:5px solid #7b8088}.svc.operational{border-left-color:#22863a}.svc.degraded{border-left-color:#bf8700}.svc.outage{border-left-color:#cf222e}
+      .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.top h2{font-size:18px;margin:0 0 4px}.status,.impact,.auto{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700;white-space:nowrap}
+      .status.operational,.impact.no{background:#dafbe1;color:#116329}.status.degraded{background:#fff8c5;color:#7d4e00}.status.outage,.impact.yes{background:#ffebe9;color:#a40e26}.status.unknown{background:#eaeef2;color:#57606a}
+      .auto{background:#ddf4ff;color:#0969da;padding:3px 7px;font-size:10px;vertical-align:2px}.grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-top:14px}.k{display:block;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px}
+      .uv{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.usage b{font-size:20px}.usage.na{display:flex;gap:10px;align-items:baseline}.bar{height:7px;background:#eaeef2;border-radius:99px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:#57606a;border-radius:99px}
+      .detail{margin-top:14px;padding-top:13px;border-top:1px solid #eaeef2}.detail p{margin:0 0 8px;line-height:1.45}.detail a{font-size:12px;text-decoration:none}.foot{margin-top:18px;color:#6b7078;font-size:12px;line-height:1.5}
+      @media(max-width:650px){.wrap{padding:16px 12px 40px}h1{font-size:25px}.sum{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.top{align-items:center}}
+      @media(prefers-color-scheme:dark){body{background:#111316;color:#f3f4f6}.sum div,.svc{background:#191c20;border-color:#30343a}.sub,.sum span,.meta,.k,.usage span,.foot{color:#aab0b8}.detail{border-color:#30343a}.bar{background:#30343a}.status.operational,.impact.no{background:#183b24;color:#75d68c}.status.degraded{background:#453b13;color:#f2cf65}.status.outage,.impact.yes{background:#4b1e24;color:#ff9a9f}.status.unknown{background:#30343a;color:#c5cad1}.auto{background:#17344d;color:#7cc5ff}}
+    </style></head><body><div class="wrap">
+      <h1>Tech Availability Report</h1>
+      <p class="sub">Infrastructure health for IndiFeels reporting · automatically checked every 10 minutes${latest ? " · latest " + esc(fmtTime(latest)) : ""}</p>
+      <div class="sum"><div><b>${rows.length}</b><span>Monitored systems</span></div><div><b>${healthy}</b><span>Operational</span></div><div><b>${issues}</b><span>Issues</span></div><div><b>${impacting}</b><span>Impacting IndiFeels</span></div></div>
+      <div class="list">${cards}</div>
+      <div class="foot"><b>Usage %:</b> quota/capacity consumed where the provider exposes a reliable measurable limit. “N/A” means the provider does not expose a trustworthy percentage to this monitor — it does not mean 0%.<br><b>Automatic additions:</b> new production integrations detected in the repository are added as “Auto-detected / Unknown” until a health and usage probe is configured.${unknown ? " " + unknown + " service(s) currently need verification." : ""}</div>
+    </div></body></html>`;
+  }
+  async function openTechAvailability(r) {
+    page("report", r.title);
+    const st=$("#rep-status"), fr=$("#rep-frame");
+    st.hidden=false; st.textContent="Checking infrastructure…"; fr.hidden=true;
+    try { fr.srcdoc=techReportHTML(await loadTechAvailability()); fr.hidden=false; st.hidden=true; }
+    catch(e){ st.textContent="The Tech Availability Report couldn't be loaded. Pull down to refresh."; }
+  }
+
   // ---------- report viewer ----------
   async function openReport(id, full) {
     const r = reports.find((x) => x.id === id); if (!r) return go("home");
@@ -791,6 +870,7 @@
     if (id === "stock" && !full) return openStock(r);
     if (id === "order-attribution") return openAttribution(r);
     if (id === "footwear") return openSeoRankings(r);
+    if (id === "tech-availability") return openTechAvailability(r);
     page("report", r.title);
     const st = $("#rep-status"), fr = $("#rep-frame");
     st.hidden = false; st.textContent = "Opening report…"; fr.hidden = true;
