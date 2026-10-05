@@ -1,1 +1,1 @@
-Manual stock/catalog refresh trigger.\nRequest: refresh campaign attribution catalogue on 2026-10-05.\n
+Manual stock/attribution refresh trigger.\nRequest: test Shopify Customer Journey UTM auto-attribution on 2026-10-05.\n
