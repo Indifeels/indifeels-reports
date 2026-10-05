@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: indifeels-reports-repo-write
+  group: indifeels-google-tracked
   cancel-in-progress: false
 
 jobs:
