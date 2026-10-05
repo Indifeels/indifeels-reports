@@ -1,5 +1,5 @@
 """Sync an order attribution choice and optional contact details to Shopify.
-Environment: SHOPIFY_TOKEN, SHOPIFY_SHOP, ORDER_ID, ORDER_SOURCE, optional ORDER_EMAIL / ORDER_PHONE, CALLBACK_TOKEN.
+Environment: SHOPIFY_TOKEN, SHOPIFY_SHOP, ORDER_ID, ORDER_SOURCE, optional contact and campaign attribution fields, CALLBACK_TOKEN.
 """
 import json, os, re, sys, urllib.request
 
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     try:
         main()
         callback(True)
-        print("Order source/contact details synced to Shopify.")
+        print("Order source/contact/campaign attribution synced to Shopify.")
     except Exception as e:
         try:
             callback(False, e)
