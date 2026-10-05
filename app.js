@@ -802,15 +802,20 @@
     const impacting = rows.filter((x) => x.impact).length;
     const unknown = rows.filter((x) => x.status === "unknown").length;
     const latest = rows.map((x) => x.checked_at).filter(Boolean).sort().at(-1);
-    const bad = impacting > 0;
+    const stale = !latest || (Date.now() - new Date(latest).getTime()) > 25 * 60 * 1000;
+    const bad = impacting > 0 || unknown > 0 || stale;
     const first = rows.find((x) => x.impact);
+    const reason = impacting ? `${first?.name || "A service"} is currently affecting IndiFeels.`
+      : stale ? "The infrastructure monitor has not checked in within 25 minutes."
+      : unknown ? `${unknown} service${unknown === 1 ? "" : "s"} could not be verified.`
+      : "No monitored infrastructure outage is affecting IndiFeels.";
     return {
       stats: [[`${healthy}/${rows.length}`, "systems operational"], [String(issues), "current issues"], [String(impacting), "impacting IndiFeels"]],
       updated: latest ? fmtTime(latest) : "not checked yet",
-      warn: unknown ? `${unknown} service${unknown === 1 ? "" : "s"} could not be verified` : "",
-      signal: { label: bad ? "Attention" : "All clear", reason: bad ? `${first?.name || "A service"} is currently affecting IndiFeels.` : "No monitored infrastructure outage is affecting IndiFeels." },
+      warn: stale ? "Monitoring heartbeat overdue" : unknown ? `${unknown} service${unknown === 1 ? "" : "s"} could not be verified` : "",
+      signal: { label: bad ? "Attention" : "All clear", reason },
       health: bad ? "bad" : "good",
-      health_text: bad ? `${impacting} service${impacting === 1 ? "" : "s"} currently impacting reports or operations.` : ""
+      health_text: impacting ? `${impacting} service${impacting === 1 ? "" : "s"} currently impacting reports or operations.` : reason
     };
   }
   function techReportHTML(rows) {
