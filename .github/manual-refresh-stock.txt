@@ -1,1 +1,1 @@
-Manual stock report refresh trigger.
+Manual stock/catalog refresh trigger.\nRequest: refresh campaign attribution catalogue on 2026-10-05.\n
