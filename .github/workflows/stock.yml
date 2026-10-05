@@ -49,6 +49,15 @@ jobs:
       - run: pip install cryptography
         if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
 
+      - name: Refresh ad attribution choices
+        if: steps.gate.outputs.go == '1' && github.event_name != 'repository_dispatch'
+        env:
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
+          WINDSOR_FACEBOOK_ACCOUNT: "1634084963432990"
+          WINDSOR_GOOGLE_ACCOUNT: "788-887-6041"
+        run: python3 tools/refresh_attribution_catalog.py
+
       - name: Build stock report
         if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
         env:
