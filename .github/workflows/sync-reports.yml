@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: indifeels-reports-repo-write
+  group: indifeels-supabase-sync
   cancel-in-progress: false
 
 jobs:
