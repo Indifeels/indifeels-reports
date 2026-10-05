@@ -2,14 +2,13 @@ name: Sync reports from Supabase
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # every 30 minutes; only commits when files changed
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  # Shared repository write lock: prevents report workflows from changing r/* and status.json at the same time.
   group: indifeels-reports-repo-write
   cancel-in-progress: false
 
@@ -19,47 +18,65 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pull files from Supabase outbox
+      - name: Pull manifest-owned files from Supabase outbox
         env:
           SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
         run: |
           python3 - <<'PY'
-          import base64, hashlib, json, os, urllib.request
-          url = "https://yrigvovwyfpaybibfjva.supabase.co/rest/v1/rpc/sync_get_files"
-          key = "sb_publishable_8xv46B6mvnAN2McGDc4VEg_pNF0qHvD"
-          req = urllib.request.Request(url, method="POST",
+          import base64, hashlib, json, os, re, urllib.request
+
+          cfg = open("config.js", encoding="utf-8").read()
+          url = re.search(r'url:\s*"([^"]+)"', cfg).group(1)
+          key = re.search(r'key:\s*"([^"]+)"', cfg).group(1)
+          endpoint = url + "/rest/v1/rpc/sync_get_files"
+          req = urllib.request.Request(
+              endpoint,
+              method="POST",
               data=json.dumps({"p_token": os.environ["SYNC_READ_TOKEN"]}).encode(),
-              headers={"apikey": key, "Content-Type": "application/json"})
+              headers={"apikey": key, "Content-Type": "application/json"},
+          )
           rows = json.load(urllib.request.urlopen(req, timeout=60))
-          # Only write files that were uploaded since the last sync, so files
-          # updated by other workflows (e.g. the stock job) are never overwritten.
+
+          manifest = json.load(open("reports-manifest.json"))
+          sync_reports = [r for r in manifest["reports"] if r.get("supabase_sync")]
+          allowed_paths = {p for r in sync_reports for p in r.get("outputs", [])}
+          status_ids = {r["id"] for r in sync_reports}
+
           state_path = ".github/sync_state.json"
           state = json.load(open(state_path)) if os.path.exists(state_path) else {}
           batches, n = set(), 0
+
           for r in rows:
               path = r["path"]
               assert path.startswith("r/") and "/" not in path[2:] and ".." not in path, path
-              if path in ("r/stock.bin", "r/stock.meta.bin", "r/stock_moves.bin"):
-                  continue  # stock report is owned by the "Stock report refresh" workflow
+              if path != "r/status.json" and path not in allowed_paths:
+                  print("skip path not owned by Supabase sync:", path)
+                  continue
               if state.get(path) == r["sha256"]:
                   continue
+
               raw = base64.b64decode(r["content_b64"])
               assert hashlib.sha256(raw).hexdigest() == r["sha256"], "checksum " + path
               os.makedirs("r", exist_ok=True)
+
               if path == "r/status.json":
-                  # merge only the daily/monthly entries; keep the stock entry from the stock workflow
                   new = json.loads(raw)
                   cur = json.load(open(path)) if os.path.exists(path) else {}
-                  for k in ("daily", "monthly"):
-                      if k in new:
-                          cur[k] = new[k]
+                  for report_id in status_ids:
+                      if report_id in new:
+                          cur[report_id] = new[report_id]
                   json.dump(cur, open(path, "w"), indent=1, sort_keys=True)
               else:
                   open(path, "wb").write(raw)
+
               state[path] = r["sha256"]
-              batches.add(r["batch"]); n += 1
+              batches.add(r["batch"])
+              n += 1
+
           json.dump(state, open(state_path, "w"), indent=1, sort_keys=True)
-          open(os.environ["GITHUB_ENV"], "a").write("BATCH=" + " / ".join(sorted(batches)) + "\n")
+          open(os.environ["GITHUB_ENV"], "a").write(
+              "BATCH=" + " / ".join(sorted(batches)) + "\n"
+          )
           print(f"new files: {n} of {len(rows)}")
           PY
 
@@ -72,5 +89,10 @@ jobs:
             echo "No changes"
           else
             git commit -m "${BATCH:-Report sync}"
-            git push
+            for i in 1 2 3; do
+              git pull --rebase -q origin main
+              git push -q origin HEAD:main && exit 0
+              sleep 5
+            done
+            exit 1
           fi
