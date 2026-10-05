@@ -32,7 +32,7 @@ json.dump(w,open(os.path.join(OUT,"windsor_01.json"),"w"))
 
 shop=os.environ.get("SHOPIFY_SHOP","bvdxj3-r8.myshopify.com")
 api="https://"+shop+"/admin/api/2026-04/graphql.json"
-q='''query($after:String,$query:String!){ orders(first:250,after:$after,query:$query,sortKey:PROCESSED_AT){ pageInfo{hasNextPage endCursor} nodes{name processedAt cancelledAt sourceName m:metafield(namespace:"custom",key:"order_source"){value} t:currentTotalPriceSet{shopMoney{amount currencyCode}} } } }'''
+q='''query($after:String,$query:String!){ orders(first:250,after:$after,query:$query,sortKey:PROCESSED_AT){ pageInfo{hasNextPage endCursor} nodes{id name processedAt cancelledAt sourceName m:metafield(namespace:"custom",key:"order_source"){value} t:currentTotalPriceSet{shopMoney{amount currencyCode}} } } }'''
 nodes=[]; after=None
 while True:
     body=json.dumps({"query":q,"variables":{"after":after,"query":"processed_at:>="+start}}).encode()
