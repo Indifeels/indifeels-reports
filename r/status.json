@@ -9,8 +9,11 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-10-06T08:48+11:00",
-  "last_ok": "2026-10-06T08:48+11:00",
+  "at": "2026-10-06T09:42+11:00",
+  "code_sha": "31e9a73b187a4b4aea0694ad6330ff0f71b3e1a2",
+  "data_through": "2026-10-05T23:59:59+11:00",
+  "last_ok": "2026-10-06T09:42+11:00",
+  "manifest_version": "2026-10-06.2",
   "ok": true,
   "reason": ""
  },
