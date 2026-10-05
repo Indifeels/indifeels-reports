@@ -14,8 +14,8 @@ permissions:
   contents: write
 
 concurrency:
-  # Shared repository write lock: prevents report workflows from changing r/* and status.json at the same time.
-  group: indifeels-reports-repo-write
+  # Per-workflow lock: prevents duplicate runs of this workflow from cancelling unrelated report refreshes.
+  group: indifeels-daily-monthly
   cancel-in-progress: false
 
 jobs:
