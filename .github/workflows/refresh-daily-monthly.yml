@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   # Per-workflow lock: prevents duplicate runs of this workflow from cancelling unrelated report refreshes.
-  group: indifeels-daily-monthly
+  group: indifeels-reports-repo-write
   cancel-in-progress: false
 
 jobs:
@@ -76,6 +76,14 @@ jobs:
               cutoff=now
           print("REPORT_NOW="+cutoff.isoformat())
           PY
+
+      - name: Validate report contract
+        if: steps.gate.outputs.go == '1'
+        env:
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
+        run: python3 tools/report_preflight.py --phase pre daily monthly
 
       - name: Fetch live read-only inputs
         if: steps.gate.outputs.go == '1'
@@ -138,6 +146,7 @@ jobs:
           cp .refresh/out/monthly.bin r/monthly.bin
           cp .refresh/out/monthly.meta.bin r/monthly.meta.bin
 
+          python3 tools/report_preflight.py --phase post daily monthly
           python3 tools/status.py r daily ok
           python3 tools/status.py r monthly ok
 
