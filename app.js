@@ -531,6 +531,11 @@
   // ---------- unified SEO rankings ----------
   let SEO_CACHE = null;
   const seoEsc = esc;
+  const seoNum = (v) => v == null ? "—" : Number(v).toLocaleString("en-AU");
+  const seoPos = (v) => v == null || !Number.isFinite(Number(v)) ? "—" : Number(v).toFixed(1);
+  const seoDate = (v) => v ? new Date(v + "T00:00:00").toLocaleDateString("en-AU", { day:"numeric", month:"short", year:"numeric" }) : "—";
+  const seoNorm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+
   async function loadSeoRankingsData(force) {
     if (SEO_CACHE && !force) return SEO_CACHE;
     const a = await Promise.all([
@@ -543,56 +548,233 @@
     SEO_CACHE = { categories:a[0].data||[], products:a[1].data||[], snapshots:a[2].data||[] };
     return SEO_CACHE;
   }
-  function seoSummary(d) {
-    const ps=d.products||[], live=ps.filter(function(p){return p.published;});
-    const known=live.filter(function(p){return p.current_indexed!==null && p.current_indexed!==undefined;});
-    const cats=d.categories||[];
-    return {
-      cats:cats.length, products:ps.length, live:live.length,
-      indexed:known.filter(function(p){return p.current_indexed===true;}).length,
-      known:known.length,
-      bad:live.filter(function(p){return p.current_indexed===false;}).length,
-      unknown:live.filter(function(p){return p.current_indexed==null;}).length,
-      clicks:ps.reduce(function(a,p){return a+Number(p.current_clicks||0);},0),
-      imps:ps.reduce(function(a,p){return a+Number(p.current_impressions||0);},0),
-      refreshed:cats.map(function(c){return c.refreshed_at;}).filter(Boolean).sort().slice(-1)[0],
-      through:cats.map(function(c){return c.gsc_settled_through;}).filter(Boolean).sort().slice(-1)[0]
-    };
+
+  function seoProductHistory(d, p) {
+    return (d.snapshots || []).filter(function(s) {
+      return s.category_id === p.category_id && s.handle === p.handle;
+    }).slice().sort(function(x, y) { return String(x.snapshot_date).localeCompare(String(y.snapshot_date)); });
   }
-  function seoMeta(d) {
-    const s=seoSummary(d);
-    return {
-      updated:s.refreshed?fmtTime(s.refreshed):"",
-      stats:[[String(s.cats),"collections"],[String(s.products),"products tracked"],[Number(s.imps).toLocaleString("en-AU"),"GSC impressions (28d)"],[Number(s.clicks).toLocaleString("en-AU"),"GSC clicks (28d)"]],
-      warn:s.bad?(s.bad+" live page"+(s.bad===1?"":"s")+" not indexed"):(s.unknown?(s.unknown+" live URL"+(s.unknown===1?"":"s")+" awaiting index check"):""),
-      signal:{code:s.bad?"down":"hold",label:s.bad?"CHECK INDEXING":"TRACKING",reason:s.through?("GSC settled through "+new Date(s.through+"T00:00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short",year:"numeric"})+"."):"Daily SEO tracking is active."}
-    };
+  function seoBaselineSnapshot(d, p, cat) {
+    const h = seoProductHistory(d, p);
+    if (!h.length) return null;
+    return h.find(function(x) { return x.snapshot_date === cat.baseline_date; }) ||
+      h.find(function(x) { return String(x.snapshot_date) >= String(cat.baseline_date || ""); }) || h[0];
   }
-  function seoReportHTML(d) {
-    const cats=d.categories||[], ps=d.products||[], s=seoSummary(d), cmap={};
-    cats.forEach(function(c){cmap[c.id]=c;});
-    const num=function(v){return v==null?"—":Number(v).toLocaleString("en-AU");};
-    const pos=function(v){return v==null?"—":Number(v).toFixed(1);};
-    const date=function(v){return v?new Date(v+"T00:00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short"}):"—";};
-    const delta=function(p){return p.current_avg_position==null||p.baseline_avg_position==null?null:Number(p.baseline_avg_position)-Number(p.current_avg_position);};
-    const movers=ps.filter(function(p){return delta(p)!=null && Number(p.current_impressions||0)>0;}).sort(function(a,b){return delta(b)-delta(a);});
-    let filters='<button class="f on" data-cat="all">All</button>';
-    cats.forEach(function(c){filters+='<button class="f" data-cat="'+seoEsc(c.id)+'">'+seoEsc(c.title)+'</button>';});
-    let rows='';
-    ps.forEach(function(p){
-      const dlt=delta(p), cls=dlt==null?"":(dlt>0.05?"up":(dlt<-.05?"down":""));
-      const mv=dlt==null?"":('<span class="mv '+cls+'">'+(dlt>0?"▲":(dlt<0?"▼":"•"))+' '+Math.abs(dlt).toFixed(1)+'</span>');
-      const idx=p.current_indexed===true?'<span class="pill ok">Indexed</span>':(p.current_indexed===false?'<span class="pill bad">Not indexed</span>':'<span class="pill unk">Index ?</span>');
-      const st=p.published?'<span class="pill live">Live</span>':('<span class="pill off">'+seoEsc(p.shopify_status||"Not live")+'</span>');
-      const img=p.image_url?('<img src="'+seoEsc(p.image_url)+(p.image_url.indexOf("?")>=0?"&":"?")+'width=160" alt="" loading="lazy">'):'<div class="ph">No image</div>';
-      rows+='<article class="prod" data-cat="'+seoEsc(p.category_id)+'" data-status="'+(p.published?"live":"other")+'"><div class="pic">'+img+'</div><div class="pbody"><div class="ptop"><div><span class="cat">'+seoEsc((cmap[p.category_id]||{}).title||p.category_id)+'</span><a href="'+seoEsc(p.url)+'" target="_blank" rel="noopener">'+seoEsc(p.title)+'</a></div><div class="badges">'+st+idx+'</div></div><div class="kw"><b>Target</b> '+seoEsc(p.target_keyword||"—")+'</div><div class="kw"><b>Top query</b> '+seoEsc(p.current_top_query||"—")+(p.current_top_query_position!=null?' <span class="muted">#'+pos(p.current_top_query_position)+'</span>':'')+'</div><div class="metrics"><div><b>'+num(p.current_clicks)+'</b><span>clicks</span></div><div><b>'+num(p.current_impressions)+'</b><span>impressions</span></div><div><b>'+pos(p.current_avg_position)+'</b><span>avg position</span></div><div><b>'+pos(p.current_target_position)+'</b><span>target pos.</span></div></div><div class="progress"><span>Baseline '+date(p.baseline_date)+': '+pos(p.baseline_avg_position)+'</span>'+mv+'</div></div></article>';
+  function seoLatestSnapshot(d, p) {
+    const h = seoProductHistory(d, p);
+    return h.length ? h[h.length - 1] : null;
+  }
+  function seoKeywordRank(snapshot, keyword) {
+    if (!snapshot || !keyword) return null;
+    const k = seoNorm(keyword);
+    const qs = Array.isArray(snapshot.top_queries) ? snapshot.top_queries : [];
+    const same = qs.filter(function(q) { return seoNorm(q.q) === k && Number(q.impressions || 0) > 0 && q.position != null; });
+    if (same.length) {
+      const den = same.reduce(function(a, q) { return a + Number(q.impressions || 0); }, 0);
+      if (den > 0) return same.reduce(function(a, q) { return a + Number(q.position || 0) * Number(q.impressions || 0); }, 0) / den;
+    }
+    if (seoNorm(snapshot.top_query) === k && snapshot.top_query_position != null) return Number(snapshot.top_query_position);
+    return null;
+  }
+  function seoDays(a, b) {
+    if (!a || !b) return null;
+    return Math.floor((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000);
+  }
+  function seoPhase(cat) {
+    const n = seoDays(cat.baseline_date, cat.gsc_settled_through);
+    if (n == null) return { code:"unknown", label:"Tracking", note:"Waiting for settled GSC dates." };
+    if (n < 0) return { code:"waiting", label:"Too early to judge", note:"GSC is settled only through " + seoDate(cat.gsc_settled_through) + ", before the SEO baseline of " + seoDate(cat.baseline_date) + "." };
+    if (n < 7) return { code:"early", label:"Early signal", note:"Only " + (n + 1) + " day" + (n ? "s" : "") + " of post-SEO GSC data are settled." };
+    if (n < 28) return { code:"forming", label:"Trend forming", note:(n + 1) + " days of post-SEO GSC data are settled; the 28-day window is still mixing old and new SEO." };
+    return { code:"mature", label:"Comparable", note:"A full post-SEO 28-day window is available." };
+  }
+  function seoDelta(v, b) {
+    if (v == null || b == null) return null;
+    return Number(v) - Number(b);
+  }
+  function seoSigned(v, digits) {
+    if (v == null || !Number.isFinite(Number(v))) return "—";
+    const n = Number(v), d = digits == null ? 0 : digits;
+    return (n > 0 ? "+" : "") + n.toFixed(d);
+  }
+  function seoRankDelta(base, current) {
+    if (base == null || current == null) return null;
+    return Number(base) - Number(current);
+  }
+  function seoStatus(p, cat, base, current, baseRank, currentRank) {
+    const phase = seoPhase(cat);
+    if (!p.published) return { code:"off", label:"Not live", reason:"This product is not currently live, so SEO movement is not actionable." };
+    if (p.current_indexed === false) return { code:"bad", label:"Not indexed", reason:"Google reports this live URL as not indexed. Ranking improvement cannot happen until indexing is fixed." };
+    if (!current) return { code:"nodata", label:"No GSC data", reason:"No Search Console snapshot has been recorded for this product yet." };
+
+    const bi = base ? Number(base.impressions || 0) : null;
+    const ci = Number(current.impressions || 0);
+    const bc = base ? Number(base.clicks || 0) : null;
+    const cc = Number(current.clicks || 0);
+    const rd = seoRankDelta(baseRank, currentRank);
+
+    if (phase.code === "waiting") {
+      return { code:"wait", label:"Awaiting post-SEO data", reason:phase.note };
+    }
+    if (baseRank == null && currentRank != null) {
+      return { code:"new", label:"New keyword visibility", reason:"The selected keyword now appears around #" + seoPos(currentRank) + ", but there is no same-keyword baseline to calculate a rank gain yet." };
+    }
+    if (baseRank == null && currentRank == null) {
+      if ((bi || 0) === 0 && ci > 0) return { code:"new", label:"Visibility started", reason:"The product went from no recorded impressions to " + seoNum(ci) + " impressions, but the selected keyword has no comparable rank yet." };
+      return { code:"nodata", label:"No comparable keyword rank", reason:"The selected target keyword was not measured in both the baseline and latest snapshot." };
+    }
+    if (rd != null && rd >= 2) {
+      return { code:"good", label:"SEO improving", reason:"Target keyword improved " + seoPos(rd) + " ranks (#" + seoPos(baseRank) + " → #" + seoPos(currentRank) + "); impressions " + seoSigned(seoDelta(ci, bi), 0) + ", clicks " + seoSigned(seoDelta(cc, bc), 0) + "." };
+    }
+    if (rd != null && rd <= -2) {
+      return { code:"bad", label:"Ranking down", reason:"Target keyword dropped " + seoPos(Math.abs(rd)) + " ranks (#" + seoPos(baseRank) + " → #" + seoPos(currentRank) + "); impressions " + seoSigned(seoDelta(ci, bi), 0) + ", clicks " + seoSigned(seoDelta(cc, bc), 0) + "." };
+    }
+    if (ci > (bi || 0) || cc > (bc || 0)) {
+      return { code:"good", label:"Visibility improving", reason:"Rank is broadly stable, while impressions/clicks increased (" + seoNum(bi || 0) + " → " + seoNum(ci) + " impressions; " + seoNum(bc || 0) + " → " + seoNum(cc) + " clicks)." };
+    }
+    if (ci < (bi || 0) || cc < (bc || 0)) {
+      return { code:"warn", label:"Visibility softer", reason:"Rank is broadly stable, but search visibility is lower than the baseline window." };
+    }
+    return { code:"flat", label:"No clear change", reason:"The selected keyword rank and search visibility are essentially unchanged so far." };
+  }
+
+  function seoCategorySummary(d, cat) {
+    const ps = (d.products || []).filter(function(p) { return p.category_id === cat.id; });
+    const live = ps.filter(function(p) { return p.published; });
+    let baseImp=0, currImp=0, baseClicks=0, currClicks=0, comparableRanks=[], currentRanks=[];
+    live.forEach(function(p) {
+      const b=seoBaselineSnapshot(d,p,cat), c=seoLatestSnapshot(d,p);
+      if (b) { baseImp += Number(b.impressions||0); baseClicks += Number(b.clicks||0); }
+      if (c) { currImp += Number(c.impressions||0); currClicks += Number(c.clicks||0); }
+      const br=seoKeywordRank(b,p.target_keyword), cr=seoKeywordRank(c,p.target_keyword);
+      if (cr != null) currentRanks.push(cr);
+      if (br != null && cr != null) comparableRanks.push([br,cr]);
     });
-    const ml=function(arr,down){if(!arr.length)return '<p class="empty2">More history is needed.</p>';return arr.map(function(p){return '<div class="move-row"><span>'+seoEsc(p.title)+'</span><b class="'+(down?"neg":"pos")+'">'+(down?"▼":"▲")+' '+Math.abs(delta(p)).toFixed(1)+'</b></div>';}).join("");};
-    const through=s.through?new Date(s.through+"T00:00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short",year:"numeric"}):"—";
-    const css=':root{color-scheme:dark;--card:#0e1b2c;--line:#233851;--text:#eef6ff;--muted:#91a5bb;--blue:#4aa3ff;--green:#45d483;--red:#ff6875}*{box-sizing:border-box}body{margin:0;background:#07111f;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;padding:14px}.wrap{max-width:1180px;margin:auto}h1{font-size:24px;margin:0 0 4px}.sub{color:var(--muted);font-size:12px;margin-bottom:12px}.filters{display:flex;gap:7px;overflow:auto;padding:2px 0 12px;position:sticky;top:0;background:#07111ff2;z-index:5}.f{border:1px solid var(--line);background:#0d1b2d;color:var(--muted);border-radius:999px;padding:8px 12px;font-weight:700;white-space:nowrap}.f.on{color:white;border-color:#458fe4;background:#15375c}.top{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}.k{background:#0e1b2c;border:1px solid var(--line);border-radius:14px;padding:11px}.k b{display:block;font-size:18px}.k span{font-size:10px;color:var(--muted)}.moves{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}.movebox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px}.movebox h3{font-size:13px;margin:0 0 7px}.move-row{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid #16283c;font-size:11px}.pos{color:var(--green)}.neg{color:var(--red)}.toolbar{display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px}.toolbar h2{font-size:16px;margin:0}.toolbar select{background:#0d1b2d;color:white;border:1px solid var(--line);border-radius:9px;padding:7px}.list{display:grid;gap:8px}.prod{display:grid;grid-template-columns:82px 1fr;gap:11px;background:var(--card);border:1px solid var(--line);border-radius:15px;padding:9px}.prod.hide{display:none}.pic{width:82px;height:102px;border-radius:10px;overflow:hidden;background:#0a1524;display:flex;align-items:center;justify-content:center}.pic img{width:100%;height:100%;object-fit:cover}.ph{font-size:9px;color:var(--muted)}.ptop{display:flex;justify-content:space-between;gap:9px}.ptop a{display:block;color:white;text-decoration:none;font-weight:800;font-size:13px;line-height:1.25}.cat{font-size:9px;color:var(--blue);text-transform:uppercase}.badges{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.pill{font-size:8px;font-weight:800;border-radius:999px;padding:4px 6px;background:#16283c;color:var(--muted)}.pill.ok{background:#123525;color:#71e8a5}.pill.bad{background:#3b1920;color:#ff8891}.pill.unk{background:#332b18;color:#ffd278}.pill.live{background:#142f52;color:#79baff}.kw{font-size:10px;color:var(--muted);margin-top:4px}.kw b{color:#bdd0e5}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}.metrics div{background:#0a1625;border-radius:8px;padding:6px}.metrics b{display:block;font-size:12px}.metrics span{font-size:8px;color:var(--muted)}.progress{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:6px;color:var(--muted);font-size:9px}.mv{font-weight:800}.mv.up{color:var(--green)}.mv.down{color:var(--red)}.muted{color:var(--muted)}.foot{margin:14px 2px;color:var(--muted);font-size:10px}@media(max-width:720px){body{padding:10px}.top{grid-template-columns:repeat(2,1fr)}.top .k:last-child{grid-column:1/-1}.moves{grid-template-columns:1fr}.prod{grid-template-columns:70px 1fr}.pic{width:70px;height:90px}.metrics{grid-template-columns:repeat(2,1fr)}.ptop{display:block}.badges{justify-content:flex-start;margin-top:4px}}';
-    const js='let cat="all",status="all";function ap(){document.querySelectorAll(".prod").forEach(function(x){x.classList.toggle("hide",!((cat==="all"||x.dataset.cat===cat)&&(status==="all"||x.dataset.status===status)));});}document.querySelectorAll("[data-cat]").forEach(function(b){b.addEventListener("click",function(){document.querySelectorAll("[data-cat]").forEach(function(x){x.classList.remove("on");});b.classList.add("on");cat=b.dataset.cat;ap();});});document.getElementById("statusf").addEventListener("change",function(e){status=e.target.value;ap();});';
-    return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style></head><body><div class="wrap"><h1>SEO Rankings</h1><div class="sub">Google Search Console progress across collections · data settled through '+through+'</div><div class="filters">'+filters+'</div><div class="top"><div class="k"><b>'+s.cats+'</b><span>collections</span></div><div class="k"><b>'+s.products+'</b><span>products tracked</span></div><div class="k"><b>'+num(s.imps)+'</b><span>GSC impressions (28d)</span></div><div class="k"><b>'+num(s.clicks)+'</b><span>GSC clicks (28d)</span></div><div class="k"><b>'+s.indexed+'/'+s.known+'</b><span>indexed where checked</span></div></div><div class="moves"><div class="movebox"><h3>Biggest ranking gains</h3>'+ml(movers.slice(0,5),false)+'</div><div class="movebox"><h3>Biggest ranking drops</h3>'+ml(movers.slice().reverse().slice(0,5),true)+'</div></div><div class="toolbar"><h2>Products</h2><select id="statusf"><option value="all">All statuses</option><option value="live">Live only</option><option value="other">Not live / unlisted</option></select></div><div class="list">'+rows+'</div><div class="foot">Baselines: Men’s Footwear 1 Oct 2026; Bangles 4 Oct 2026. Product images come from Shopify. Ranking movement compares the saved 28-day GSC window with the product baseline.</div></div><script>'+js+'<\/script></body></html>';
+    const median=function(arr){
+      if(!arr.length) return null;
+      const x=arr.slice().sort(function(a,b){return a-b;});
+      const m=Math.floor(x.length/2);
+      return x.length%2?x[m]:(x[m-1]+x[m])/2;
+    };
+    const baseMedian=median(comparableRanks.map(function(x){return x[0];}));
+    const currMedianComparable=median(comparableRanks.map(function(x){return x[1];}));
+    const currMedian=median(currentRanks);
+    return {
+      products:ps.length, live:live.length,
+      baseImp:baseImp, currImp:currImp, baseClicks:baseClicks, currClicks:currClicks,
+      baseMedian:baseMedian, currMedianComparable:currMedianComparable, currMedian:currMedian,
+      comparableRankProducts:comparableRanks.length,
+      indexed:live.filter(function(p){return p.current_indexed===true;}).length,
+      notIndexed:live.filter(function(p){return p.current_indexed===false;}).length,
+      notChecked:live.filter(function(p){return p.current_indexed==null;}).length
+    };
   }
+
+  function seoMeta(d) {
+    const cats=d.categories||[];
+    const stats=[];
+    cats.forEach(function(cat) {
+      const s=seoCategorySummary(d,cat);
+      stats.push([seoNum(s.currImp), cat.title + " impressions"]);
+      stats.push([seoNum(s.currClicks), cat.title + " clicks"]);
+    });
+    const phases=cats.map(seoPhase);
+    const waiting=phases.some(function(x){return x.code==="waiting";});
+    const notIndexed=(d.products||[]).filter(function(p){return p.published && p.current_indexed===false;}).length;
+    const latest=(cats.map(function(c){return c.refreshed_at;}).filter(Boolean).sort().slice(-1)[0]);
+    const through=cats.map(function(c){return c.gsc_settled_through;}).filter(Boolean).sort().slice(-1)[0];
+    return {
+      updated: latest ? fmtTime(latest) : "",
+      stats: stats.slice(0,4),
+      warn: notIndexed ? notIndexed + " live page" + (notIndexed===1?" is":"s are") + " not indexed" : "",
+      signal: waiting ? { code:"hold", label:"TOO EARLY TO JUDGE", reason:"GSC is settled through " + seoDate(through) + "; the SEO baselines are newer." }
+        : { code:"hold", label:"SEO IMPACT TRACKING", reason:"Compare each category and product against its saved SEO baseline." }
+    };
+  }
+
+  function seoHistoryHTML(d, p, cat) {
+    const h=seoProductHistory(d,p).slice(-12);
+    if(!h.length) return '<div class="nohist">No historical snapshots yet.</div>';
+    let rows="";
+    h.forEach(function(x){
+      const r=seoKeywordRank(x,p.target_keyword);
+      rows += '<tr><td>' + seoDate(x.snapshot_date) + '</td><td>' + seoNum(x.impressions) + '</td><td>' + seoNum(x.clicks) + '</td><td>' + (r==null?'—':'#'+seoPos(r)) + '</td><td>' + (x.top_query?seoEsc(x.top_query) + (x.top_query_position!=null?' <span class="rank">#'+seoPos(x.top_query_position)+'</span>':''):'—') + '</td></tr>';
+    });
+    return '<div class="history"><div class="histnote">Each row is a trailing 28-day GSC snapshot. Selected keyword: <b>' + seoEsc(p.target_keyword||"—") + '</b>.</div><table><thead><tr><th>Snapshot</th><th>Impressions</th><th>Clicks</th><th>Selected keyword rank</th><th>Top query</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  function seoProductRow(d, p, cat, uid) {
+    const b=seoBaselineSnapshot(d,p,cat), c=seoLatestSnapshot(d,p);
+    const br=seoKeywordRank(b,p.target_keyword), cr=seoKeywordRank(c,p.target_keyword);
+    const rd=seoRankDelta(br,cr);
+    const status=seoStatus(p,cat,b,c,br,cr);
+    const img=p.image_url ? '<img src="' + seoEsc(p.image_url + (p.image_url.indexOf("?")>=0?"&":"?") + "width=120") + '" alt="" loading="lazy">' : '<span class="ph">No image</span>';
+    const live=p.published ? '<span class="badge live">Live</span>' : '<span class="badge off">' + seoEsc(p.shopify_status||"Not live") + '</span>';
+    const idx=p.current_indexed===true ? '<span class="badge indexed">Indexed</span>' :
+      (p.current_indexed===false ? '<span class="badge notindexed">Not indexed</span>' : '<span class="badge unchecked" title="Google index status has not been checked for this URL yet">Not checked</span>');
+    const beforeRank=br==null?'—':'#'+seoPos(br);
+    const currentRank=cr==null?'—':'#'+seoPos(cr);
+    let move='—', moveClass='neutral';
+    if(rd!=null){ move=(rd>0?'▲ +':rd<0?'▼ ':'• ')+seoPos(Math.abs(rd))+' ranks'; moveClass=rd>=2?'good':rd<=-2?'bad':'neutral'; }
+    const bi=b?Number(b.impressions||0):0, ci=c?Number(c.impressions||0):0, bc=b?Number(b.clicks||0):0, cc=c?Number(c.clicks||0):0;
+    const top=c&&c.top_query ? seoEsc(c.top_query) + (c.top_query_position!=null?' <span class="rank">#'+seoPos(c.top_query_position)+'</span>':'') : '—';
+    return '<tr class="product-row">' +
+      '<td class="prodcell"><div class="prodwrap"><span class="thumb">'+img+'</span><span><a href="'+seoEsc(p.url)+'" target="_blank" rel="noopener">'+seoEsc(p.title)+'</a><small>Top query: '+top+'</small></span></div></td>' +
+      '<td>'+live+'</td>' +
+      '<td>'+idx+'</td>' +
+      '<td class="keyword"><b>'+seoEsc(p.target_keyword||"—")+'</b><small>Chosen SEO keyword</small></td>' +
+      '<td class="metric"><b>'+beforeRank+'</b><small>'+seoDate(b&&b.snapshot_date)+'</small><span>'+seoNum(bi)+' imp · '+seoNum(bc)+' clk</span></td>' +
+      '<td class="metric"><b>'+currentRank+'</b><small>'+seoDate(c&&c.snapshot_date)+'</small><span>'+seoNum(ci)+' imp · '+seoNum(cc)+' clk</span></td>' +
+      '<td><span class="move '+moveClass+'">'+move+'</span><small>'+seoSigned(ci-bi,0)+' imp · '+seoSigned(cc-bc,0)+' clk</small></td>' +
+      '<td class="verdict"><span class="badge v-'+status.code+'">'+seoEsc(status.label)+'</span><small>'+seoEsc(status.reason)+'</small></td>' +
+      '<td><button class="histbtn" type="button" data-target="'+seoEsc(uid)+'">History</button></td>' +
+      '</tr>' +
+      '<tr class="history-row" id="'+seoEsc(uid)+'" hidden><td colspan="9">'+seoHistoryHTML(d,p,cat)+'</td></tr>';
+  }
+
+  function seoCategoryHTML(d, cat, index) {
+    const s=seoCategorySummary(d,cat), phase=seoPhase(cat);
+    const ps=(d.products||[]).filter(function(p){return p.category_id===cat.id;}).slice().sort(function(a,b){
+      const ca=seoLatestSnapshot(d,a), cb=seoLatestSnapshot(d,b);
+      return Number(cb&&cb.impressions||0)-Number(ca&&ca.impressions||0) || String(a.title).localeCompare(String(b.title));
+    });
+    const impDelta=s.currImp-s.baseImp, clickDelta=s.currClicks-s.baseClicks;
+    const rankDelta=seoRankDelta(s.baseMedian,s.currMedianComparable);
+    const rankText=s.comparableRankProducts ? ('#'+seoPos(s.currMedianComparable)) : (s.currMedian!=null?'#'+seoPos(s.currMedian):'—');
+    const rankSub=s.comparableRankProducts ? ('vs #'+seoPos(s.baseMedian)+' · '+(rankDelta==null?'—':seoSigned(rankDelta,1)+' ranks')) : 'No same-keyword baseline yet';
+    let rows="";
+    ps.forEach(function(p,i){ rows+=seoProductRow(d,p,cat,'seo-h-'+index+'-'+i); });
+    return '<details class="catbox cat-'+seoEsc(cat.id)+'" open>' +
+      '<summary><div><span class="catdot"></span><b>'+seoEsc(cat.title)+'</b><small>'+s.live+' live / '+s.products+' tracked · SEO baseline '+seoDate(cat.baseline_date)+'</small></div><span class="phase '+seoEsc(phase.code)+'">'+seoEsc(phase.label)+'</span></summary>' +
+      '<div class="catbody">' +
+        '<div class="phase-note">'+seoEsc(phase.note)+'</div>' +
+        '<div class="catstats">' +
+          '<div class="stat"><span>Impressions · 28d</span><b>'+seoNum(s.currImp)+'</b><small>Before '+seoNum(s.baseImp)+' · <strong class="'+(impDelta>0?'pos':impDelta<0?'neg':'flat')+'">'+seoSigned(impDelta,0)+'</strong></small></div>' +
+          '<div class="stat"><span>Clicks · 28d</span><b>'+seoNum(s.currClicks)+'</b><small>Before '+seoNum(s.baseClicks)+' · <strong class="'+(clickDelta>0?'pos':clickDelta<0?'neg':'flat')+'">'+seoSigned(clickDelta,0)+'</strong></small></div>' +
+          '<div class="stat"><span>Selected keyword rank</span><b>'+rankText+'</b><small>'+rankSub+'</small></div>' +
+          '<div class="stat"><span>Google index status</span><b>'+s.indexed+' indexed</b><small>'+s.notIndexed+' not indexed · '+s.notChecked+' not checked</small></div>' +
+        '</div>' +
+        '<div class="legend"><span><i class="lg good"></i>Improving</span><span><i class="lg bad"></i>Declining / not indexed</span><span><i class="lg wait"></i>Too early / needs data</span><span><i class="lg flat"></i>Stable</span></div>' +
+        '<div class="tablewrap"><table class="prodtable"><thead><tr><th>Product</th><th>Live</th><th>Google index</th><th>Selected keyword</th><th>Before SEO</th><th>Latest</th><th>Change</th><th>SEO verdict</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>' +
+      '</div></details>';
+  }
+
+  function seoReportHTML(d) {
+    const cats=d.categories||[];
+    const through=cats.map(function(c){return c.gsc_settled_through;}).filter(Boolean).sort().slice(-1)[0];
+    let sections="";
+    cats.forEach(function(cat,i){ sections+=seoCategoryHTML(d,cat,i); });
+    const css=':root{color-scheme:dark;--bg:#090d12;--panel:#111821;--panel2:#161f2a;--line:#293645;--text:#f6f7f9;--muted:#97a3af;--green:#52d68a;--red:#ff727c;--amber:#f2c35b;--purple:#b794f6;--rose:#f090b8;--soft:#1d2834}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top left,#181323 0,#090d12 38%);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;padding:16px}.wrap{max-width:1500px;margin:auto}h1{font-size:26px;margin:0 0 4px}.intro{color:var(--muted);font-size:12px;line-height:1.5;margin-bottom:14px}.explain{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 14px}.explain div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}.explain b{display:block;font-size:11px;margin-bottom:3px}.explain span{font-size:10px;color:var(--muted);line-height:1.4}.catbox{background:var(--panel);border:1px solid var(--line);border-radius:16px;margin:12px 0;overflow:hidden}.catbox summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;background:linear-gradient(90deg,#171e28,#111821)}.catbox summary::-webkit-details-marker{display:none}.catbox summary>div{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.catbox summary b{font-size:17px}.catbox summary small{color:var(--muted);font-size:10px}.catdot{width:10px;height:10px;border-radius:50%;display:inline-block;background:var(--purple);box-shadow:0 0 14px rgba(183,148,246,.55)}.cat-bangles .catdot{background:var(--rose);box-shadow:0 0 14px rgba(240,144,184,.5)}.phase{font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;border-radius:999px;padding:6px 8px;background:#2b2533;color:#d7b8ff}.phase.waiting,.phase.early{background:#362d18;color:#ffd978}.phase.forming{background:#28243a;color:#cbb7ff}.phase.mature{background:#163126;color:#7ce5aa}.catbody{padding:12px}.phase-note{font-size:11px;color:#ddc87f;background:#2b2517;border:1px solid #4b3d19;border-radius:10px;padding:9px 10px;margin-bottom:10px}.catstats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}.stat>span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}.stat>b{display:block;font-size:19px;margin:4px 0}.stat small{font-size:9px;color:var(--muted)}.pos{color:var(--green)}.neg{color:var(--red)}.flat{color:var(--muted)}.legend{display:flex;gap:12px;flex-wrap:wrap;margin:11px 1px 8px;color:var(--muted);font-size:9px}.legend span{display:flex;align-items:center;gap:4px}.lg{width:7px;height:7px;border-radius:50%;display:inline-block}.lg.good{background:var(--green)}.lg.bad{background:var(--red)}.lg.wait{background:var(--amber)}.lg.flat{background:#82909d}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px}.prodtable{border-collapse:collapse;width:100%;min-width:1250px;background:#0d141c}.prodtable th{position:sticky;top:0;background:#18212b;color:#aebac5;font-size:9px;text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:9px;border-bottom:1px solid var(--line);z-index:2}.prodtable td{padding:9px;border-top:1px solid #1e2a36;vertical-align:top;font-size:10px}.product-row:hover{background:#111c27}.prodwrap{display:flex;gap:8px;min-width:235px}.thumb{width:48px;height:58px;border-radius:8px;overflow:hidden;background:#1b2530;flex:0 0 auto;display:flex;align-items:center;justify-content:center}.thumb img{width:100%;height:100%;object-fit:cover}.ph{font-size:8px;color:var(--muted)}.prodwrap a{color:#fff;text-decoration:none;font-weight:750;font-size:11px;line-height:1.25}.prodwrap small,.keyword small,.metric small,.metric span,.verdict small,td>small{display:block;color:var(--muted);font-size:8px;line-height:1.35;margin-top:3px}.rank{color:#ddd;font-weight:800}.badge{display:inline-block;border-radius:999px;padding:4px 6px;font-size:8px;font-weight:800;white-space:nowrap}.badge.live{background:#183226;color:#77e4aa}.badge.off{background:#252d35;color:#a9b2bb}.badge.indexed{background:#1b3027;color:#75dfa8}.badge.notindexed,.badge.v-bad{background:#3a1e24;color:#ff9097}.badge.unchecked{background:#2d2b24;color:#d8c991}.badge.v-good,.badge.v-new{background:#163426;color:#76e4a8}.badge.v-wait,.badge.v-warn{background:#3a3018;color:#f3d276}.badge.v-flat,.badge.v-nodata,.badge.v-off{background:#252f39;color:#b9c2ca}.keyword{min-width:150px}.metric{min-width:105px}.metric b{font-size:14px}.move{display:inline-block;font-weight:850;font-size:10px}.move.good{color:var(--green)}.move.bad{color:var(--red)}.move.neutral{color:#c5ced7}.verdict{min-width:240px}.histbtn{border:1px solid #544568;background:#211a2c;color:#d9c4ff;border-radius:8px;padding:6px 8px;font-size:9px;font-weight:750}.history-row td{background:#0a1017;padding:0!important}.history{padding:10px 12px 12px}.histnote{font-size:9px;color:var(--muted);margin-bottom:7px}.history table{border-collapse:collapse;width:100%;min-width:700px}.history th,.history td{position:static!important;background:transparent!important;padding:6px!important;font-size:9px!important;border-top:1px solid #1c2834!important}.nohist{padding:10px;color:var(--muted);font-size:9px}.foot{color:var(--muted);font-size:9px;line-height:1.5;margin:14px 2px}.foot b{color:#cbd3da}@media(max-width:760px){body{padding:10px}.explain{grid-template-columns:1fr}.catstats{grid-template-columns:1fr 1fr}.catbox summary{align-items:flex-start}.catbox summary>div{display:grid;grid-template-columns:auto 1fr}.catbox summary small{grid-column:2}.phase{flex:0 0 auto}.prodtable{min-width:1180px}}';
+    const js='document.querySelectorAll(".histbtn").forEach(function(b){b.addEventListener("click",function(){var r=document.getElementById(b.dataset.target);if(!r)return;r.hidden=!r.hidden;b.textContent=r.hidden?"History":"Hide";});});';
+    return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'</style></head><body><div class="wrap">' +
+      '<h1>SEO Rankings</h1>' +
+      '<div class="intro">Purpose: measure whether the SEO work is improving Google visibility and ranking for each product. GSC data is settled through <b>'+seoDate(through)+'</b>. We compare each category against its own saved SEO baseline.</div>' +
+      '<div class="explain"><div><b>Selected keyword rank</b><span>The 28-day average Google position for the exact keyword chosen for that product. Lower is better: #3 is better than #10.</span></div><div><b>Before SEO vs Latest</b><span>Uses saved dated GSC snapshots, not the old baseline fields. Rank movement is only shown when the same selected keyword exists in both snapshots.</span></div><div><b>Index status</b><span>Indexed = Google has confirmed the URL. Not indexed = action needed. Not checked = we do not yet have a Google index check for that URL.</span></div></div>' +
+      sections +
+      '<div class="foot"><b>Reading the report:</b> Impressions and clicks are trailing 28-day GSC values. Rank is the selected target keyword position, not the vague average across every query. “Too early to judge” means GSC has not yet settled data after the SEO baseline, so the report will not pretend a movement was caused by the new SEO.</div>' +
+      '</div><script>'+js+'<\/script></body></html>';
+  }
+
   async function openSeoRankings(r) {
     page("report", r.title);
     const st=$("#rep-status"), fr=$("#rep-frame");
