@@ -1,0 +1,1 @@
+Manual refresh trigger for live Google tracked report.\nRequest: 2026-10-05 evening refresh.\n
