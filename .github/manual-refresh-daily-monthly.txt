@@ -1,3 +1,1 @@
-Manual refresh trigger for IndiFeels Daily/Monthly reports.
-Request: recovery test after GitHub mitigation on 2026-10-06; use previous completed day.
-Attempt: 2
+contract-smoke-test 2026-10-06 Melbourne
