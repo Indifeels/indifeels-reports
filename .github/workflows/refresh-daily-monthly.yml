@@ -87,6 +87,12 @@ jobs:
           mkdir -p .refresh/data .refresh/hub .refresh/sum .refresh/out
           python3 tools/fetch_reports.py .refresh/data
 
+      - name: Reconcile Shopify attribution
+        if: steps.gate.outputs.go == '1'
+        env:
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
+        run: python3 tools/reconcile_order_attribution.py .refresh/data
+
       - name: Build existing reports
         if: steps.gate.outputs.go == '1'
         env:
