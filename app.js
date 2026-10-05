@@ -51,6 +51,64 @@
   $$("#menu [data-go]").forEach((b) => b.addEventListener("click", () => go(b.dataset.go)));
   $("#m-out").addEventListener("click", async () => { await sb.auth.signOut(); location.hash = ""; start(); });
 
+  // ---------- phone push notifications ----------
+  const b64urlBytes = (s) => {
+    const p = "=".repeat((4 - s.length % 4) % 4);
+    const b = atob((s + p).replace(/-/g, "+").replace(/_/g, "/"));
+    return Uint8Array.from(b, (x) => x.charCodeAt(0));
+  };
+  async function phonePushState() {
+    const b = $("#m-push"); if (!b) return;
+    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      b.textContent = "Phone notifications unavailable"; b.disabled = true; return;
+    }
+    if (Notification.permission === "denied") {
+      b.textContent = "Phone notifications blocked"; b.disabled = true; return;
+    }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      b.textContent = sub ? "Phone notifications on" : "Enable phone notifications";
+      b.disabled = !!sub;
+    } catch (_) {
+      b.textContent = "Enable phone notifications"; b.disabled = false;
+    }
+  }
+  async function enablePhonePush() {
+    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      return toast("Phone push notifications aren't supported on this device.");
+    }
+    let p = Notification.permission;
+    if (p !== "granted") p = await Notification.requestPermission();
+    if (p !== "granted") { await phonePushState(); return toast("Phone notifications weren't enabled."); }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        const kr = await fetch(`${CFG.url}/functions/v1/report-phone-push?action=public-key`, { cache:"no-store" });
+        if (!kr.ok) throw new Error("Could not get push key.");
+        const { publicKey } = await kr.json();
+        sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64urlBytes(publicKey) });
+      }
+      const j = sub.toJSON();
+      const { error } = await sb.from("push_subscriptions").upsert({
+        user_id: me.id,
+        endpoint: sub.endpoint,
+        p256dh: j.keys?.p256dh || "",
+        auth_key: j.keys?.auth || "",
+        origin: location.origin,
+        enabled: true,
+        updated_at: new Date().toISOString()
+      }, { onConflict:"endpoint" });
+      if (error) throw error;
+      toast("Phone report notifications enabled");
+    } catch (e) {
+      toast(e?.message || "Could not enable phone notifications.");
+    }
+    await phonePushState();
+  }
+  $("#m-push")?.addEventListener("click", enablePhonePush);
+
   // install prompt (Android / desktop Chrome)
   let deferred = null;
   window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferred = e; $("#m-install").hidden = false; });
@@ -502,10 +560,8 @@
     b.textContent = Notification.permission === "granted" ? "Notifications on" : Notification.permission === "denied" ? "Notifications blocked" : "Enable notifications";
   }
   async function enableOrderNotifications() {
-    if (!("Notification" in window)) return toast("Notifications aren't supported on this device.");
-    const p = await Notification.requestPermission();
+    await enablePhonePush();
     updateOrderNotifyButton();
-    toast(p === "granted" ? "New-order notifications enabled" : "Notification permission wasn't enabled");
   }
   $("#oa-notify").addEventListener("click", enableOrderNotifications);
   async function notifyNewOrder(r) {
@@ -1041,7 +1097,7 @@
     $("#m-admin").hidden = !prof.is_admin;
     view("shell");
     try { await loadReports(); } catch (e) { toast(e.message); }
-    startAttributionRealtime(); updateOrderNotifyButton();
+    startAttributionRealtime(); updateOrderNotifyButton(); phonePushState();
     const id = location.hash.slice(1);
     if (id && reports.some((r) => r.id === id)) openReport(id); else { page("home"); renderHome(); }
   }
