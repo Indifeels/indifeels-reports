@@ -279,17 +279,55 @@
 
   // ---------- order attribution ----------
   const ORDER_SOURCES = ["Google Online Orders - WEB","Google CALLS MEL - SALE","Google Direction MEL - Store Visit","FB Online Orders - WEB","FB CALLS MEL - SALE","FB/IG PAGE MSGS MEL - SALE","FB WHATSAPP MSGS MEL - SALE","Organic Orders","Repeat Customer","Word of Mouth","Marketplace MEL","Marketplace SYD","Marketplace BRN","AI","Direct order","Invalid","Unknown Online","Unknown Offline"];
-  let OA = { rows: [], channel: null };
+  let OA = { rows: [], catalog: [], channel: null };
   const oaPending = () => OA.rows.filter((r) => !r.order_source || r.sync_status !== "synced");
   const oaDone = () => OA.rows.filter((r) => r.order_source && r.sync_status === "synced").slice(0, 40);
   const oaMoney = (v, c = "AUD") => new Intl.NumberFormat("en-AU", { style: "currency", currency: c, maximumFractionDigits: 2 }).format(Number(v || 0));
+  const oaCampaignValue = (x) => x ? `${x.platform} — ${x.campaign_name}` : "";
+  const oaCampaigns = () => {
+    const m = new Map();
+    OA.catalog.forEach((x) => {
+      const k = `${x.platform}|${x.campaign_id}`;
+      const old = m.get(k);
+      if (!old || String(x.last_seen_date || "") > String(old.last_seen_date || "")) m.set(k, x);
+    });
+    return Array.from(m.values()).sort((a, b) => {
+      const ae = /active|enabled/i.test(a.campaign_status || "") ? 0 : 1;
+      const be = /active|enabled/i.test(b.campaign_status || "") ? 0 : 1;
+      return ae - be || a.platform.localeCompare(b.platform) || a.campaign_name.localeCompare(b.campaign_name);
+    });
+  };
+  const oaFindCampaign = (value) => oaCampaigns().find((x) => oaCampaignValue(x) === String(value || "").trim()) || null;
+  const oaAdsets = (campaign) => {
+    if (!campaign) return [];
+    const m = new Map();
+    OA.catalog
+      .filter((x) => x.platform === campaign.platform && x.campaign_id === campaign.campaign_id && x.adset_id && x.adset_name)
+      .forEach((x) => {
+        const old = m.get(x.adset_id);
+        if (!old || String(x.last_seen_date || "") > String(old.last_seen_date || "")) m.set(x.adset_id, x);
+      });
+    return Array.from(m.values()).sort((a, b) => {
+      const ae = /active|enabled/i.test(a.adset_status || "") ? 0 : 1;
+      const be = /active|enabled/i.test(b.adset_status || "") ? 0 : 1;
+      return ae - be || a.adset_name.localeCompare(b.adset_name);
+    });
+  };
+  const oaFindAdset = (campaign, value) => oaAdsets(campaign).find((x) => x.adset_name === String(value || "").trim()) || null;
 
   async function loadAttribution() {
-    const { data, error } = await sb.from("order_attribution_queue")
-      .select("order_id,legacy_id,order_name,created_at,customer_name,contact_email,contact_phone,total,currency,shopify_source,products,order_source,sync_status,sync_error,updated_at")
-      .order("created_at", { ascending: false }).limit(150);
-    if (error) throw new Error(error.message);
-    OA.rows = data || [];
+    const [q, c] = await Promise.all([
+      sb.from("order_attribution_queue")
+        .select("order_id,legacy_id,order_name,created_at,customer_name,contact_email,contact_phone,total,currency,shopify_source,products,order_source,campaign_platform,campaign_id,campaign_name,adset_id,adset_name,sync_status,sync_error,updated_at")
+        .order("created_at", { ascending: false }).limit(150),
+      sb.from("ad_attribution_catalog")
+        .select("option_key,platform,campaign_id,campaign_name,campaign_status,adset_id,adset_name,adset_status,last_seen_date,refreshed_at")
+        .order("platform").order("campaign_name"),
+    ]);
+    if (q.error) throw new Error(q.error.message);
+    if (c.error) throw new Error(c.error.message);
+    OA.rows = q.data || [];
+    OA.catalog = c.data || [];
     return OA.rows;
   }
   function attributionStats() {
@@ -306,11 +344,31 @@
     const a = Array.isArray(r.products) ? r.products : [];
     return a.length ? a.map((p) => `${esc(p.title || "Item")}${Number(p.quantity || 1) > 1 ? ` × ${Number(p.quantity)}` : ""}`).join(" · ") : "Order details";
   }
+  function oaCampaignOptions() {
+    return oaCampaigns().map((x) => {
+      const status = x.campaign_status ? ` — ${x.campaign_status}` : "";
+      return `<option value="${esc(oaCampaignValue(x))}" label="${esc(x.platform + status)}"></option>`;
+    }).join("");
+  }
+  function oaAdsetOptions(campaign) {
+    return oaAdsets(campaign).map((x) => {
+      const status = x.adset_status ? ` — ${x.adset_status}` : "";
+      return `<option value="${esc(x.adset_name)}" label="${esc((campaign.platform === "Google" ? "Google ad group" : "Facebook ad set") + status)}"></option>`;
+    }).join("");
+  }
+  function oaStoredCampaign(r) {
+    if (!r.campaign_platform || !r.campaign_id || !r.campaign_name) return null;
+    return { platform:r.campaign_platform, campaign_id:r.campaign_id, campaign_name:r.campaign_name };
+  }
   function oaRow(r) {
     const syncing = r.sync_status === "syncing", failed = r.sync_status === "error";
     const opts = ['<option value="">Choose source…</option>'].concat(ORDER_SOURCES.map((x) => `<option value="${esc(x)}" ${r.order_source === x ? "selected" : ""}>${esc(x)}</option>`)).join("");
     const stat = syncing ? '<span class="oa-state syncing">Syncing…</span>' : failed ? '<span class="oa-state error">Sync failed</span>' : r.order_source ? '<span class="oa-state done">Synced</span>' : '<span class="oa-state pending">Pending</span>';
-    const saveText = syncing ? "Saving…" : failed ? "Retry Shopify" : "Save to Shopify";
+    const saveText = syncing ? "Saving…" : failed ? "Retry Shopify" : "Save attribution";
+    const campaign = oaStoredCampaign(r);
+    const campaignValue = campaign ? `${campaign.platform} — ${campaign.campaign_name}` : "";
+    const cid = `oa-campaign-${r.legacy_id}`, aid = `oa-adset-${r.legacy_id}`;
+    const adHint = campaign?.platform === "Google" ? "Search Google ad group…" : campaign?.platform === "Facebook" ? "Search Facebook ad set…" : "Choose campaign first…";
     return `<div class="oa-row ${failed ? "has-error" : ""}" data-order="${esc(r.order_id)}">
       <div class="oa-top">
         <a class="oa-order" href="https://admin.shopify.com/store/bvdxj3-r8/orders/${esc(r.legacy_id)}" target="_blank" rel="noopener">${esc(r.order_name)}</a>
@@ -320,8 +378,18 @@
       <div class="oa-meta">${esc((r.shopify_source || "Shopify").toUpperCase())} · ${fmtTime(r.created_at)}${r.customer_name ? " · " + esc(r.customer_name) : ""}</div>
       <div class="oa-products">${oaProducts(r)}</div>
       <div class="oa-fields">
-        <label class="oa-field"><span>Phone <em>optional</em></span><input class="oa-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="04xx xxx xxx" value="${esc(r.contact_phone || "")}" ${syncing ? "disabled" : ""}></label>
-        <label class="oa-field"><span>Email <em>optional</em></span><input class="oa-email" type="email" inputmode="email" autocomplete="email" placeholder="customer@example.com" value="${esc(r.contact_email || "")}" ${syncing ? "disabled" : ""}></label>
+        <label class="oa-field"><span>Phone <em>customer order</em></span><input class="oa-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="04xx xxx xxx" value="${esc(r.contact_phone || "")}" ${syncing ? "disabled" : ""}></label>
+        <label class="oa-field"><span>Email <em>customer order</em></span><input class="oa-email" type="email" inputmode="email" autocomplete="email" placeholder="customer@example.com" value="${esc(r.contact_email || "")}" ${syncing ? "disabled" : ""}></label>
+      </div>
+      <div class="oa-fields oa-ad-fields">
+        <label class="oa-field"><span>Campaign <em>search Facebook + Google</em></span>
+          <input class="oa-campaign" type="search" list="${cid}" autocomplete="off" placeholder="Search campaign…" value="${esc(campaignValue)}" ${syncing ? "disabled" : ""}>
+          <datalist id="${cid}" class="oa-campaign-list">${oaCampaignOptions()}</datalist>
+        </label>
+        <label class="oa-field"><span>Ad set / ad group <em>optional</em></span>
+          <input class="oa-adset" type="search" list="${aid}" autocomplete="off" placeholder="${esc(adHint)}" value="${esc(r.adset_name || "")}" ${syncing ? "disabled" : ""}>
+          <datalist id="${aid}" class="oa-adset-list">${oaAdsetOptions(campaign)}</datalist>
+        </label>
       </div>
       <div class="oa-actions">
         <select class="oa-source" aria-label="Order source for ${esc(r.order_name)}" ${syncing ? "disabled" : ""}>${opts}</select>
@@ -329,6 +397,15 @@
       </div>
       ${failed ? `<div class="oa-error">${esc(r.sync_error || "Shopify did not accept the update. Check the details and retry.")}</div>` : ""}
     </div>`;
+  }
+  function oaRefreshAdsetList(card) {
+    const campaignInput = card.querySelector(".oa-campaign");
+    const adsetInput = card.querySelector(".oa-adset");
+    const list = card.querySelector(".oa-adset-list");
+    const campaign = oaFindCampaign(campaignInput.value);
+    list.innerHTML = oaAdsetOptions(campaign);
+    adsetInput.placeholder = campaign ? (campaign.platform === "Google" ? "Search Google ad group…" : "Search Facebook ad set…") : "Choose campaign first…";
+    if (!campaign || (adsetInput.value && !oaFindAdset(campaign, adsetInput.value))) adsetInput.value = "";
   }
   function renderAttribution() {
     const p = oaPending(), d = oaDone(), value = p.reduce((a, r) => a + Number(r.total || 0), 0);
@@ -342,26 +419,57 @@
     $("#oa-status").textContent = "All current orders are attributed.";
     $("#oa-done-wrap").hidden = !d.length;
     $("#oa-done").innerHTML = d.map(oaRow).join("");
-    $$(".oa-save").forEach((b) => b.addEventListener("click", () => {
-      const card = b.closest(".oa-row");
+    $$(".oa-campaign").forEach((input) => {
+      input.addEventListener("change", () => oaRefreshAdsetList(input.closest(".oa-row")));
+      input.addEventListener("input", () => {
+        if (oaFindCampaign(input.value)) oaRefreshAdsetList(input.closest(".oa-row"));
+      });
+    });
+    $$(".oa-save").forEach((btn) => btn.addEventListener("click", () => {
+      const card = btn.closest(".oa-row");
       const source = card.querySelector(".oa-source").value;
       const emailEl = card.querySelector(".oa-email");
       const email = emailEl.value.trim();
       const phone = card.querySelector(".oa-phone").value.trim();
+      const campaignEl = card.querySelector(".oa-campaign");
+      const adsetEl = card.querySelector(".oa-adset");
+      const campaignText = campaignEl.value.trim();
+      const campaign = campaignText ? oaFindCampaign(campaignText) : null;
       if (!source) return toast("Choose an order source first");
       if (email && !emailEl.checkValidity()) return toast("Enter a valid email address or leave it blank");
-      syncAttribution(b.dataset.order, source, email, phone);
+      if (campaignText && !campaign) return toast("Choose the campaign from the Facebook/Google search list");
+      const adsetText = adsetEl.value.trim();
+      const adset = adsetText && campaign ? oaFindAdset(campaign, adsetText) : null;
+      if (adsetText && !campaign) return toast("Choose the campaign before the ad set/ad group");
+      if (adsetText && !adset) return toast(campaign?.platform === "Google" ? "Choose the Google ad group from the list" : "Choose the Facebook ad set from the list");
+      syncAttribution(btn.dataset.order, source, email, phone, campaign, adset);
     }));
   }
-  async function syncAttribution(orderId, source, email = "", phone = "") {
+  async function syncAttribution(orderId, source, email = "", phone = "", campaign = null, adset = null) {
     const row = OA.rows.find((r) => r.order_id === orderId);
     if (!row || !source) return;
     row.order_source = source;
     if (email) row.contact_email = email;
     if (phone) row.contact_phone = phone;
+    row.campaign_platform = campaign?.platform || null;
+    row.campaign_id = campaign?.campaign_id || null;
+    row.campaign_name = campaign?.campaign_name || null;
+    row.adset_id = adset?.adset_id || null;
+    row.adset_name = adset?.adset_name || null;
     row.sync_status = "syncing"; row.sync_error = null; renderAttribution();
     try {
-      const { data, error } = await sb.functions.invoke("order-attribution", { body: { action: "update", order_id: orderId, source, email, phone } });
+      const { data, error } = await sb.functions.invoke("order-attribution", { body: {
+        action: "update",
+        order_id: orderId,
+        source,
+        email,
+        phone,
+        campaign_platform: campaign?.platform || "",
+        campaign_id: campaign?.campaign_id || "",
+        campaign_name: campaign?.campaign_name || "",
+        adset_id: adset?.adset_id || "",
+        adset_name: adset?.adset_name || "",
+      } });
       if (error) {
         let msg = error.message; try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
         throw new Error(msg);
@@ -376,7 +484,11 @@
     page("attribution", r.title);
     $("#oa-pending").innerHTML = ""; $("#oa-sum").innerHTML = ""; $("#oa-done-wrap").hidden = true;
     const st = $("#oa-status"); st.hidden = false; st.textContent = "Loading…";
-    try { await loadAttribution(); renderAttribution(); } catch (e) { st.textContent = "The order queue couldn't be loaded. Pull down to refresh."; }
+    try {
+      await loadAttribution();
+      renderAttribution();
+      if (!OA.catalog.length) toast("Campaign list is refreshing; source attribution still works.");
+    } catch (e) { st.textContent = "The order queue couldn't be loaded. Pull down to refresh."; }
     updateOrderNotifyButton();
   }
   function updateOrderNotifyButton() {
@@ -415,7 +527,6 @@
         if (!$("#v-home").hidden) renderHome();
       }).subscribe();
   }
-
 
   // ---------- unified SEO rankings ----------
   let SEO_CACHE = null;
