@@ -17,7 +17,7 @@ on:
 
 concurrency:
   # Per-workflow lock: prevents duplicate runs of this workflow from cancelling unrelated report refreshes.
-  group: indifeels-stock
+  group: indifeels-reports-repo-write
   cancel-in-progress: false
 
 permissions:
@@ -49,6 +49,13 @@ jobs:
           python-version: "3.12"
       - run: pip install cryptography
         if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
+
+      - name: Validate report contract
+        if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          STOCK_KEY: ${{ secrets.STOCK_KEY }}
+        run: python3 tools/report_preflight.py --phase pre stock
 
       - name: Refresh and auto-fill ad attribution
         if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
@@ -92,6 +99,7 @@ jobs:
       - name: Publish stock changes
         if: always() && steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
         run: |
+          python3 tools/report_preflight.py --phase post stock
           git config user.name "Indifeels stock bot"
           git config user.email "actions@users.noreply.github.com"
           git add r/stock.bin r/stock.meta.bin r/stock_moves.bin r/status.json
