@@ -1,1 +1,2 @@
-Manual refresh trigger for IndiFeels Daily/Monthly reports.\nRequest: evening live refresh and Shopify attribution reconciliation on 2026-10-05.\n
+Manual refresh trigger for IndiFeels Daily/Monthly reports.
+Request: morning recovery refresh for previous completed day on 2026-10-06.
