@@ -1,2 +1,1 @@
-Manual refresh trigger for IndiFeels Daily/Monthly reports.
-Request: morning recovery; publish previous completed Sydney day to front tiles.
+Manual refresh trigger for IndiFeels Daily/Monthly reports.\nRequest: evening live refresh and Shopify attribution reconciliation on 2026-10-05.\n
