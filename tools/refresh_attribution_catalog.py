@@ -18,7 +18,7 @@ CALLBACK = os.environ.get(
     "https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/order-attribution-callback",
 )
 DATE_TO = date.today().isoformat()
-DATE_FROM = (date.today() - timedelta(days=120)).isoformat()
+DATE_FROM = (date.today() - timedelta(days=90)).isoformat()
 
 def fetch(connector, account, fields):
     q = urllib.parse.urlencode({
