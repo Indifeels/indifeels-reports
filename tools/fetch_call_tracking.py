@@ -54,8 +54,11 @@ def scrub(s):
 def sb_rpc(fn, body):
     req = urllib.request.Request(SB_URL + "/rest/v1/rpc/" + fn, json.dumps(body).encode(),
                                  {"apikey": SB_KEY, "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        t = r.read()
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            t = r.read()
+    except urllib.error.HTTPError as e:   # keep the database's own error message (no secrets in it) so failures are diagnosable
+        raise RuntimeError("%s HTTP %d: %s" % (fn, e.code, scrub(e.read().decode("utf-8", "replace"))))
     return json.loads(t) if t else None
 
 
