@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>IndiFeels Voice Lab</title>
+<style>
+:root{--ink:#17130f;--gold:#b6946e;--sand:#f4eee7;--muted:#776d64;--line:#e6ddd4;--danger:#a53a3a;--ok:#2e6c3c}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:linear-gradient(180deg,#f8f4ef 0%,#eee6dc 100%);color:var(--ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{min-height:100vh}.shell{width:min(760px,calc(100% - 24px));margin:0 auto;padding:22px 0 64px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px}.brand{display:flex;align-items:center;gap:12px}.mark{width:44px;height:44px;border-radius:50%;background:var(--ink);color:white;display:grid;place-items:center;font-weight:800;letter-spacing:.5px}.top h1{font-size:21px;margin:0}.sub{font-size:12px;color:var(--muted);margin-top:3px}.badge{font-size:10px;font-weight:800;letter-spacing:.5px;padding:7px 9px;border:1px solid var(--line);border-radius:999px;background:#fff}
+.card{background:#fff;border:1px solid rgba(23,19,15,.08);border-radius:18px;padding:16px;margin-bottom:13px;box-shadow:0 12px 34px rgba(55,39,24,.07)}.card h2{font-size:15px;margin:0 0 11px}.auth{display:grid;gap:9px}.input{width:100%;height:46px;border:1px solid var(--line);border-radius:12px;padding:0 13px;font:inherit;background:#fff}.grid{display:grid;grid-template-columns:1fr auto;gap:8px}.btn{height:46px;border-radius:12px;border:1px solid var(--ink);background:var(--ink);color:#fff;padding:0 16px;font:700 13px/1 inherit;cursor:pointer}.btn:disabled{opacity:.45;cursor:not-allowed}.btn.alt{background:#fff;color:var(--ink);border-color:var(--line)}.btn.danger{color:var(--danger)}.small{font-size:11px;color:var(--muted);margin:0}.error{color:var(--danger)!important}.okmsg{color:var(--ok)!important}
+.examples{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 10px;font-size:11px;cursor:pointer}
+.product{display:grid;grid-template-columns:104px 1fr;gap:13px;align-items:start}.product img{width:104px;height:132px;object-fit:cover;border-radius:12px;background:var(--sand)}.product h3{margin:1px 0 5px;font-size:16px}.price{font-weight:800;margin-bottom:9px}.variants{display:flex;gap:6px;flex-wrap:wrap}.variant{border:1px solid var(--line);border-radius:999px;padding:6px 8px;font-size:11px}.variant.ok{background:#f3f8f2}.variant.no{opacity:.55;text-decoration:line-through}
+.voice{display:grid;justify-items:center;text-align:center;padding-top:4px}.orb{width:94px;height:94px;border-radius:50%;display:flex;align-items:center;justify-content:center;gap:6px;background:radial-gradient(circle at 34% 28%,#ead3bb,#b6946e 48%,#604633);box-shadow:0 12px 30px rgba(182,148,110,.3);margin:7px 0 12px}.orb span{width:5px;height:20px;background:#fff;border-radius:99px}.orb span:nth-child(2){height:35px}.live .orb span{animation:w .7s ease-in-out infinite alternate}.live .orb span:nth-child(2){animation-delay:.15s}.live .orb span:nth-child(3){animation-delay:.3s}.connecting .orb{animation:p 1.1s ease-in-out infinite}.status{font-size:14px;font-weight:800}.hint{font-size:11px;color:var(--muted);margin:5px 0 13px;line-height:1.45}.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}.transcript{width:100%;text-align:left;background:#faf7f3;border-radius:13px;padding:10px 12px;margin-top:13px;max-height:220px;overflow:auto}.line{display:grid;grid-template-columns:68px 1fr;gap:8px;padding:4px 0;font-size:12px;line-height:1.45}.line b{color:#755943}.warning{font-size:11px;line-height:1.45;color:#5d5146;background:#fffaf3;border-left:4px solid var(--gold);border-radius:10px;padding:10px 12px}.hidden{display:none!important}@keyframes w{from{transform:scaleY(.55)}to{transform:scaleY(1.35)}}@keyframes p{50%{transform:scale(.94);opacity:.78}}@media(max-width:560px){.shell{width:min(100% - 16px,760px);padding-top:14px}.badge{display:none}.card{border-radius:15px;padding:13px}.grid{grid-template-columns:1fr}.product{grid-template-columns:86px 1fr}.product img{width:86px;height:110px}.orb{width:86px;height:86px}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <div class="brand"><div class="mark">IF</div><div><h1>IndiFeels Voice Lab</h1><div class="sub">Private test environment — not on indifeels.com</div></div></div>
+    <div class="badge">TEST ONLY</div>
+  </header>
+
+  <section id="authCard" class="card">
+    <h2>Enter test access code</h2>
+    <div class="auth">
+      <input id="accessCode" class="input" type="password" autocomplete="off" placeholder="Access code">
+      <button id="unlock" class="btn" type="button">Open testing lab</button>
+      <p id="authMsg" class="small">Your OpenAI API key is never sent to this page.</p>
+    </div>
+  </section>
+
+  <main id="lab" class="hidden">
+    <section class="card">
+      <h2>1. Choose an IndiFeels product</h2>
+      <div class="grid">
+        <input id="productInput" class="input" value="green-embroidered-anarkali-gown" placeholder="Paste product URL or handle">
+        <button id="loadProduct" class="btn" type="button">Load product</button>
+      </div>
+      <div class="examples">
+        <button class="chip" data-handle="green-embroidered-anarkali-gown">Green Anarkali</button>
+        <button class="chip" data-handle="pink-floral-printed-festival-wear-palazzo-suit">Pink Floral Palazzo</button>
+      </div>
+      <p id="productMsg" class="small"></p>
+    </section>
+
+    <section id="productCard" class="card hidden"><div id="productView" class="product"></div></section>
+
+    <section class="card">
+      <h2>2. Test the voice assistant</h2>
+      <div id="voiceBox" class="voice">
+        <div class="orb" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div id="voiceStatus" class="status">Load a product first</div>
+        <div class="hint">Try English, Hindi or Punjabi: “What product is this?”, “Size 40 available?”, or “Eh kehde sizes vich available aa?”</div>
+        <div class="controls">
+          <button id="startVoice" class="btn" type="button" disabled>Start voice</button>
+          <button id="muteVoice" class="btn alt hidden" type="button">Mute</button>
+          <button id="endVoice" class="btn alt danger hidden" type="button">End</button>
+        </div>
+        <div id="transcript" class="transcript hidden">
+          <div class="line"><b>You</b><span id="userText"></span></div>
+          <div class="line"><b>IndiFeels</b><span id="assistantText"></span></div>
+        </div>
+        <audio id="audio" autoplay playsinline></audio>
+      </div>
+    </section>
+
+    <div class="warning">This test lab cannot edit Shopify, place orders, change stock or alter your website. It only tests voice conversation and verified product-page context.</div>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var code="",product=null,pc=null,dc=null,stream=null,muted=false,closeTimer=null;
+  var VOICE_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-session";\n  var VOICE_PRODUCT_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-product";
+  var TEST_PRODUCTS={
+    "green-embroidered-anarkali-gown":{
+      id:"gid://shopify/Product/9699982672229",
+      title:"Green Embroidered Anarkali Gown with Dupatta",
+      handle:"green-embroidered-anarkali-gown",
+      vendor:"IndiFeels Australia",
+      price:"$110.00 AUD",
+      featured_image:"https://cdn.shopify.com/s/files/1/0880/3398/4869/files/New-Project-2021-09-16T121359.702.jpg?v=1775923324",
+      page_url:"https://indifeels.com/products/green-embroidered-anarkali-gown",
+      variants:[
+        {title:"XS-34",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"S-36",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"M-38",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"L-40",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"XL-42",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"XXL-44",available:false,inventory_quantity:0,price:"$110.00 AUD"},
+        {title:"3XL-46",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"4XL-48",available:true,inventory_quantity:1,price:"$110.00 AUD"},
+        {title:"5XL-50",available:false,inventory_quantity:0,price:"$110.00 AUD"}
+      ]
+    },
+    "pink-floral-printed-festival-wear-palazzo-suit":{
+      id:"gid://shopify/Product/9700048011621",
+      title:"Floral Printed Festival Wear Palazzo Suit",
+      handle:"pink-floral-printed-festival-wear-palazzo-suit",
+      vendor:"IndiFeels Australia",
+      price:"$130.00 AUD",
+      featured_image:"https://cdn.shopify.com/s/files/1/0880/3398/4869/files/6698_9cf22a00-f7c1-48e7-a11d-b6ce3fbb2bb2.jpg?v=1775953515",
+      page_url:"https://indifeels.com/products/pink-floral-printed-festival-wear-palazzo-suit",
+      variants:[
+        {title:"S-36",available:true,inventory_quantity:1,price:"$130.00 AUD"},
+        {title:"M-38",available:true,inventory_quantity:1,price:"$130.00 AUD"},
+        {title:"L-40",available:true,inventory_quantity:1,price:"$130.00 AUD"},
+        {title:"XL-42",available:true,inventory_quantity:2,price:"$130.00 AUD"},
+        {title:"XXL-44",available:true,inventory_quantity:1,price:"$130.00 AUD"},
+        {title:"3XL-46",available:true,inventory_quantity:1,price:"$130.00 AUD"}
+      ]
+    }
+  };
+  var $=function(id){return document.getElementById(id)};
+  var authCard=$("authCard"),lab=$("lab"),access=$("accessCode"),unlock=$("unlock"),authMsg=$("authMsg"),productInput=$("productInput"),loadProductBtn=$("loadProduct"),productMsg=$("productMsg"),productCard=$("productCard"),productView=$("productView"),voiceBox=$("voiceBox"),voiceStatus=$("voiceStatus"),startBtn=$("startVoice"),muteBtn=$("muteVoice"),endBtn=$("endVoice"),transcript=$("transcript"),userText=$("userText"),assistantText=$("assistantText"),audio=$("audio");
+
+  function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]})}
+  function handleFromInput(v){v=(v||"").trim();try{if(/^https?:\/\//i.test(v)){var u=new URL(v),m=u.pathname.match(/\/products\/([^/?#]+)/);if(m)return m[1]}}catch(e){}return v.replace(/^\/products\//,"").split(/[?#]/)[0]}
+  function state(s,msg){voiceBox.classList.remove("live","connecting");if(s)voiceBox.classList.add(s);voiceStatus.textContent=msg||""}
+  function transcriptShow(){transcript.classList.remove("hidden");transcript.scrollTop=transcript.scrollHeight}
+  function waitIce(c,ms){if(c.iceGatheringState==="complete")return Promise.resolve();return new Promise(function(resolve){var done=false,t=setTimeout(finish,ms||10000);function finish(){if(done)return;done=true;clearTimeout(t);c.removeEventListener("icegatheringstatechange",change);resolve()}function change(){if(c.iceGatheringState==="complete")finish()}c.addEventListener("icegatheringstatechange",change)})}
+
+  async function fetchProduct(handle){
+    var res=await fetch(VOICE_PRODUCT_API+"?handle="+encodeURIComponent(handle),{
+      method:"GET",
+      headers:{"X-IndiFeels-Test-Key":code},
+      cache:"no-store",
+      credentials:"omit"
+    });
+    var data=await res.json().catch(function(){return{}});
+    if(!res.ok){
+      if(data.error==="invalid_lab_code")throw new Error("Incorrect access code.");
+      if(data.error==="product_not_found")throw new Error("Product not found. Paste a current IndiFeels product URL or handle.");
+      throw new Error("Could not load this product right now.");
+    }
+    if(!data.product)throw new Error("No product data returned.");
+    return data.product;
+  }
+  function renderProduct(){
+    var variants=(product.variants||[]).map(function(v){var qty=(typeof v.inventory_quantity==="number")?' · '+v.inventory_quantity+' available':' · available';return '<span class="variant '+(v.available?'ok':'no')+'">'+esc(v.title)+(v.available?qty:' · sold out')+'</span>'}).join("");
+    productView.innerHTML='<img src="'+esc(product.featured_image)+'" alt=""><div><h3>'+esc(product.title)+'</h3><div class="price">'+esc(product.price)+'</div><div class="variants">'+variants+'</div><p class="small">Product availability is loaded from the current IndiFeels product source. Exact quantities are spoken only when verified.</p></div>';
+    productCard.classList.remove("hidden");
+    startBtn.disabled=false;
+    state("","Ready to test");
+  }
+  async function loadProduct(){
+    var handle=handleFromInput(productInput.value);
+    if(!handle){productMsg.textContent="Enter a product URL or handle.";productMsg.className="small error";return false}
+    productMsg.textContent="Loading live product data…";productMsg.className="small";loadProductBtn.disabled=true;
+    try{product=await fetchProduct(handle);productInput.value=product.handle;renderProduct();productMsg.textContent="Product loaded.";productMsg.className="small okmsg";return true}
+    catch(e){product=null;productCard.classList.add("hidden");startBtn.disabled=true;productMsg.textContent=e.message;productMsg.className="small error";state("","Load a product first");return false}
+    finally{loadProductBtn.disabled=false}
+  }
+  function cleanup(){
+    if(closeTimer){clearTimeout(closeTimer);closeTimer=null}
+    try{if(dc)dc.close()}catch(e){}try{if(pc)pc.close()}catch(e){}
+    if(stream)stream.getTracks().forEach(function(t){try{t.stop()}catch(e){}});
+    pc=null;dc=null;stream=null;audio.srcObject=null;muted=false;
+    startBtn.classList.remove("hidden");startBtn.disabled=!product;startBtn.textContent="Start voice";
+    muteBtn.classList.add("hidden");endBtn.classList.add("hidden");muteBtn.textContent="Mute";
+    state("",product?"Ready to test":"Load a product first");
+  }
+  function onEvent(ev){
+    if(!ev||!ev.type)return;
+    if(ev.type==="session.started"){state("live","Live — speak naturally and interrupt anytime");startBtn.classList.add("hidden");muteBtn.classList.remove("hidden");endBtn.classList.remove("hidden");return}
+    if(ev.type==="session.input_transcript.delta"&&ev.delta){userText.textContent+=ev.delta;transcriptShow();return}
+    if(ev.type==="session.output_transcript.delta"&&ev.delta){assistantText.textContent+=ev.delta;transcriptShow();return}
+    if(ev.type==="session.closed"){cleanup();return}
+    if(ev.type==="error"){state("","Voice error — end and retry")}
+  }
+  async function startVoice(){
+    if(!product||pc)return;
+    voiceStatus.classList.remove("error");userText.textContent="";assistantText.textContent="";transcript.classList.add("hidden");startBtn.disabled=true;startBtn.textContent="Connecting…";state("connecting","Connecting securely…");
+    try{
+      if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error("This browser does not support microphone access.");
+      stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      pc=new RTCPeerConnection();
+      pc.addEventListener("track",function(ev){var s=ev.streams&&ev.streams[0]?ev.streams[0]:new MediaStream([ev.track]);audio.srcObject=s;var p=audio.play();if(p&&p.catch)p.catch(function(){})});
+      stream.getAudioTracks().forEach(function(t){pc.addTrack(t,stream)});
+      dc=pc.createDataChannel("oai-events");
+      dc.addEventListener("message",function(e){try{onEvent(JSON.parse(e.data))}catch(_){}});
+      var offer=await pc.createOffer();await pc.setLocalDescription(offer);await waitIce(pc,10000);
+      var res=await fetch(VOICE_API,{method:"POST",headers:{"Content-Type":"application/json","X-IndiFeels-Voice":"1","X-IndiFeels-Test-Key":code},body:JSON.stringify({sdp:pc.localDescription.sdp,context:{source:"voice-lab",page_type:"product",page_url:product.page_url,product:product}}),cache:"no-store",credentials:"omit"});
+      var data=await res.json().catch(function(){return{}});
+      if(!res.ok){
+        if(data.error==="voice_not_configured")throw new Error("OpenAI API key is not connected in Supabase yet.");
+        if(data.error==="invalid_lab_code")throw new Error("Incorrect access code.");
+        throw new Error("Could not start the voice session.");
+      }
+      if(!data.answer_sdp)throw new Error("Voice service returned no connection.");
+      await pc.setRemoteDescription({type:"answer",sdp:data.answer_sdp});state("connecting","Almost ready…");
+    }catch(e){
+      var msg=e&&e.name==="NotAllowedError"?"Microphone permission is required.":(e.message||"Voice could not start.");
+      cleanup();voiceStatus.textContent=msg;voiceStatus.classList.add("error");
+    }
+  }
+  function endVoice(){if(!pc){cleanup();return}try{if(dc&&dc.readyState==="open")dc.send(JSON.stringify({type:"session.close"}))}catch(e){}state("connecting","Ending…");closeTimer=setTimeout(cleanup,1600)}
+  function toggleMute(){if(!stream)return;muted=!muted;stream.getAudioTracks().forEach(function(t){t.enabled=!muted});muteBtn.textContent=muted?"Unmute":"Mute";voiceStatus.textContent=muted?"Microphone muted":"Live — speak naturally and interrupt anytime";try{if(dc&&dc.readyState==="open")dc.send(JSON.stringify({type:muted?"session.input_audio.mute":"session.input_audio.unmute"}))}catch(e){}}
+
+  unlock.addEventListener("click",async function(){
+    code=access.value.trim();
+    if(!code){authMsg.textContent="Enter the access code.";authMsg.className="small error";return}
+    unlock.disabled=true;authMsg.textContent="Checking access…";authMsg.className="small";
+    var ok=await loadProduct();
+    unlock.disabled=false;
+    if(ok){authCard.classList.add("hidden");lab.classList.remove("hidden")}
+    else{authMsg.textContent=productMsg.textContent||"Access could not be verified.";authMsg.className="small error"}
+  });
+  access.addEventListener("keydown",function(e){if(e.key==="Enter")unlock.click()});
+  loadProductBtn.addEventListener("click",loadProduct);
+  productInput.addEventListener("keydown",function(e){if(e.key==="Enter")loadProduct()});
+  document.querySelectorAll("[data-handle]").forEach(function(b){b.addEventListener("click",function(){productInput.value=b.getAttribute("data-handle");loadProduct()})});
+  startBtn.addEventListener("click",startVoice);muteBtn.addEventListener("click",toggleMute);endBtn.addEventListener("click",endVoice);
+  window.addEventListener("pagehide",function(){if(pc)endVoice()});
+})();
+</script>
+</body>
+</html>
