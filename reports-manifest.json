@@ -70,11 +70,13 @@
       ],
       "required_env": [
         "WINDSOR_API_KEY",
-        "GOOGLE_TRACKED_KEY"
+        "GOOGLE_TRACKED_KEY",
+        "SHOPIFY_TOKEN"
       ],
       "builders": [
         "tools/fetch_google_tracked.py",
-        "tools/google_tracked.py"
+        "tools/google_tracked.py",
+        "tools/google_tracked.css"
       ],
       "outputs": [
         "r/google-tracked.bin",

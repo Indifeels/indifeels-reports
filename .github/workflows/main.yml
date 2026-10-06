@@ -48,43 +48,25 @@ jobs:
         if: steps.gate.outputs.go == '1'
         run: pip install cryptography
 
-      - name: Set Sydney report cutoff
-        if: steps.gate.outputs.go == '1'
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          python3 - <<'PY' >> "$GITHUB_ENV"
-          import os
-          from datetime import datetime, timedelta, time
-          from zoneinfo import ZoneInfo
-          tz=ZoneInfo("Australia/Sydney")
-          now=datetime.now(tz)
-          event=os.environ.get("EVENT_NAME","")
-          if now.hour == 6 or (event != "schedule" and now.hour < 12):
-              day=now.date()-timedelta(days=1)
-              cutoff=datetime.combine(day,time(23,59,59),tzinfo=tz)
-          else:
-              cutoff=now
-          print("REPORT_NOW="+cutoff.isoformat())
-          PY
-
       - name: Validate report contract
         if: steps.gate.outputs.go == '1'
         env:
           WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
           GOOGLE_TRACKED_KEY: ${{ secrets.GOOGLE_TRACKED_KEY }}
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
         run: python3 tools/report_preflight.py --phase pre google-tracked
 
-      - name: Fetch live Google Ads data
+      - name: Fetch Google Ads and Shopify data (data only, no calculation)
         if: steps.gate.outputs.go == '1'
         env:
           WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
           WINDSOR_GOOGLE_ACCOUNT: "788-887-6041"
         run: |
           mkdir -p .refresh/google
           python3 tools/fetch_google_tracked.py .refresh/google/data.json
 
-      - name: Build live Google report
+      - name: Build and validate Google report (template comes from this checkout of main; validation failure stops publishing)
         if: steps.gate.outputs.go == '1'
         run: |
           python3 tools/google_tracked.py \
