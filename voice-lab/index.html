@@ -89,9 +89,9 @@ body{min-height:100vh}.shell{width:min(800px,calc(100% - 24px));margin:0 auto;pa
 <script>
 (function(){
 "use strict";
-var code="",pc=null,dc=null,stream=null,muted=false,closeTimer=null,currentProduct=null,currentPageUrl="https://indifeels.com",toolBusy=false;
+var code="",pc=null,dc=null,stream=null,muted=false,closeTimer=null,currentProduct=null,currentPageUrl="https://indifeels.com",sessionId="",latestUsageSeconds=0,delegationBusy=false;
 var VOICE_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-session";
-var TOOLS_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-tools";
+var TOOLS_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-tools";\nvar AGENT_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-agent";\nvar METRICS_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-metrics";
 var PRODUCT_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-product";
 var $=function(id){return document.getElementById(id)};
 var authCard=$("authCard"),lab=$("lab"),access=$("accessCode"),unlock=$("unlock"),authMsg=$("authMsg"),voiceSelect=$("voiceSelect"),contextInput=$("contextInput"),setContextBtn=$("setContext"),contextMsg=$("contextMsg"),voiceBox=$("voiceBox"),voiceStatus=$("voiceStatus"),startBtn=$("startVoice"),muteBtn=$("muteVoice"),endBtn=$("endVoice"),transcript=$("transcript"),userText=$("userText"),assistantText=$("assistantText"),audio=$("audio"),resultsCard=$("resultsCard"),results=$("results");
@@ -138,32 +138,46 @@ function cleanup(){
   if(closeTimer){clearTimeout(closeTimer);closeTimer=null}
   try{if(dc)dc.close()}catch(e){}try{if(pc)pc.close()}catch(e){}
   if(stream)stream.getTracks().forEach(function(t){try{t.stop()}catch(e){}});
-  pc=null;dc=null;stream=null;audio.srcObject=null;muted=false;toolBusy=false;
+  pc=null;dc=null;stream=null;audio.srcObject=null;muted=false;delegationBusy=false;
   startBtn.classList.remove("hidden");startBtn.disabled=false;startBtn.textContent="Start voice";
   muteBtn.classList.add("hidden");endBtn.classList.add("hidden");muteBtn.textContent="Mute";
   state("","Ready for the whole store");
 }
-async function handleFunctionCall(envelope,item){
-  if(!item||item.type!=="function_call"||!item.call_id||!item.name)return;
-  toolBusy=true;state("live","Checking IndiFeels…");
-  var args={};
-  try{args=JSON.parse(item.arguments||"{}")}catch(e){}
-  var output;
-  try{output=await callTool(item.name,args)}
-  catch(e){output={error:"lookup_failed",message:"The verified store lookup failed. Do not guess; ask the customer to retry."}}
-  if(dc&&dc.readyState==="open"){
-    dc.send(JSON.stringify({type:"response.item.create",item:{type:"function_call_output",call_id:item.call_id,output:JSON.stringify(output)}}));
-    dc.send(JSON.stringify({type:"response.create"}));
+async function sendUsage(closed){
+  if(!sessionId)return;
+  try{
+    await fetch(METRICS_API,{method:"POST",headers:{"Content-Type":"application/json","X-IndiFeels-Test-Key":code},body:JSON.stringify({session_id:sessionId,seconds:latestUsageSeconds,closed:!!closed}),cache:"no-store",credentials:"omit"});
+  }catch(e){}
+}
+async function handleDelegation(ev){
+  var d=ev&&ev.delegation;
+  if(!d||d.target!=="client"||!d.id||delegationBusy)return;
+  delegationBusy=true;state("live","Checking IndiFeels…");
+  try{
+    var transcript=("Customer: "+userText.textContent+"\nAssistant so far: "+assistantText.textContent).slice(-6000);
+    var res=await fetch(AGENT_API,{method:"POST",headers:{"Content-Type":"application/json","X-IndiFeels-Test-Key":code},body:JSON.stringify({session_id:sessionId,transcript:transcript,page_url:currentPageUrl,product:currentProduct}),cache:"no-store",credentials:"omit"});
+    var data=await res.json().catch(function(){return{}});
+    if(!res.ok||!data.answer)throw new Error("lookup_failed");
+    if(Array.isArray(data.products)&&data.products.length)renderResults(data.products);
+    if(dc&&dc.readyState==="open"){
+      dc.send(JSON.stringify({type:"session.commentary.append",delegation_id:d.id,content:String(data.answer).slice(0,2400)}));
+    }
+  }catch(e){
+    if(dc&&dc.readyState==="open"){
+      dc.send(JSON.stringify({type:"session.commentary.append",delegation_id:d.id,content:"I couldn't complete that store lookup just now. Please ask me that again."}));
+    }
+  }finally{
+    delegationBusy=false;state("live","Live — ask anything about IndiFeels");
   }
-  toolBusy=false;state("live","Live — ask anything about IndiFeels");
 }
 function onEvent(ev){
   if(!ev||!ev.type)return;
-  if(ev.type==="session.started"){state("live","Live — ask anything about IndiFeels");startBtn.classList.add("hidden");muteBtn.classList.remove("hidden");endBtn.classList.remove("hidden");return}
+  if(ev.type==="session.started"){if(ev.session&&ev.session.id)sessionId=ev.session.id;state("live","Live — ask anything about IndiFeels");startBtn.classList.add("hidden");muteBtn.classList.remove("hidden");endBtn.classList.remove("hidden");return}
   if(ev.type==="session.input_transcript.delta"&&ev.delta){userText.textContent+=ev.delta;showTranscript();return}
   if(ev.type==="session.output_transcript.delta"&&ev.delta){assistantText.textContent+=ev.delta;showTranscript();return}
-  if(ev.type==="response.event"&&ev.event&&ev.event.type==="response.output_item.done"&&ev.event.item&&ev.event.item.type==="function_call"){handleFunctionCall(ev,ev.event.item);return}
-  if(ev.type==="session.closed"){cleanup();return}
+  if(ev.type==="session.delegation.created"){handleDelegation(ev);return}
+  if(ev.type==="session.usage.updated"&&ev.usage&&Number.isFinite(Number(ev.usage.seconds))){latestUsageSeconds=Number(ev.usage.seconds);sendUsage(false);return}
+  if(ev.type==="session.closed"){if(ev.usage&&Number.isFinite(Number(ev.usage.seconds)))latestUsageSeconds=Number(ev.usage.seconds);sendUsage(true).finally(cleanup);return}
   if(ev.type==="error"){state("","Voice error — end and retry")}
 }
 async function startVoice(){
@@ -189,7 +203,7 @@ async function startVoice(){
     cleanup();voiceStatus.textContent=msg;voiceStatus.classList.add("error");
   }
 }
-function endVoice(){if(!pc){cleanup();return}try{if(dc&&dc.readyState==="open")dc.send(JSON.stringify({type:"session.close"}))}catch(e){}state("connecting","Ending…");closeTimer=setTimeout(cleanup,1600)}
+function endVoice(){if(!pc){cleanup();return}try{if(dc&&dc.readyState==="open")dc.send(JSON.stringify({type:"session.close"}))}catch(e){}state("connecting","Ending…");closeTimer=setTimeout(function(){sendUsage(true).finally(cleanup)},8000)}
 function toggleMute(){if(!stream)return;muted=!muted;stream.getAudioTracks().forEach(function(t){t.enabled=!muted});muteBtn.textContent=muted?"Unmute":"Mute";voiceStatus.textContent=muted?"Microphone muted":"Live — ask anything about IndiFeels";try{if(dc&&dc.readyState==="open")dc.send(JSON.stringify({type:muted?"session.input_audio.mute":"session.input_audio.unmute"}))}catch(e){}}
 
 unlock.addEventListener("click",async function(){
