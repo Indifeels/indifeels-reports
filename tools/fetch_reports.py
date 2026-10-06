@@ -42,6 +42,34 @@ arows=[r for r in arows if ("non tracked" in (r.get("campaign") or "").lower().r
 json.dump({"data":arows},open(os.path.join(OUT,"adset_01.json"),"w"))
 print("ad-set rows:",len(arows))
 
+# Top ad (by spend) per ad set: its thumbnail is shown next to the ad set. Best effort only, never fails the report.
+# Saved as adthumbs_01.json (not windsor*/adset*). Thumbnail bytes are embedded (base64) because Meta image links expire.
+try:
+    import base64
+    tparams=urllib.parse.urlencode({"api_key":os.environ["WINDSOR_API_KEY"],"date_from":start,"date_to":end,"fields":"campaign,adset_id,ad_id,ad_name,thumbnail_url,spend","select_accounts":acct})
+    with urllib.request.urlopen("https://connectors.windsor.ai/facebook?"+tparams,timeout=600) as r:
+        tw=json.load(r)
+    trows=tw.get("data",tw) if isinstance(tw,dict) else tw
+    used={str(r.get("adset_id")) for r in arows}
+    best={}
+    for r in trows:
+        k=str(r.get("adset_id"))
+        if k in used and r.get("thumbnail_url") and float(r.get("spend") or 0)>=float((best.get(k) or {}).get("spend") or -1): best[k]=r
+    thumbs={}
+    for k,r in best.items():
+        e={"n":r.get("ad_name") or "","u":r["thumbnail_url"]}
+        try:
+            rq=urllib.request.Request(r["thumbnail_url"],headers={"User-Agent":"Mozilla/5.0"})
+            with urllib.request.urlopen(rq,timeout=20) as ir:
+                bts=ir.read(60001)
+            if 0<len(bts)<=60000: e["b"]=base64.b64encode(bts).decode()
+        except Exception: pass
+        thumbs[k]=e
+    json.dump(thumbs,open(os.path.join(OUT,"adthumbs_01.json"),"w"))
+    print("ad thumbnails:",len(thumbs),"embedded:",sum(1 for v in thumbs.values() if v.get("b")))
+except Exception as e:
+    print("ad thumbnails skipped:",e)
+
 shop=os.environ.get("SHOPIFY_SHOP","bvdxj3-r8.myshopify.com")
 api="https://"+shop+"/admin/api/2026-04/graphql.json"
 q='''query($after:String,$query:String!){ orders(first:250,after:$after,query:$query,sortKey:PROCESSED_AT){ pageInfo{hasNextPage endCursor} nodes{id name processedAt cancelledAt sourceName m:metafield(namespace:"custom",key:"order_source"){value} t:currentTotalPriceSet{shopMoney{amount currencyCode}} } } }'''

@@ -79,6 +79,10 @@ MIN_SPEND=20.0
 H30=(FULL_END-D(29),FULL_END); H15=(FULL_END-D(14),FULL_END); H7=(FULL_END-D(6),FULL_END)
 adrows=[]
 for _f in sorted(glob.glob(f"{S}/adset*")): adrows+=unwrap(json.load(open(_f)))
+thm={}
+for _f in sorted(glob.glob(f"{S}/adthumbs*")):
+    try: thm.update(json.load(open(_f)))
+    except Exception: pass
 asd={}
 for _r in sorted(adrows,key=lambda r:r["date"]):
     if not _r.get("spend") and not _r.get(M): continue
@@ -176,7 +180,7 @@ def flag_for(m):
 for r in rows:
     r["m2"]=metrics(by[r["key"]],r["act"]); r["allsets"]=[]
     for aid,a in asd.get(r["key"],{}).items():
-        am=metrics(a["days"],a["act"] and r["act"]); am["name"]=a["name"]; r["allsets"].append(am)
+        am=metrics(a["days"],a["act"] and r["act"]); am["name"]=a["name"]; am["aid"]=aid; r["allsets"].append(am)
     _rk=rank_group({i:x for i,x in enumerate(r["allsets"]) if x["act"]})
     for i,x in enumerate(r["allsets"]): x["rank"]=_rk.get(i); x["sig"]=sig_for(x); x["flag"]=flag_for(x)
     finalize(r["allsets"])
@@ -508,9 +512,14 @@ for i,r in enumerate(rows):
         +(sigrow(m.get("sig"),m.get("flag"))+rkrow(m.get("rank"),False) if r["act"] else sigrow(None,m.get("flag"))+rkrow_p(m))+'</span></div></th>')
     trs+='<tbody class="grp">'+prow(cls,nm,m,f' data-id="c{i}"')
     for x in r["sets"]:
-        an=(f'<th scope="row" class="asn"><span class="nm">{html.escape(x["name"])}</span>'
+        _t=thm.get(str(x.get("aid")))
+        _img=""
+        if _t and (_t.get("b") or _t.get("u")):
+            _src=("data:image/jpeg;base64,"+_t["b"]) if _t.get("b") else html.escape(_t["u"],quote=True)
+            _img=f'<img class="thm" src="{_src}" alt="" loading="lazy" referrerpolicy="no-referrer" title="{html.escape(_t.get("n") or "Top ad by spend",quote=True)}" onerror="this.style.display=\'none\'">'
+        an=(f'<th scope="row" class="asn"><div class="asw">{_img}<div class="asb"><span class="nm">{html.escape(x["name"])}</span>'
             f'<span class="meta"><span class="st {"on" if x["act"] else "off"}">{"Active" if x["act"] else "Paused"}</span></span>'
-            +(sigrow(x.get("sig"),x.get("flag"))+rkrow(x.get("rank"),True) if x["act"] else sigrow(None,x.get("flag"))+rkrow_p(x))+'</th>')
+            +(sigrow(x.get("sig"),x.get("flag"))+rkrow(x.get("rank"),True) if x["act"] else sigrow(None,x.get("flag"))+rkrow_p(x))+'</div></div></th>')
         trs+=prow("as"+("" if x["act"] else " paused"),an,x,f' data-p="c{i}" hidden')
     trs+='</tbody>'
 trs+=('<tbody><tr class="total"><th scope="row">All non-tracked campaigns</th><td class="s1"></td>'+trio(tot["t"],tot["pt"],"Today")+trio(tot["w"],tot["pw"],"Week")+trio(tot["x"],tot["px"],"15d")
@@ -672,6 +681,8 @@ thead th.hh{{vertical-align:bottom;text-align:left}}thead th.hh small{{display:b
 tr.cp.open .xp{{transform:rotate(90deg)}}tr.cp{{cursor:pointer}}
 tr.cp .nmrow{{display:flex;align-items:flex-start}}tr.cp .nmw{{display:block;min-width:0}}
 tr.cp .nm{{font-weight:700;font-size:15.5px}}
+.asw{{display:flex;gap:10px;align-items:flex-start}}.asb{{min-width:0;flex:1}}.thm{{width:46px;height:46px;border-radius:8px;object-fit:cover;flex:none;background:var(--sub);border:1px solid var(--line)}}
+@media(max-width:640px){{.asw{{flex-direction:column;gap:6px}}.thm{{width:40px;height:40px}}}}
 tr.as>th.asn{{padding-left:30px}}tr.as .nm{{font-size:13.5px;font-weight:500}}tr.as .nm:before{{content:"↳ ";color:var(--muted)}}
 tr.as>td{{font-size:13.5px}}tr.as+tr.as{{border-top:1px solid var(--line)}}
 .hws{{display:flex;flex-wrap:wrap;gap:2px 10px;margin-top:4px}}.hw{{font-size:12px;color:var(--muted);white-space:nowrap}}.hw i{{font-style:normal}}.hw b{{color:var(--ink);font-weight:700}}
@@ -687,7 +698,7 @@ tr.as>td{{font-size:13.5px}}tr.as+tr.as{{border-top:1px solid var(--line)}}
 
 .wrapx{{position:relative}}
 .wrapx .wrap{{max-height:calc(100vh - 72px);max-height:calc(100dvh - 72px);overflow:auto;overscroll-behavior:auto}}
-@media(max-width:640px){{.wrapx .wrap{{max-height:68vh;max-height:68dvh}}}}
+@media(max-width:640px){{.wrapx .wrap{{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px)}}}}
 #totop{{position:fixed;right:14px;bottom:18px;z-index:20;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--ink);color:var(--bg);font:700 20px/1 Figtree,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.35);display:none;cursor:pointer}}#totop.on{{display:block}}
 .wrap>.jump{{position:sticky;top:0;left:0;width:100%;box-sizing:border-box;margin:0;padding:8px 10px;z-index:7;border-bottom:1px solid var(--line)}}
 .wrapx thead th{{position:sticky;top:var(--jh,0px);z-index:3;box-shadow:0 1px 0 var(--line)}}.wrapx thead tr+tr th{{z-index:3}}
@@ -746,13 +757,13 @@ tbody th{{min-width:340px;max-width:370px}}
 <dt>Health</dt><dd>Share of days with spend where each message cost under $4.50, for the last 7, 15 and 30 full days. Green is 60% or more, amber 35 to 59%, red under 35% (a window with fewer than 3 spend days shows a dash). Hover a figure to see the day count.</dd>
 <dt>Rank</dt><dd>Under each campaign name. Overall rank among active campaigns (ad sets rank inside their campaign), then the rank on 7, 15 and 30 days alone. Score is 70% messages received plus 30% cost per message; the overall number blends 30 days (60%) and 7 days (40%). Green is the top third, red the bottom third; under $20 spend in a window is not ranked.</dd>
 <dt>Flags</dt><dd><b>Close #1</b> (active): 30-day health is red or amber, 7-day health is not green, at least $20 spent in 30 days, and it ranks in the bottom half of its group. #1 is the worst. <b>Reopen #1</b> (paused): lifetime health is green over at least 5 spend days and $50 spent, so a weak last run may just have been a bad season. Ranked best first (inside its group, and across all paused rows) on lifetime messages (70%) and lifetime cost per message (30%), inside its group. <b>Keep closed</b> (paused): lifetime health is red on the same evidence. Paused rows show 7, 15 and 30 day health too (blank if it did not spend), plus Last run (its latest stretch of spending, no gap over 3 days) and Lifetime.</dd>
+<dt>Notes</dt><dd>Messages are Meta "messaging conversations started". Periods end on {TODAY.strftime("%-d %b")}; arrows compare each period with the one before it. Health, rank and signal use completed days only. Ad sets shown are those with spend in the last 30 days.</dd>
 <dt>Spend signal</dt><dd>Spend more when 30-day health is Good and the 7-day cost per message is at or below the 30-day figure. Spend less when health is Poor or the 7-day cost per message is over $6. Otherwise Hold.</dd></dl></details>
 <p class="key"><button class="tg" id="xa" type="button" data-o="0">Expand all ad sets</button><span class="p g">Under $4.50</span><span class="p y">$4.50 to $6</span><span class="p r">Over $6</span><span>▲▼ change vs the previous period: green is better, red is worse, grey is spend</span></p>
 <div class="wrapx"><div class="wrap"><nav class="jump" aria-label="Jump to a period"><button type="button" class="stp" data-step="-1" aria-label="Previous">&#8249;</button><button type="button" data-i="0">Health</button><button type="button" data-i="1">{LBL_T}</button><button type="button" data-i="2">7 days</button><button type="button" data-i="3">15 days</button><button type="button" data-i="4">30 days</button><button type="button" data-i="5">Lifetime</button><button type="button" class="stp" data-step="1" aria-label="Next">&#8250;</button></nav><table>
 <thead><tr><th rowspan="2" class="hcamp">Campaign</th><th rowspan="2" class="s1 hh">Health<small>% of days under $4.50. Run = latest stretch of spend, no gap over 3 days</small></th><th colspan="3" class="s1 gh ct">{LBL_T}<small>{TODAY.strftime("%a %-d %b")}</small></th><th colspan="3" class="s1 gh cw">Last 7 days<small>{W7.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cx">Last 15 days<small>{M15.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cm">Last 30 days<small>{M30.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cl">Lifetime<small>Since {dt.date.fromisoformat(FIRST).strftime("%-d %b %Y")}</small></th></tr>
 <tr>{"".join(f'<th class="s1 c{k}">Spend</th><th class="c{k}">Msgs</th><th class="c{k}">Cost/msg</th>' for k in "twxml")}</tr></thead>
 {trs}</table></div></div>
-<p class="foot">Messages are Meta "messaging conversations started". Periods end on {TODAY.strftime("%-d %b")}; arrows compare each period with the one before it. Health, rank and signal use completed days only. Ad sets shown are those with spend in the last 30 days.</p>
 </main>
 <script>
 (function(){{var r=document.documentElement,b=document.getElementById('tg');
@@ -778,7 +789,8 @@ function go(i){{var el=heads[i];if(!el)return;wrap.scrollTo({{left:Math.max(0,le
 var btns=[].slice.call(bar.querySelectorAll('button[data-i]'));
 function cur(){{var sl=wrap.scrollLeft+sw(),best=0,bd=1e9;heads.forEach(function(h,i){{var d=Math.abs(left(h)-sl);if(d<bd){{bd=d;best=i}}}});return best}}
 function upd(){{var c=cur();btns.forEach(function(b){{b.classList.toggle('on',+b.getAttribute('data-i')===c)}});box.classList.toggle('mr',wrap.scrollLeft+wrap.clientWidth<wrap.scrollWidth-4)}}
-btns.forEach(function(b){{b.addEventListener('click',function(){{go(+b.getAttribute('data-i'))}})}});
+function lift(){{var t=wrap.getBoundingClientRect().top;if(t>8||t<-8)window.scrollBy({{top:t-4,behavior:'smooth'}})}}
+btns.forEach(function(b){{b.addEventListener('click',function(){{lift();go(+b.getAttribute('data-i'))}})}});
 bar.querySelectorAll('button[data-step]').forEach(function(b){{b.addEventListener('click',function(){{go(Math.min(heads.length-1,Math.max(0,cur()+(+b.getAttribute('data-step')))))}})}});
 wrap.addEventListener('scroll',upd,{{passive:true}});window.addEventListener('resize',upd);upd();
 var tb=document.createElement('button');tb.id='totop';tb.type='button';tb.setAttribute('aria-label','Back to top');tb.textContent='\u2191';document.body.appendChild(tb);
