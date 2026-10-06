@@ -1,2 +1,2 @@
 Manual Shopify customer journey refresh trigger.
-Request: test automatic first-touch attribution for pending order #17749 on 2026-10-07 09:10 Melbourne.
+Request: test latest-paid-touch retargeting attribution for #17749 on 2026-10-07 09:20 Melbourne.
