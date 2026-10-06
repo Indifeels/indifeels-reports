@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-06.3",
+  "manifest_version": "2026-10-06.4",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -105,6 +105,28 @@
       "outputs": [
         "r/order-source.bin",
         "r/order-source.meta.bin"
+      ],
+      "supabase_sync": false
+    },
+    {
+      "id": "call-tracking",
+      "title": "Call Tracking — Nimbata",
+      "workflow": "call-tracking.yml",
+      "refresh_times": [
+        "20:00",
+        "06:00"
+      ],
+      "required_env": [
+        "WINDSOR_API_KEY",
+        "SYNC_READ_TOKEN"
+      ],
+      "builders": [
+        "tools/fetch_call_tracking.py",
+        "tools/call_tracking.py"
+      ],
+      "outputs": [
+        "r/call-tracking.bin",
+        "r/call-tracking.meta.bin"
       ],
       "supabase_sync": false
     },

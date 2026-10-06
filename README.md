@@ -27,3 +27,6 @@ Installable web app for IndiFeels performance reports.
 - Report files in `r/` are AES-256-GCM encrypted where applicable; report keys are released only to signed-in users with access.
 - Secrets remain in GitHub/Supabase configuration and are not stored in `reports-manifest.json`.
 - If Code introduces a new secret or credential requirement, add its environment-variable name to the manifest and wire the secret into the owning workflow before the next refresh. Preflight will fail closed if it is missing.
+
+## Call Tracking — Nimbata
+Refreshed 8 PM (today so far) and 6 AM (previous Melbourne day) by `.github/workflows/call-tracking.yml`. Architecture, secrets, setup and troubleshooting: `docs/NIMBATA_INTEGRATION.md`.

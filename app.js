@@ -199,6 +199,7 @@
     "product-visibility": { c: "purple", icon: "eye", stat: ["eye", "tag", "alert"], line: ["purple", "teal", "rose"] },
     footwear: { c: "rose", icon: "search", stat: ["search", "bars", "trend"], line: ["rose", "purple", "green"] },
     "google-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["blue", "purple", "green", "teal"] },
+    "call-tracking": { c: "teal", icon: "chart", stat: ["msg", "tag", "alert"], line: ["teal", "green", "rose"] },
     "order-source": { c: "blue", icon: "bars", stat: ["dollar", "bag", "trend", "tag"], line: ["blue", "purple", "green", "teal"] },
     "tech-availability": { c: "teal", icon: "alert", stat: ["bars", "alert", "alert"], line: ["teal", "orange", "rose"] },
   };
@@ -863,7 +864,8 @@
     const healthy = rows.filter((x) => x.status === "operational").length;
     const issues = rows.filter((x) => x.status === "degraded" || x.status === "outage").length;
     const impacting = rows.filter((x) => x.impact).length;
-    const unknown = rows.filter((x) => x.status === "unknown").length;
+    const pending = (x) => x.source === "pending-setup";
+    const unknown = rows.filter((x) => x.status === "unknown" && !pending(x)).length;
     const latest = rows.map((x) => x.checked_at).filter(Boolean).sort().at(-1);
     const stale = !latest || (Date.now() - new Date(latest).getTime()) > 25 * 60 * 1000;
     const bad = impacting > 0 || unknown > 0 || stale;
@@ -885,9 +887,10 @@
     const healthy = rows.filter((x) => x.status === "operational").length;
     const issues = rows.filter((x) => x.status === "degraded" || x.status === "outage").length;
     const impacting = rows.filter((x) => x.impact).length;
-    const unknown = rows.filter((x) => x.status === "unknown").length;
+    const pending = (x) => x.source === "pending-setup";
+    const unknown = rows.filter((x) => x.status === "unknown" && !pending(x)).length;
     const latest = rows.map((x) => x.checked_at).filter(Boolean).sort().at(-1);
-    const label = (s) => s === "operational" ? "Operational" : s === "degraded" ? "Degraded" : s === "outage" ? "Outage" : "Unknown";
+    const label = (s, r) => r && r.source === "pending-setup" ? "Setup pending" : s === "operational" ? "Operational" : s === "degraded" ? "Degraded" : s === "outage" ? "Outage" : "Unknown";
     const pct = (x) => x == null || !isFinite(Number(x)) ? null : Math.max(0, Math.min(100, Number(x)));
     const vc = voiceCost || {};
     const money = (v) => "$" + Number(v || 0).toFixed(Number(v || 0) < 1 ? 3 : 2);
@@ -915,7 +918,7 @@
       const link = r.status_url ? `<a href="${esc(r.status_url)}" target="_blank" rel="noopener">Official status ↗</a>` : "";
       const auto = r.auto_detected ? '<span class="auto">Auto-detected</span>' : "";
       return `<article class="svc ${esc(r.status)}">
-        <div class="top"><div><h2>${esc(r.name)} ${auto}</h2><div class="meta">Checked ${esc(fmtTime(r.checked_at))} · ${esc(r.source || "monitor")}</div></div><span class="status ${esc(r.status)}">${label(r.status)}</span></div>
+        <div class="top"><div><h2>${esc(r.name)} ${auto}</h2><div class="meta">Checked ${esc(fmtTime(r.checked_at))} · ${esc(r.source || "monitor")}</div></div><span class="status ${esc(r.source === "pending-setup" ? "pending" : r.status)}">${label(r.status, r)}</span></div>
         <div class="grid"><div><span class="k">Usage %</span>${usage}</div><div><span class="k">Impact</span><span class="impact ${r.impact ? "yes" : "no"}">${r.impact ? "Yes" : "No"}</span></div></div>
         <div class="detail"><span class="k">Detail</span><p>${esc(r.detail || "No detail available.")}</p>${link}</div>
       </article>`;
@@ -927,13 +930,13 @@
       .sum div,.svc{background:#fff;border:1px solid #e2e5ea;border-radius:14px}.sum div{padding:14px}.sum b{display:block;font-size:25px}.sum span,.meta,.k,.usage span{color:#6b7078;font-size:12px}
       .list{display:grid;gap:12px}.svc{padding:16px;border-left:5px solid #7b8088}.svc.operational{border-left-color:#22863a}.svc.degraded{border-left-color:#bf8700}.svc.outage{border-left-color:#cf222e}
       .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.top h2{font-size:18px;margin:0 0 4px}.status,.impact,.auto{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700;white-space:nowrap}
-      .status.operational,.impact.no{background:#dafbe1;color:#116329}.status.degraded{background:#fff8c5;color:#7d4e00}.status.outage,.impact.yes{background:#ffebe9;color:#a40e26}.status.unknown{background:#eaeef2;color:#57606a}
+      .status.operational,.impact.no{background:#dafbe1;color:#116329}.status.degraded{background:#fff8c5;color:#7d4e00}.status.outage,.impact.yes{background:#ffebe9;color:#a40e26}.status.unknown{background:#eaeef2;color:#57606a}.status.pending{background:#ddf4ff;color:#0550ae}
       .auto{background:#ddf4ff;color:#0969da;padding:3px 7px;font-size:10px;vertical-align:2px}.grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-top:14px}.k{display:block;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px}
       .uv{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.usage b{font-size:20px}.usage.na{display:flex;gap:10px;align-items:baseline}.bar{height:7px;background:#eaeef2;border-radius:99px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:#57606a;border-radius:99px}
       .detail{margin-top:14px;padding-top:13px;border-top:1px solid #eaeef2}.detail p{margin:0 0 8px;line-height:1.45}.detail a{font-size:12px;text-decoration:none}.foot{margin-top:18px;color:#6b7078;font-size:12px;line-height:1.5}
       .voicecost{background:#fff;border:1px solid #e2e5ea;border-radius:14px;padding:16px;margin:0 0 18px}.vchead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}.vchead h2{font-size:18px;margin:0 0 3px}.vchead p,.vcnote{margin:0;color:#6b7078;font-size:12px;line-height:1.45}.vcstate{display:inline-flex;border-radius:999px;padding:5px 9px;background:#dafbe1;color:#116329;font-size:12px;font-weight:700}.vcgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.vcgrid div{background:#f7f8fa;border:1px solid #eaeef2;border-radius:11px;padding:11px}.vcgrid b{display:block;font-size:18px}.vcgrid span{display:block;color:#6b7078;font-size:11px;margin-top:3px}.vcnote{margin-top:10px}
       @media(max-width:650px){.wrap{padding:16px 12px 40px}h1{font-size:25px}.sum{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.vcgrid{grid-template-columns:1fr 1fr}.top{align-items:center}}
-      @media(prefers-color-scheme:dark){body{background:#111316;color:#f3f4f6}.sum div,.svc{background:#191c20;border-color:#30343a}.sub,.sum span,.meta,.k,.usage span,.foot{color:#aab0b8}.detail{border-color:#30343a}.bar{background:#30343a}.status.operational,.impact.no{background:#183b24;color:#75d68c}.status.degraded{background:#453b13;color:#f2cf65}.status.outage,.impact.yes{background:#4b1e24;color:#ff9a9f}.status.unknown{background:#30343a;color:#c5cad1}.auto{background:#17344d;color:#7cc5ff}.voicecost{background:#191c20;border-color:#30343a}.vchead p,.vcnote,.vcgrid span{color:#aab0b8}.vcgrid div{background:#15171a;border-color:#30343a}.vcstate{background:#183b24;color:#75d68c}}
+      @media(prefers-color-scheme:dark){body{background:#111316;color:#f3f4f6}.sum div,.svc{background:#191c20;border-color:#30343a}.sub,.sum span,.meta,.k,.usage span,.foot{color:#aab0b8}.detail{border-color:#30343a}.bar{background:#30343a}.status.operational,.impact.no{background:#183b24;color:#75d68c}.status.degraded{background:#453b13;color:#f2cf65}.status.outage,.impact.yes{background:#4b1e24;color:#ff9a9f}.status.unknown{background:#30343a;color:#c5cad1}.status.pending{background:#12304a;color:#79c0ff}.auto{background:#17344d;color:#7cc5ff}.voicecost{background:#191c20;border-color:#30343a}.vchead p,.vcnote,.vcgrid span{color:#aab0b8}.vcgrid div{background:#15171a;border-color:#30343a}.vcstate{background:#183b24;color:#75d68c}}
     </style></head><body><div class="wrap">
       <h1>Tech Availability Report</h1>
       <p class="sub">Infrastructure health for IndiFeels reporting · automatically checked every 10 minutes${latest ? " · latest " + esc(fmtTime(latest)) : ""}</p>

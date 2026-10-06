@@ -1,0 +1,151 @@
+name: Refresh Call Tracking report
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/manual-refresh-call-tracking.txt"
+  schedule:
+    # Candidate UTC hours cover Melbourne 20:00 (partial, today so far) and 06:00 (final, previous calendar day) across AEST/AEDT.
+    - cron: "0 9,10,19,20 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: indifeels-call-tracking
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Melbourne time gate
+        id: gate
+        run: |
+          HM=$(TZ=Australia/Melbourne date +%H%M)
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            if [ "$(TZ=Australia/Melbourne date +%H)" -lt 12 ]; then echo "mode=final" >> "$GITHUB_OUTPUT"; else echo "mode=partial" >> "$GITHUB_OUTPUT"; fi
+            echo "go=1" >> "$GITHUB_OUTPUT"
+          elif [ "$HM" -ge 2000 ] && [ "$HM" -le 2045 ]; then
+            echo "mode=partial" >> "$GITHUB_OUTPUT"; echo "go=1" >> "$GITHUB_OUTPUT"
+          elif [ "$HM" -ge 0600 ] && [ "$HM" -le 0645 ]; then
+            echo "mode=final" >> "$GITHUB_OUTPUT"; echo "go=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "Not within Melbourne 20:00-20:45 or 06:00-06:45 ($HM); skipping"
+            echo "go=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout reports
+        if: steps.gate.outputs.go == '1'
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: steps.gate.outputs.go == '1'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependency
+        if: steps.gate.outputs.go == '1'
+        run: pip install cryptography
+
+      - name: Validate report contract
+        if: steps.gate.outputs.go == '1'
+        env:
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
+        run: python3 tools/report_preflight.py --phase pre call-tracking
+
+      - name: Fetch Nimbata + Google Business Profile data (data only, no calculation)
+        if: steps.gate.outputs.go == '1'
+        env:
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
+          REPORT_MODE: ${{ steps.gate.outputs.mode }}
+        run: |
+          mkdir -p .refresh/ct
+          python3 tools/fetch_call_tracking.py .refresh/ct/data.json
+
+      - name: Build Call Tracking report (validation failure stops publishing)
+        if: steps.gate.outputs.go == '1'
+        run: |
+          python3 tools/call_tracking.py \
+            .refresh/ct/data.json \
+            .refresh/ct/call-tracking.html \
+            .refresh/ct/call-tracking.meta.json
+
+      - name: Retrieve report key and encrypt
+        if: steps.gate.outputs.go == '1'
+        env:
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, json, os, secrets, urllib.request
+          from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+          url="https://yrigvovwyfpaybibfjva.supabase.co/rest/v1/rpc/sync_get_report_keys"
+          anon="sb_publishable_8xv46B6mvnAN2McGDc4VEg_pNF0qHvD"
+          body=json.dumps({"p_token":os.environ["SYNC_READ_TOKEN"],"p_report_ids":["call-tracking"]}).encode()
+          req=urllib.request.Request(url,data=body,headers={"apikey":anon,"Content-Type":"application/json"})
+          rows=json.load(urllib.request.urlopen(req,timeout=60))
+          keys={r["report_id"]:r["key_b64"] for r in rows}
+          if "call-tracking" not in keys:
+              raise SystemExit("Missing call-tracking encryption key")
+          key=base64.b64decode(keys["call-tracking"])
+          if len(key) != 32:
+              raise SystemExit("call-tracking key must decode to 32 bytes")
+
+          def enc(data):
+              iv=secrets.token_bytes(12)
+              return iv + AESGCM(key).encrypt(iv, gzip.compress(data,9), None)
+
+          html=open(".refresh/ct/call-tracking.html","rb").read()
+          meta=open(".refresh/ct/call-tracking.meta.json","rb").read()
+          os.makedirs(".refresh/out",exist_ok=True)
+          open(".refresh/out/call-tracking.bin","wb").write(enc(html))
+          open(".refresh/out/call-tracking.meta.bin","wb").write(enc(meta))
+          PY
+          test -s .refresh/out/call-tracking.bin
+          test -s .refresh/out/call-tracking.meta.bin
+
+      - name: Publish Call Tracking report
+        if: steps.gate.outputs.go == '1'
+        run: |
+          cp .refresh/out/call-tracking.bin r/call-tracking.bin
+          cp .refresh/out/call-tracking.meta.bin r/call-tracking.meta.bin
+          python3 tools/report_preflight.py --phase post call-tracking
+          python3 tools/status.py r call-tracking ok
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898273+github-actions[bot]@users.noreply.github.com"
+          git add r/call-tracking.bin r/call-tracking.meta.bin r/status.json
+
+          if git diff --cached --quiet; then
+            echo "No Call Tracking report changes"
+          else
+            git commit -m "Refresh Call Tracking report"
+            for i in 1 2 3; do
+              git pull --rebase -q origin main
+              git push -q origin HEAD:main && exit 0
+              sleep 5
+            done
+            exit 1
+          fi
+
+      - name: Record failed Call Tracking refresh
+        if: failure() && steps.gate.outputs.go == '1'
+        run: |
+          python3 tools/status.py r call-tracking fail "Call Tracking refresh failed; check GitHub Actions"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898273+github-actions[bot]@users.noreply.github.com"
+          git add r/status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record failed Call Tracking refresh"
+          for i in 1 2 3; do
+            git pull --rebase -q origin main
+            git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 0
