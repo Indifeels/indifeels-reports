@@ -382,7 +382,7 @@
   async function loadAttribution() {
     const [q, c] = await Promise.all([
       sb.from("order_attribution_queue")
-        .select("order_id,legacy_id,order_name,created_at,customer_name,contact_email,contact_phone,total,currency,shopify_source,products,order_source,campaign_platform,campaign_id,campaign_name,adset_id,adset_name,sync_status,sync_error,updated_at")
+        .select("order_id,legacy_id,order_name,created_at,customer_name,contact_email,contact_phone,total,currency,shopify_source,products,order_source,campaign_platform,campaign_id,campaign_name,adset_id,adset_name,sync_status,sync_error,journey_ready,journey_checked_at,journey,updated_at")
         .order("created_at", { ascending: false }).limit(150),
       sb.from("ad_attribution_catalog")
         .select("option_key,platform,campaign_id,campaign_name,campaign_status,adset_id,adset_name,adset_status,last_seen_date,refreshed_at")
@@ -424,15 +424,72 @@
     if (!r.campaign_platform || !r.campaign_id || !r.campaign_name) return null;
     return { platform:r.campaign_platform, campaign_id:r.campaign_id, campaign_name:r.campaign_name };
   }
+  function oaJourneySuggestion(r) {
+    const j = r.journey && typeof r.journey === "object" ? r.journey : {};
+    const visit = j.last_visit || j.first_visit || {};
+    const utm = visit.utm || {};
+    const hay = [visit.source, visit.source_description, visit.referrer_url, utm.source].filter(Boolean).join(" ").toLowerCase();
+    const hasUtm = !!(utm.source || utm.medium || utm.campaign || utm.term || utm.content);
+    let platform = null, source = null, campaign = null, adset = null;
+    if (/facebook|instagram|meta|fb\./i.test(hay)) platform = "Facebook";
+    else if (/google/i.test(hay)) platform = "Google";
+    if (hasUtm && platform === "Facebook") source = "FB Online Orders - WEB";
+    else if (hasUtm && platform === "Google") source = "Google Online Orders - WEB";
+
+    if (platform && utm.term) {
+      const hit = OA.catalog.find((x) => x.platform === platform && String(x.adset_id || "") === String(utm.term));
+      if (hit) {
+        campaign = { platform:hit.platform, campaign_id:hit.campaign_id, campaign_name:hit.campaign_name };
+        if (hit.adset_id && hit.adset_name) adset = hit;
+      }
+    }
+    return { source, platform, campaign, adset, utm };
+  }
+  function oaJourneyPlace(v) {
+    if (!v) return "";
+    const raw = v.landing_page || v.referrer_url || "";
+    if (!raw) return "";
+    try {
+      const u = new URL(raw);
+      return u.pathname && u.pathname !== "/" ? u.pathname : u.hostname;
+    } catch (_) { return raw; }
+  }
+  function oaJourneyHTML(r) {
+    if (!r.journey_ready) {
+      const checked = r.journey_checked_at ? ` Last checked ${fmtTime(r.journey_checked_at)}.` : "";
+      return `<div class="oa-journey waiting"><b>Shopify attribution is still processing.</b><span>We re-check automatically every 15 minutes.${esc(checked)}</span></div>`;
+    }
+    const j = r.journey && typeof r.journey === "object" ? r.journey : {};
+    const first = j.first_visit || null, last = j.last_visit || null;
+    const suggest = oaJourneySuggestion(r);
+    const firstText = first ? (first.source_description || first.source || "First session available") : "No first-session detail";
+    const lastText = last ? (last.source_description || last.source || "Conversion session available") : "No conversion-session detail";
+    const firstPlace = oaJourneyPlace(first), lastPlace = oaJourneyPlace(last);
+    const utm = suggest.utm || {};
+    const utmLine = [utm.source, utm.medium, utm.campaign].filter(Boolean).join(" · ");
+    const suggestion = suggest.source && !r.order_source
+      ? `<div class="oa-journey-suggest">Suggested source: <b>${esc(suggest.source)}</b>${suggest.campaign ? ` · ${esc(suggest.campaign.campaign_name)}` : ""}</div>`
+      : "";
+    return `<div class="oa-journey">
+      <div><b>First session:</b> ${esc(firstText)}${firstPlace ? " · " + esc(firstPlace) : ""}</div>
+      <div><b>Converted after:</b> ${esc(lastText)}${lastPlace ? " · " + esc(lastPlace) : ""}</div>
+      ${utmLine ? `<div class="oa-journey-utm"><b>UTM:</b> ${esc(utmLine)}</div>` : ""}
+      ${suggestion}
+    </div>`;
+  }
+
   function oaRow(r) {
     const syncing = r.sync_status === "syncing", failed = r.sync_status === "error";
-    const opts = ['<option value="">Choose source…</option>'].concat(ORDER_SOURCES.map((x) => `<option value="${esc(x)}" ${r.order_source === x ? "selected" : ""}>${esc(x)}</option>`)).join("");
+    const suggest = oaJourneySuggestion(r);
+    const selectedSource = r.order_source || suggest.source || "";
+    const opts = ['<option value="">Choose source…</option>'].concat(ORDER_SOURCES.map((x) => `<option value="${esc(x)}" ${selectedSource === x ? "selected" : ""}>${esc(x)}</option>`)).join("");
     const stat = syncing ? '<span class="oa-state syncing">Syncing…</span>' : failed ? '<span class="oa-state error">Sync failed</span>' : r.order_source ? '<span class="oa-state done">Synced</span>' : '<span class="oa-state pending">Pending</span>';
     const saveText = syncing ? "Saving…" : failed ? "Retry Shopify" : "Save attribution";
-    const campaign = oaStoredCampaign(r);
+    const campaign = oaStoredCampaign(r) || suggest.campaign;
     const campaignValue = campaign ? `${campaign.platform} — ${campaign.campaign_name}` : "";
     const cid = `oa-campaign-${r.legacy_id}`, aid = `oa-adset-${r.legacy_id}`;
     const adHint = campaign?.platform === "Google" ? "Search Google ad group…" : campaign?.platform === "Facebook" ? "Search Facebook ad set…" : "Choose campaign first…";
+    const suggestedAdset = r.adset_name || suggest.adset?.adset_name || "";
     return `<div class="oa-row ${failed ? "has-error" : ""}" data-order="${esc(r.order_id)}">
       <div class="oa-top">
         <a class="oa-order" href="https://admin.shopify.com/store/bvdxj3-r8/orders/${esc(r.legacy_id)}" target="_blank" rel="noopener">${esc(r.order_name)}</a>
@@ -441,6 +498,7 @@
       </div>
       <div class="oa-meta">${esc((r.shopify_source || "Shopify").toUpperCase())} · ${fmtTime(r.created_at)}${r.customer_name ? " · " + esc(r.customer_name) : ""}</div>
       <div class="oa-products">${oaProducts(r)}</div>
+      ${oaJourneyHTML(r)}
       <div class="oa-fields">
         <label class="oa-field"><span>Phone <em>customer order</em></span><input class="oa-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="04xx xxx xxx" value="${esc(r.contact_phone || "")}" ${syncing ? "disabled" : ""}></label>
         <label class="oa-field"><span>Email <em>customer order</em></span><input class="oa-email" type="email" inputmode="email" autocomplete="email" placeholder="customer@example.com" value="${esc(r.contact_email || "")}" ${syncing ? "disabled" : ""}></label>
@@ -451,12 +509,13 @@
           <datalist id="${cid}" class="oa-campaign-list">${oaCampaignOptions()}</datalist>
         </label>
         <label class="oa-field"><span>Ad set / ad group <em>optional</em></span>
-          <input class="oa-adset" type="search" list="${aid}" autocomplete="off" placeholder="${esc(adHint)}" value="${esc(r.adset_name || "")}" ${syncing ? "disabled" : ""}>
+          <input class="oa-adset" type="search" list="${aid}" autocomplete="off" placeholder="${esc(adHint)}" value="${esc(suggestedAdset)}" ${syncing ? "disabled" : ""}>
           <datalist id="${aid}" class="oa-adset-list">${oaAdsetOptions(campaign)}</datalist>
         </label>
       </div>
       <div class="oa-actions">
         <select class="oa-source" aria-label="Order source for ${esc(r.order_name)}" ${syncing ? "disabled" : ""}>${opts}</select>
+        <button class="btn sm oa-resync" type="button" data-order="${esc(r.order_id)}" ${syncing ? "disabled" : ""}>Re-sync details</button>
         <button class="btn oa-save" type="button" data-order="${esc(r.order_id)}" ${syncing ? "disabled" : ""}>${saveText}</button>
       </div>
       ${failed ? `<div class="oa-error">${esc(r.sync_error || "Shopify did not accept the update. Check the details and retry.")}</div>` : ""}
@@ -489,7 +548,8 @@
         if (oaFindCampaign(input.value)) oaRefreshAdsetList(input.closest(".oa-row"));
       });
     });
-    $$(".oa-save").forEach((btn) => btn.addEventListener("click", () => {
+    $(".oa-resync").forEach((btn) => btn.addEventListener("click", () => refreshAttributionJourney(btn.dataset.order, btn)));
+    $(".oa-save").forEach((btn) => btn.addEventListener("click", () => {
       const card = btn.closest(".oa-row");
       const source = card.querySelector(".oa-source").value;
       const emailEl = card.querySelector(".oa-email");
@@ -509,6 +569,29 @@
       syncAttribution(btn.dataset.order, source, email, phone, campaign, adset);
     }));
   }
+  async function refreshAttributionJourney(orderId, btn) {
+    if (!orderId || !btn) return;
+    busy(btn, true, "Checking…");
+    try {
+      const { data, error } = await sb.functions.invoke("order-attribution", { body: { action:"refresh", order_id:orderId } });
+      if (error) {
+        let msg = error.message; try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
+        throw new Error(msg);
+      }
+      if (data?.error) throw new Error(data.error);
+      toast("Shopify session details are being re-checked");
+      const reload = async () => {
+        try { await loadAttribution(); if (!$("#v-attribution").hidden) renderAttribution(); } catch (_) {}
+      };
+      setTimeout(reload, 9000);
+      setTimeout(reload, 25000);
+      setTimeout(reload, 55000);
+    } catch (e) {
+      toast(e?.message || "Could not start the Shopify detail refresh");
+      busy(btn, false);
+    }
+  }
+
   async function syncAttribution(orderId, source, email = "", phone = "", campaign = null, adset = null) {
     const row = OA.rows.find((r) => r.order_id === orderId);
     if (!row || !source) return;
