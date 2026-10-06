@@ -157,6 +157,8 @@ def build(src):
         nos = N("No-spend sources", kids=[sv(p, "Marketplace MEL"), sv(p, "Word of Mouth"), sv(p, "Direct order"),
                                           sv(p, "Repeat Customer"), sv(p, "(Untagged)", "Unassigned (no source)")])
         profit(nos)
+        for k_ in nos["kids"]:
+            profit(k_)  # no ad cost on these sources, so each shows profit after product cost and GST
         paid = N("Total with spend", kids=[google, fb, org])
         profit(paid)
         paid.pop("kids")
@@ -172,7 +174,8 @@ def build(src):
             profit(nos)
         allr = (paid["revenue"] or 0) + (nos["revenue"] or 0)
         allt = {"name": "Total, all sources", "spend": paid["spend"], "revenue": allr,
-                "orders": (paid["orders"] or 0) + (nos["orders"] or 0), "profit": (paid["profit"] or 0) + (nos["profit"] or 0)}
+                "orders": (paid["orders"] or 0) + (nos["orders"] or 0), "profit": (paid["profit"] or 0) + (nos["profit"] or 0),
+                "roas": (allr / paid["spend"]) if paid["spend"] else None}
         # the page lists No-spend as the last group beside Google, Facebook and Organic
         model[p] = {"groups": [google, fb, org, nos], "paid": paid, "all": allt}
 
@@ -210,14 +213,14 @@ def main():
     open(out_html, "w", encoding="utf-8").write(t)
 
     y = r["model"]["y"]["paid"]
-    ya = r["model"]["y"]["all"]  # tile: revenue and profit cover ALL sources; ROAS is the with-spend ROAS shown in the report
+    ya = r["model"]["y"]["all"]  # tile covers ALL sources; ROAS = all revenue / ad spend
     money = lambda v: ("−" if v < 0 else "") + "${:,.0f}".format(abs(v))
     meta = {
         "updated": datetime.fromisoformat(src["now"]).astimezone(TZ).strftime("%-d %b %Y, %-I:%M %p"),
         "stats": [[money(y["spend"] or 0), "spend yesterday"],
                   [money(ya["revenue"] or 0), "revenue yesterday"],
-                  ["%.2fx" % y["roas"] if y["roas"] is not None else "—", "overall ROAS yesterday"],
-                  [money(ya["profit"] or 0), "profit yesterday"]],
+                  ["%.2fx" % ya["roas"] if ya["roas"] is not None else "—", "overall ROAS yesterday"],
+                  [money(ya["profit"] or 0) + (" (%d%%)" % round(ya["profit"] / ya["revenue"] * 100) if ya["revenue"] else ""), "profit yesterday"]],
     }
     if r["unflagged"]:
         meta["warn"] = "%d campaign(s) missing Tracked / Non Tracked" % len(r["unflagged"])
