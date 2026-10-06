@@ -205,3 +205,14 @@ legend{font-weight:600;font-size:13.5px;padding:0;margin-bottom:6px}
   .oa-save{width:100%}
 }
 .sts.n4{grid-template-columns:repeat(4,1fr)}.sts.n4 .st{padding:8px 8px}.sts.n4 .st b{font-size:20px}@media(max-width:560px){.sts.n4{grid-template-columns:repeat(2,1fr)}}
+
+
+/* Shopify customer journey inside Order Attribution */
+.oa-journey{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 82%,var(--teal) 18%);display:flex;flex-direction:column;gap:5px;font-size:12.5px;line-height:1.4;color:var(--muted)}
+.oa-journey b{color:var(--ink)}
+.oa-journey.waiting{border-style:dashed}
+.oa-journey.waiting span{display:block}
+.oa-journey-utm{word-break:break-word}
+.oa-journey-suggest{margin-top:2px;color:var(--ink)}
+.oa-resync{white-space:nowrap}
+@media(max-width:600px){.oa-resync{width:100%}}
