@@ -210,13 +210,14 @@ def main():
     open(out_html, "w", encoding="utf-8").write(t)
 
     y = r["model"]["y"]["paid"]
+    ya = r["model"]["y"]["all"]  # tile: revenue and profit cover ALL sources; ROAS is the with-spend ROAS shown in the report
     money = lambda v: ("−" if v < 0 else "") + "${:,.0f}".format(abs(v))
     meta = {
         "updated": datetime.fromisoformat(src["now"]).astimezone(TZ).strftime("%-d %b %Y, %-I:%M %p"),
         "stats": [[money(y["spend"] or 0), "spend yesterday"],
-                  [money(y["revenue"] or 0), "revenue yesterday"],
+                  [money(ya["revenue"] or 0), "revenue yesterday"],
                   ["%.2fx" % y["roas"] if y["roas"] is not None else "—", "overall ROAS yesterday"],
-                  [money(y["profit"] or 0), "profit yesterday"]],
+                  [money(ya["profit"] or 0), "profit yesterday"]],
     }
     if r["unflagged"]:
         meta["warn"] = "%d campaign(s) missing Tracked / Non Tracked" % len(r["unflagged"])
