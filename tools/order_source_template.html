@@ -247,8 +247,8 @@ render();table();
     const top=bar?bar.getBoundingClientRect().bottom:0;
     ids.forEach(id=>{
       const t=$(id),h=t&&t.tHead;if(!h)return;
-      const hh=h.offsetHeight,r=t.getBoundingClientRect();
-      const off=Math.max(0,Math.min(top-r.top,r.height-hh-4));
+      const hh=h.offsetHeight,r=t.getBoundingClientRect(),sc=(r.height/(t.offsetHeight||1))||1; /* sc = page/text zoom, so the shift is in the table's own units */
+      const off=Math.max(0,Math.min(top-r.top,r.height-(hh+4)*sc))/sc;
       h.querySelectorAll("th").forEach(c=>{
         if(off>0){c.classList.add("pin");c.style.transform="translateY("+off+"px)"}
         else{c.classList.remove("pin");c.style.transform=""}
