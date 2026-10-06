@@ -216,3 +216,5 @@ legend{font-weight:600;font-size:13.5px;padding:0;margin-bottom:6px}
 .oa-journey-suggest{margin-top:2px;color:var(--ink)}
 .oa-resync{white-space:nowrap}
 @media(max-width:600px){.oa-resync{width:100%}}
+
+.oa-journey-note{margin-top:3px;padding-top:6px;border-top:1px dashed var(--line);color:var(--muted)}
