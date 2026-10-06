@@ -382,7 +382,7 @@
   async function loadAttribution() {
     const [q, c] = await Promise.all([
       sb.from("order_attribution_queue")
-        .select("order_id,legacy_id,order_name,created_at,customer_name,contact_email,contact_phone,total,currency,shopify_source,products,order_source,campaign_platform,campaign_id,campaign_name,adset_id,adset_name,sync_status,sync_error,journey_ready,journey_checked_at,journey,updated_at")
+        .select("order_id,legacy_id,order_name,created_at,customer_name,contact_email,contact_phone,total,currency,shopify_source,products,order_source,campaign_platform,campaign_id,campaign_name,adset_id,adset_name,sync_status,sync_error,journey_ready,journey_checked_at,journey,attribution_note,updated_at")
         .order("created_at", { ascending: false }).limit(150),
       sb.from("ad_attribution_catalog")
         .select("option_key,platform,campaign_id,campaign_name,campaign_status,adset_id,adset_name,adset_status,last_seen_date,refreshed_at")
@@ -529,11 +529,15 @@
     const suggestion = suggest.source && !r.order_source
       ? `<div class="oa-journey-suggest">Suggested source: <b>${esc(suggest.source)}</b>${suggest.campaign ? ` · ${esc(suggest.campaign.campaign_name)}` : ""}</div>`
       : "";
+    const note = r.attribution_note
+      ? `<div class="oa-journey-note"><b>Note:</b> ${esc(r.attribution_note)}</div>`
+      : "";
     return `<div class="oa-journey">
       <div><b>First session:</b> ${esc(firstText)}${firstPlace ? " · " + esc(firstPlace) : ""}</div>
       <div><b>Converted after:</b> ${esc(lastText)}${lastPlace ? " · " + esc(lastPlace) : ""}</div>
       ${utmLine ? `<div class="oa-journey-utm"><b>UTM:</b> ${esc(utmLine)}</div>` : ""}
       ${suggestion}
+      ${note}
     </div>`;
   }
 
