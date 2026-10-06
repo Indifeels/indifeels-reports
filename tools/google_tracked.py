@@ -125,6 +125,10 @@ def compute(raw):
         raise SystemExit("No tracked Google campaigns found in the payload")
 
     first_spend = min(d for d, v in daily_g.items() if v["spend"] > 0)
+    # Evening refresh (8 pm Melbourne onwards): the latest day becomes today so far, so every window, chart and card includes it.
+    live = now.hour >= 20 and daily_g.get(today, {}).get("spend", 0) > 0
+    if live:
+        yday = today
 
     # ---- Shopify orders and attribution
     id_map = {c["id"]: c for c in camps.values()}
@@ -248,7 +252,7 @@ def compute(raw):
     PREV = {"yesterday": (yday - dt.timedelta(days=1),) * 2, "7": (yday - dt.timedelta(days=13), yday - dt.timedelta(days=7)),
             "15": (yday - dt.timedelta(days=29), yday - dt.timedelta(days=15)),
             "30": (yday - dt.timedelta(days=59), yday - dt.timedelta(days=30))}
-    LABEL = {"yesterday": "Yesterday", "7": "Last 7 days", "15": "Last 15 days", "30": "Last 30 days", "life": "Lifetime"}
+    LABEL = {"yesterday": "Today so far" if live else "Yesterday", "7": "Last 7 days", "15": "Last 15 days", "30": "Last 30 days", "life": "Lifetime"}
 
     def agg(a, b, cid=None):
         r = dict(spend=0.0, impr=0.0, clicks=0.0, conv=0.0, gval=0.0, orders=0, rev=0.0, exact=0, strong=0, prob=0,
@@ -892,7 +896,7 @@ def compute(raw):
         vis["by_camp"][cid] = {k: dict(cur=sh(*W["30"], k), prev=sh(*PREV["30"], k)) for k in ("is_", "lb", "lr")}
 
     return dict(
-        generated=now.isoformat(), tz="Australia/Melbourne", today=today.isoformat(), yesterday=yday.isoformat(),
+        generated=now.isoformat(), live=live, tz="Australia/Melbourne", today=today.isoformat(), yesterday=yday.isoformat(),
         data_through=dict(google=last_g.isoformat(), shopify=last_order.isoformat(), completed=yday.isoformat()),
         fetch_status=status, constants=dict(contrib=CONTRIB, break_even=BREAK_EVEN, gst=1 / 11, product_cost=0.25),
         life_start=life_start.isoformat(), first_spend=first_spend.isoformat(), first_order=first_order.isoformat(),
@@ -921,8 +925,8 @@ def validate(p):
     finite("payload", p)
     try:
         y, t = D.fromisoformat(p["yesterday"]), D.fromisoformat(p["today"])
-        if y != t - dt.timedelta(days=1):
-            bad.append("yesterday is not the day before today")
+        if y != (t if p.get("live") else t - dt.timedelta(days=1)):
+            bad.append("latest day is not the expected day")
         if p["periods"]["yesterday"]["to"] != p["yesterday"] or p["periods"]["7"]["to"] != p["yesterday"]:
             bad.append("completed windows must end on yesterday")
         if (D.fromisoformat(p["periods"]["7"]["to"]) - D.fromisoformat(p["periods"]["7"]["from"])).days != 6:
@@ -1127,11 +1131,10 @@ def front_numbers(p):
     """Yesterday (set at the 6 am refresh), or today so far once the 8 pm refresh has run. Used by the report card and the hub tile."""
     P = p["periods"]; tb = p["today_block"]; WT = p["waiting"]
     gen = dt.datetime.fromisoformat(p["generated"]); yd = D.fromisoformat(p["yesterday"])
-    if gen.hour >= 20 and tb["has_google"]:
-        d = dict(label="Today", day="today", sub=gen.strftime("%a %-d %b") + ", as of " + gen.strftime("%-I:%M %p") + " refresh", spend=tb["spend"], rev=tb["rev"],
-                 gval=tb["gval"] or 0, conv=tb["conv"] or 0, orders=tb["orders"], wait=WT["today"])
+    r_ = P["yesterday"]
+    if p.get("live"):
+        d = dict(label="Today so far", day="today", sub=yd.strftime("%a %-d %b") + ", as of " + gen.strftime("%-I:%M %p") + " refresh", spend=r_["spend"], rev=r_["rev"], gval=r_["gval"], conv=r_["conv"], orders=r_["orders"], wait=WT["today"])
     else:
-        r_ = P["yesterday"]
         d = dict(label="Yesterday", day="yesterday", sub=yd.strftime("%a %-d %b") + ", complete day", spend=r_["spend"], rev=r_["rev"], gval=r_["gval"], conv=r_["conv"], orders=r_["orders"], wait=WT["yesterday"])
     d["profit"] = d["rev"] * CONTRIB - d["spend"] - FEE_DAY
     d["att"] = (min(d["rev"], d["gval"]) / max(d["rev"], d["gval"])) if (d["rev"] and d["gval"]) else None
@@ -1139,6 +1142,9 @@ def front_numbers(p):
 
 
 def render(p):
+    global PERIODS
+    YL = "Today so far" if p.get("live") else "Yesterday"
+    PERIODS = [("yesterday", "t", YL)] + PERIODS[1:]
     P = p["periods"]; PV = p["prev"]
     yd = D.fromisoformat(p["yesterday"]); gen = dt.datetime.fromisoformat(p["generated"])
     sig = p["signal"]; conf = p["confidence"]; st = p["fetch_status"]
@@ -1191,7 +1197,7 @@ def render(p):
                + _tile(_rc, "ROAS (7d)", rx(_r7)) + _tile("none", "Break-even ROAS", f"{BE:.2f}x") + _tile(_cc, "Tracking confidence", esc(conf["level"])))
     sigp = f'''<section class="sig {scls}"><div class="sg"><span class="sgl">Budget signal</span><b>{esc(sig["code"].title() if sig["code"] != "FIX TRACKING" else "Fix tracking")}</b><p>{esc(sig["headline"])}</p></div>
 <div class="sgm five sgt">{sgtiles}</div>
-<p class="sgn">Profit = revenue ÷ 1.1 × 0.75 − ad spend − $155/week expert fee. Completed days only, through {yd.strftime("%a %-d %b")}.</p>
+<p class="sgn">Profit = revenue ÷ 1.1 × 0.75 − ad spend − $155/week expert fee. {"Includes today so far (as of " + gen.strftime("%-I:%M %p") + ")." if p.get("live") else "Completed days only, through " + yd.strftime("%a %-d %b") + "."}</p>
 <details class="sgn why"><summary>Why this signal</summary><ul>{why}</ul></details>
 <details class="sgn why"><summary>Issues ({len([i for i in p["issues"] if "No issues" not in i["what"]])})</summary><ul class="il" style="list-style:none;padding:0">{iss}</ul></details>
 <details class="sgn why"><summary>Actions ({len(p["actions"])})</summary><ul class="il" style="list-style:none;padding:0">{acts}</ul></details></section>'''
@@ -1255,7 +1261,7 @@ def render(p):
             out.append(f'<text x="{x:.1f}" y="{y:.1f}" text-anchor="middle" font-size="{lf}" font-weight="700" fill="{col}">{fm(vv, 0)}</text>')
         out.append(f'<circle cx="{L + (len(xs) - .5) * bw:.1f}" cy="{Y(cum[-1]):.1f}" r="3.5" fill="var(--ink)"/><text x="{w - R}" y="{Y(cum[-1]) - 8:.1f}" text-anchor="end" font-size="{fs}" font-weight="700" fill="var(--ink)">Total {fm(cum[-1], 0)}</text></svg>')
         return "".join(out)
-    TW = [("yesterday", "Yesterday", 7), ("7", "7 days", 7), ("15", "15 days", 15), ("30", "30 days", 30), ("life", "Lifetime", 0)]
+    TW = [("yesterday", YL, 7), ("7", "7 days", 7), ("15", "15 days", 15), ("30", "30 days", 30), ("life", "Lifetime", 0)]
     def ttiles(k):
         r = P[k]; pr = PV.get(k)
         def t_(l, v, key, hg, fmt, tone=""):
@@ -1443,12 +1449,12 @@ def render(p):
 <dt>Rank</dt><dd>Among active campaigns (ad groups rank inside their campaign). Score = 70% profit $ + 30% ROAS; overall blends 30 days (60%) and 7 days (40%). Green top third, red bottom third. Under $20 spend in a window is not ranked.</dd>
 <dt>Spend signal</dt><dd><b>Spend more</b>: health Good, 7-day ROAS at or above 30-day, and 7-day profit positive. <b>Spend less</b>: health Poor, or 7-day ROAS below break-even. <b>Hold</b> otherwise, and also when Google shows a profitable ROAS but Shopify matches under half of its value (a tracking gap, so the owner number is not trusted).</dd>
 <dt>Flags</dt><dd><b>Close #1</b> (active): health red or amber, 7-day not green, $20+ spent in 30 days, bottom half of its group; #1 is the worst. <b>Reopen #1</b> (paused): lifetime ROAS 20% above break-even over 5+ spend days and $50+; best first. <b>Keep closed</b>: lifetime ROAS below break-even.</dd>
-<dt>Periods</dt><dd>Yesterday is the previous completed Melbourne day. All periods end on it; arrows compare with the period before. Today is never included.</dd></dl></details>'''
+<dt>Periods</dt><dd>The first period is yesterday (complete) after the 6 am refresh, and today so far after the 8 pm refresh. All periods end on it; arrows compare with the period before.</dd></dl></details>'''
     keyrow = '<p class="key"><button class="tg" id="xa" type="button" data-o="0">Expand all ad groups</button><span class="p g">ROAS 20%+ above break-even</span><span class="p y">At or above break-even</span><span class="p r">Below break-even</span><span>▲▼ change vs the previous period: green is better, red is worse, grey is spend</span></p>'
 
     # ---------- Attribution: accuracy, tracked vs non-tracked value, order by order
     R = p["recon"]; TK = p["trk"]
-    rk_ = [("yesterday", "t", "Yesterday"), ("7", "w", "7 days"), ("15", "x", "15 days"), ("30", "m", "30 days"), ("life", "l", "Lifetime")]
+    rk_ = [("yesterday", "t", YL), ("7", "w", "7 days"), ("15", "x", "15 days"), ("30", "m", "30 days"), ("life", "l", "Lifetime")]
     def accp(v):
         if v is None: return "—"
         c = "g" if v >= .8 else ("y" if v >= .5 else "r")
@@ -1572,7 +1578,7 @@ def render(p):
         rows_ = "".join(f'<tr><th scope="row">{D.fromisoformat(x["date"]).strftime("%a %-d")}</th><td>{fm(x["spend"], 2)}</td><td>{n1(x["conv"])}</td><td>{fm(x["gval"])}</td><td>{x["orders"]}</td><td>{fm(x["rev"])}</td><td class="{cls(x["rev"] - x["gval"])}">{fm(x["rev"] - x["gval"])}</td><td class="{cls(x["profit"])}">{fm(x["profit"], 2)}</td></tr>' for x in m["days"])
         mon += (f'<details class="how mo"><summary>{dt.date.fromisoformat(m["month"] + "-01").strftime("%B %Y")} · spend {fm(m["spend"])} · matched revenue {fm(m["rev"])} · profit <span class="{cls(m["profit"])}">{fm(m["profit"])}</span> · Google value {fm(m["gval"])}'
                 + (' <span class="sp close">Tracking gap</span>' if gap else "") + f'</summary><div class="tw"><table class="sx"><thead><tr><th>Day</th><th>Spend</th><th>Google conv.</th><th>Google value</th><th>Shopify orders</th><th>Shopify matched</th><th>Δ revenue</th><th>Profit</th></tr></thead><tbody>{rows_}</tbody></table></div></details>')
-    monthly = f'<div class="box" style="margin-bottom:14px"><h2>Month to day tracking</h2><p class="sub">Each month opens to its completed days. Today is never included.</p>{mon}</div>'
+    monthly = f'<div class="box" style="margin-bottom:14px"><h2>Month to day tracking</h2><p class="sub">Each month opens to its days. Today is included only after the 8 pm refresh.</p>{mon}</div>'
 
     method = f'''<details class="how"><summary>HOW PROFIT IS CALCULATED</summary>
 <p><b>Profit = Shopify matched revenue ÷ 1.1 × 0.75 − Google spend − Google Ads expert fee</b>: revenue minus GST (1/11), minus product cost (25% of ex-GST revenue), minus ad spend, minus the expert fee of $155 a week ($22.14 a day, charged for every day in the period). The fee is an account cost, so campaign and ad-group rows show profit before it. Break-even ROAS is {BE:.2f}x.</p>
@@ -1593,7 +1599,7 @@ def render(p):
 <style>
 {css}
 </style></head><body><main>
-<header><div class="hd"><h1>Google Ads, tracked</h1><p>IndiFeels Google Ads account, tracked campaigns. Revenue is Shopify matched revenue, with Google's own figures beside it. Completed through {yd.strftime("%A %-d %B %Y")}, updated {gen.strftime("%-I:%M %p")} Melbourne time.</p></div><button class="tg" id="tg" type="button">Dark mode</button></header>'''
+<header><div class="hd"><h1>Google Ads, tracked</h1><p>IndiFeels Google Ads account, tracked campaigns. Revenue is Shopify matched revenue, with Google's own figures beside it. {"Includes today so far, " if p.get("live") else "Completed through "}{yd.strftime("%A %-d %B %Y")}, updated {gen.strftime("%-I:%M %p")} Melbourne time.</p></div><button class="tg" id="tg" type="button">Dark mode</button></header>'''
     t = p["today_block"]
     today_ = (f'<p class="foot" style="margin:0 0 14px"><b>Today, partial ({D.fromisoformat(t["date"]).strftime("%-d %b")}):</b> spend so far {fm(t["spend"], 2)}, {n0(t["clicks"])} clicks, {n1(t["conv"])} Google conversions, {t["orders"]} matched orders ({fm(t["rev"])}). Not a completed day; excluded from every figure on this page.</p>') if (t["has_google"] or t["orders"]) else ""
     body = kpis + sigp + strip + three + howto + keyrow + table + '<div style="height:14px"></div>' + traffic + two + waste + sxs + monthly + method
