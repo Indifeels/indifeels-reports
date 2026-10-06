@@ -1,10 +1,10 @@
 {
  "daily": {
-  "at": "2026-10-06T09:41+11:00",
-  "code_sha": "28cd2c53183d37141a6abb2decda8202d301c76a",
+  "at": "2026-10-06T11:24+11:00",
+  "code_sha": "721f4003bfe817c3c0e5d12208f6a6cced493418",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-10-06T09:41+11:00",
-  "manifest_version": "2026-10-06.1",
+  "last_ok": "2026-10-06T11:24+11:00",
+  "manifest_version": "2026-10-06.2",
   "ok": true,
   "reason": ""
  },
@@ -18,11 +18,11 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-10-06T09:41+11:00",
-  "code_sha": "28cd2c53183d37141a6abb2decda8202d301c76a",
+  "at": "2026-10-06T11:24+11:00",
+  "code_sha": "721f4003bfe817c3c0e5d12208f6a6cced493418",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-10-06T09:41+11:00",
-  "manifest_version": "2026-10-06.1",
+  "last_ok": "2026-10-06T11:24+11:00",
+  "manifest_version": "2026-10-06.2",
   "ok": true,
   "reason": ""
  },
