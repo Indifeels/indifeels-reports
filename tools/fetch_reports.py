@@ -60,9 +60,20 @@ try:
         e={"n":r.get("ad_name") or "","u":r["thumbnail_url"]}
         try:
             rq=urllib.request.Request(r["thumbnail_url"],headers={"User-Agent":"Mozilla/5.0"})
-            with urllib.request.urlopen(rq,timeout=20) as ir:
-                bts=ir.read(60001)
-            if 0<len(bts)<=60000: e["b"]=base64.b64encode(bts).decode()
+            with urllib.request.urlopen(rq,timeout=25) as ir:
+                bts=ir.read(8_000_001)
+            if 0<len(bts)<=8_000_000:
+                # Meta serves these at up to 1024px (often >60KB), which used to miss the size cap and leave the ad set blank.
+                # Centre-crop to a square and shrink to 200px JPEG (~10-20KB, sharp at 88px on a retina screen).
+                try:
+                    import io
+                    from PIL import Image
+                    im=Image.open(io.BytesIO(bts)).convert("RGB"); w_,h_=im.size; s_=min(w_,h_)
+                    im=im.crop(((w_-s_)//2,(h_-s_)//2,(w_-s_)//2+s_,(h_-s_)//2+s_)).resize((200,200),Image.LANCZOS)
+                    buf=io.BytesIO(); im.save(buf,"JPEG",quality=82,optimize=True)
+                    e["b"]=base64.b64encode(buf.getvalue()).decode()
+                except Exception:
+                    if len(bts)<=120000: e["b"]=base64.b64encode(bts).decode()
         except Exception: pass
         thumbs[k]=e
     json.dump(thumbs,open(os.path.join(OUT,"adthumbs_01.json"),"w"))

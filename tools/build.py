@@ -681,8 +681,8 @@ thead th.hh{{vertical-align:bottom;text-align:left}}thead th.hh small{{display:b
 tr.cp.open .xp{{transform:rotate(90deg)}}tr.cp{{cursor:pointer}}
 tr.cp .nmrow{{display:flex;align-items:flex-start}}tr.cp .nmw{{display:block;min-width:0}}
 tr.cp .nm{{font-weight:700;font-size:15.5px}}
-.asw{{display:flex;gap:10px;align-items:flex-start}}.asb{{min-width:0;flex:1}}.thm{{width:46px;height:46px;border-radius:8px;object-fit:cover;flex:none;background:var(--sub);border:1px solid var(--line)}}
-@media(max-width:640px){{.asw{{flex-direction:column;gap:6px}}.thm{{width:40px;height:40px}}}}
+.asw{{display:flex;gap:10px;align-items:flex-start}}.asb{{min-width:0;flex:1}}.thm{{width:88px;height:88px;border-radius:8px;object-fit:cover;flex:none;background:var(--sub);border:1px solid var(--line)}}
+@media(max-width:640px){{.asw{{flex-direction:column;gap:6px}}.thm{{width:76px;height:76px}}}}
 tr.as>th.asn{{padding-left:30px}}tr.as .nm{{font-size:13.5px;font-weight:500}}tr.as .nm:before{{content:"↳ ";color:var(--muted)}}
 tr.as>td{{font-size:13.5px}}tr.as+tr.as{{border-top:1px solid var(--line)}}
 .hws{{display:flex;flex-wrap:wrap;gap:2px 10px;margin-top:4px}}.hw{{font-size:12px;color:var(--muted);white-space:nowrap}}.hw i{{font-style:normal}}.hw b{{color:var(--ink);font-weight:700}}

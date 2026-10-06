@@ -51,7 +51,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.gate.outputs.go == '1'
-        run: pip install cryptography
+        run: pip install cryptography pillow
 
       - name: Set Sydney report cutoff
         if: steps.gate.outputs.go == '1'
