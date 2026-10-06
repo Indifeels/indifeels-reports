@@ -273,6 +273,22 @@ def unique_hit(hits):
     return hits[0] if len(keys) == 1 and hits else None
 
 
+def campaign_only_hit(hits):
+    """Return one campaign match without inventing an ad set from another row."""
+    ids = {str(x.get("campaign_id") or "") for x in hits if x.get("campaign_id")}
+    names = {str(x.get("campaign_name") or "") for x in hits if x.get("campaign_name")}
+    if len(ids) != 1 or len(names) != 1 or not hits:
+        return None
+    x = hits[0]
+    return {
+        "platform": x.get("platform"),
+        "campaign_id": x.get("campaign_id"),
+        "campaign_name": x.get("campaign_name"),
+        "adset_id": None,
+        "adset_name": None,
+    }
+
+
 def match_catalog(v, platform, catalog):
     u = v.get("utm") or {}
     rows = [x for x in catalog if x.get("platform") == platform]
@@ -289,26 +305,28 @@ def match_catalog(v, platform, catalog):
 
     # Google often sends the campaign id directly in utm_campaign.
     if campaign_raw.isdigit():
-        hit = unique_hit([x for x in rows if str(x.get("campaign_id") or "") == campaign_raw])
+        hit = campaign_only_hit([x for x in rows if str(x.get("campaign_id") or "") == campaign_raw])
         if hit:
             return hit, "catalog_campaign_id"
 
     # Facebook in this account normally uses utm_medium=campaign name,
-    # utm_campaign=ad-set name.
+    # utm_campaign=ad-set name. Only an exact ad-set match is allowed to
+    # populate ad-set fields; campaign-only matches deliberately leave the
+    # ad-set blank so the raw Shopify UTM can be used instead.
     if platform == "Facebook":
         if campaign_raw:
             hit = unique_hit([x for x in rows if norm(x.get("adset_name")) == norm(campaign_raw)])
             if hit:
                 return hit, "catalog_adset_name"
         if medium_raw:
-            hit = unique_hit([x for x in rows if norm(x.get("campaign_name")) == norm(medium_raw)])
+            hit = campaign_only_hit([x for x in rows if norm(x.get("campaign_name")) == norm(medium_raw)])
             if hit:
                 return hit, "catalog_campaign_name"
     else:
         for raw in (campaign_raw, medium_raw):
             if not raw:
                 continue
-            hit = unique_hit([x for x in rows if norm(x.get("campaign_name")) == norm(raw)])
+            hit = campaign_only_hit([x for x in rows if norm(x.get("campaign_name")) == norm(raw)])
             if hit:
                 return hit, "catalog_campaign_name"
 
@@ -322,9 +340,9 @@ def match_catalog(v, platform, catalog):
             c = norm(x.get("campaign_name"))
             if len(c) >= 10 and (c.startswith(n) or n.startswith(c)):
                 hits.append(x)
-        ids = {str(x.get("campaign_id") or "") for x in hits}
-        if len(ids) == 1 and hits:
-            return hits[0], "catalog_campaign_prefix"
+        hit = campaign_only_hit(hits)
+        if hit:
+            return hit, "catalog_campaign_prefix"
 
     return None, None
 
@@ -397,13 +415,14 @@ def attribution_for(order, catalog, state=None):
     hit, how = match_catalog(v, platform, catalog)
     fields = raw_paid_fields(v, platform)
     if hit:
-        fields = {
-            "campaign_platform": platform,
-            "campaign_id": hit.get("campaign_id"),
-            "campaign_name": hit.get("campaign_name"),
-            "adset_id": hit.get("adset_id"),
-            "adset_name": hit.get("adset_name"),
-        }
+        fields["campaign_platform"] = platform
+        fields["campaign_id"] = hit.get("campaign_id") or fields.get("campaign_id")
+        fields["campaign_name"] = hit.get("campaign_name") or fields.get("campaign_name")
+        # Only replace Shopify's raw ad-set fields when the catalogue matched
+        # that exact ad set. A campaign-only match must not invent another set.
+        if hit.get("adset_id") or hit.get("adset_name"):
+            fields["adset_id"] = hit.get("adset_id")
+            fields["adset_name"] = hit.get("adset_name")
 
     paid_platforms = []
     for pv in paid_visits:
