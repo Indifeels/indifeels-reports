@@ -506,14 +506,15 @@ for i,r in enumerate(rows):
     nm=(f'<th scope="row" title="Launched {r["L"].strftime("%-d %b %Y")} ({r["live"]} days ago)"><div class="nmrow">{btn}<span class="nmw"><span class="nm">{html.escape(r["n"])}</span>'
         f'<span class="meta"><span class="st {"on" if r["act"] else "off"}">{"Active" if r["act"] else "Paused"}</span>'+(f'<span class="ln2">{len(r["sets"])} ad sets</span>' if r["sets"] else "")+'</span>'
         +(sigrow(m.get("sig"),m.get("flag"))+rkrow(m.get("rank"),False) if r["act"] else sigrow(None,m.get("flag"))+rkrow_p(m))+'</span></div></th>')
-    trs+=prow(cls,nm,m,f' data-id="c{i}"')
+    trs+='<tbody class="grp">'+prow(cls,nm,m,f' data-id="c{i}"')
     for x in r["sets"]:
         an=(f'<th scope="row" class="asn"><span class="nm">{html.escape(x["name"])}</span>'
             f'<span class="meta"><span class="st {"on" if x["act"] else "off"}">{"Active" if x["act"] else "Paused"}</span></span>'
             +(sigrow(x.get("sig"),x.get("flag"))+rkrow(x.get("rank"),True) if x["act"] else sigrow(None,x.get("flag"))+rkrow_p(x))+'</th>')
         trs+=prow("as"+("" if x["act"] else " paused"),an,x,f' data-p="c{i}" hidden')
-trs+=('<tr class="total"><th scope="row">All non-tracked campaigns</th><td class="s1"></td>'+trio(tot["t"],tot["pt"],"Today")+trio(tot["w"],tot["pw"],"Week")+trio(tot["x"],tot["px"],"15d")
-      +trio(tot["m"],tot["pm"],"Month")+trio(tot["l"],None,"Lifetime")+'</tr>')
+    trs+='</tbody>'
+trs+=('<tbody><tr class="total"><th scope="row">All non-tracked campaigns</th><td class="s1"></td>'+trio(tot["t"],tot["pt"],"Today")+trio(tot["w"],tot["pw"],"Week")+trio(tot["x"],tot["px"],"15d")
+      +trio(tot["m"],tot["pm"],"Month")+trio(tot["l"],None,"Lifetime")+'</tr></tbody>')
 
 def kpi(k,label,rng,cur,prev,note,sp=None,extra=""):
     s,m=cur; c=cpm(s,m); ps,pm=prev if prev else (None,None)
@@ -685,6 +686,14 @@ tr.as>td{{font-size:13.5px}}tr.as+tr.as{{border-top:1px solid var(--line)}}
 @media (max-width:900px){{.ln+.ln2:before{{content:""}}}}
 
 .wrapx{{position:relative}}
+.wrapx .wrap{{max-height:calc(100vh - 72px);max-height:calc(100dvh - 72px);overflow:auto;overscroll-behavior:contain}}
+.wrap>.jump{{position:sticky;top:0;left:0;width:100%;box-sizing:border-box;margin:0;padding:8px 10px;z-index:7;border-bottom:1px solid var(--line)}}
+.wrapx thead th{{position:sticky;top:var(--jh,0px);z-index:3;box-shadow:0 1px 0 var(--line)}}.wrapx thead tr+tr th{{z-index:3}}
+.wrapx thead th.hcamp{{z-index:6}}
+.wrapx thead th.hh{{background:var(--card)}}
+.wrapx tbody tr.cp.open{{border-top:0!important}}
+.wrapx tbody tr.cp.open>td{{position:sticky;top:var(--hh,84px);z-index:2;box-shadow:0 2px 0 var(--line)}}.wrapx tbody tr.cp.open>th{{top:var(--hh,84px);z-index:4}}
+@media(max-width:640px){{.wrapx tbody tr.cp.open>th .rkrow,.wrapx tbody tr.cp.open>th .sigrow small{{display:none}}}}
 .wrapx:after{{content:"›";position:absolute;right:8px;top:50%;width:30px;height:30px;margin-top:-15px;border-radius:50%;background:var(--ink);color:var(--bg);font:700 22px/28px Figtree,sans-serif;text-align:center;pointer-events:none;opacity:0;transition:opacity .2s;box-shadow:0 2px 8px rgba(0,0,0,.35)}}
 .wrapx.mr:after{{opacity:.9}}
 .jump{{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;display:flex;gap:6px;align-items:center;background:var(--bg);padding:8px 0;margin:0 0 6px;overflow-x:auto}}
@@ -736,12 +745,11 @@ tbody th{{min-width:340px;max-width:370px}}
 <dt>Rank</dt><dd>Under each campaign name. Overall rank among active campaigns (ad sets rank inside their campaign), then the rank on 7, 15 and 30 days alone. Score is 70% messages received plus 30% cost per message; the overall number blends 30 days (60%) and 7 days (40%). Green is the top third, red the bottom third; under $20 spend in a window is not ranked.</dd>
 <dt>Flags</dt><dd><b>Close #1</b> (active): 30-day health is red or amber, 7-day health is not green, at least $20 spent in 30 days, and it ranks in the bottom half of its group. #1 is the worst. <b>Reopen #1</b> (paused): lifetime health is green over at least 5 spend days and $50 spent, so a weak last run may just have been a bad season. Ranked best first (inside its group, and across all paused rows) on lifetime messages (70%) and lifetime cost per message (30%), inside its group. <b>Keep closed</b> (paused): lifetime health is red on the same evidence. Paused rows show 7, 15 and 30 day health too (blank if it did not spend), plus Last run (its latest stretch of spending, no gap over 3 days) and Lifetime.</dd>
 <dt>Spend signal</dt><dd>Spend more when 30-day health is Good and the 7-day cost per message is at or below the 30-day figure. Spend less when health is Poor or the 7-day cost per message is over $6. Otherwise Hold.</dd></dl></details>
-<nav class="jump" aria-label="Jump to a period"><button type="button" class="stp" data-step="-1" aria-label="Previous">&#8249;</button><button type="button" data-i="0">Health</button><button type="button" data-i="1">{LBL_T}</button><button type="button" data-i="2">7 days</button><button type="button" data-i="3">15 days</button><button type="button" data-i="4">30 days</button><button type="button" data-i="5">Lifetime</button><button type="button" class="stp" data-step="1" aria-label="Next">&#8250;</button></nav>
 <p class="key"><button class="tg" id="xa" type="button" data-o="0">Expand all ad sets</button><span class="p g">Under $4.50</span><span class="p y">$4.50 to $6</span><span class="p r">Over $6</span><span>▲▼ change vs the previous period: green is better, red is worse, grey is spend</span></p>
-<div class="wrapx"><div class="wrap"><table>
+<div class="wrapx"><div class="wrap"><nav class="jump" aria-label="Jump to a period"><button type="button" class="stp" data-step="-1" aria-label="Previous">&#8249;</button><button type="button" data-i="0">Health</button><button type="button" data-i="1">{LBL_T}</button><button type="button" data-i="2">7 days</button><button type="button" data-i="3">15 days</button><button type="button" data-i="4">30 days</button><button type="button" data-i="5">Lifetime</button><button type="button" class="stp" data-step="1" aria-label="Next">&#8250;</button></nav><table>
 <thead><tr><th rowspan="2" class="hcamp">Campaign</th><th rowspan="2" class="s1 hh">Health<small>% of days under $4.50. Run = latest stretch of spend, no gap over 3 days</small></th><th colspan="3" class="s1 gh ct">{LBL_T}<small>{TODAY.strftime("%a %-d %b")}</small></th><th colspan="3" class="s1 gh cw">Last 7 days<small>{W7.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cx">Last 15 days<small>{M15.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cm">Last 30 days<small>{M30.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cl">Lifetime<small>Since {dt.date.fromisoformat(FIRST).strftime("%-d %b %Y")}</small></th></tr>
 <tr>{"".join(f'<th class="s1 c{k}">Spend</th><th class="c{k}">Msgs</th><th class="c{k}">Cost/msg</th>' for k in "twxml")}</tr></thead>
-<tbody>{trs}</tbody></table></div></div>
+{trs}</table></div></div>
 <p class="foot">Messages are Meta "messaging conversations started". Periods end on {TODAY.strftime("%-d %b")}; arrows compare each period with the one before it. Health, rank and signal use completed days only. Ad sets shown are those with spend in the last 30 days.</p>
 </main>
 <script>
@@ -761,6 +769,7 @@ if(xa)xa.addEventListener('click',function(){{var open=xa.getAttribute('data-o')
 <script>
 (function(){{var _r=document.querySelector('tr.cp'),wrap=_r?_r.closest('.wrap'):null,bar=document.querySelector('.jump');if(!wrap||!bar)return;var box=wrap.parentNode;
 var heads=[].slice.call(wrap.querySelectorAll('thead th.gh, thead th.hh'));
+function stk(){{var r=wrap.querySelectorAll('thead tr');if(r.length>1){{var jh=bar.getBoundingClientRect().height,h=r[0].getBoundingClientRect().height;wrap.style.setProperty('--jh',jh+'px');r[1].querySelectorAll('th').forEach(function(t){{t.style.top=(jh+h)+'px'}});wrap.style.setProperty('--hh',(jh+h+r[1].getBoundingClientRect().height)+'px')}}}}stk();window.addEventListener('resize',stk);window.addEventListener('load',stk);if(window.ResizeObserver)new ResizeObserver(stk).observe(wrap.querySelector('thead'));
 function sw(){{var h=wrap.querySelector('thead th.hcamp');return h?h.getBoundingClientRect().width:0}}
 function left(el){{return el.getBoundingClientRect().left-wrap.getBoundingClientRect().left+wrap.scrollLeft}}
 function go(i){{var el=heads[i];if(!el)return;wrap.scrollTo({{left:Math.max(0,left(el)-sw()-2),behavior:'smooth'}})}}
