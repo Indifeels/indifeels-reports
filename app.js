@@ -426,80 +426,84 @@
   }
   function oaJourneySuggestion(r) {
     const j = r.journey && typeof r.journey === "object" ? r.journey : {};
-    const visits = [j.last_visit, j.first_visit].filter(Boolean);
-    const paid = visits.find((v) => {
-      const u = v?.utm || {};
-      const h = [v?.source, v?.source_description, v?.referrer_url, u.source].filter(Boolean).join(" ");
-      return (u.source || u.medium || u.campaign || u.term || u.content) && /facebook|instagram|meta|fb\.|google/i.test(h);
-    });
-    const visit = paid || visits[0] || {};
-    const utm = visit.utm || {};
-    const hay = [visit.source, visit.source_description, visit.referrer_url, utm.source].filter(Boolean).join(" ").toLowerCase();
     const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const all = [];
+    const seen = new Set();
+    [j.first_visit, ...(Array.isArray(j.moments) ? j.moments : []), j.last_visit].filter(Boolean).forEach((v) => {
+      const k = v.id || [v.occurred_at, v.source, v.landing_page, JSON.stringify(v.utm || {})].join("|");
+      if (!seen.has(k)) { seen.add(k); all.push(v); }
+    });
+    all.sort((a,b) => String(a.occurred_at || "").localeCompare(String(b.occurred_at || "")));
 
-    let platform = null, source = null, campaign = null, adset = null;
-    if (/facebook|instagram|meta|fb\./i.test(hay)) platform = "Facebook";
-    else if (/google/i.test(hay)) platform = "Google";
+    const platformOf = (v) => {
+      const u=v?.utm||{};
+      const h=[v?.source,v?.source_description,v?.referrer_url,u.source,u.medium,u.campaign,u.content].filter(Boolean).join(" ").toLowerCase();
+      if (/facebook|instagram|meta|m\.facebook|l\.instagram/.test(h)) return "Facebook";
+      if (/google/.test(h)) return "Google";
+      return null;
+    };
+    const organic = (v) => {
+      const u=v?.utm||{};
+      const h=[v?.source,v?.source_description,v?.referrer_url,u.source,u.medium,u.campaign,u.content].filter(Boolean).join(" ").toLowerCase();
+      const m=String(u.medium||"").toLowerCase();
+      if (/sag[_ ]organic|organic/.test(h)) return true;
+      if (platformOf(v)==="Google" && ["","organic","product_sync"].includes(m) && !/cpc|ppc|paid|ads|adwords/.test(h)) return true;
+      if (platformOf(v)==="Facebook" && (!u.source && !u.medium && !u.campaign && !u.term && !u.content || ["social","organic","referral"].includes(m))) return true;
+      return false;
+    };
+    const paid = (v) => {
+      const u=v?.utm||{};
+      const p=platformOf(v);
+      if (!u || !p || organic(v)) return false;
+      const h=[u.source,u.medium,u.campaign,u.term,u.content,v?.source_description].filter(Boolean).join(" ").toLowerCase();
+      if (/cpc|ppc|paid|tracked|non tracked|non-tracked|sales|campaign/.test(h)) return true;
+      if (p==="Facebook" && (u.campaign||u.term||u.content) && !["social","organic","referral"].includes(String(u.medium||"").toLowerCase())) return true;
+      if (p==="Google" && !["","organic","product_sync"].includes(String(u.medium||"").toLowerCase())) return true;
+      return false;
+    };
 
-    const hasUtm = !!(utm.source || utm.medium || utm.campaign || utm.term || utm.content);
-    if (hasUtm && platform === "Facebook") source = "FB Online Orders - WEB";
-    else if (hasUtm && platform === "Google") source = "Google Online Orders - WEB";
+    const paidVisits=all.filter(paid);
+    const visit=paidVisits.length ? paidVisits[paidVisits.length-1] : all.find(organic) || all[0] || {};
+    const utm=visit.utm||{};
+    const platform=platformOf(visit);
+    const isOrganic=!paidVisits.length && organic(visit);
+    let source=isOrganic ? "Organic Orders" : platform==="Facebook" ? "FB Online Orders - WEB" : platform==="Google" ? "Google Online Orders - WEB" : null;
+    let campaign=null, adset=null;
 
-    if (platform) {
-      const cats = oaCampaigns().filter((x) => x.platform === platform);
-      const campaignTexts = [utm.medium, utm.campaign, utm.content].filter(Boolean);
-      for (const raw of campaignTexts) {
-        const n = norm(raw);
-        const hits = cats.filter((x) => norm(x.campaign_name) === n);
-        if (hits.length === 1) { campaign = hits[0]; break; }
-      }
-      if (!campaign) {
-        for (const raw of campaignTexts) {
-          const n = norm(raw);
-          if (n.length < 10) continue;
-          const hits = cats.filter((x) => {
-            const c = norm(x.campaign_name);
-            return c.length >= 10 && (c.startsWith(n) || n.startsWith(c));
-          });
-          const ids = new Set(hits.map((x) => x.campaign_id));
-          if (ids.size === 1 && hits.length) { campaign = hits[0]; break; }
+    if (!isOrganic && platform) {
+      const cats=oaCampaigns().filter((x)=>x.platform===platform);
+      const rawCampaign=platform==="Facebook" ? String(utm.medium||utm.campaign||"") : String(utm.campaign||utm.medium||"");
+      if (rawCampaign) {
+        const exact=cats.filter((x)=>norm(x.campaign_name)===norm(rawCampaign));
+        const ids=new Set(exact.map((x)=>x.campaign_id));
+        if(ids.size===1 && exact.length) {
+          const x=exact[0];
+          campaign={platform:x.platform,campaign_id:x.campaign_id,campaign_name:x.campaign_name};
         }
       }
-
-      // Shopify/Meta commonly places the campaign name in utm_medium and the
-      // ad-set name in utm_campaign. If Windsor's catalogue is a little late,
-      // still show those Shopify values in the existing fields.
-      if (!campaign && utm.medium) {
-        campaign = { platform, campaign_id:"", campaign_name:String(utm.medium), journey_derived:true };
+      if (!campaign && rawCampaign) {
+        const n=norm(rawCampaign);
+        const hits=n.length>=10 ? cats.filter((x)=>{const c=norm(x.campaign_name);return c.length>=10&&(c.startsWith(n)||n.startsWith(c));}) : [];
+        const ids=new Set(hits.map((x)=>x.campaign_id));
+        if(ids.size===1 && hits.length) {
+          const x=hits[0];
+          campaign={platform:x.platform,campaign_id:x.campaign_id,campaign_name:x.campaign_name};
+        }
       }
+      if (!campaign && rawCampaign) campaign={platform,campaign_id:"",campaign_name:rawCampaign,journey_derived:true};
 
       if (campaign) {
-        const sets = campaign.campaign_id ? oaAdsets(campaign) : [];
-        if (utm.term && sets.length) {
-          const hits = sets.filter((x) => String(x.adset_id || "") === String(utm.term));
-          if (hits.length === 1) adset = hits[0];
+        const sets=campaign.campaign_id ? oaAdsets(campaign) : [];
+        if (utm.term) {
+          const hit=sets.find((x)=>String(x.adset_id||"")===String(utm.term));
+          if(hit) adset=hit;
         }
-        if (!adset) {
-          for (const raw of [utm.campaign, utm.content].filter(Boolean)) {
-            const n = norm(raw);
-            const hits = sets.filter((x) => norm(x.adset_name) === n);
-            if (hits.length === 1) { adset = hits[0]; break; }
-          }
+        const rawAdset=platform==="Facebook" ? String(utm.campaign||"") : "";
+        if (!adset && rawAdset) {
+          const exact=sets.filter((x)=>norm(x.adset_name)===norm(rawAdset));
+          if(exact.length===1) adset=exact[0];
         }
-        if (!adset) {
-          for (const raw of [utm.campaign, utm.content].filter(Boolean)) {
-            const n = norm(raw);
-            if (n.length < 10) continue;
-            const hits = sets.filter((x) => {
-              const a = norm(x.adset_name);
-              return a.length >= 10 && (a.startsWith(n) || n.startsWith(a));
-            });
-            if (hits.length === 1) { adset = hits[0]; break; }
-          }
-        }
-        if (!adset && utm.campaign && norm(utm.campaign) !== norm(campaign.campaign_name)) {
-          adset = { adset_id:"", adset_name:String(utm.campaign), journey_derived:true };
-        }
+        if(!adset && rawAdset) adset={adset_id:String(utm.term||""),adset_name:rawAdset,journey_derived:true};
       }
     }
     return { source, platform, campaign, adset, utm, visit };
