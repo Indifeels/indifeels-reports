@@ -245,15 +245,20 @@ def is_paid(v):
     return False
 
 
-def first_attributable(summary):
+def attribution_touch(summary):
+    """Pick the paid touch most likely to receive ad-platform credit.
+
+    A later retargeting click must beat an earlier organic/direct visit. If there
+    are no paid Google/Meta touches, use the earliest organic/search/social touch.
+    """
     vs = visits(summary)
     paid = [v for v in vs if is_paid(v)]
     if paid:
-        return paid[0], "paid"
+        return paid[-1], "paid", paid, vs
     organic = [v for v in vs if is_organic(v)]
     if organic:
-        return organic[0], "organic"
-    return None, None
+        return organic[0], "organic", paid, vs
+    return None, None, paid, vs
 
 
 def catalog_index(rows):
@@ -345,18 +350,24 @@ def raw_paid_fields(v, platform):
     }
 
 
-def attribution_for(order, catalog):
+def attribution_for(order, catalog, state=None):
     summary = order.get("customerJourneySummary") or {}
     if summary.get("ready") is not True:
-        return None
+        return None, "Shopify attribution is still processing."
 
-    # Never replace anything already saved in Shopify. Manual attribution wins.
-    if str((order.get("sourceField") or {}).get("value") or "").strip():
-        return None
+    state = state or {}
+    # Manual choices always win. Automatic choices may be revised if a later
+    # retargeting touch appears on a subsequent Shopify journey refresh.
+    if state.get("order_source") and state.get("attribution_auto") is not True:
+        return None, state.get("attribution_note")
 
-    v, kind = first_attributable(summary)
+    v, kind, paid_visits, all_visits = attribution_touch(summary)
     if not v:
-        return None
+        return None, (
+            "No trackable Google/Meta paid touch is visible in Shopify Customer Journey. "
+            "Paid-platform purchase attribution cannot be confirmed from the available order data."
+        )
+
     u = v.get("utm") or {}
 
     if kind == "organic":
@@ -372,12 +383,16 @@ def attribution_for(order, catalog):
             "utm_campaign": u.get("campaign"),
             "utm_content": u.get("content"),
             "utm_term": u.get("term"),
-            "attribution_match_method": "first_online_touch_organic",
-        }
+            "attribution_match_method": "organic_no_paid_touch",
+            "attribution_note": None,
+        }, None
 
     platform = platform_of(v)
     if platform not in ("Facebook", "Google"):
-        return None
+        return None, (
+            "A paid-looking touch exists, but it could not be confidently mapped to Google Ads or Meta Ads."
+        )
+
     source = "FB Online Orders - WEB" if platform == "Facebook" else "Google Online Orders - WEB"
     hit, how = match_catalog(v, platform, catalog)
     fields = raw_paid_fields(v, platform)
@@ -390,6 +405,26 @@ def attribution_for(order, catalog):
             "adset_name": hit.get("adset_name"),
         }
 
+    paid_platforms = []
+    for pv in paid_visits:
+        p = platform_of(pv)
+        if p in ("Facebook", "Google") and p not in paid_platforms:
+            paid_platforms.append(p)
+
+    note = None
+    other_platforms = [p for p in paid_platforms if p != platform]
+    if other_platforms:
+        other = " and ".join(other_platforms)
+        note = (
+            f"Multiple paid-platform touches were found. Primary attribution is {platform} because it is "
+            f"the latest paid touch before the order. {other} may also report this purchase under its own attribution window."
+        )
+    elif len(paid_visits) > 1:
+        note = (
+            f"Multiple {platform} paid touches were found; the latest paid touch before the order was used, "
+            "so retargeting is included."
+        )
+
     return {
         "order_source": source,
         **fields,
@@ -398,11 +433,11 @@ def attribution_for(order, catalog):
         "utm_campaign": u.get("campaign"),
         "utm_content": u.get("content"),
         "utm_term": u.get("term"),
-        "attribution_match_method": "first_paid_touch_" + (how or "shopify_utm"),
-    }
+        "attribution_match_method": "latest_paid_touch_" + (how or "shopify_utm"),
+        "attribution_note": note,
+    }, note
 
-
-def to_journey_update(order):
+def to_journey_update(order, attribution_note=None):
     summary = order.get("customerJourneySummary") or {}
     ready = summary.get("ready") is True
     vs = visits(summary) if ready else []
@@ -420,6 +455,7 @@ def to_journey_update(order):
         "order_id": order.get("id"),
         "ready": ready,
         "journey": journey,
+        "attribution_note": attribution_note,
     }
 
 
@@ -436,9 +472,63 @@ def main():
         print("No Shopify orders returned.")
         return
 
-    # Store the full delayed journey first so the dashboard updates even when
-    # an order still needs manual attribution.
-    journey_updates = [to_journey_update(o) for o in orders]
+    # Reuse the existing Windsor-derived campaign/ad-set catalogue and the
+    # queue's auto/manual state. This lets automatic rows improve when later
+    # retargeting details arrive, while manual rows remain untouched.
+    cout = post_json(CALLBACK, {"mode": "catalog_export", "token": SYNC_TOKEN}, timeout=90)
+    if not cout.get("ok"):
+        raise RuntimeError("Catalogue read failed: " + json.dumps(cout)[:1000])
+    catalog = catalog_index(cout.get("rows") or [])
+
+    sout = post_json(CALLBACK, {"mode": "auto_state", "token": SYNC_TOKEN}, timeout=90)
+    if not sout.get("ok"):
+        raise RuntimeError("Attribution-state read failed: " + json.dumps(sout)[:1000])
+    states = {x.get("order_id"): x for x in (sout.get("rows") or []) if x.get("order_id")}
+
+    auto_updates = []
+    journey_updates = []
+    warnings = []
+
+    for order in orders:
+        state = states.get(order["id"]) or {}
+        attribution, note = attribution_for(order, catalog, state)
+        journey_updates.append(to_journey_update(order, note))
+
+        if not attribution:
+            continue
+
+        values = {
+            "order_source": attribution.get("order_source"),
+            "attribution_platform": attribution.get("campaign_platform"),
+            "attribution_campaign": attribution.get("campaign_name"),
+            "attribution_campaign_id": attribution.get("campaign_id"),
+            "attribution_ad_set": attribution.get("adset_name"),
+            "attribution_ad_set_id": attribution.get("adset_id"),
+        }
+
+        # Only write Shopify when the automatic attribution materially changed.
+        changed = (
+            state.get("order_source") != attribution.get("order_source")
+            or state.get("campaign_platform") != attribution.get("campaign_platform")
+            or state.get("campaign_id") != attribution.get("campaign_id")
+            or state.get("campaign_name") != attribution.get("campaign_name")
+            or state.get("adset_id") != attribution.get("adset_id")
+            or state.get("adset_name") != attribution.get("adset_name")
+        )
+        if changed:
+            try:
+                shopify_set(order["id"], values)
+            except Exception as exc:
+                warnings.append(f'{order.get("name")}: {exc}')
+                continue
+
+        auto_updates.append({
+            "order_id": order["id"],
+            **attribution,
+        })
+
+    # Store the full journey and any "not confirmable" note even when the row
+    # remains pending for manual attribution.
     jout = post_json(
         CALLBACK,
         {"mode": "journey", "token": SYNC_TOKEN, "updates": journey_updates},
@@ -446,39 +536,6 @@ def main():
     )
     if not jout.get("ok"):
         raise RuntimeError("Journey callback failed: " + json.dumps(jout)[:1000])
-
-    # Reuse the existing Windsor-derived catalogue rather than hitting Windsor
-    # every 15 minutes.
-    cout = post_json(CALLBACK, {"mode": "catalog_export", "token": SYNC_TOKEN}, timeout=90)
-    if not cout.get("ok"):
-        raise RuntimeError("Catalogue read failed: " + json.dumps(cout)[:1000])
-    catalog = catalog_index(cout.get("rows") or [])
-
-    auto_updates = []
-    warnings = []
-    for order in orders:
-        a = attribution_for(order, catalog)
-        if not a:
-            continue
-
-        values = {
-            "order_source": a.get("order_source"),
-            "attribution_platform": a.get("campaign_platform"),
-            "attribution_campaign": a.get("campaign_name"),
-            "attribution_campaign_id": a.get("campaign_id"),
-            "attribution_ad_set": a.get("adset_name"),
-            "attribution_ad_set_id": a.get("adset_id"),
-        }
-        try:
-            shopify_set(order["id"], values)
-        except Exception as exc:
-            warnings.append(f'{order.get("name")}: {exc}')
-            continue
-
-        auto_updates.append({
-            "order_id": order["id"],
-            **a,
-        })
 
     if auto_updates:
         aout = post_json(
@@ -492,7 +549,7 @@ def main():
     ready = sum(1 for x in journey_updates if x["ready"])
     print(
         f"Order journey refresh: checked {len(orders)}, ready {ready}, "
-        f"journey updates {jout.get('updated', 0)}, auto-attributed {len(auto_updates)}."
+        f"journey updates {jout.get('updated', 0)}, auto-attributed/rechecked {len(auto_updates)}."
     )
     if warnings:
         print("Auto-attribution warnings:", " | ".join(warnings[:10]))
