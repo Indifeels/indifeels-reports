@@ -23,12 +23,13 @@ def load(n):
     p = os.path.join(SUM, n + ".json")
     return json.load(open(p)) if os.path.exists(p) else None
 
+def cpmv(v): return "—" if v is None or v == float("inf") else money(v, 2)
 SIG = {"up": "up", "hold": "hold", "down": "down", "scale": "up", "cut": "down"}
 metas = {}
 d = load("daily")
 if d:
-    metas["daily"] = dict(updated=d["updated"], stats=[[money(d["t_s"], 2), "spent today"], [str(int(d["t_m"])), "messages today"],
-                     [money(d["m_sales"]), "FB sales this month"], [f'{d["m_roas"]:.2f}x' if d["m_roas"] else "—", "ROAS this month"]],
+    metas["daily"] = dict(updated=d["updated"], stats=[[money(d["t_s"], 2), f'spent {d.get("t_label", "today")}'], [str(int(d["t_m"])), f'messages {d.get("t_label", "today")}'],
+                     [cpmv(d.get("t_cpm")), "cost per message"], [f'{d["m_roas"]:.2f}x' if d["m_roas"] else "—", "ROAS, last 30 days"]],
                      signal=dict(code=SIG.get(d["sig"], "hold"), label=d["sig_label"], reason=d["reason"]),
                      warn=f'{d["unatt"]} orders need a source' if d.get("unatt") else "", spark=d.get("spark"))
 m = load("monthly")

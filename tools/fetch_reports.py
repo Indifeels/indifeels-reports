@@ -30,6 +30,18 @@ if not rows:
 w = dict(w, data=rows) if isinstance(w,dict) else rows
 json.dump(w,open(os.path.join(OUT,"windsor_01.json"),"w"))
 
+# Ad-set level rows for the Daily report's expandable ad sets (separate file: monthly.py reads windsor*.json only).
+afields="date,campaign,campaign_id,campaign_status,campaign_start_time,adset_id,adset_name,adset_status,spend,actions_onsite_conversion_messaging_conversation_started_7d"
+aparams=urllib.parse.urlencode({"api_key":os.environ["WINDSOR_API_KEY"],"date_from":start,"date_to":end,"fields":afields,"select_accounts":acct})
+with urllib.request.urlopen("https://connectors.windsor.ai/facebook?"+aparams,timeout=180) as r:
+    aw=json.load(r)
+arows=aw.get("data",aw) if isinstance(aw,dict) else aw
+if not isinstance(arows,list):
+    raise RuntimeError("Windsor returned an unexpected ad-set response")
+arows=[r for r in arows if ("non tracked" in (r.get("campaign") or "").lower().replace("-"," ") and "tracked |" not in (r.get("campaign") or "").lower().replace("non tracked",""))]
+json.dump({"data":arows},open(os.path.join(OUT,"adset_01.json"),"w"))
+print("ad-set rows:",len(arows))
+
 shop=os.environ.get("SHOPIFY_SHOP","bvdxj3-r8.myshopify.com")
 api="https://"+shop+"/admin/api/2026-04/graphql.json"
 q='''query($after:String,$query:String!){ orders(first:250,after:$after,query:$query,sortKey:PROCESSED_AT){ pageInfo{hasNextPage endCursor} nodes{id name processedAt cancelledAt sourceName m:metafield(namespace:"custom",key:"order_source"){value} t:currentTotalPriceSet{shopMoney{amount currencyCode}} } } }'''

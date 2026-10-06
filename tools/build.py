@@ -50,11 +50,16 @@ def arrow(now,prev,higher_good):
 def rng(days,a,b):
     v=[x for d,x in days.items() if str(a)<=d<=str(b)]
     return (sum(x[0] for x in v),sum(x[1] for x in v))
-P={"t":(TODAY,TODAY,YEST,YEST),"w":(WS,TODAY,WS-D(7),TODAY-D(7)),"m":(MS,TODAY,PMS,PME)}
+# Periods: latest day, last 7 days, last 30 days (all ending on the report day), then lifetime.
+W7=TODAY-D(6); M15=TODAY-D(14); M30=TODAY-D(29)
+REAL=dt.datetime.now(TZ).date()
+LBL_T="Today" if TODAY>=REAL else ("Yesterday" if TODAY==REAL-D(1) else TODAY.strftime("%A"))
+FULL_END=TODAY if TODAY<REAL else TODAY-D(1)   # last fully completed day: used for health, rank and spend signal
+P={"t":(TODAY,TODAY,YEST,YEST),"w":(W7,TODAY,W7-D(7),W7-D(1)),"x":(M15,TODAY,M15-D(15),M15-D(1)),"m":(M30,TODAY,M30-D(30),M30-D(1))}
 rows=[]
 for n,days in by.items():
     st,L=meta[n]; L=dt.date.fromisoformat(L)
-    r=dict(n=n.replace("Non Tracked | ","").replace(" | Campaign",""),act=st=="ACTIVE",L=L,live=(TODAY-L).days+1)
+    r=dict(key=n,n=n.replace("Non Tracked | ","").replace(" | Campaign",""),act=st=="ACTIVE",L=L,live=(TODAY-L).days+1)
     for k,(a,b,pa,pb) in P.items(): r[k]=rng(days,a,b); r["p"+k]=rng(days,pa,pb)
     r["l"]=rng(days,"0000","9999")
     spent=sorted(d for d in days if days[d][0]>0)
@@ -67,7 +72,123 @@ for n,days in by.items():
     r["run"]=run; rows.append(r)
 FIRST=min(d for days in by.values() for d in days if days[d][0]>0)
 rows.sort(key=lambda r:(not r["act"],-r["m"][0],-r["l"][0]))
-tot={k:(sum(r[k][0] for r in rows),sum(r[k][1] for r in rows)) for k in ["t","pt","w","pw","m","pm","l"]}
+tot={k:(sum(r[k][0] for r in rows),sum(r[k][1] for r in rows)) for k in ["t","pt","w","pw","x","px","m","pm","l"]}
+
+# ---- ad sets, health, rank and spend signal (campaign and ad-set level) ----
+MIN_SPEND=20.0
+H30=(FULL_END-D(29),FULL_END); H15=(FULL_END-D(14),FULL_END); H7=(FULL_END-D(6),FULL_END)
+adrows=[]
+for _f in sorted(glob.glob(f"{S}/adset*")): adrows+=unwrap(json.load(open(_f)))
+asd={}
+for _r in sorted(adrows,key=lambda r:r["date"]):
+    if not _r.get("spend") and not _r.get(M): continue
+    _a=asd.setdefault(_r["campaign"],{}).setdefault(_r["adset_id"],dict(name=_r.get("adset_name") or _r["adset_id"],days={},act=False))
+    _a["name"]=_r.get("adset_name") or _a["name"]; _a["act"]=(_r.get("adset_status") or "")=="ACTIVE"
+    _a["days"][_r["date"]]=(_r["spend"] or 0,_r[M] or 0)
+def metrics(days,act):
+    m={}
+    for k,(a,b,pa,pb) in P.items(): m[k]=rng(days,a,b); m["p"+k]=rng(days,pa,pb)
+    m["l"]=rng(days,"0000","9999")
+    m["f30"]=rng(days,*H30); m["f15"]=rng(days,*H15); m["f7"]=rng(days,*H7)
+    sp=[d for d in days if days[d][0]>0 and str(H30[0])<=d<=str(H30[1])]
+    m["hn"]=len(sp); m["hb"]=sum(1 for d in sp if cpm(*days[d])<4.5); m["act"]=act
+    def _hw(h):
+        d_=[d for d in days if days[d][0]>0 and str(h[0])<=d<=str(h[1])]
+        return (sum(1 for d in d_ if cpm(*days[d])<4.5),len(d_))
+    m["h7"]=_hw(H7); m["h15"]=_hw(H15)
+    allsp=sorted(d for d in days if days[d][0]>0 and d<=str(FULL_END))
+    m["lh"]=(sum(1 for d in allsp if cpm(*days[d])<4.5),len(allsp))
+    if allsp:
+        m["ls"]=dt.date.fromisoformat(allsp[-1]); _lr=[allsp[-1]]
+        for d in reversed(allsp[:-1]):
+            if (dt.date.fromisoformat(_lr[-1])-dt.date.fromisoformat(d)).days>3: break
+            _lr.append(d)
+        m["lr"]=(sum(1 for d in _lr if cpm(*days[d])<4.5),len(_lr))
+    else: m["ls"]=None; m["lr"]=(0,0)
+    s30,m30=m["f30"]
+    if not act: m["health"]=("none","Paused")
+    elif m["hn"]<3: m["health"]=("none","New")
+    else:
+        pct=m["hb"]/m["hn"]
+        m["health"]=("r","Poor") if (pct<0.35 or (s30>0 and not m30)) else (("g","Good") if pct>=0.60 else ("y","Watch"))
+    return m
+def pctl(vals,higher_good):
+    ids=list(vals); n=len(ids)
+    if n==1: return {ids[0]:1.0}
+    out={}
+    for i in ids:
+        worse=sum(1 for j in ids if j!=i and ((vals[j]<vals[i]) if higher_good else (vals[j]>vals[i])))
+        tie=sum(1 for j in ids if j!=i and vals[j]==vals[i])
+        out[i]=(worse+0.5*tie)/(n-1)
+    return out
+def rank_group(ms):
+    """Score = 70% messages received + 30% cost per message (each as a percentile among peers).
+    Final = 60% last 30 days + 40% last 7 days (full days). Under $20 spend in a window = not ranked on that window."""
+    def score(win):
+        el={i:v[win] for i,v in ms.items() if v[win][0]>=MIN_SPEND}
+        if not el: return {}
+        a=pctl({i:v[1] for i,v in el.items()},True); b=pctl({i:cpm(*v) for i,v in el.items()},False)
+        return {i:0.7*a[i]+0.3*b[i] for i in el}
+    s30=score("f30"); s15=score("f15"); s7=score("f7")
+    fin={i:(0.6*s30[i]+0.4*s7[i] if i in s7 else s30[i]) for i in s30}
+    order=sorted(fin,key=lambda i:(-fin[i],-ms[i]["f30"][1]))
+    o15=sorted(s15,key=lambda i:(-s15[i],-ms[i]["f15"][1])); o7=sorted(s7,key=lambda i:(-s7[i],-ms[i]["f7"][1])); o30=sorted(s30,key=lambda i:(-s30[i],-ms[i]["f30"][1]))
+    return {i:dict(rank=order.index(i)+1,n=len(order),r7=(o7.index(i)+1 if i in s7 else None),r15=(o15.index(i)+1 if i in s15 else None),r30=o30.index(i)+1,n7=len(o7),n15=len(o15),n30=len(o30)) for i in order}
+def sig_for(m):
+    if not m["act"]: return None
+    (s30,m30),(s7,m7)=m["f30"],m["f7"]
+    if s30<MIN_SPEND and s7<MIN_SPEND: return ("hold","Hold","Too little spend to judge yet")
+    c7=cpm(s7,m7) if s7 else None; c30=cpm(s30,m30) if s30 else None
+    if m["health"][0]=="r": return ("down","Spend less","Health is poor")
+    if c7 is not None and c7>6: return ("down","Spend less","7 days of spend, no messages" if c7==float("inf") else "7-day cost per message is over $6")
+    if m["health"][0]=="g" and c7 is not None and c30 is not None and c7<=c30: return ("up","Spend more",f"7-day {fcpm(c7)} is at or below 30-day {fcpm(c30)}")
+    return ("hold","Hold","Not clearly better or worse")
+def _rag(p,n): return "n" if n<3 else ("g" if p>=0.60 else ("y" if p>=0.35 else "r"))
+def finalize(ents):
+    """Number the flags inside one group: Close #1 = worst active; Reopen #1 = best paused (70% lifetime messages, 30% lifetime cost per message)."""
+    cl=[x for x in ents if x.get("flag") and x["flag"][0]=="close"]
+    cl.sort(key=lambda x:(-x["rank"]["rank"],-x["f30"][0]))
+    for k,x in enumerate(cl,1): x["flag"]=("close",f"Close #{k}",x["flag"][2]+f". Worst first, {k} of {len(cl)}.")
+    for x in cl: x["cr"]=dict(k=int(x["flag"][1].split("#")[1]),n=len(cl))
+    ro=[x for x in ents if x.get("flag") and x["flag"][0]=="reopen"]
+    if ro:
+        ids=list(range(len(ro)))
+        a=pctl({i:ro[i]["l"][1] for i in ids},True); b=pctl({i:cpm(*ro[i]["l"]) for i in ids},False)
+        sc={i:0.7*a[i]+0.3*b[i] for i in ids}; order=sorted(ids,key=lambda i:-sc[i])
+        om=sorted(ids,key=lambda i:-ro[i]["l"][1]); oc=sorted(ids,key=lambda i:cpm(*ro[i]["l"]))
+        for k,i in enumerate(order,1):
+            x=ro[i]; x["flag"]=("reopen",f"Reopen #{k}",x["flag"][2]+f" Best first, {k} of {len(ro)}.")
+            x["rr"]=dict(n=len(ro),k=k,mp=om.index(i)+1,cp=oc.index(i)+1)
+def flag_for(m):
+    """Active: Consider closing = 30-day health Poor, 7-day health Poor or too thin to read, at least $20 spent in 30 days, and ranked last in its group.
+    Paused: Consider reopening = lifetime health Good over at least 5 spend days and $50 spend; Keep closed = lifetime health Poor on the same evidence."""
+    if m["act"]:
+        b30,n30=m["hb"],m["hn"]; b7,n7=m["h7"]; rk=m.get("rank")
+        if n30>=3 and _rag(b30/n30,n30) in ("r","y") and m["f30"][0]>=MIN_SPEND and (n7<3 or _rag(b7/n7,n7)!="g") and rk and rk["n"]>=2 and rk["rank"]>rk["n"]/2:
+            return ("close","Close",f"30-day health {round(100*b30/n30)}%, ranked #{rk['rank']} of {rk['n']}")
+        return None
+    lb,ln=m["lh"]
+    if ln>=5 and m["l"][0]>=50:
+        lp=lb/ln; lrb,lrn=m["lr"]; lrt=f"{round(100*lrb/lrn)}%" if lrn>=3 else "too few days"
+        if lp>=0.60: return ("reopen","Reopen",f"Lifetime {round(100*lp)}% of {ln} days under $4.50 (last run {lrt}). A weak last run may be seasonal.")
+        if lp<0.35: return ("keep","Keep closed",f"Lifetime {round(100*lp)}% of {ln} days under $4.50 (last run {lrt}).")
+    return None
+for r in rows:
+    r["m2"]=metrics(by[r["key"]],r["act"]); r["allsets"]=[]
+    for aid,a in asd.get(r["key"],{}).items():
+        am=metrics(a["days"],a["act"] and r["act"]); am["name"]=a["name"]; r["allsets"].append(am)
+    _rk=rank_group({i:x for i,x in enumerate(r["allsets"]) if x["act"]})
+    for i,x in enumerate(r["allsets"]): x["rank"]=_rk.get(i); x["sig"]=sig_for(x); x["flag"]=flag_for(x)
+    finalize(r["allsets"])
+    r["sets"]=[x for x in r["allsets"] if x["m"][0]>0 or (x["flag"] and x["flag"][0]=="reopen")]   # spend in last 30 days, or a reopen candidate
+    r["sets"].sort(key=lambda x:(not x["act"],-x["m"][0],-x["l"][0]))
+_rk=rank_group({i:r["m2"] for i,r in enumerate(rows) if r["act"]})
+for i,r in enumerate(rows): r["m2"]["rank"]=_rk.get(i); r["m2"]["sig"]=sig_for(r["m2"]); r["m2"]["flag"]=flag_for(r["m2"])
+finalize([r["m2"] for r in rows])
+_go=[x for r in rows for x in [r["m2"]]+r["allsets"] if x.get("rr")]
+if _go:
+    _a=pctl({i:x["l"][1] for i,x in enumerate(_go)},True); _b=pctl({i:cpm(*x["l"]) for i,x in enumerate(_go)},False)
+    for k,i in enumerate(sorted(range(len(_go)),key=lambda i:-(0.7*_a[i]+0.3*_b[i])),1): _go[i]["rr"]["g"]=k; _go[i]["rr"]["gn"]=len(_go)
 
 from zoneinfo import ZoneInfo
 FBP="FB/IG PAGE MSGS MEL - SALE"; FBW="FB WHATSAPP MSGS MEL - SALE"
@@ -331,25 +452,68 @@ else: MRV=f'${_headroom(c14):.2f}' if c14 and c14["s"] else "—"; MRL="return p
 def roasf(x): return "—" if x is None else f"{x:.2f}x"
 
 def trio(cur,prev,lab):
-    k={"Today":"t","Week":"w","Month":"m","Lifetime":"l"}[lab]
+    k={"Today":"t","Week":"w","15d":"x","Month":"m","Lifetime":"l"}[lab]
     s,m=cur; ps,pm=prev if prev and prev[0] else (None,None)
     if not s: return f'<td class="s1 c{k}" data-l="{lab} spend">—</td><td class="c{k}" data-l="{lab} msgs">—</td><td class="c{k}" data-l="{lab} cost/msg">—</td>'
     c=cpm(s,m)
     return (f'<td class="s1 c{k}" data-l="{lab} spend">{money(s)}{arrow(s,ps,None) if ps else ""}</td>'
             f'<td class="c{k}" data-l="{lab} msgs">{int(m):,}{arrow(m,pm,True) if pm is not None else ""}</td>'
             f'<td class="c{k}" data-l="{lab} cost/msg"><span class="p {band(c)}">{fcpm(c)}</span>{arrow(c,cpm(ps,pm),False) if ps else ""}</td>')
+def hrag(p,n): return "n" if n<3 else ("g" if p>=0.60 else ("y" if p>=0.35 else "r"))
+def hcell(m):
+    if m["health"]==("none","Paused"):
+        ch=""
+        for cap,(b_,n_) in (("7 days",m["h7"]),("15 days",m["h15"]),("30 days",(m["hb"],m["hn"])),("Last run",m["lr"]),("Lifetime",m["lh"])):
+            v=(f'<span class="hv {hrag(b_/n_,n_)}" title="{b_} of {n_} spend days under $4.50">{round(100*b_/n_)}%</span>' if n_>=3 else '<span class="hv n" title="Fewer than 3 days with spend">–</span>')
+            ch+=f'<span class="hch"><span class="hcap">{cap}</span>{v}</span>'
+        last=f'<span class="hlast">Paused. Last spend {m["ls"].strftime("%-d %b")}</span>' if m["ls"] else '<span class="hlast">Paused, no spend</span>'
+        return f'<td class="s1 hc"><span class="hcs">{ch}</span>{last}</td>'
+    chips=""
+    for cap,(b_,n_) in (("7 days",m["h7"]),("15 days",m["h15"]),("30 days",(m["hb"],m["hn"])),("Current run",m["lr"]),("Lifetime",m["lh"])):
+        if n_>=3: v=f'<span class="hv {hrag(b_/n_,n_)}" title="{b_} of {n_} spend days under $4.50">{round(100*b_/n_)}%</span>'
+        else: v='<span class="hv n" title="Fewer than 3 days with spend">–</span>'
+        chips+=f'<span class="hch"><span class="hcap">{cap}</span>{v}</span>'
+    return f'<td class="s1 hc"><span class="hcs">{chips}</span></td>'
+def rkcol(pos,n):
+    if not pos or n<=1: return "n"
+    if n==2: return "g" if pos==1 else "y"
+    f=(pos-1)/(n-1)
+    return "g" if f<=1/3 else ("r" if f>=2/3 else "y")
+def rkrow(rk,adset):
+    if rk is None: return '<span class="rkrow"><span class="rkl">Not ranked, under $20 spend</span></span>'
+    ch=""
+    for cap,k in (("7d","7"),("15d","15"),("30d","30")):
+        pos=rk["r"+k]
+        ch+=(f'<span class="rkc {rkcol(pos,rk["n"+k])}" title="Rank on the last {k} days alone, out of {rk["n"+k]}">{cap} #{pos}</span>' if pos else f'<span class="rkc n" title="Under $20 spend in this window">{cap} –</span>')
+    return f'<span class="rkrow"><span class="rkl">Rank <b>#{rk["rank"]}</b> of {rk["n"]}</span>{ch}</span>'
+def rkrow_p(m):
+    r=m.get("rr")
+    if not r: return ""
+    ch="".join(f'<span class="rkc {rkcol(pos,r["n"])}" title="Rank among paused candidates on lifetime {t}, out of {r["n"]}">{cap} #{pos}</span>' for cap,pos,t in (("Msgs",r["mp"],"messages"),("Cost",r["cp"],"cost per message")))
+    return f'<span class="rkrow"><span class="rkl">Reopen rank <b>#{r["k"]}</b> of {r["n"]}{f' · all paused #{r["g"]} of {r["gn"]}' if r.get("g") else ''}</span>{ch}</span>'
+def sigrow(sg,fl=None):
+    x=fl or sg
+    return f'<span class="sigrow"><span class="sp {x[0]}" title="{html.escape(x[2])}">{x[1]}</span><small>{html.escape(x[2])}</small></span>' if x else ""
+def prow(cls,name,m,attrs=""):
+    return (f'<tr class="{cls}"{attrs}>{name}'+hcell(m)
+            +trio(m["t"],m["pt"],"Today")+trio(m["w"],m["pw"],"Week")+trio(m["x"],m["px"],"15d")+trio(m["m"],m["pm"],"Month")+trio(m["l"],None,"Lifetime")+'</tr>')
 trs=""; first_p=True
-for r in rows:
-    cls="act" if r["act"] else "paused"
+for i,r in enumerate(rows):
+    cls="cp act" if r["act"] else "cp paused"
     if not r["act"] and first_p: cls+=" firstp"; first_p=False
-    pct=round(100*r["below"]/r["ad"]) if r["ad"] else 0
-    trs+=(f'<tr class="{cls}"><th scope="row"><span class="nm">{html.escape(r["n"])}</span>'
-          f'<span class="meta"><span class="st {"on" if r["act"] else "off"}">{"Active" if r["act"] else "Paused"}</span>Launched {r["L"].strftime("%-d %b %Y")} ({r["live"]} days)</span></th>'
-          + trio(r["t"],r["pt"],"Today")+trio(r["w"],r["pw"],"Week")+trio(r["m"],r["pm"],"Month")+trio(r["l"],None,"Lifetime")
-          + f'<td class="s1 streak" data-l="Days under $4.50"><b>{r["below"]}</b> of {r["ad"]} days<span class="bar"><span style="width:{pct}%"></span></span>'
-          f'<small>{("Current run: "+str(r["run"])+(" day" if r["run"]==1 else " days")) if r["act"] else "Paused"}</small></td></tr>')
-trs+=('<tr class="total"><th scope="row">All non-tracked campaigns</th>'+trio(tot["t"],tot["pt"],"Today")+trio(tot["w"],tot["pw"],"Week")
-      +trio(tot["m"],tot["pm"],"Month")+trio(tot["l"],None,"Lifetime")+'<td class="s1"></td></tr>')
+    m=r["m2"]
+    btn=(f'<button type="button" class="xp" aria-expanded="false" aria-label="Show ad sets">&#9656;</button>' if r["sets"] else '<span class="xp0"></span>')
+    nm=(f'<th scope="row" title="Launched {r["L"].strftime("%-d %b %Y")} ({r["live"]} days ago)"><div class="nmrow">{btn}<span class="nmw"><span class="nm">{html.escape(r["n"])}</span>'
+        f'<span class="meta"><span class="st {"on" if r["act"] else "off"}">{"Active" if r["act"] else "Paused"}</span>'+(f'<span class="ln2">{len(r["sets"])} ad sets</span>' if r["sets"] else "")+'</span>'
+        +(sigrow(m.get("sig"),m.get("flag"))+rkrow(m.get("rank"),False) if r["act"] else sigrow(None,m.get("flag"))+rkrow_p(m))+'</span></div></th>')
+    trs+=prow(cls,nm,m,f' data-id="c{i}"')
+    for x in r["sets"]:
+        an=(f'<th scope="row" class="asn"><span class="nm">{html.escape(x["name"])}</span>'
+            f'<span class="meta"><span class="st {"on" if x["act"] else "off"}">{"Active" if x["act"] else "Paused"}</span></span>'
+            +(sigrow(x.get("sig"),x.get("flag"))+rkrow(x.get("rank"),True) if x["act"] else sigrow(None,x.get("flag"))+rkrow_p(x))+'</th>')
+        trs+=prow("as"+("" if x["act"] else " paused"),an,x,f' data-p="c{i}" hidden')
+trs+=('<tr class="total"><th scope="row">All non-tracked campaigns</th><td class="s1"></td>'+trio(tot["t"],tot["pt"],"Today")+trio(tot["w"],tot["pw"],"Week")+trio(tot["x"],tot["px"],"15d")
+      +trio(tot["m"],tot["pm"],"Month")+trio(tot["l"],None,"Lifetime")+'</tr>')
 
 def kpi(k,label,rng,cur,prev,note,sp=None,extra=""):
     s,m=cur; c=cpm(s,m); ps,pm=prev if prev else (None,None)
@@ -365,7 +529,7 @@ def kpi(k,label,rng,cur,prev,note,sp=None,extra=""):
             f'<div><b>{int(m):,}{arrow(m,pm,True) if pm is not None else ""}</b><span>messages</span></div>'
             f'<div><b><span class="p {band(c)}">{fcpm(c)}</span>{arrow(c,cpm(ps,pm),False) if ps else ""}</b><span>per message</span></div>'
             f'</div>'+srow+f'<p class="kn">{note}</p></div>')
-DK="--bg:#0E1116;--card:#171B22;--ink:#EDEFF3;--muted:#A0A8B6;--line:#2A303B;--sub:#1F242D;--g:#6FD6A6;--gb:#123326;--gl:#27604A;--y:#F2C85B;--yb:#362A0E;--yl:#6B5419;--r:#FF8C80;--rb:#3D1A17;--rl:#7A3129;--t:#8FB2FF;--tb:#1A2B52;--tc:#141E36;--w:#C3A6FF;--wb:#2C2150;--wc:#1D1834;--m:#5FD4C6;--mb:#123D3A;--mc:#0F2927;--l:#FFB085;--lb:#43261A;--lc:#2C1B14"
+DK="--bg:#0E1116;--card:#171B22;--ink:#EDEFF3;--muted:#A0A8B6;--line:#2A303B;--sub:#1F242D;--g:#6FD6A6;--gb:#123326;--gl:#27604A;--y:#F2C85B;--yb:#362A0E;--yl:#6B5419;--r:#FF8C80;--rb:#3D1A17;--rl:#7A3129;--t:#8FB2FF;--tb:#1A2B52;--tc:#141E36;--w:#C3A6FF;--wb:#2C2150;--wc:#1D1834;--m:#5FD4C6;--mb:#123D3A;--mc:#0F2927;--l:#FFB085;--lb:#43261A;--lc:#2C1B14;--x:#F0A6F5;--xb:#3E1F42;--xc:#2A1730;--camp-bg:#000000;--as-bg:#262B34"
 def cells(i):
     out=""
     for k in "twml":
@@ -384,7 +548,7 @@ SIGP=f'''<section class="sig {SIG[0]}"><div class="sg"><span class="sgl">Budget 
 <details class="sgn why"><summary>Why this signal</summary><ul>{"".join(f"<li>{html.escape(x)}</li>" for x in RS["details"])}</ul></details></section>'''
 SECTION=SIGP+f'''<section class="two">
 <div class="box"><h2>FB sales by message channel</h2><p class="sub">Shopify orders tagged with these two order sources. Values include GST, after refunds.</p>
-<div class="tw"><table class="mini"><thead><tr><th></th><th class="ct">Today</th><th class="cw">This week</th><th class="cm">This month</th><th class="cl">Lifetime</th></tr></thead><tbody>
+<div class="tw"><table class="mini"><thead><tr><th></th><th class="ct">{LBL_T}</th><th class="cw">7 days</th><th class="cm">30 days</th><th class="cl">Lifetime</th></tr></thead><tbody>
 <tr><th scope="row">FB/IG page messages, orders</th>{cells(0)}</tr>
 <tr><th scope="row">FB/IG page messages, sales</th>{cells(1)}</tr>
 <tr><th scope="row">WhatsApp messages, orders</th>{cells(2)}</tr>
@@ -407,7 +571,7 @@ page=f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
 --t:#1D4ED8;--tb:#DCE7FF;--tc:#EEF3FF;
 --w:#6D28D9;--wb:#ECE3FF;--wc:#F5F0FF;
 --m:#0F766E;--mb:#D3F2EE;--mc:#EAF8F6;
---l:#9A3412;--lb:#FCE6D6;--lc:#FEF3EA}}
+--l:#9A3412;--lb:#FCE6D6;--lc:#FEF3EA;--x:#A21CAF;--xb:#F6DDF8;--xc:#FBF0FC;--camp-bg:#14161B;--as-bg:#EEF0F3}}
 @media (prefers-color-scheme:dark){{:root:not([data-theme="light"]){{{DK}}}}}
 :root[data-theme="dark"]{{{DK}}}
 *{{box-sizing:border-box}}
@@ -436,11 +600,11 @@ table{{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}}
 thead th{{font-weight:600;font-size:13px;color:var(--muted);padding:8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}}
 thead tr:first-child th{{text-align:left;border-bottom:0;padding-top:12px}}
 thead th:first-child{{text-align:left}}
-.s1{{border-left:2px solid var(--card)}}
+.s1{{border-left:1px solid var(--line)}}
 td.ct,th.ct{{--pc:var(--t);--pb:var(--tb);--pcol:var(--tc)}}td.cw,th.cw{{--pc:var(--w);--pb:var(--wb);--pcol:var(--wc)}}
-td.cm,th.cm{{--pc:var(--m);--pb:var(--mb);--pcol:var(--mc)}}td.cl,th.cl{{--pc:var(--l);--pb:var(--lb);--pcol:var(--lc)}}
-td.ct,td.cw,td.cm,td.cl{{background:var(--pcol)}}
-thead th.ct,thead th.cw,thead th.cm,thead th.cl{{background:var(--pb);color:var(--pc)}}
+td.cx,th.cx{{--pc:var(--x);--pb:var(--xb);--pcol:var(--xc)}}td.cm,th.cm{{--pc:var(--m);--pb:var(--mb);--pcol:var(--mc)}}td.cl,th.cl{{--pc:var(--l);--pb:var(--lb);--pcol:var(--lc)}}
+table.mini td.ct,table.mini td.cw,table.mini td.cx,table.mini td.cm,table.mini td.cl{{background:var(--pcol)}}
+thead th.ct,thead th.cw,thead th.cx,thead th.cm,thead th.cl{{background:var(--pb);color:var(--pc)}}
 thead th.gh{{font:700 15px/1.2 "Bricolage Grotesque",Figtree,sans-serif}}
 thead th.gh small{{display:block;font:500 12px Figtree,sans-serif;color:var(--ink);opacity:.75}}
 tbody th{{text-align:left;font-weight:500;padding:12px;min-width:190px;max-width:230px;position:sticky;left:0;background:var(--card);z-index:1}}
@@ -452,7 +616,7 @@ tbody tr+tr{{border-top:1px solid var(--line)}}
 tr.paused td,tr.paused .nm{{color:var(--muted)}}
 tr.firstp{{border-top:3px solid var(--line)!important}}
 tr.total th{{background:var(--sub);font-weight:700}}
-tr.total td.ct,tr.total td.cw,tr.total td.cm,tr.total td.cl{{background:var(--pb);font-weight:700}}
+tr.total td{{background:var(--sub);font-weight:700}}
 .p{{display:inline-block;padding:1px 7px;border-radius:6px;font-weight:600;border:1px solid transparent}}
 .p.g{{background:var(--gb);color:var(--g);border-color:var(--gl)}}.p.y{{background:var(--yb);color:var(--y);border-color:var(--yl)}}.p.r{{background:var(--rb);color:var(--r);border-color:var(--rl)}}.p.none{{font-weight:400}}
 .ar{{font-style:normal;font-size:11px;margin-left:4px;vertical-align:1px}}.ar.gd{{color:var(--g)}}.ar.bd{{color:var(--r)}}.ar.nt{{color:var(--muted)}}
@@ -484,34 +648,101 @@ table.mini tbody tr:nth-child(2) td,table.mini tbody tr:nth-child(4) td{{font-we
 .att .bad{{margin:0 0 4px;color:var(--r)}}
 .att ul{{margin:0;padding-left:18px;font-size:13.5px}}.att li span{{color:var(--r);font-weight:600;margin-left:4px}}
 .att .old{{margin:12px 0 0;font-size:12.5px;color:var(--muted)}}
-@media (max-width:900px){{.two{{grid-template-columns:1fr}} table.mini thead{{display:table-header-group}} table.mini,table.mini tbody{{display:table;width:100%}} table.mini tr{{display:table-row!important;border:0!important;border-radius:0;margin:0}} table.mini th,table.mini td{{display:table-cell;width:auto}} table.mini td::before{{display:none}} table.mini tbody th{{min-width:120px;font-size:13px}}}}
+@media (max-width:900px){{.two{{grid-template-columns:1fr}}
+ main{{padding:16px 10px 40px}}.box{{padding:12px}}
+ table.mini{{table-layout:fixed;width:100%}}
+ table.mini th,table.mini td{{padding:8px 3px;font-size:12.5px}}
+ table.mini thead th{{font-size:12px}}
+ table.mini thead th:first-child,table.mini tbody th{{width:27%}}
+ table.mini tbody th{{min-width:0;font-size:12px;line-height:1.25;white-space:normal;padding-left:2px}}
+ table.mini .ar{{font-size:9px;margin-left:1px}}}}
+.wrap table{{min-width:1560px}}
+thead th.hcamp{{position:sticky;left:0;z-index:2;background:var(--card);vertical-align:bottom}}
+thead th.hh{{vertical-align:bottom;text-align:left}}thead th.hh small{{display:block;font-weight:400;font-size:11.5px}}
+.hc,.rc,.gc{{text-align:left;white-space:normal;min-width:130px}}.gc{{min-width:150px}}
+.hc small,.rc small,.gc small{{display:block;color:var(--muted);font-size:12px;line-height:1.3;margin-top:2px}}
+.hc b{{font-size:15px;margin-left:4px}}.rc b{{font-size:16px}}.rk0{{color:var(--muted)}}
+.hp,.sp{{display:inline-block;padding:1px 9px;border-radius:99px;font-weight:700;font-size:12.5px;border:1px solid transparent}}
+.hp.g,.sp.up{{background:var(--gb);color:var(--g);border-color:var(--gl)}}.hp.y,.sp.hold{{background:var(--yb);color:var(--y);border-color:var(--yl)}}
+.hp.r,.sp.down{{background:var(--rb);color:var(--r);border-color:var(--rl)}}.hp.none{{background:var(--sub);color:var(--muted)}}
+.xp,.xp0{{display:inline-block;width:22px;height:22px;margin-right:6px;vertical-align:top;flex:none}}
+.xp{{border:1px solid var(--line);background:var(--sub);color:var(--ink);border-radius:6px;font-size:12px;line-height:1;cursor:pointer;padding:0}}
+.xp:focus-visible{{outline:3px solid var(--t);outline-offset:2px}}
+tr.cp.open .xp{{transform:rotate(90deg)}}tr.cp{{cursor:pointer}}
+tr.cp .nmrow{{display:flex;align-items:flex-start}}tr.cp .nmw{{display:block;min-width:0}}
+tr.cp .nm{{font-weight:700;font-size:15.5px}}
+tr.as>th.asn{{padding-left:30px}}tr.as .nm{{font-size:13.5px;font-weight:500}}tr.as .nm:before{{content:"↳ ";color:var(--muted)}}
+tr.as>td{{font-size:13.5px}}tr.as+tr.as{{border-top:1px solid var(--line)}}
+.hws{{display:flex;flex-wrap:wrap;gap:2px 10px;margin-top:4px}}.hw{{font-size:12px;color:var(--muted);white-space:nowrap}}.hw i{{font-style:normal}}.hw b{{color:var(--ink);font-weight:700}}
+.how{{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:13.5px}}
+.how summary{{cursor:pointer;font-weight:600}}.how dl{{margin:8px 0 0;display:grid;grid-template-columns:max-content 1fr;gap:6px 14px}}.how dt{{font-weight:700}}.how dd{{margin:0;color:var(--muted)}}
+.hint{{display:none;margin:0 0 8px;font-size:12.5px;color:var(--muted)}}
+@media (max-width:900px){{.hint{{display:block}}.how dl{{grid-template-columns:1fr}}}}
 .foot{{color:var(--muted);font-size:13px;margin:12px 2px 0;max-width:80ch}}
-@media (max-width:900px){{
- thead{{display:none}}table,tbody,tr,th,td{{display:block;width:100%}}
- .wrap{{background:none;border:0;overflow:visible}}
- tbody tr{{background:var(--card);border:1px solid var(--line)!important;border-radius:12px;margin-bottom:10px;display:grid;grid-template-columns:repeat(3,1fr);overflow:hidden}}
- tbody th{{grid-column:1/-1;position:static;min-width:0;max-width:none;border-bottom:1px solid var(--line)}}
- td{{text-align:left;padding:8px 12px;border:0!important;white-space:normal}}
- td::before{{content:attr(data-l);display:block;font-size:12px;color:var(--pc,var(--muted));font-weight:700}}
- td.streak{{grid-column:1/-1}}
- tr.total td:last-child{{display:none}}
- header{{flex-direction:column}}
-}}
+@media (max-width:900px){{header{{flex-direction:column}} tbody th{{min-width:140px;max-width:140px;padding:10px 8px}} thead th.hcamp small{{display:none!important}}
+ tbody th .nm{{font-size:13.5px;line-height:1.25}} tbody th .meta{{font-size:11.5px}} .ln{{display:none}} .xp,.xp0{{width:20px;height:20px;margin-right:5px}} tr.as th.asn{{padding-left:20px}}}}
+.ln2{{margin-left:4px;white-space:nowrap}}.ln+.ln2:before{{content:" · "}}
+@media (max-width:900px){{.ln+.ln2:before{{content:""}}}}
+
+.wrapx{{position:relative}}
+.wrapx:after{{content:"›";position:absolute;right:8px;top:50%;width:30px;height:30px;margin-top:-15px;border-radius:50%;background:var(--ink);color:var(--bg);font:700 22px/28px Figtree,sans-serif;text-align:center;pointer-events:none;opacity:0;transition:opacity .2s;box-shadow:0 2px 8px rgba(0,0,0,.35)}}
+.wrapx.mr:after{{opacity:.9}}
+.jump{{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;display:flex;gap:6px;align-items:center;background:var(--bg);padding:8px 0;margin:0 0 6px;overflow-x:auto}}
+.jump button{{font:600 13px Figtree,sans-serif;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:6px 13px;cursor:pointer;white-space:nowrap;flex:none}}
+.jump button.on{{background:var(--ink);color:var(--bg);border-color:var(--ink)}}
+.jump .stp{{padding:6px 11px;font-size:16px;line-height:1}}
+.jump button:focus-visible{{outline:3px solid var(--t);outline-offset:2px}}
+tbody tr.cp{{--ink:#F3F4F6;--muted:#A9B0BC;--g:#6FD6A6;--gb:#123326;--gl:#27604A;--y:#F2C85B;--yb:#362A0E;--yl:#6B5419;--r:#FF8C80;--rb:#3D1A17;--rl:#7A3129;--line:#2E333D;--sub:#262B34;--card:#14161B;color:var(--ink);border-top:0!important}}
+tbody tr.cp>th,tbody tr.cp>td{{background:var(--camp-bg);color:var(--ink)}}
+tbody tr.as>th,tbody tr.as>td{{background:var(--as-bg)}}
+tbody tr.cp.paused>th,tbody tr.cp.paused>td{{background:var(--camp-bg)}}
+tbody tr.cp>th{{box-shadow:inset 8px 0 0 #1B7F5C}}tbody tr.cp.paused>th{{box-shadow:inset 8px 0 0 #7C8494}}
+tbody tr.cp>th .nm{{padding-left:2px}}
+tbody tr.cp .xp{{background:#fff;color:#14161B;border-color:#fff;font-weight:700}}
+tbody tr.cp.paused .xp{{background:#C9CED8;border-color:#C9CED8}}
+tbody tr.cp:not(.firstp){{border-top:6px solid var(--bg)!important}}
+tbody tr.as>th{{box-shadow:inset 3px 0 0 #5FBF9A}}tbody tr.as.paused>th{{box-shadow:inset 3px 0 0 #B3BAC6}}
+tbody tr.as.paused>th,tbody tr.as.paused>td{{background:repeating-linear-gradient(135deg,var(--as-bg) 0 9px,color-mix(in srgb,var(--as-bg) 90%,var(--muted)) 9px 10px)}}
+tbody tr.as:last-of-type>th,tbody tr.as:last-of-type>td{{border-bottom:2px solid var(--muted)}}
+tbody th{{min-width:340px;max-width:370px}}
+.hc{{min-width:214px;text-align:left;white-space:nowrap}}
+.hcs{{display:flex;gap:10px;justify-content:flex-start}}
+.hch{{display:flex;flex-direction:column;align-items:center;gap:3px}}.hcap{{font-size:11.5px;color:var(--muted)}}
+.hv{{display:inline-block;min-width:56px;text-align:center;padding:2px 8px;border-radius:7px;font-weight:700;font-size:14px;border:1px solid transparent}}
+.hv.g,.rkc.g{{background:var(--gb);color:var(--g);border-color:var(--gl)}}.hv.y,.rkc.y{{background:var(--yb);color:var(--y);border-color:var(--yl)}}
+.hv.r,.rkc.r{{background:var(--rb);color:var(--r);border-color:var(--rl)}}.sp.close{{background:#C62828;color:#fff;border-color:#C62828}}.sp.reopen{{background:#1B7F5C;color:#fff;border-color:#1B7F5C}}.sp.keep{{background:var(--sub);color:var(--muted);border-color:var(--line)}}
+.hlast{{display:block;margin-top:5px;font-size:11.5px;color:var(--muted)}}
+.hv.n,.rkc.n{{background:var(--sub);color:var(--muted);border-color:var(--line)}}
+.sigrow,.rkrow{{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:6px}}
+.sigrow small{{color:var(--muted);font-size:12px;line-height:1.3;flex:1 1 100px}}
+.rkl{{font-size:12.5px;color:var(--muted);margin-right:2px}}.rkl b{{color:var(--ink)}}
+.rkc{{font-size:12px;font-weight:700;padding:1px 7px;border-radius:6px;border:1px solid transparent;white-space:nowrap}}
+@media (max-width:900px){{tbody th{{width:148px;min-width:148px;max-width:148px;padding:10px 7px;overflow-wrap:anywhere}}.nmrow,.nmw{{min-width:0}}.ln2{{white-space:normal}}.hc{{min-width:190px}}
+ tbody th .nm{{font-size:13px}}.sigrow small{{display:none}}.rkl{{font-size:11.5px}}.rkc{{font-size:11px;padding:0 5px}}
+ tbody td{{padding:10px 4px;font-size:13.5px}}td .p{{padding:1px 5px}}.st{{font-size:11px;padding:0 6px}}.hv{{min-width:48px;font-size:13px;padding:2px 5px}}.hcap{{font-size:11px}}.hcs{{gap:6px}}
+ thead th{{padding:8px 3px}}tbody td{{padding:10px 3px}}td .ar{{margin-left:2px}}td .p{{font-size:13px}}.wrapx{{margin:0 -10px}}.wrap{{border-radius:0;border-left:0;border-right:0}}tbody th{{width:140px;min-width:140px;max-width:140px}}}}
+@media (max-width:420px){{tbody th{{width:128px;min-width:128px;max-width:128px}}}}
 </style></head><body><main>
 <header><div class="hd"><h1>Non-tracked campaigns, daily</h1><p>Webirox ad account, Meta messaging campaigns. Report for {TODAY.strftime("%A %-d %B %Y")}, updated {NOW.strftime("%-I:%M %p")} Sydney time.</p></div><button class="tg" id="tg" type="button">Dark mode</button></header>
 <section class="kpis">
-{kpi("t","Today",TODAY.strftime("%a %-d %b %Y"),tot["t"],tot["pt"],"Arrows compare with yesterday, "+YEST.strftime("%a %-d %b")+".",SP["t"])}
-{kpi("w","This week",WS.strftime("%-d %b")+" to "+(WS+D(6)).strftime("%-d %b %Y")+' <span>(data to '+TODAY.strftime("%-d %b")+')</span>',tot["w"],tot["pw"],"Arrows compare with "+((WS-D(7)).strftime("%a %-d")+" to " if WS!=TODAY else "")+(TODAY-D(7)).strftime("%a %-d %b")+".",SP["w"])}
-{kpi("m","This month",MS.strftime("%-d %b")+" to "+TODAY.strftime("%-d %b %Y"),tot["m"],tot["pm"],"Arrows compare with "+PMS.strftime("%-d")+" to "+PME.strftime("%-d %b")+".",SP["m"])}
+{kpi("t",LBL_T,TODAY.strftime("%a %-d %b %Y"),tot["t"],tot["pt"],"Arrows compare with the day before, "+YEST.strftime("%a %-d %b")+("." if TODAY<REAL else ". Today is still in progress."),SP["t"])}
+{kpi("w","Last 7 days",W7.strftime("%-d %b")+" to "+TODAY.strftime("%-d %b %Y"),tot["w"],tot["pw"],"Arrows compare with the 7 days before, "+(W7-D(7)).strftime("%-d %b")+" to "+(W7-D(1)).strftime("%-d %b")+".",SP["w"])}
+{kpi("m","Last 30 days",M30.strftime("%-d %b")+" to "+TODAY.strftime("%-d %b %Y"),tot["m"],tot["pm"],"Arrows compare with the 30 days before, "+(M30-D(30)).strftime("%-d %b")+" to "+(M30-D(1)).strftime("%-d %b")+".",SP["m"])}
 {kpi("l","Lifetime",dt.date.fromisoformat(FIRST).strftime("%-d %b %Y")+" to "+TODAY.strftime("%-d %b %Y"),tot["l"],None,f"All {len(rows)} non-tracked campaigns, active and paused, from the first day of spend. Sales are only recorded from {TF.strftime('%-d %b %Y')}, when order sources started being filled in, so lifetime ROAS is understated.",SP["l"],f'<p class="kn2">ROAS since {TF.strftime("%-d %b %Y")}: <b>{roasf(roas_tf)}</b> ({money(sales_l)} sales on {money(spend_since_tf)} spend)</p>')}
 </section>
 {SECTION}
-<p class="key"><span class="p g">Under $4.50</span><span class="p y">$4.50 to $6</span><span class="p r">Over $6</span><span>▲▼ change vs the previous period: green is better, red is worse, grey is spend</span></p>
-<div class="wrap"><table>
-<thead><tr><th></th><th colspan="3" class="s1 gh ct">Today<small>{TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cw">This week<small>{WS.strftime("%-d %b")} to {(WS+D(6)).strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cm">This month<small>{MS.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cl">Lifetime<small>Since {dt.date.fromisoformat(FIRST).strftime("%-d %b %Y")}</small></th><th class="s1">Days under $4.50</th></tr>
-<tr><th>Campaign</th>{"".join(f'<th class="s1 c{k}">Spend</th><th class="c{k}">Msgs</th><th class="c{k}">Cost/msg</th>' for k in "twml")}<th class="s1">Since launch</th></tr></thead>
-<tbody>{trs}</tbody></table></div>
-<p class="foot">Messages are Meta "messaging conversations started". Days under $4.50 counts days with spend where cost per message stayed under $4.50; a day with spend but no messages counts as over. Current run is the unbroken count of such days up to yesterday.</p>
+<details class="how"><summary>How to read health, rank and spend signal</summary><dl>
+<dt>Health</dt><dd>Share of days with spend where each message cost under $4.50, for the last 7, 15 and 30 full days. Green is 60% or more, amber 35 to 59%, red under 35% (a window with fewer than 3 spend days shows a dash). Hover a figure to see the day count.</dd>
+<dt>Rank</dt><dd>Under each campaign name. Overall rank among active campaigns (ad sets rank inside their campaign), then the rank on 7, 15 and 30 days alone. Score is 70% messages received plus 30% cost per message; the overall number blends 30 days (60%) and 7 days (40%). Green is the top third, red the bottom third; under $20 spend in a window is not ranked.</dd>
+<dt>Flags</dt><dd><b>Close #1</b> (active): 30-day health is red or amber, 7-day health is not green, at least $20 spent in 30 days, and it ranks in the bottom half of its group. #1 is the worst. <b>Reopen #1</b> (paused): lifetime health is green over at least 5 spend days and $50 spent, so a weak last run may just have been a bad season. Ranked best first (inside its group, and across all paused rows) on lifetime messages (70%) and lifetime cost per message (30%), inside its group. <b>Keep closed</b> (paused): lifetime health is red on the same evidence. Paused rows show 7, 15 and 30 day health too (blank if it did not spend), plus Last run (its latest stretch of spending, no gap over 3 days) and Lifetime.</dd>
+<dt>Spend signal</dt><dd>Spend more when 30-day health is Good and the 7-day cost per message is at or below the 30-day figure. Spend less when health is Poor or the 7-day cost per message is over $6. Otherwise Hold.</dd></dl></details>
+<nav class="jump" aria-label="Jump to a period"><button type="button" class="stp" data-step="-1" aria-label="Previous">&#8249;</button><button type="button" data-i="0">Health</button><button type="button" data-i="1">{LBL_T}</button><button type="button" data-i="2">7 days</button><button type="button" data-i="3">15 days</button><button type="button" data-i="4">30 days</button><button type="button" data-i="5">Lifetime</button><button type="button" class="stp" data-step="1" aria-label="Next">&#8250;</button></nav>
+<p class="key"><button class="tg" id="xa" type="button" data-o="0">Expand all ad sets</button><span class="p g">Under $4.50</span><span class="p y">$4.50 to $6</span><span class="p r">Over $6</span><span>▲▼ change vs the previous period: green is better, red is worse, grey is spend</span></p>
+<div class="wrapx"><div class="wrap"><table>
+<thead><tr><th rowspan="2" class="hcamp">Campaign</th><th rowspan="2" class="s1 hh">Health<small>% of days under $4.50. Run = latest stretch of spend, no gap over 3 days</small></th><th colspan="3" class="s1 gh ct">{LBL_T}<small>{TODAY.strftime("%a %-d %b")}</small></th><th colspan="3" class="s1 gh cw">Last 7 days<small>{W7.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cx">Last 15 days<small>{M15.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cm">Last 30 days<small>{M30.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cl">Lifetime<small>Since {dt.date.fromisoformat(FIRST).strftime("%-d %b %Y")}</small></th></tr>
+<tr>{"".join(f'<th class="s1 c{k}">Spend</th><th class="c{k}">Msgs</th><th class="c{k}">Cost/msg</th>' for k in "twxml")}</tr></thead>
+<tbody>{trs}</tbody></table></div></div>
+<p class="foot">Messages are Meta "messaging conversations started". Periods end on {TODAY.strftime("%-d %b")}; arrows compare each period with the one before it. Health, rank and signal use completed days only. Ad sets shown are those with spend in the last 30 days.</p>
 </main>
 <script>
 (function(){{var r=document.documentElement,b=document.getElementById('tg');
@@ -519,6 +750,26 @@ function cur(){{var t=r.getAttribute('data-theme');if(t)return t;return matchMed
 function lab(){{b.textContent=cur()==='dark'?'Light mode':'Dark mode'}}
 try{{var s=localStorage.getItem('ntr-theme');if(s)r.setAttribute('data-theme',s)}}catch(e){{}}
 lab();b.addEventListener('click',function(){{var n=cur()==='dark'?'light':'dark';r.setAttribute('data-theme',n);try{{localStorage.setItem('ntr-theme',n)}}catch(e){{}}lab()}});}})();
+</script>
+<script>
+(function(){{var rows=document.querySelectorAll('tr.cp');var xa=document.getElementById('xa');
+function set(tr,o){{tr.classList.toggle('open',o);var b=tr.querySelector('.xp');if(b)b.setAttribute('aria-expanded',o);
+document.querySelectorAll('tr.as[data-p="'+tr.getAttribute('data-id')+'"]').forEach(function(a){{a.hidden=!o}})}}
+rows.forEach(function(tr){{if(!tr.querySelector('.xp'))return;tr.addEventListener('click',function(){{set(tr,!tr.classList.contains('open'))}})}});
+if(xa)xa.addEventListener('click',function(){{var open=xa.getAttribute('data-o')!=='1';rows.forEach(function(tr){{if(tr.querySelector('.xp'))set(tr,open)}});xa.setAttribute('data-o',open?'1':'0');xa.textContent=open?'Collapse all ad sets':'Expand all ad sets'}});}})();
+</script>
+<script>
+(function(){{var _r=document.querySelector('tr.cp'),wrap=_r?_r.closest('.wrap'):null,bar=document.querySelector('.jump');if(!wrap||!bar)return;var box=wrap.parentNode;
+var heads=[].slice.call(wrap.querySelectorAll('thead th.gh, thead th.hh'));
+function sw(){{var h=wrap.querySelector('thead th.hcamp');return h?h.getBoundingClientRect().width:0}}
+function left(el){{return el.getBoundingClientRect().left-wrap.getBoundingClientRect().left+wrap.scrollLeft}}
+function go(i){{var el=heads[i];if(!el)return;wrap.scrollTo({{left:Math.max(0,left(el)-sw()-2),behavior:'smooth'}})}}
+var btns=[].slice.call(bar.querySelectorAll('button[data-i]'));
+function cur(){{var sl=wrap.scrollLeft+sw(),best=0,bd=1e9;heads.forEach(function(h,i){{var d=Math.abs(left(h)-sl);if(d<bd){{bd=d;best=i}}}});return best}}
+function upd(){{var c=cur();btns.forEach(function(b){{b.classList.toggle('on',+b.getAttribute('data-i')===c)}});box.classList.toggle('mr',wrap.scrollLeft+wrap.clientWidth<wrap.scrollWidth-4)}}
+btns.forEach(function(b){{b.addEventListener('click',function(){{go(+b.getAttribute('data-i'))}})}});
+bar.querySelectorAll('button[data-step]').forEach(function(b){{b.addEventListener('click',function(){{go(Math.min(heads.length-1,Math.max(0,cur()+(+b.getAttribute('data-step')))))}})}});
+wrap.addEventListener('scroll',upd,{{passive:true}});window.addEventListener('resize',upd);upd();}})();
 </script></body></html>'''
 open(OUT,"w").write(page)
 for k,v in tot.items(): print(k,round(v[0],2),v[1])
@@ -539,7 +790,7 @@ def per(k):
     if psl: pv=psl[1]+psl[3]; po=psl[0]+psl[2]; pr=pv/ps if ps else None
     return dict(s=s,m=m,ps=ps,pm=pm,sv=sv,so=so,r=r,pv=pv,po=po,pr=pr)
 PR={k:per(k) for k in "twml"}
-LAB={"t":("Today",TODAY.strftime("%-d %b")),"w":("This week",WS.strftime("%-d %b")+" to "+(WS+D(6)).strftime("%-d %b")),"m":("This month",MS.strftime("%-d %b")+" to "+TODAY.strftime("%-d %b")),"l":("Lifetime","Since "+dt.date.fromisoformat(FIRST).strftime("%-d %b %Y"))}
+LAB={"t":(LBL_T,TODAY.strftime("%-d %b")),"w":("Last 7 days",W7.strftime("%-d %b")+" to "+TODAY.strftime("%-d %b")),"m":("Last 30 days",M30.strftime("%-d %b")+" to "+TODAY.strftime("%-d %b")),"l":("Lifetime","Since "+dt.date.fromisoformat(FIRST).strftime("%-d %b %Y"))}
 def ecell(k,inner,bold=False):
     return f'<td style="background:{PC[k][2]};padding:8px 10px;text-align:right;white-space:nowrap;{"font-weight:700;" if bold else ""}">{inner}</td>'
 TH="padding:8px 10px;text-align:left;font-weight:600;color:#101828;white-space:nowrap"
@@ -578,7 +829,7 @@ email=f'''<div style="font-family:Arial,Helvetica,sans-serif;color:#101828;max-w
 <span style="font-size:13px">{html.escape(SIG[2])} Last 14 days: cost per message {money(g_cpm) if g_cpm else "—"}, break-even {money(g_be)}, messages to orders {g_conv*100:.1f}%, average order {money(g_aov) if g_aov else "—"}, marginal return {MRV}.</span></div>
 <h3 style="margin:16px 0 6px">Active campaigns</h3>
 <table cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;font-size:13px">
-<tr><th style="{TH}">Campaign</th><th style="background:{PC["t"][1]};color:{PC["t"][0]};padding:8px 10px;text-align:right">Today</th><th style="background:{PC["m"][1]};color:{PC["m"][0]};padding:8px 10px;text-align:right">This month</th><th style="background:{PC["l"][1]};color:{PC["l"][0]};padding:8px 10px;text-align:right">Lifetime</th><th style="{TH}">Under $4.50</th></tr>
+<tr><th style="{TH}">Campaign</th><th style="background:{PC["t"][1]};color:{PC["t"][0]};padding:8px 10px;text-align:right">{LBL_T}</th><th style="background:{PC["m"][1]};color:{PC["m"][0]};padding:8px 10px;text-align:right">30 days</th><th style="background:{PC["l"][1]};color:{PC["l"][0]};padding:8px 10px;text-align:right">Lifetime</th><th style="{TH}">Under $4.50</th></tr>
 {crow}</table>
 <h3 style="margin:18px 0 6px">Orders to attribute</h3>
 {elist(u48,"Last 48 hours")}{elist(u7,"3 to 7 days ago")}
@@ -593,7 +844,7 @@ def _r7(k):
     s_=sum(spd.get(x,0) for x in ks); return round(sum(rvd.get(x,0) for x in ks)/s_,2) if s_ else 0
 SPARK=[[round(spd.get(k,0),2) for k in _D14],[msd.get(k,0) for k in _D14],[round(rvd.get(k,0),2) for k in _D14],[_r7(k) for k in _D14]]
 if os.environ.get("SUMMARY_DIR"):
-    json.dump(dict(spark=SPARK,updated=NOW.strftime("%-d %b %Y, %-I:%M %p"),today_date=TODAY.strftime("%-d %b"),t_s=t["s"],t_m=t["m"],t_cpm=cpm(t["s"],t["m"]) if t["m"] else None,
+    json.dump(dict(spark=SPARK,updated=NOW.strftime("%-d %b %Y, %-I:%M %p"),today_date=TODAY.strftime("%-d %b"),t_label=LBL_T.lower(),t_s=t["s"],t_m=t["m"],t_cpm=cpm(t["s"],t["m"]) if t["m"] else None,
                    m_s=p["s"],m_sales=p["sv"],m_roas=p["r"],m_cpm=cpm(p["s"],p["m"]),active=len(act),
                    unatt=len(u48)+len(u7),sig=RS["code"],sig_label=SIG[1],reason=SIG[2]),open(os.path.join(os.environ["SUMMARY_DIR"],"daily.json"),"w"))
-print("PUSH: "+f"Non-tracked {TODAY.strftime('%-d %b')} | Today ${t['s']:.0f}, {int(t['m'])} msgs, {fcpm(cpm(t['s'],t['m']))}/msg, FB sales {money(t['sv']) if t['sv'] else '$0'} | MTD ROAS {roasf(p['r'])} | {SIG[1]}"+(f" | {len(u48)+len(u7)} orders need a source" if (u48 or u7) else ""))
+print("PUSH: "+f"Non-tracked {TODAY.strftime('%-d %b')} | {LBL_T} ${t['s']:.0f}, {int(t['m'])} msgs, {fcpm(cpm(t['s'],t['m']))}/msg, FB sales {money(t['sv']) if t['sv'] else '$0'} | 30-day ROAS {roasf(p['r'])} | {SIG[1]}"+(f" | {len(u48)+len(u7)} orders need a source" if (u48 or u7) else ""))
