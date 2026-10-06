@@ -91,7 +91,9 @@ body{min-height:100vh}.shell{width:min(800px,calc(100% - 24px));margin:0 auto;pa
 "use strict";
 var code="",pc=null,dc=null,stream=null,muted=false,closeTimer=null,currentProduct=null,currentPageUrl="https://indifeels.com",sessionId="",latestUsageSeconds=0,delegationBusy=false;
 var VOICE_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-session";
-var TOOLS_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-tools";\nvar AGENT_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-agent";\nvar METRICS_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-metrics";
+var TOOLS_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-tools";
+var AGENT_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-agent";
+var METRICS_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-metrics";
 var PRODUCT_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-product";
 var $=function(id){return document.getElementById(id)};
 var authCard=$("authCard"),lab=$("lab"),access=$("accessCode"),unlock=$("unlock"),authMsg=$("authMsg"),voiceSelect=$("voiceSelect"),contextInput=$("contextInput"),setContextBtn=$("setContext"),contextMsg=$("contextMsg"),voiceBox=$("voiceBox"),voiceStatus=$("voiceStatus"),startBtn=$("startVoice"),muteBtn=$("muteVoice"),endBtn=$("endVoice"),transcript=$("transcript"),userText=$("userText"),assistantText=$("assistantText"),audio=$("audio"),resultsCard=$("resultsCard"),results=$("results");
@@ -195,6 +197,7 @@ async function startVoice(){
     var context={source:"voice-lab",page_type:currentProduct?"product":"site",page_url:currentPageUrl,product:currentProduct};
     var res=await fetch(VOICE_API,{method:"POST",headers:{"Content-Type":"application/json","X-IndiFeels-Voice":"1","X-IndiFeels-Test-Key":code},body:JSON.stringify({sdp:pc.localDescription.sdp,voice:voiceSelect.value,context:context}),cache:"no-store",credentials:"omit"});
     var data=await res.json().catch(function(){return{}});
+    if(data.session_id)sessionId=data.session_id;
     if(!res.ok){if(data.error==="voice_not_configured")throw new Error("OpenAI API key is not connected.");if(data.error==="invalid_lab_code")throw new Error("Incorrect access code.");throw new Error(data.detail||"Could not start the voice session.")}
     if(!data.answer_sdp)throw new Error("Voice service returned no connection.");
     await pc.setRemoteDescription({type:"answer",sdp:data.answer_sdp});state("connecting","Almost ready…");
