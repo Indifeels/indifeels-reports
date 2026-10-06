@@ -48,11 +48,42 @@ jobs:
         if: steps.gate.outputs.go == '1'
         run: pip install cryptography
 
+      - name: Load Order Source encryption key
+        if: steps.gate.outputs.go == '1'
+        env:
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import base64, json, os, re, urllib.request
+
+          cfg = open("config.js", encoding="utf-8").read()
+          url = re.search(r'url:\s*"([^"]+)"', cfg).group(1)
+          anon = re.search(r'key:\s*"([^"]+)"', cfg).group(1)
+          req = urllib.request.Request(
+              url + "/rest/v1/rpc/sync_get_report_keys",
+              method="POST",
+              data=json.dumps({
+                  "p_token": os.environ["SYNC_READ_TOKEN"],
+                  "p_report_ids": ["order-source"],
+              }).encode(),
+              headers={"apikey": anon, "Content-Type": "application/json"},
+          )
+          rows = json.load(urllib.request.urlopen(req, timeout=60))
+          if not rows or not rows[0].get("key_b64"):
+              raise SystemExit("Order Source encryption key is unavailable in Supabase")
+          key = rows[0]["key_b64"].strip()
+          if len(base64.b64decode(key)) != 32:
+              raise SystemExit("Order Source encryption key is invalid")
+          print("::add-mask::" + key)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+              env.write("ORDER_SOURCE_KEY=" + key + "\n")
+          print("Order Source encryption key loaded")
+          PY
+
       - name: Validate report contract
         if: steps.gate.outputs.go == '1'
         env:
           WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
-          ORDER_SOURCE_KEY: ${{ secrets.ORDER_SOURCE_KEY }}
           SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
         run: python3 tools/report_preflight.py --phase pre order-source
 
@@ -75,8 +106,6 @@ jobs:
 
       - name: Encrypt Order Source report
         if: steps.gate.outputs.go == '1'
-        env:
-          ORDER_SOURCE_KEY: ${{ secrets.ORDER_SOURCE_KEY }}
         run: |
           python3 - <<'PY'
           import base64, gzip, json, os, secrets
