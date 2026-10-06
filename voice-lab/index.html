@@ -74,7 +74,8 @@ body{min-height:100vh}.shell{width:min(760px,calc(100% - 24px));margin:0 auto;pa
 (function(){
   "use strict";
   var code="",product=null,pc=null,dc=null,stream=null,muted=false,closeTimer=null;
-  var VOICE_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-session";\n  var VOICE_PRODUCT_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-product";
+  var VOICE_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-session";
+  var VOICE_PRODUCT_API="https://yrigvovwyfpaybibfjva.supabase.co/functions/v1/voice-product";
   var TEST_PRODUCTS={
     "green-embroidered-anarkali-gown":{
       id:"gid://shopify/Product/9699982672229",
@@ -206,8 +207,13 @@ body{min-height:100vh}.shell{width:min(760px,calc(100% - 24px));margin:0 auto;pa
     unlock.disabled=true;authMsg.textContent="Checking access…";authMsg.className="small";
     var ok=await loadProduct();
     unlock.disabled=false;
-    if(ok){authCard.classList.add("hidden");lab.classList.remove("hidden")}
-    else{authMsg.textContent=productMsg.textContent||"Access could not be verified.";authMsg.className="small error"}
+    if(ok){
+      authCard.classList.add("hidden");
+      lab.classList.remove("hidden");
+    } else {
+      authMsg.textContent=productMsg.textContent||"Access could not be verified.";
+      authMsg.className="small error";
+    }
   });
   access.addEventListener("keydown",function(e){if(e.key==="Enter")unlock.click()});
   loadProductBtn.addEventListener("click",loadProduct);
