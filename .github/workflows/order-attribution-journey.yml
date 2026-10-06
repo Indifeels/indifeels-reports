@@ -9,6 +9,9 @@ on:
   workflow_dispatch:
   repository_dispatch:
     types: [order-attribution-refresh]
+  push:
+    paths:
+      - ".github/manual-refresh-order-attribution.txt"
 
 concurrency:
   group: indifeels-order-attribution-journey
