@@ -199,7 +199,7 @@
     "product-visibility": { c: "purple", icon: "eye", stat: ["eye", "tag", "alert"], line: ["purple", "teal", "rose"] },
     footwear: { c: "rose", icon: "search", stat: ["search", "bars", "trend"], line: ["rose", "purple", "green"] },
     "google-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["blue", "purple", "green", "teal"] },
-    "order-source": { c: "teal", icon: "bars", stat: ["dollar", "bag", "trend", "tag"], line: ["blue", "purple", "green", "teal"] },
+    "order-source": { c: "blue", icon: "bars", stat: ["dollar", "bag", "trend", "tag"], line: ["blue", "purple", "green", "teal"] },
     "tech-availability": { c: "teal", icon: "alert", stat: ["bars", "alert", "alert"], line: ["teal", "orange", "rose"] },
   };
   const SPARE = ["purple", "teal", "rose"];
