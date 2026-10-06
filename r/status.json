@@ -9,11 +9,11 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-10-06T20:04+11:00",
-  "code_sha": "7d056d3863062bf0c4f91142cacab034c9a2a673",
+  "at": "2026-10-06T21:24+11:00",
+  "code_sha": "9cf732e0a1642d47d8dbaaec7d24325ea5e68665",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-10-06T20:04+11:00",
-  "manifest_version": "2026-10-06.2",
+  "last_ok": "2026-10-06T21:24+11:00",
+  "manifest_version": "2026-10-06.3",
   "ok": true,
   "reason": ""
  },
