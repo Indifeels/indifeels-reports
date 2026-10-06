@@ -44,14 +44,32 @@ def main():
         if not os.environ.get(k):
             raise RuntimeError(f"{k} is missing")
 
+    metafields = [{
+        "namespace": "custom",
+        "key": "order_source",
+        "type": "single_line_text_field",
+        "value": os.environ["ORDER_SOURCE"],
+    }]
+    extra_fields = [
+        ("attribution_platform", os.environ.get("CAMPAIGN_PLATFORM", "")),
+        ("attribution_campaign", os.environ.get("CAMPAIGN_NAME", "")),
+        ("attribution_campaign_id", os.environ.get("CAMPAIGN_ID", "")),
+        ("attribution_ad_set", os.environ.get("ADSET_NAME", "")),
+        ("attribution_ad_set_id", os.environ.get("ADSET_ID", "")),
+    ]
+    for key, value in extra_fields:
+        value = str(value or "").strip()
+        if value:
+            metafields.append({
+                "namespace": "custom",
+                "key": key,
+                "type": "single_line_text_field",
+                "value": value[:500],
+            })
+
     order_input = {
         "id": os.environ["ORDER_ID"],
-        "metafields": [{
-            "namespace": "custom",
-            "key": "order_source",
-            "type": "single_line_text_field",
-            "value": os.environ["ORDER_SOURCE"],
-        }],
+        "metafields": metafields,
     }
     email = os.environ.get("ORDER_EMAIL", "").strip()
     phone = os.environ.get("ORDER_PHONE", "").strip()
