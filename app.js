@@ -426,24 +426,83 @@
   }
   function oaJourneySuggestion(r) {
     const j = r.journey && typeof r.journey === "object" ? r.journey : {};
-    const visit = j.last_visit || j.first_visit || {};
+    const visits = [j.last_visit, j.first_visit].filter(Boolean);
+    const paid = visits.find((v) => {
+      const u = v?.utm || {};
+      const h = [v?.source, v?.source_description, v?.referrer_url, u.source].filter(Boolean).join(" ");
+      return (u.source || u.medium || u.campaign || u.term || u.content) && /facebook|instagram|meta|fb\.|google/i.test(h);
+    });
+    const visit = paid || visits[0] || {};
     const utm = visit.utm || {};
     const hay = [visit.source, visit.source_description, visit.referrer_url, utm.source].filter(Boolean).join(" ").toLowerCase();
-    const hasUtm = !!(utm.source || utm.medium || utm.campaign || utm.term || utm.content);
+    const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+
     let platform = null, source = null, campaign = null, adset = null;
     if (/facebook|instagram|meta|fb\./i.test(hay)) platform = "Facebook";
     else if (/google/i.test(hay)) platform = "Google";
+
+    const hasUtm = !!(utm.source || utm.medium || utm.campaign || utm.term || utm.content);
     if (hasUtm && platform === "Facebook") source = "FB Online Orders - WEB";
     else if (hasUtm && platform === "Google") source = "Google Online Orders - WEB";
 
-    if (platform && utm.term) {
-      const hit = OA.catalog.find((x) => x.platform === platform && String(x.adset_id || "") === String(utm.term));
-      if (hit) {
-        campaign = { platform:hit.platform, campaign_id:hit.campaign_id, campaign_name:hit.campaign_name };
-        if (hit.adset_id && hit.adset_name) adset = hit;
+    if (platform) {
+      const cats = oaCampaigns().filter((x) => x.platform === platform);
+      const campaignTexts = [utm.medium, utm.campaign, utm.content].filter(Boolean);
+      for (const raw of campaignTexts) {
+        const n = norm(raw);
+        const hits = cats.filter((x) => norm(x.campaign_name) === n);
+        if (hits.length === 1) { campaign = hits[0]; break; }
+      }
+      if (!campaign) {
+        for (const raw of campaignTexts) {
+          const n = norm(raw);
+          if (n.length < 10) continue;
+          const hits = cats.filter((x) => {
+            const c = norm(x.campaign_name);
+            return c.length >= 10 && (c.startsWith(n) || n.startsWith(c));
+          });
+          const ids = new Set(hits.map((x) => x.campaign_id));
+          if (ids.size === 1 && hits.length) { campaign = hits[0]; break; }
+        }
+      }
+
+      // Shopify/Meta commonly places the campaign name in utm_medium and the
+      // ad-set name in utm_campaign. If Windsor's catalogue is a little late,
+      // still show those Shopify values in the existing fields.
+      if (!campaign && utm.medium) {
+        campaign = { platform, campaign_id:"", campaign_name:String(utm.medium), journey_derived:true };
+      }
+
+      if (campaign) {
+        const sets = campaign.campaign_id ? oaAdsets(campaign) : [];
+        if (utm.term && sets.length) {
+          const hits = sets.filter((x) => String(x.adset_id || "") === String(utm.term));
+          if (hits.length === 1) adset = hits[0];
+        }
+        if (!adset) {
+          for (const raw of [utm.campaign, utm.content].filter(Boolean)) {
+            const n = norm(raw);
+            const hits = sets.filter((x) => norm(x.adset_name) === n);
+            if (hits.length === 1) { adset = hits[0]; break; }
+          }
+        }
+        if (!adset) {
+          for (const raw of [utm.campaign, utm.content].filter(Boolean)) {
+            const n = norm(raw);
+            if (n.length < 10) continue;
+            const hits = sets.filter((x) => {
+              const a = norm(x.adset_name);
+              return a.length >= 10 && (a.startsWith(n) || n.startsWith(a));
+            });
+            if (hits.length === 1) { adset = hits[0]; break; }
+          }
+        }
+        if (!adset && utm.campaign && norm(utm.campaign) !== norm(campaign.campaign_name)) {
+          adset = { adset_id:"", adset_name:String(utm.campaign), journey_derived:true };
+        }
       }
     }
-    return { source, platform, campaign, adset, utm };
+    return { source, platform, campaign, adset, utm, visit };
   }
   function oaJourneyPlace(v) {
     if (!v) return "";
@@ -558,14 +617,18 @@
       const campaignEl = card.querySelector(".oa-campaign");
       const adsetEl = card.querySelector(".oa-adset");
       const campaignText = campaignEl.value.trim();
-      const campaign = campaignText ? oaFindCampaign(campaignText) : null;
+      const row = OA.rows.find((x) => x.order_id === btn.dataset.order);
+      const suggested = row ? oaJourneySuggestion(row) : {};
+      let campaign = campaignText ? oaFindCampaign(campaignText) : null;
+      if (!campaign && suggested.campaign && campaignText === oaCampaignValue(suggested.campaign)) campaign = suggested.campaign;
       if (!source) return toast("Choose an order source first");
       if (email && !emailEl.checkValidity()) return toast("Enter a valid email address or leave it blank");
-      if (campaignText && !campaign) return toast("Choose the campaign from the Facebook/Google search list");
+      if (campaignText && !campaign) return toast("Choose the campaign from the list or use the Shopify-suggested campaign");
       const adsetText = adsetEl.value.trim();
-      const adset = adsetText && campaign ? oaFindAdset(campaign, adsetText) : null;
+      let adset = adsetText && campaign ? oaFindAdset(campaign, adsetText) : null;
+      if (!adset && suggested.adset && adsetText === suggested.adset.adset_name) adset = suggested.adset;
       if (adsetText && !campaign) return toast("Choose the campaign before the ad set/ad group");
-      if (adsetText && !adset) return toast(campaign?.platform === "Google" ? "Choose the Google ad group from the list" : "Choose the Facebook ad set from the list");
+      if (adsetText && !adset) return toast(campaign?.platform === "Google" ? "Choose the Google ad group from the list or use the Shopify-suggested value" : "Choose the Facebook ad set from the list or use the Shopify-suggested value");
       syncAttribution(btn.dataset.order, source, email, phone, campaign, adset);
     }));
   }
@@ -616,6 +679,7 @@
         campaign_name: campaign?.campaign_name || "",
         adset_id: adset?.adset_id || "",
         adset_name: adset?.adset_name || "",
+        journey_derived: Boolean(campaign?.journey_derived || adset?.journey_derived),
       } });
       if (error) {
         let msg = error.message; try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
