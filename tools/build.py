@@ -686,7 +686,9 @@ tr.as>td{{font-size:13.5px}}tr.as+tr.as{{border-top:1px solid var(--line)}}
 @media (max-width:900px){{.ln+.ln2:before{{content:""}}}}
 
 .wrapx{{position:relative}}
-.wrapx .wrap{{max-height:calc(100vh - 72px);max-height:calc(100dvh - 72px);overflow:auto;overscroll-behavior:contain}}
+.wrapx .wrap{{max-height:calc(100vh - 72px);max-height:calc(100dvh - 72px);overflow:auto;overscroll-behavior:auto}}
+@media(max-width:640px){{.wrapx .wrap{{max-height:68vh;max-height:68dvh}}}}
+#totop{{position:fixed;right:14px;bottom:18px;z-index:20;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--ink);color:var(--bg);font:700 20px/1 Figtree,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.35);display:none;cursor:pointer}}#totop.on{{display:block}}
 .wrap>.jump{{position:sticky;top:0;left:0;width:100%;box-sizing:border-box;margin:0;padding:8px 10px;z-index:7;border-bottom:1px solid var(--line)}}
 .wrapx thead th{{position:sticky;top:var(--jh,0px);z-index:3;box-shadow:0 1px 0 var(--line)}}.wrapx thead tr+tr th{{z-index:3}}
 .wrapx thead th.hcamp{{z-index:6}}
@@ -778,7 +780,11 @@ function cur(){{var sl=wrap.scrollLeft+sw(),best=0,bd=1e9;heads.forEach(function
 function upd(){{var c=cur();btns.forEach(function(b){{b.classList.toggle('on',+b.getAttribute('data-i')===c)}});box.classList.toggle('mr',wrap.scrollLeft+wrap.clientWidth<wrap.scrollWidth-4)}}
 btns.forEach(function(b){{b.addEventListener('click',function(){{go(+b.getAttribute('data-i'))}})}});
 bar.querySelectorAll('button[data-step]').forEach(function(b){{b.addEventListener('click',function(){{go(Math.min(heads.length-1,Math.max(0,cur()+(+b.getAttribute('data-step')))))}})}});
-wrap.addEventListener('scroll',upd,{{passive:true}});window.addEventListener('resize',upd);upd();}})();
+wrap.addEventListener('scroll',upd,{{passive:true}});window.addEventListener('resize',upd);upd();
+var tb=document.createElement('button');tb.id='totop';tb.type='button';tb.setAttribute('aria-label','Back to top');tb.textContent='\u2191';document.body.appendChild(tb);
+function tt(){{tb.classList.toggle('on',window.scrollY>400||wrap.scrollTop>120)}}
+tb.addEventListener('click',function(){{wrap.scrollTop=0;window.scrollTo({{top:0,behavior:'smooth'}})}});
+window.addEventListener('scroll',tt,{{passive:true}});wrap.addEventListener('scroll',tt,{{passive:true}});tt();}})();
 </script></body></html>'''
 open(OUT,"w").write(page)
 for k,v in tot.items(): print(k,round(v[0],2),v[1])
