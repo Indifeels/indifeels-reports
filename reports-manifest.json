@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-06.2",
+  "manifest_version": "2026-10-06.3",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -83,6 +83,30 @@
         "r/google-tracked.meta.bin"
       ],
       "supabase_sync": true
+    },
+    {
+      "id": "order-source",
+      "title": "Order Source",
+      "workflow": "order-source.yml",
+      "refresh_times": [
+        "20:00",
+        "06:00"
+      ],
+      "required_env": [
+        "WINDSOR_API_KEY",
+        "ORDER_SOURCE_KEY",
+        "SHOPIFY_TOKEN"
+      ],
+      "builders": [
+        "tools/fetch_order_source.py",
+        "tools/order_source.py",
+        "tools/order_source_template.html"
+      ],
+      "outputs": [
+        "r/order-source.bin",
+        "r/order-source.meta.bin"
+      ],
+      "supabase_sync": false
     },
     {
       "id": "stock",

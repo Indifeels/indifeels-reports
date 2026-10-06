@@ -1,0 +1,140 @@
+name: Refresh Order Source report
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/manual-refresh-order-source.txt"
+  schedule:
+    # Candidate UTC hours cover Sydney 20:00 and 06:00 across AEST/AEDT.
+    - cron: "0 9,10,19,20 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: indifeels-order-source
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sydney time gate
+        id: gate
+        run: |
+          HM=$(TZ=Australia/Sydney date +%H%M)
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "go=1" >> "$GITHUB_OUTPUT"
+          elif { [ "$HM" -ge 2000 ] && [ "$HM" -le 2045 ]; } || { [ "$HM" -ge 0600 ] && [ "$HM" -le 0645 ]; }; then
+            echo "go=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "Not within Sydney 20:00-20:45 or 06:00-06:45 ($HM); skipping"
+            echo "go=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout reports
+        if: steps.gate.outputs.go == '1'
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: steps.gate.outputs.go == '1'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependency
+        if: steps.gate.outputs.go == '1'
+        run: pip install cryptography
+
+      - name: Validate report contract
+        if: steps.gate.outputs.go == '1'
+        env:
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          ORDER_SOURCE_KEY: ${{ secrets.ORDER_SOURCE_KEY }}
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+        run: python3 tools/report_preflight.py --phase pre order-source
+
+      - name: Fetch Meta, Google Ads, GMB and Shopify data (data only, no calculation)
+        if: steps.gate.outputs.go == '1'
+        env:
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+        run: |
+          mkdir -p .refresh/os
+          python3 tools/fetch_order_source.py .refresh/os/data.json
+
+      - name: Build and validate Order Source report (template comes from this checkout of main; validation failure stops publishing)
+        if: steps.gate.outputs.go == '1'
+        run: |
+          python3 tools/order_source.py \
+            .refresh/os/data.json \
+            .refresh/os/order-source.html \
+            .refresh/os/order-source.meta.json
+
+      - name: Encrypt Order Source report
+        if: steps.gate.outputs.go == '1'
+        env:
+          ORDER_SOURCE_KEY: ${{ secrets.ORDER_SOURCE_KEY }}
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, json, os, secrets
+          from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+          key=base64.b64decode(os.environ["ORDER_SOURCE_KEY"].strip())
+          if len(key) != 32:
+              raise SystemExit("ORDER_SOURCE_KEY must decode to 32 bytes")
+
+          def enc(data):
+              iv=secrets.token_bytes(12)
+              return iv + AESGCM(key).encrypt(iv, gzip.compress(data,9), None)
+
+          html=open(".refresh/os/order-source.html","rb").read()
+          meta=open(".refresh/os/order-source.meta.json","rb").read()
+          os.makedirs(".refresh/out",exist_ok=True)
+          open(".refresh/out/order-source.bin","wb").write(enc(html))
+          open(".refresh/out/order-source.meta.bin","wb").write(enc(meta))
+          PY
+          test -s .refresh/out/order-source.bin
+          test -s .refresh/out/order-source.meta.bin
+
+      - name: Publish Order Source report
+        if: steps.gate.outputs.go == '1'
+        run: |
+          cp .refresh/out/order-source.bin r/order-source.bin
+          cp .refresh/out/order-source.meta.bin r/order-source.meta.bin
+          python3 tools/report_preflight.py --phase post order-source
+          python3 tools/status.py r order-source ok
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898273+github-actions[bot]@users.noreply.github.com"
+          git add r/order-source.bin r/order-source.meta.bin r/status.json
+
+          if git diff --cached --quiet; then
+            echo "No Order Source report changes"
+          else
+            git commit -m "Refresh Order Source report"
+            for i in 1 2 3; do
+              git pull --rebase -q origin main
+              git push -q origin HEAD:main && exit 0
+              sleep 5
+            done
+            exit 1
+          fi
+
+      - name: Record failed Order Source refresh
+        if: failure() && steps.gate.outputs.go == '1'
+        run: |
+          python3 tools/status.py r order-source fail "Order Source refresh failed; check GitHub Actions"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898273+github-actions[bot]@users.noreply.github.com"
+          git add r/status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record failed Order Source refresh"
+          for i in 1 2 3; do
+            git pull --rebase -q origin main
+            git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 0

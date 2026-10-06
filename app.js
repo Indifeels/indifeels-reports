@@ -199,6 +199,7 @@
     "product-visibility": { c: "purple", icon: "eye", stat: ["eye", "tag", "alert"], line: ["purple", "teal", "rose"] },
     footwear: { c: "rose", icon: "search", stat: ["search", "bars", "trend"], line: ["rose", "purple", "green"] },
     "google-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["blue", "purple", "green", "teal"] },
+    "order-source": { c: "teal", icon: "bars", stat: ["dollar", "bag", "trend", "tag"], line: ["blue", "purple", "green", "teal"] },
     "tech-availability": { c: "teal", icon: "alert", stat: ["bars", "alert", "alert"], line: ["teal", "orange", "rose"] },
   };
   const SPARE = ["purple", "teal", "rose"];
@@ -233,7 +234,7 @@
     const alertBox = hl ? `<div class="alert">${svg("alert")}<div><b>${esc(hl.title)}</b><span>${esc(hl.text)}</span></div></div>`
       : metaBad ? `<div class="alert">${svg("alert")}<div><b>Infrastructure issue</b><span>${esc(meta.health_text || "One or more services are affecting IndiFeels.")}</span></div></div>` : "";
     const healthBadge = (hl || metaBad) ? `<span class="health bad">${svg("alert")}Attention</span>` : (meta ? `<span class="health good"><i></i>Healthy</span>` : "");
-    const st = (meta?.stats || []).slice(0, r.id === "google-tracked" ? 4 : 3);
+    const st = (meta?.stats || []).slice(0, ["google-tracked", "order-source"].includes(r.id) ? 4 : 3);
     const stats = st.map((s, i) => `<div class="st" style="--sc:var(--${L.line[i] || L.c})">${L.stat[i] ? svg(L.stat[i], "si") : ""}<b>${esc(s[0])}</b><span>${esc(s[1])}</span>${spark(meta?.spark?.[i], L.line[i] || L.c)}</div>`).join("");
     const sig = meta?.signal ? `<p class="sig"><span class="pl">${esc(meta.signal.label)}</span>${esc(meta.signal.reason)}</p>` : "";
     const upd = meta?.updated ? `Updated ${esc(meta.updated)}` : "Waiting for the next update";
