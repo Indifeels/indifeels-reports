@@ -853,6 +853,11 @@
     if (error) throw new Error(error.message);
     return data || [];
   }
+  async function loadVoiceCostSummary() {
+    const { data, error } = await sb.rpc("voice_cost_summary");
+    if (error) return null;
+    return Array.isArray(data) ? (data[0] || null) : data;
+  }
   function techMeta(rows) {
     const healthy = rows.filter((x) => x.status === "operational").length;
     const issues = rows.filter((x) => x.status === "degraded" || x.status === "outage").length;
@@ -875,7 +880,7 @@
       health_text: impacting ? `${impacting} service${impacting === 1 ? "" : "s"} currently impacting reports or operations.` : reason
     };
   }
-  function techReportHTML(rows) {
+  function techReportHTML(rows, voiceCost) {
     const healthy = rows.filter((x) => x.status === "operational").length;
     const issues = rows.filter((x) => x.status === "degraded" || x.status === "outage").length;
     const impacting = rows.filter((x) => x.impact).length;
@@ -883,6 +888,24 @@
     const latest = rows.map((x) => x.checked_at).filter(Boolean).sort().at(-1);
     const label = (s) => s === "operational" ? "Operational" : s === "degraded" ? "Degraded" : s === "outage" ? "Outage" : "Unknown";
     const pct = (x) => x == null || !isFinite(Number(x)) ? null : Math.max(0, Math.min(100, Number(x)));
+    const vc = voiceCost || {};
+    const money = (v) => "$" + Number(v || 0).toFixed(Number(v || 0) < 1 ? 3 : 2);
+    const mins = (v) => Number(v || 0).toFixed(Number(v || 0) < 10 ? 1 : 0);
+    const avgCall = Number(vc.avg_duration_sec || 0);
+    const voiceCostHTML = `<section class="voicecost">
+      <div class="vchead"><div><h2>OpenAI Voice Assistant Cost</h2><p>Live usage + backend reasoning · USD</p></div><span class="vcstate">Tracking</span></div>
+      <div class="vcgrid">
+        <div><b>${mins(vc.today_minutes)} min</b><span>Today voice time</span></div>
+        <div><b>${money(vc.today_cost_usd)}</b><span>Today cost</span></div>
+        <div><b>${Number(vc.conversations_today || 0)}</b><span>Today conversations</span></div>
+        <div><b>${mins(vc.month_minutes)} min</b><span>This month voice time</span></div>
+        <div><b>${money(vc.month_cost_usd)}</b><span>This month cost</span></div>
+        <div><b>${money(vc.month_forecast_usd)}</b><span>Month forecast</span></div>
+        <div><b>${Number(vc.conversations_month || 0)}</b><span>Month conversations</span></div>
+        <div><b>${avgCall.toFixed(0)} sec</b><span>Average call</span></div>
+      </div>
+      <p class="vcnote">Voice uses GPT-Live session duration; backend GPT-6 Luna token cost is included. Current GPT-Live rate assumption: US$0.05/min.</p>
+    </section>`;
     const cards = rows.map((r) => {
       const p = pct(r.usage_pct);
       const usage = p == null
@@ -907,12 +930,13 @@
       .auto{background:#ddf4ff;color:#0969da;padding:3px 7px;font-size:10px;vertical-align:2px}.grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-top:14px}.k{display:block;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px}
       .uv{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.usage b{font-size:20px}.usage.na{display:flex;gap:10px;align-items:baseline}.bar{height:7px;background:#eaeef2;border-radius:99px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:#57606a;border-radius:99px}
       .detail{margin-top:14px;padding-top:13px;border-top:1px solid #eaeef2}.detail p{margin:0 0 8px;line-height:1.45}.detail a{font-size:12px;text-decoration:none}.foot{margin-top:18px;color:#6b7078;font-size:12px;line-height:1.5}
-      @media(max-width:650px){.wrap{padding:16px 12px 40px}h1{font-size:25px}.sum{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.top{align-items:center}}
-      @media(prefers-color-scheme:dark){body{background:#111316;color:#f3f4f6}.sum div,.svc{background:#191c20;border-color:#30343a}.sub,.sum span,.meta,.k,.usage span,.foot{color:#aab0b8}.detail{border-color:#30343a}.bar{background:#30343a}.status.operational,.impact.no{background:#183b24;color:#75d68c}.status.degraded{background:#453b13;color:#f2cf65}.status.outage,.impact.yes{background:#4b1e24;color:#ff9a9f}.status.unknown{background:#30343a;color:#c5cad1}.auto{background:#17344d;color:#7cc5ff}}
+      .voicecost{background:#fff;border:1px solid #e2e5ea;border-radius:14px;padding:16px;margin:0 0 18px}.vchead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}.vchead h2{font-size:18px;margin:0 0 3px}.vchead p,.vcnote{margin:0;color:#6b7078;font-size:12px;line-height:1.45}.vcstate{display:inline-flex;border-radius:999px;padding:5px 9px;background:#dafbe1;color:#116329;font-size:12px;font-weight:700}.vcgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.vcgrid div{background:#f7f8fa;border:1px solid #eaeef2;border-radius:11px;padding:11px}.vcgrid b{display:block;font-size:18px}.vcgrid span{display:block;color:#6b7078;font-size:11px;margin-top:3px}.vcnote{margin-top:10px}
+      @media(max-width:650px){.wrap{padding:16px 12px 40px}h1{font-size:25px}.sum{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.vcgrid{grid-template-columns:1fr 1fr}.top{align-items:center}}
+      @media(prefers-color-scheme:dark){body{background:#111316;color:#f3f4f6}.sum div,.svc{background:#191c20;border-color:#30343a}.sub,.sum span,.meta,.k,.usage span,.foot{color:#aab0b8}.detail{border-color:#30343a}.bar{background:#30343a}.status.operational,.impact.no{background:#183b24;color:#75d68c}.status.degraded{background:#453b13;color:#f2cf65}.status.outage,.impact.yes{background:#4b1e24;color:#ff9a9f}.status.unknown{background:#30343a;color:#c5cad1}.auto{background:#17344d;color:#7cc5ff}.voicecost{background:#191c20;border-color:#30343a}.vchead p,.vcnote,.vcgrid span{color:#aab0b8}.vcgrid div{background:#15171a;border-color:#30343a}.vcstate{background:#183b24;color:#75d68c}}
     </style></head><body><div class="wrap">
       <h1>Tech Availability Report</h1>
       <p class="sub">Infrastructure health for IndiFeels reporting · automatically checked every 10 minutes${latest ? " · latest " + esc(fmtTime(latest)) : ""}</p>
-      <div class="sum"><div><b>${rows.length}</b><span>Monitored systems</span></div><div><b>${healthy}</b><span>Operational</span></div><div><b>${issues}</b><span>Issues</span></div><div><b>${impacting}</b><span>Impacting IndiFeels</span></div></div>
+      <div class="sum"><div><b>${rows.length}</b><span>Monitored systems</span></div><div><b>${healthy}</b><span>Operational</span></div><div><b>${issues}</b><span>Issues</span></div><div><b>${impacting}</b><span>Impacting IndiFeels</span></div></div>\n      ${voiceCostHTML}
       <div class="list">${cards}</div>
       <div class="foot"><b>Usage %:</b> quota/capacity consumed where the provider exposes a reliable measurable limit. “N/A” means the provider does not expose a trustworthy percentage to this monitor — it does not mean 0%.<br><b>Automatic additions:</b> new production integrations detected in the repository are added as “Auto-detected / Unknown” until a health and usage probe is configured.${unknown ? " " + unknown + " service(s) currently need verification." : ""}</div>
     </div></body></html>`;
@@ -921,7 +945,10 @@
     page("report", r.title);
     const st=$("#rep-status"), fr=$("#rep-frame");
     st.hidden=false; st.textContent="Checking infrastructure…"; fr.hidden=true;
-    try { fr.srcdoc=techReportHTML(await loadTechAvailability()); fr.hidden=false; st.hidden=true; }
+    try {
+      const [rows, voiceCost] = await Promise.all([loadTechAvailability(), loadVoiceCostSummary()]);
+      fr.srcdoc=techReportHTML(rows, voiceCost); fr.hidden=false; st.hidden=true;
+    }
     catch(e){ st.textContent="The Tech Availability Report couldn't be loaded. Pull down to refresh."; }
   }
 
