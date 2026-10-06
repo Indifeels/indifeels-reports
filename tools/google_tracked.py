@@ -1123,6 +1123,21 @@ def rcls(r):
     return "none" if r is None else ("g" if r >= BREAK_EVEN * 1.2 else ("y" if r >= BREAK_EVEN else "r"))
 
 
+def front_numbers(p):
+    """Yesterday (set at the 6 am refresh), or today so far once the 8 pm refresh has run. Used by the report card and the hub tile."""
+    P = p["periods"]; tb = p["today_block"]; WT = p["waiting"]
+    gen = dt.datetime.fromisoformat(p["generated"]); yd = D.fromisoformat(p["yesterday"])
+    if gen.hour >= 20 and tb["has_google"]:
+        d = dict(label="Today", day="today", sub=gen.strftime("%a %-d %b") + ", as of " + gen.strftime("%-I:%M %p") + " refresh", spend=tb["spend"], rev=tb["rev"],
+                 gval=tb["gval"] or 0, conv=tb["conv"] or 0, orders=tb["orders"], wait=WT["today"])
+    else:
+        r_ = P["yesterday"]
+        d = dict(label="Yesterday", day="yesterday", sub=yd.strftime("%a %-d %b") + ", complete day", spend=r_["spend"], rev=r_["rev"], gval=r_["gval"], conv=r_["conv"], orders=r_["orders"], wait=WT["yesterday"])
+    d["profit"] = d["rev"] * CONTRIB - d["spend"] - FEE_DAY
+    d["att"] = (min(d["rev"], d["gval"]) / max(d["rev"], d["gval"])) if (d["rev"] and d["gval"]) else None
+    return d
+
+
 def render(p):
     P = p["periods"]; PV = p["prev"]
     yd = D.fromisoformat(p["yesterday"]); gen = dt.datetime.fromisoformat(p["generated"])
@@ -1144,25 +1159,20 @@ def render(p):
                 + cell("profit", r["profit"], "profit", True, lambda v: fm(v))
                 + f'</div><p class="gs">Google reports {fm(r["gval"])} · {rx(r["groas"])} · {n1(r["conv"])} conversions. Shopify matched {r["orders"]} orders. Profit includes {fm(r["fee"])} expert fee.</p><p class="kn">{note}</p></div>')
     pnote = lambda k: "Arrows compare with the " + ("day before, " if k == "yesterday" else f"{(D.fromisoformat(PV[k]['to']) - D.fromisoformat(PV[k]['from'])).days + 1} days before, ") + (D.fromisoformat(PV[k]["from"]).strftime("%a %-d %b") if k == "yesterday" else D.fromisoformat(PV[k]["from"]).strftime("%-d %b") + " to " + D.fromisoformat(PV[k]["to"]).strftime("%-d %b")) + "."
-    def front(label, sub, spend, rev, gval, wait, cls_):
-        has = spend is not None
-        profit = (rev * CONTRIB - spend - FEE_DAY) if has else None
-        att = (min(rev, gval) / max(rev, gval)) if (has and gval and rev and max(rev, gval) > 0) else None
+    def front_card():
+        fn = front_numbers(p); WT = p["waiting"]
+        label, sub, spend, rev, gval, conv, n_o, wait, profit, att = fn["label"], fn["sub"], fn["spend"], fn["rev"], fn["gval"], fn["conv"], fn["orders"], fn["wait"], fn["profit"], fn["att"]
         ac = "none" if att is None else ("g" if att >= .8 else ("y" if att >= .5 else "r"))
-        pc = "none" if profit is None else ("g" if profit > 0 else "r")
-        t = lambda c, l, v: f'<div class="tl {c}"><span>{l}</span><b>{v}</b></div>'
+        pc = "g" if profit > 0 else "r"
         wn = wait["n"]
         flag = (f'<span class="p y">{wn} order{"s" if wn != 1 else ""} waiting for attribution</span>' if wn else '<span class="p g">No orders waiting for attribution</span>')
-        return (f'<div class="box fr {cls_}"><h2>{label}</h2><p class="sub">{sub}</p><div class="tls">'
-                + t("none", "Ad spend", fm(spend, 2) if has else "—") + t("none", "Revenue", fm(rev) if has else "—")
-                + t(pc, "Profit", fm(profit) if has else "—") + t(ac, "Attribution", format(att * 100, ".0f") + "%" if att is not None else "—")
-                + f'</div><p class="wf">{flag} <small>For reference: see the order attribution report{(" · " + fm(wait["rev"]) + " unattributed") if wn else ""}</small></p></div>')
-    tb = p["today_block"]; WT = p["waiting"]
-    ysub = yd.strftime("%a %-d %b") + ". Complete day, set at the 6 am refresh."
-    tsub = "So far today, as of " + gen.strftime("%-I:%M %p") + ". Updated at the 8 pm refresh; Google conversions lag."
-    kpis = ('<section class="front">' + front("Yesterday", ysub, P["yesterday"]["spend"], P["yesterday"]["rev"], P["yesterday"]["gval"], WT["yesterday"], "fy")
-            + front("Today so far", tsub, tb["spend"] if tb["has_google"] else None, tb["rev"], tb["gval"] or 0, WT["today"], "ft") + '</section>'
-            + '<section class="kpis">' + kpi("7", "kw", "Last 7 days", pnote("7")) + kpi("30", "km", "Last 30 days", pnote("30"))
+        return (f'<div class="kpi kt"><h2>{label}</h2><p class="rg">{sub}</p><div class="kv k4">'
+                f'<div><b>{fm(spend)}</b><span>spend</span></div><div><b>{fm(rev)}</b><span>revenue</span></div>'
+                f'<div><b><span class="p {pc}" style="color:inherit">{fm(profit)}</span></b><span>profit</span></div>'
+                f'<div><b><span class="p {ac}">{(format(att * 100, ".0f") + "%") if att is not None else "—"}</span></b><span>attribution</span></div></div>'
+                f'<p class="gs">Google reports {fm(gval)} · {n1(conv)} conversions. Shopify matched {n_o} orders. Profit includes {fm(FEE_DAY)} expert fee.</p>'
+                f'<p class="kn">{flag} For reference: see the order attribution report.</p></div>')
+    kpis = ('<section class="kpis">' + front_card() + kpi("7", "kw", "Last 7 days", pnote("7")) + kpi("30", "km", "Last 30 days", pnote("30"))
             + kpi("life", "kl", "Lifetime", f'Since {D.fromisoformat(p["life_start"]).strftime("%-d %b %Y")}, the first day with both tracked spend and Shopify order history.') + '</section>')
 
     # ---------- budget signal block
@@ -1593,18 +1603,22 @@ def render(p):
 def meta_for(p):
     P = p["periods"]
     sig = p["signal"]
-    spark = [round(x["profit"], 2) for x in p["days"][-30:]]
-    return {
+    fn = front_numbers(p); wn = p["waiting"]["d7"]["n"]
+    last = p["days"][-14:]
+    out = {
         "updated": dt.datetime.fromisoformat(p["generated"]).strftime("%-d %b %Y, %-I:%M %p"),
         "stats": [
-            [money(P["yesterday"]["profit"]), "profit yesterday"],
-            [rx(P["7"]["roas"]), "owner ROAS, last 7 days"],
-            [money(P["7"]["profit"]), "profit, last 7 days"],
-            [money(P["30"]["profit"]), "profit, last 30 days"],
+            [money(fn["spend"], 2), f"ad spend, {fn['day']}"],
+            [money(fn["rev"]), f"revenue, {fn['day']}"],
+            [money(fn["profit"]), f"profit, {fn['day']}"],
+            [(format(fn["att"] * 100, ".0f") + "%") if fn["att"] is not None else "n/a", f"attribution, {fn['day']}"],
         ],
         "signal": {"code": "hold", "label": sig["code"], "reason": sig["headline"]},
-        "spark": spark,
+        "spark": [[round(x["spend"], 2) for x in last], [round(x["rev"], 2) for x in last], [round(x["profit"], 2) for x in last], []],
     }
+    if wn:
+        out["warn"] = f"{wn} order{'s' if wn != 1 else ''} waiting for attribution (7 days)"
+    return out
 
 
 def main():

@@ -204,3 +204,4 @@ legend{font-weight:600;font-size:13.5px;padding:0;margin-bottom:6px}
   .oa-fields{grid-template-columns:1fr}
   .oa-save{width:100%}
 }
+.sts.n4{grid-template-columns:repeat(4,1fr)}.sts.n4 .st{padding:8px 8px}.sts.n4 .st b{font-size:20px}@media(max-width:560px){.sts.n4{grid-template-columns:repeat(2,1fr)}}
