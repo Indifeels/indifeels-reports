@@ -1,0 +1,35 @@
+name: Order attribution journey refresh
+
+# Shopify builds Customer Journey attribution asynchronously after an order.
+# Re-check recent orders every 15 minutes, and allow the dashboard to request
+# an immediate re-sync for one order.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [order-attribution-refresh]
+
+concurrency:
+  group: indifeels-order-attribution-journey
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Refresh Shopify customer journey
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
+          ORDER_ID: ${{ github.event.client_payload.order_id || '' }}
+        run: python3 tools/refresh_order_journey.py
