@@ -1,0 +1,2 @@
+Manual Shopify customer journey refresh trigger.
+Request: verify delayed order-attribution enrichment for #17749 on 2026-10-07.
