@@ -42,7 +42,8 @@ def fmt_d(d):
 
 def build(src):
     end = pd(src["end"])
-    windows = {k: (end - timedelta(days=n - 1), end) for k, n in PERIODS}
+    completed_end = pd(src.get("completed_end", src["end"]))
+    windows = {k: (completed_end - timedelta(days=n - 1), completed_end) for k, n in PERIODS}
     windows["p30"] = (end - timedelta(days=59), end - timedelta(days=30))
 
     # ---- orders by order_source per period: {source: [orders, amount]}
@@ -181,7 +182,7 @@ def build(src):
 
     camps_30 = set(FB["d30"]) | set(G["d30"])
     return dict(data=data, model=model, unflagged=sorted(set(unflagged)), ncamp=len(camps_30), ads_share=ads_share,
-                note_dirs=note_dirs, windows=windows, end=end)
+                note_dirs=note_dirs, windows=windows, end=completed_end)
 
 
 def main():
