@@ -30,7 +30,7 @@
 
   // ---------- views ----------
   const VIEWS = ["login", "reset", "shell"];
-  const PAGES = ["home", "report", "stock", "attribution", "password", "admin"];
+  const PAGES = ["home", "report", "stock", "attribution", "password", "admin", "schedule"];
   function view(v) { VIEWS.forEach((x) => ($("#v-" + x).hidden = x !== v)); }
   function page(p, title) {
     PAGES.forEach((x) => ($("#v-" + x).hidden = x !== p));
@@ -192,16 +192,17 @@
   };
   const svg = (k, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[k] || I.chart}</svg>`;
   const LOOK = {
-    daily: { c: "blue", icon: "mega", stat: ["dollar", "msg", "bag", "bars"], line: ["blue", "purple", "green", "blue"] },
-    monthly: { c: "green", icon: "trend", stat: [null, null, null, null], line: ["green", "blue", "orange", "green"] },
+    "schedule-panel": { c: "purple", icon: "clock", stat: [], line: [] },
+    daily: { c: "purple", icon: "mega", stat: ["dollar", "msg", "bag", "bars"], line: ["purple", "purple", "green", "purple"] },
+    monthly: { c: "green", icon: "trend", stat: [null, null, null, null], line: ["green", "purple", "orange", "green"] },
     stock: { c: "orange", icon: "box", stat: ["box", "box", "tag"], line: [] },
     "order-attribution": { c: "teal", icon: "tag", stat: ["tag", "clock", "dollar"], line: ["teal", "purple", "green"] },
     "product-visibility": { c: "purple", icon: "eye", stat: ["eye", "tag", "alert"], line: ["purple", "teal", "rose"] },
     restock: { c: "orange", icon: "box", stat: ["box", "alert", "tag"], line: [] },
     footwear: { c: "rose", icon: "search", stat: ["search", "bars", "trend"], line: ["rose", "purple", "green"] },
-    "google-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["blue", "purple", "green", "teal"] },
+    "google-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
     "call-tracking": { c: "teal", icon: "chart", stat: ["msg", "tag", "alert"], line: ["teal", "green", "rose"] },
-    "order-source": { c: "blue", icon: "bars", stat: ["dollar", "bag", "trend", "tag"], line: ["blue", "purple", "green", "teal"] },
+    "order-source": { c: "teal", icon: "bars", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
     "tech-availability": { c: "teal", icon: "alert", stat: ["bars", "alert", "alert"], line: ["teal", "orange", "rose"] },
   };
   const SPARE = ["purple", "teal", "rose"];
@@ -219,12 +220,16 @@
   }
   // Refresh health: explicit failure from r/status.json, or no successful refresh within the expected window.
   const MAX_AGE_H = { daily: 26, monthly: 26, stock: 10 };
-  let status = {};
+  let status = {}, scheduleStatus = {}, scheduleControl = {};
   async function loadStatus() {
     try { const res = await fetch(`r/status.json?t=${Date.now()}`, { cache: "no-store" }); status = res.ok ? await res.json() : {}; } catch (_) { status = {}; }
   }
   const fmtTime = (iso) => new Date(iso).toLocaleString("en-AU", { timeZone: "Australia/Sydney", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
   function health(id) {
+    const run = scheduleStatus[id], control = scheduleControl[id];
+    if (run?.status === "failed") return {title:"Last refresh failed",text:run.detail || "Open Schedule Panel for details."};
+    if (control && !control.runner) return {title:"Refresh not connected",text:control.runner_note || "This report has no automatic data refresh runner."};
+    if (control && (!control.enabled || run)) return null;
     const s = status[id]; if (!s) return null;
     if (s.ok === false) return { title: "Last refresh failed", text: `${s.reason || "The refresh didn't finish."}${s.last_ok ? ` Showing data from ${fmtTime(s.last_ok)}.` : ""}` };
     const age = s.last_ok ? (Date.now() - new Date(s.last_ok).getTime()) / 36e5 : Infinity;
@@ -235,13 +240,15 @@
     const L = look(r.id), hl = health(r.id), metaBad = meta?.health === "bad";
     const alertBox = hl ? `<div class="alert">${svg("alert")}<div><b>${esc(hl.title)}</b><span>${esc(hl.text)}</span></div></div>`
       : metaBad ? `<div class="alert">${svg("alert")}<div><b>Infrastructure issue</b><span>${esc(meta.health_text || "One or more services are affecting IndiFeels.")}</span></div></div>` : "";
-    const healthBadge = (hl || metaBad) ? `<span class="health bad">${svg("alert")}Attention</span>` : (meta ? `<span class="health good"><i></i>Healthy</span>` : "");
+    const sr = scheduleStatus[r.id], sc = scheduleControl[r.id];
+    const failed = sr?.status === "failed" || status[r.id]?.ok === false && !sr;
+    const healthBadge = sc?.enabled === false ? '<span class="health paused">Paused</span>' : sr?.status === "in_progress" ? '<span class="health running">In progress</span>' : sr?.status === "queued" ? '<span class="health queued">Queued</span>' : failed ? '<span class="health failed">Failed</span>' : (hl || metaBad) ? `<span class="health bad">${svg("alert")}Attention</span>` : (meta ? `<span class="health good"><i></i>Healthy</span>` : "");
     const st = (meta?.stats || []).slice(0, ["google-tracked", "order-source"].includes(r.id) ? 4 : 3);
     const stats = st.map((s, i) => `<div class="st" style="--sc:var(--${L.line[i] || L.c})">${L.stat[i] ? svg(L.stat[i], "si") : ""}<b>${esc(s[0])}</b><span>${esc(s[1])}</span>${spark(meta?.spark?.[i], L.line[i] || L.c)}</div>`).join("");
     const sig = meta?.signal ? `<p class="sig"><span class="pl">${esc(meta.signal.label)}</span>${esc(meta.signal.reason)}</p>` : "";
     const upd = meta?.updated ? `Updated ${esc(meta.updated)}` : "Waiting for the next update";
     const warn = meta?.warn ? `<span class="wn">${svg("alert")}${esc(meta.warn)}</span>` : "";
-    return `<button class="tile t-${L.c}${(hl || metaBad) ? " alerted" : ""}" type="button" data-id="${esc(r.id)}">
+    return `<button class="tile t-${L.c}${(hl || metaBad) ? " alerted" : ""}${failed ? " failed" : ""}" type="button" data-id="${esc(r.id)}">
       <div class="th"><span class="ic">${svg(L.icon)}</span><div class="tt"><h3>${esc(r.title)}</h3><p class="ds">${esc(r.description || "")}</p></div>${healthBadge}</div>
       ${alertBox}${stats ? `<div class="sts n${st.length}">${stats}</div>` : ""}${sig}<div class="ft"><span class="u">${svg("clock")}${upd}</span>${warn}<span class="open" aria-hidden="true">Open <span class="ar">&rsaquo;</span></span></div></button>`;
   }
@@ -249,6 +256,11 @@
     const box = $("#tiles");
     $("#hello").textContent = me.display_name ? `Hi ${me.display_name.split(" ")[0]}, here are your reports` : "Your reports";
     await loadStatus();
+    try {
+      const [rr, cc] = await Promise.all([sb.from("report_refresh_runs").select("report_id,status,scheduled_at,finished_at,detail").order("scheduled_at", {ascending:false}),sb.from("report_refresh_control").select("report_id,enabled,runner,runner_note")]);
+      scheduleStatus = {}; (rr.data || []).forEach(x => { if (!scheduleStatus[x.report_id]) scheduleStatus[x.report_id]=x; });
+      scheduleControl = Object.fromEntries((cc.data || []).map(x => [x.report_id,x]));
+    } catch (_) {}
     box.innerHTML = reports.map((r) => tileHTML(r, null)).join("");
     $("#no-reports").hidden = reports.length > 0;
     box.querySelectorAll(".tile").forEach((t) => t.addEventListener("click", () => openReport(t.dataset.id)));
@@ -264,6 +276,10 @@
       }
       if (r.id === "footwear") { try { const meta = seoMeta(await loadSeoRankingsData()); const el = box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`); if (el) { el.outerHTML = tileHTML(r, meta); box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`).addEventListener("click", () => openReport(r.id)); } } catch (_) {} return; }
       if (r.id === "tech-availability") { try { const meta = techMeta(await loadTechAvailability()); const el = box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`); if (el) { el.outerHTML = tileHTML(r, meta); box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`).addEventListener("click", () => openReport(r.id)); } } catch (_) {} return; }
+      if (r.id === "schedule-panel") {
+        const el=box.querySelector('.tile[data-id="schedule-panel"]');
+        if(el){el.outerHTML=tileHTML(r,{stats:[[String(Object.keys(scheduleControl).length),"Reports managed"]],signal:{label:"Shared schedules",reason:"Time refreshes, event triggers and recent results."}});box.querySelector('.tile[data-id="schedule-panel"]').addEventListener("click",openSchedulePanel);}return;
+      }
       if (!keys[r.id]) return;
       try {
         const meta = JSON.parse(await decryptFile(`r/${r.id}.meta.bin`, keys[r.id]));
@@ -1129,6 +1145,7 @@
   async function openReport(id, full) {
     const r = reports.find((x) => x.id === id); if (!r) return go("home");
     if (location.hash !== "#" + id) history.pushState(null, "", "#" + id);
+    if (id === "schedule-panel") return openSchedulePanel();
     if (id === "stock" && !full) return openStock(r);
     if (id === "order-attribution") return openAttribution(r);
     if (id === "footwear") return openSeoRankings(r);
@@ -1352,9 +1369,15 @@
     busy(btn, false);
   });
 
+  async function openSchedulePanel() {
+    page("schedule", "Schedule Panel");
+    if (location.hash !== "#schedule-panel") history.pushState(null,"","#schedule-panel");
+    await window.SchedulePanel.open(sb, $("#v-schedule"), reports, !!me?.is_admin);
+  }
   // ---------- routing ----------
   function go(p) {
     if (p === "home") { if (location.hash) history.pushState(null, "", location.pathname); page("home"); renderHome(); }
+    else if (p === "schedule") { openSchedulePanel(); }
     else if (p === "password") { page("password", "Change password"); }
     else if (p === "admin" && me?.is_admin) { page("admin", "Admin"); renderAdmin(); }
   }
@@ -1379,3 +1402,4 @@
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   start();
 })();
+

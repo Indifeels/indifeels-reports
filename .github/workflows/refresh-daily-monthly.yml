@@ -1,14 +1,14 @@
 name: Refresh Daily and Monthly reports
 
+run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
+
 on:
+  repository_dispatch:
+    types: [report-schedule]
   workflow_dispatch:
   push:
     paths:
       - ".github/manual-refresh-daily-monthly.txt"
-  schedule:
-    # GitHub cron is UTC. Candidate hours cover 20:00 and 06:00 in both AEST (UTC+10) and AEDT (UTC+11).
-    # A tolerance window in the Sydney-time gate handles GitHub schedule delivery delays.
-    - cron: "0 9,10,19,20 * * *"
 
 permissions:
   contents: write
@@ -20,24 +20,14 @@ concurrency:
 
 jobs:
   refresh:
+    if: github.event.action != 'report-schedule' || (contains(github.event.client_payload.report_ids, 'daily') || contains(github.event.client_payload.report_ids, 'monthly'))
     runs-on: ubuntu-latest
 
     steps:
-      - name: Sydney time gate
+      - name: Schedule Panel dispatch gate
         id: gate
         run: |
-          HM=$(TZ=Australia/Sydney date +%H%M)
-          # GitHub scheduled workflows can start late. Accept the first 45 minutes
-          # after the intended 20:00 and 06:00 Sydney starts, while rejecting the
-          # DST fallback candidate that lands one hour away.
-          if [ "${{ github.event_name }}" != "schedule" ]; then
-            echo "go=1" >> "$GITHUB_OUTPUT"
-          elif { [ "$HM" -ge 2000 ] && [ "$HM" -le 2045 ]; } || { [ "$HM" -ge 0600 ] && [ "$HM" -le 0645 ]; }; then
-            echo "go=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "Not within Sydney 20:00-20:45 or 06:00-06:45 ($HM); skipping"
-            echo "go=0" >> "$GITHUB_OUTPUT"
-          fi
+          echo "go=1" >> "$GITHUB_OUTPUT"
 
       - name: Checkout reports
         if: steps.gate.outputs.go == '1'
@@ -62,7 +52,7 @@ jobs:
           import os
           from datetime import datetime, timedelta, time
           from zoneinfo import ZoneInfo
-          tz=ZoneInfo("Australia/Sydney")
+          tz=ZoneInfo("Australia/Melbourne")
           now=datetime.now(tz)
           event=os.environ.get("EVENT_NAME","")
           # Morning scheduled run, or a manual/push recovery before noon:
@@ -106,8 +96,13 @@ jobs:
         env:
           SUMMARY_DIR: .refresh/sum
         run: |
-          python3 tools/build.py .refresh/data .refresh/hub/daily.html
-          python3 tools/monthly.py .refresh/data .refresh/hub/monthly.html
+          python3 - <<'PYCODE'
+          import json,os,subprocess
+          event=json.load(open(os.environ['GITHUB_EVENT_PATH']))
+          ids=event.get('client_payload',{}).get('report_ids',['daily','monthly'])
+          for rid,script in [('daily','build.py'),('monthly','monthly.py')]:
+              if rid in ids: subprocess.run(['python3','tools/'+script,'.refresh/data','.refresh/hub/'+rid+'.html'],check=True)
+          PYCODE
 
       - name: Retrieve existing report keys and encrypt
         if: steps.gate.outputs.go == '1'
@@ -118,11 +113,13 @@ jobs:
           import json, os, urllib.request
           url="https://yrigvovwyfpaybibfjva.supabase.co/rest/v1/rpc/sync_get_report_keys"
           key="sb_publishable_8xv46B6mvnAN2McGDc4VEg_pNF0qHvD"
-          body=json.dumps({"p_token":os.environ["SYNC_READ_TOKEN"],"p_report_ids":["daily","monthly"]}).encode()
+          event=json.load(open(os.environ['GITHUB_EVENT_PATH']))
+          ids=[x for x in event.get('client_payload',{}).get('report_ids',['daily','monthly']) if x in ['daily','monthly']]
+          body=json.dumps({"p_token":os.environ["SYNC_READ_TOKEN"],"p_report_ids":ids}).encode()
           req=urllib.request.Request(url,data=body,headers={"apikey":key,"Content-Type":"application/json"})
           rows=json.load(urllib.request.urlopen(req,timeout=60))
           keys={r["report_id"]:r["key_b64"] for r in rows}
-          if set(keys)!= {"daily","monthly"}:
+          if set(keys)!=set(ids):
               raise RuntimeError("Missing existing report encryption key")
           json.dump(keys,open(".refresh/keys.json","w"))
           PY
@@ -133,22 +130,31 @@ jobs:
             .refresh/hub \
             .refresh/out
 
-          test -s .refresh/out/daily.bin
-          test -s .refresh/out/daily.meta.bin
-          test -s .refresh/out/monthly.bin
-          test -s .refresh/out/monthly.meta.bin
+          python3 - <<'PYCODE'
+          import json,os,pathlib
+          event=json.load(open(os.environ['GITHUB_EVENT_PATH']))
+          ids=event.get('client_payload',{}).get('report_ids',['daily','monthly'])
+          for rid in ['daily','monthly']:
+              if rid in ids:
+                  for suffix in ['.bin','.meta.bin']:
+                      p=pathlib.Path('.refresh/out/'+rid+suffix)
+                      assert p.exists() and p.stat().st_size>0,'Missing encrypted output: '+str(p)
+          PYCODE
 
       - name: Publish only after successful validation
         if: steps.gate.outputs.go == '1'
         run: |
-          cp .refresh/out/daily.bin r/daily.bin
-          cp .refresh/out/daily.meta.bin r/daily.meta.bin
-          cp .refresh/out/monthly.bin r/monthly.bin
-          cp .refresh/out/monthly.meta.bin r/monthly.meta.bin
-
-          python3 tools/report_preflight.py --phase post daily monthly
-          python3 tools/status.py r daily ok
-          python3 tools/status.py r monthly ok
+          python3 - <<'PYCODE'
+          import json,os,shutil,subprocess
+          event=json.load(open(os.environ['GITHUB_EVENT_PATH']))
+          ids=event.get('client_payload',{}).get('report_ids',['daily','monthly'])
+          for rid in ['daily','monthly']:
+              if rid not in ids: continue
+              for suffix in ['.bin','.meta.bin']:
+                  shutil.copyfile('.refresh/out/'+rid+suffix,'r/'+rid+suffix)
+              subprocess.run(['python3','tools/report_preflight.py','--phase','post',rid],check=True)
+              subprocess.run(['python3','tools/status.py','r',rid,'ok'],check=True)
+          PYCODE
 
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
@@ -175,8 +181,13 @@ jobs:
       - name: Record failed refresh
         if: failure() && steps.gate.outputs.go == '1'
         run: |
-          python3 tools/status.py r daily fail "Daily/Monthly workflow failed; check GitHub Actions"
-          python3 tools/status.py r monthly fail "Daily/Monthly workflow failed; check GitHub Actions"
+          python3 - <<'PYCODE'
+          import json,os,subprocess
+          event=json.load(open(os.environ['GITHUB_EVENT_PATH']))
+          ids=event.get('client_payload',{}).get('report_ids',['daily','monthly'])
+          for rid in ['daily','monthly']:
+              if rid in ids: subprocess.run(['python3','tools/status.py','r',rid,'fail','Daily/Monthly workflow failed; check GitHub Actions'],check=True)
+          PYCODE
 
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
@@ -193,3 +204,4 @@ jobs:
             sleep 5
           done
           exit 0
+

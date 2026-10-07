@@ -230,3 +230,4 @@ body::before{display:none}
 .tile .open{background:color-mix(in srgb,var(--c) 15%,var(--card));color:var(--ink);border:1px solid color-mix(in srgb,var(--c) 38%,var(--line))}
 .health i{box-shadow:none}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .tile{background:var(--card);border-color:var(--line);box-shadow:none}}
+

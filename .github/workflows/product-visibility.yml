@@ -1,18 +1,11 @@
 name: Product visibility report
 
 # Unlisted in-stock products + active in-stock products with sales channels switched off.
+run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
+
 on:
   repository_dispatch:
-    types: [product-visibility-fix]
-  push:
-    branches: [main]
-    paths:
-      - "tools/product_visibility.py"
-      - "tools/product_visibility_fix.py"
-      - ".github/workflows/product-visibility.yml"
-  schedule:
-    # Duplicate UTC hours handle Sydney AEST/AEDT; the gate keeps only 7am, 3pm and 8pm local.
-    - cron: "50 20,21,4,5,9,10 * * *"
+    types: [product-visibility-fix, report-schedule]
   workflow_dispatch:
 
 concurrency:
@@ -25,22 +18,14 @@ permissions:
 
 jobs:
   refresh:
+    if: github.event.action != 'report-schedule' || (contains(github.event.client_payload.report_ids, 'product-visibility'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Sydney time gate
+      - name: Schedule Panel dispatch gate
         id: gate
         run: |
-
-          HM=$(TZ=Australia/Sydney date +%H%M)
-          if [ "${{ github.event_name }}" != "schedule" ]; then
-            echo "go=1" >> "$GITHUB_OUTPUT"
-          elif { [ "$HM" -ge 0700 ] && [ "$HM" -le 0745 ]; } || { [ "$HM" -ge 1500 ] && [ "$HM" -le 1545 ]; } || { [ "$HM" -ge 2000 ] && [ "$HM" -le 2045 ]; }; then
-            echo "go=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "Not within Sydney 07:00-07:45, 15:00-15:45 or 20:00-20:45 ($HM); skipping"
-            echo "go=0" >> "$GITHUB_OUTPUT"
-          fi
+          echo "go=1" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
         if: steps.gate.outputs.go == '1'
@@ -108,3 +93,4 @@ jobs:
             sleep 5
           done
           exit 1
+

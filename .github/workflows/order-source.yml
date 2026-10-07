@@ -1,15 +1,14 @@
 name: Refresh Order Source report
 
+run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
+
 on:
   workflow_dispatch:
   repository_dispatch:
-    types: [refresh-order-source]
+    types: [refresh-order-source, report-schedule]
   push:
     paths:
       - ".github/manual-refresh-order-source.txt"
-  schedule:
-    # Candidate UTC hours cover Sydney 20:00 and 06:00 across AEST/AEDT.
-    - cron: "0 9,10,19,20 * * *"
 
 permissions:
   contents: write
@@ -20,21 +19,14 @@ concurrency:
 
 jobs:
   refresh:
+    if: github.event.action != 'report-schedule' || (contains(github.event.client_payload.report_ids, 'order-source'))
     runs-on: ubuntu-latest
 
     steps:
-      - name: Sydney time gate
+      - name: Schedule Panel dispatch gate
         id: gate
         run: |
-          HM=$(TZ=Australia/Sydney date +%H%M)
-          if [ "${{ github.event_name }}" != "schedule" ]; then
-            echo "go=1" >> "$GITHUB_OUTPUT"
-          elif { [ "$HM" -ge 2000 ] && [ "$HM" -le 2045 ]; } || { [ "$HM" -ge 0600 ] && [ "$HM" -le 0645 ]; }; then
-            echo "go=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "Not within Sydney 20:00-20:45 or 06:00-06:45 ($HM); skipping"
-            echo "go=0" >> "$GITHUB_OUTPUT"
-          fi
+          echo "go=1" >> "$GITHUB_OUTPUT"
 
       - name: Checkout reports
         if: steps.gate.outputs.go == '1'
@@ -191,3 +183,4 @@ jobs:
             sleep 5
           done
           exit 0
+

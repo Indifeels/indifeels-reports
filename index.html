@@ -15,7 +15,8 @@
 <meta name="apple-mobile-web-app-title" content="Indifeels">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=12">
+<link rel="stylesheet" href="app.css?v=13-schedule">
+<link rel="stylesheet" href="schedule-panel.css?v=1">
 </head>
 <body>
 <div id="app">
@@ -62,6 +63,7 @@
         <div class="menu" id="menu" hidden>
           <p class="me" id="me-name"></p>
           <button type="button" data-go="home">Reports</button>
+          <button type="button" data-go="schedule" id="m-schedule">Schedule Panel</button>
           <button type="button" data-go="admin" id="m-admin" hidden>Admin</button>
           <button type="button" data-go="password">Change password</button>
           <button type="button" id="m-theme">Dark mode</button>
@@ -73,10 +75,12 @@
     </header>
 
     <main id="v-home" class="page" hidden>
-      <div class="page-head"><h2 id="hello">Your reports</h2><p id="home-sub">Refreshed every night at 10 pm Sydney time.</p></div>
+      <div class="page-head"><h2 id="hello">Your reports</h2><p id="home-sub">Refresh times are managed in the Schedule Panel · Melbourne time.</p></div>
       <div id="tiles" class="tiles"></div>
       <p id="no-reports" class="empty" hidden>No reports are switched on for your account yet. Ask your admin to give you access.</p>
     </main>
+
+    <main id="v-schedule" class="page" hidden></main>
 
     <div id="v-report" class="report" hidden>
       <p id="rep-status" class="rep-status">Opening report…</p>
@@ -153,6 +157,8 @@
 </div>
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=27"></script>
+<script src="schedule-panel.js?v=1"></script>
+<script src="app.js?v=28-schedule"></script>
 </body>
 </html>
+

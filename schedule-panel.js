@@ -1,0 +1,67 @@
+/* Persistent schedule editor: schedules are shared by every device and runner. */
+window.SchedulePanel = (() => {
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const stamp=s=>s?new Date(s).toLocaleString('en-AU',{timeZone:'Australia/Melbourne',day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'}):'—';
+  const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const frequencies=['daily','weekly','fortnightly','monthly','quarterly','yearly','interval'];
+  const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+  const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Melbourne',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  let sb,root,admin,visible=[],controls=[],schedules=[],runs=[],dirty=new Set(),openIds=new Set(),timer;
+  const label=s=>s.kind==='trigger'?(s.trigger_event==='new_order'?'When a new Shopify order arrives':'After source data sync completes'):
+    s.frequency==='interval'?`Every ${s.interval_minutes} minutes`:
+    `${cap(s.frequency)}${s.frequency==='weekly'?' · '+days[s.weekday]:['monthly','quarterly','yearly','fortnightly'].includes(s.frequency)?' · from '+s.start_date:''} · ${s.start_time.slice(0,5)}`;
+  const control=id=>controls.find(c=>c.report_id===id)||{report_id:id,enabled:true,time_enabled:true,trigger_enabled:true,runner:null};
+  const rowHTML=r=>`<article class="schedule-run ${r.status}"><div class="schedule-run-title"><strong>${esc({completed:'Completed',failed:'Failed',in_progress:'In progress',queued:'Queued',future:'Scheduled'}[r.status])}</strong><span>${esc(r.origin==='time'?'Time refresh':r.origin==='new_order'?'New order':r.origin==='source_sync'?'Source sync':r.origin||'')}</span></div><time>${esc(stamp(r.scheduled_at))}</time>${r.started_at?`<small>Started ${esc(stamp(r.started_at))}</small>`:''}${r.finished_at?`<small>Finished ${esc(stamp(r.finished_at))}</small>`:''}${r.detail?`<p>${esc(r.detail)}</p>`:''}${r.github_run_id?`<a href="https://github.com/Indifeels/indifeels-reports/actions/runs/${Number(r.github_run_id)}" target="_blank" rel="noopener">View run</a>`:''}</article>`;
+  function editor(id,kind){
+    if(kind==='trigger')return `<form class="schedule-editor" data-editor="trigger"><label>Trigger<select name="trigger_event"><option value="new_order">New Shopify order</option><option value="source_sync">Source data sync completes</option></select></label><button class="btn primary" type="submit">Add trigger</button></form>`;
+    return `<form class="schedule-editor" data-editor="time"><div class="schedule-fields"><label>Frequency<select name="frequency">${frequencies.map(f=>`<option value="${f}">${f==='interval'?'Every N minutes':cap(f)}</option>`).join('')}</select></label><label>Day<select name="weekday" disabled><option value="">N/A</option>${days.map((d,i)=>`<option value="${i}">${d}</option>`).join('')}</select></label><label>Start date<input type="date" name="start_date" value="${today()}" required></label><label>Start time<input type="time" name="start_time" value="06:00" required></label><label class="schedule-interval" hidden>Interval (minutes)<input type="number" name="interval_minutes" min="5" max="1440" value="15"></label></div><p class="schedule-help">Fortnightly: every 14 days from the start date. Monthly, quarterly and yearly use the selected calendar date; short months use their last day.</p><button class="btn primary" type="submit">Add schedule</button></form>`;
+  }
+  async function future(id){
+    const c=control(id);if(!c.enabled||!c.time_enabled)return [];
+    const ss=schedules.filter(s=>s.report_id===id&&s.kind==='time'&&s.enabled&&s.next_at);
+    const all=[];
+    for(const s of ss){all.push({status:'future',scheduled_at:s.next_at,origin:label(s)});
+      const {data,error}=await sb.rpc('report_next_refresh',{f:s.frequency,d:s.start_date,t:s.start_time,w:s.weekday,a:s.next_at,mins:s.interval_minutes});
+      if(!error&&data)all.push({status:'future',scheduled_at:data,origin:label(s)});
+    }
+    return all.sort((a,b)=>Date.parse(a.scheduled_at)-Date.parse(b.scheduled_at)).slice(0,2);
+  }
+  async function load(){
+    const results=await Promise.all([sb.from('report_refresh_control').select('*'),sb.from('report_schedules').select('*').order('created_at'),sb.from('report_refresh_runs').select('*').order('scheduled_at',{ascending:false})]);
+    const bad=results.find(r=>r.error);if(bad)throw Error(bad.error.message);
+    controls=results[0].data||[];schedules=results[1].data||[];runs=results[2].data||[];
+  }
+  async function render(){
+    root.innerHTML=`<div class="schedule-heading"><div><h2>Schedule Panel</h2><p>Melbourne time · daylight saving automatic</p></div><div class="schedule-actions"><button class="btn" data-act="theme" type="button">Light / dark</button><button class="btn" data-act="reload" type="button">Refresh status</button>${admin?'<button class="btn primary" data-act="save" type="button">Save changes</button>':''}</div></div><p class="schedule-notice" role="status" aria-live="polite">${admin?'Changes take effect after Save changes.':'Schedules are shared. An admin can make changes.'}</p><div class="schedule-reports">${visible.map(r=>{
+      const c=control(r.id),ss=schedules.filter(s=>s.report_id===r.id),last=runs.filter(x=>x.report_id===r.id&&['completed','failed'].includes(x.status)).slice(0,2),active=runs.filter(x=>x.report_id===r.id&&['queued','in_progress'].includes(x.status));
+      return `<details class="schedule-report" data-report="${esc(r.id)}" ${openIds.has(r.id)?'open':''}><summary><strong>${esc(r.title)}</strong><span>${ss.length} schedule${ss.length===1?'':'s'}${c.enabled?'':' · Paused'}</span></summary><div class="schedule-body">${!c.runner?`<p class="schedule-blocker">${esc(c.runner_note||'Automated refresh runner not connected. A schedule alone cannot fetch new data.')}</p>`:''}<div class="schedule-checks"><label><input type="checkbox" data-control="enabled" ${c.enabled?'checked':''} ${!admin?'disabled':''}> Report enabled</label><label><input type="checkbox" data-control="time_enabled" ${c.time_enabled?'checked':''} ${!admin?'disabled':''}> Time refresh</label><label><input type="checkbox" data-control="trigger_enabled" ${c.trigger_enabled?'checked':''} ${!admin?'disabled':''}> Trigger refresh</label></div>${['time','trigger'].map(kind=>`<section><h3>${kind==='time'?'Time schedules':'Trigger schedules'}</h3><div>${ss.filter(s=>s.kind===kind).map(s=>`<div class="schedule-item"><span>${esc(label(s))}</span><label class="schedule-switch"><input type="checkbox" data-sid="${s.id}" ${s.enabled?'checked':''} ${!admin?'disabled':''}><span>On</span></label>${admin?`<button type="button" class="schedule-delete" data-delete="${s.id}" aria-label="Delete ${esc(label(s))}">Delete</button>`:''}</div>`).join('')||'<p class="schedule-empty">None added</p>'}</div>${admin?`<details class="schedule-add"><summary>+ Add ${kind==='time'?'schedule':'trigger'}</summary>${editor(r.id,kind)}</details>`:''}</section>`).join('')}<section class="schedule-history"><h3>Refresh activity</h3><h4>Last 2 refreshes</h4>${last.map(rowHTML).join('')||'<p class="schedule-empty">No completed refreshes recorded yet.</p>'}${active.map(rowHTML).join('')}<h4>Next 2 refreshes</h4><div data-future="${esc(r.id)}"><p class="schedule-empty">Loading…</p></div><p class="schedule-help">Green: completed · Yellow: in progress · Grey: future / queued · Red: failed. Last 2 results and next 2 times, plus active runs.</p></section></div></details>`;
+    }).join('')}</div>`;
+    root.querySelector('[data-act="theme"]').onclick=()=>document.querySelector('#m-theme').click();
+    root.querySelector('[data-act="reload"]').onclick=()=>reload();
+    if(admin)root.querySelector('[data-act="save"]').onclick=save;
+    root.querySelectorAll('.schedule-report').forEach(card=>{
+      const rid=card.dataset.report;card.addEventListener('toggle',()=>card.open?openIds.add(rid):openIds.delete(rid));
+      card.querySelectorAll('[data-control]').forEach(el=>el.onchange=()=>{let c=controls.find(c=>c.report_id===rid);if(!c){c=control(rid);controls.push(c);}c[el.dataset.control]=el.checked;dirty.add(rid);notice('Unsaved changes');});
+      card.querySelectorAll('[data-sid]').forEach(el=>el.onchange=()=>{schedules.find(s=>s.id===el.dataset.sid).enabled=el.checked;dirty.add(rid);notice('Unsaved changes');});
+      card.querySelectorAll('[data-delete]').forEach(el=>el.onclick=()=>{schedules=schedules.filter(s=>s.id!==el.dataset.delete);dirty.add(rid);openIds.add(rid);render();});
+      card.querySelectorAll('form').forEach(form=>{
+        const f=form.elements.frequency;
+        if(f)f.onchange=()=>{const weekly=f.value==='weekly',interval=f.value==='interval';form.elements.weekday.disabled=!weekly;form.elements.weekday.value=weekly?'1':'';form.querySelector('.schedule-interval').hidden=!interval;form.elements.start_time.disabled=interval;form.elements.start_date.disabled=interval;};
+        form.onsubmit=e=>{e.preventDefault();if(!form.reportValidity())return;const kind=form.dataset.editor;const s={id:crypto.randomUUID(),report_id:rid,kind,enabled:true,start_date:today(),start_time:'06:00',weekday:null,interval_minutes:null,frequency:null,trigger_event:null,next_at:null};
+          if(kind==='time'){s.frequency=f.value;s.start_date=form.elements.start_date.value||today();s.start_time=form.elements.start_time.value||'06:00';if(f.value==='weekly')s.weekday=Number(form.elements.weekday.value);if(f.value==='interval')s.interval_minutes=Number(form.elements.interval_minutes.value);}else s.trigger_event=form.elements.trigger_event.value;
+          schedules.push(s);dirty.add(rid);openIds.add(rid);render();notice('Schedule added. Save changes to activate it.');};
+      });
+    });
+    await Promise.all(visible.map(async r=>{const box=root.querySelector(`[data-future="${CSS.escape(r.id)}"]`);try{const next=await future(r.id);if(box?.isConnected)box.innerHTML=next.map(rowHTML).join('')||'<p class="schedule-empty">No enabled time schedules. Triggers run when their event occurs.</p>';}catch{if(box?.isConnected)box.innerHTML='<p class="schedule-empty">Future times could not be loaded.</p>';}}));
+    if(dirty.size)notice('Unsaved changes');
+  }
+  function notice(s){const el=root.querySelector('.schedule-notice');if(el)el.textContent=s;}
+  async function save(){
+    const b=root.querySelector('[data-act="save"]');if(!dirty.size){notice('All changes are saved.');return;}b.disabled=true;
+    try{for(const rid of [...dirty]){const {error}=await sb.rpc('save_report_schedules',{p_report:rid,p_control:control(rid),p_schedules:schedules.filter(s=>s.report_id===rid)});if(error)throw Error(error.message);dirty.delete(rid);}await load();await render();notice('Saved. All future automatic refreshes use these schedules.');}
+    catch(e){notice('Could not save: '+e.message+' Unsaved changes are retained.');}finally{if(b.isConnected)b.disabled=false;}
+  }
+  async function reload(){if(dirty.size){notice('Save your changes before refreshing status.');return;}try{await load();await render();}catch(e){notice('Could not load schedules: '+e.message);}}
+  async function open(client,el,reports,isAdmin){sb=client;root=el;admin=isAdmin;visible=reports.filter(r=>r.id!=='schedule-panel');dirty.clear();clearInterval(timer);root.innerHTML='<p>Loading schedules…</p>';await reload();timer=setInterval(()=>{if(!root.hidden&&!dirty.size&&!root.querySelector('.schedule-add[open]'))reload();},60000);}
+  return {open};
+})();

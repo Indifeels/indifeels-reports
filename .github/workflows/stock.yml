@@ -5,11 +5,11 @@ name: Stock report refresh
 # 2) auto-fill paid campaign attribution from Shopify Customer Journey UTMs;
 # 3) after a manual attribution choice, sync it back to Shopify.
 # It also runs stock/attribution checks at 7am, 3pm and 8pm Sydney time.
+run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
+
 on:
   repository_dispatch:
-    types: [shopify-order, order-attribution-update]
-  schedule:
-    - cron: "40 20,21,4,5,9,10 * * *"
+    types: [shopify-order, order-attribution-update, report-schedule]
   workflow_dispatch:
   push:
     paths:
@@ -25,22 +25,15 @@ permissions:
 
 jobs:
   refresh:
+    if: (github.event.action != 'report-schedule' || (contains(github.event.client_payload.report_ids, 'stock'))) && github.event.action != 'shopify-order'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Sydney time gate
+      - name: Schedule Panel dispatch gate
         id: gate
         run: |
+          echo "go=1" >> "$GITHUB_OUTPUT"
 
-          HM=$(TZ=Australia/Sydney date +%H%M)
-          if [ "${{ github.event_name }}" != "schedule" ]; then
-            echo "go=1" >> "$GITHUB_OUTPUT"
-          elif { [ "$HM" -ge 0700 ] && [ "$HM" -le 0745 ]; } || { [ "$HM" -ge 1500 ] && [ "$HM" -le 1545 ]; } || { [ "$HM" -ge 2000 ] && [ "$HM" -le 2045 ]; }; then
-            echo "go=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "Not within Sydney 07:00-07:45, 15:00-15:45 or 20:00-20:45 ($HM); skipping"
-            echo "go=0" >> "$GITHUB_OUTPUT"
-          fi
       - uses: actions/checkout@v4
         if: steps.gate.outputs.go == '1'
       - uses: actions/setup-python@v5
@@ -48,17 +41,17 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install cryptography
-        if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
+        if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'report-schedule')
 
       - name: Validate report contract
-        if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
+        if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'report-schedule')
         env:
           SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
           STOCK_KEY: ${{ secrets.STOCK_KEY }}
         run: python3 tools/report_preflight.py --phase pre stock
 
       - name: Refresh and auto-fill ad attribution
-        if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
+        if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'report-schedule')
         continue-on-error: true
         env:
           WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
@@ -70,13 +63,13 @@ jobs:
         run: python3 tools/refresh_attribution_catalog.py
 
       - name: Build stock report
-        if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
+        if: steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'report-schedule')
         env:
           SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
           SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
           STOCK_KEY: ${{ secrets.STOCK_KEY }}
           ORDER: ${{ github.event.client_payload.order || github.event_name }}
-          FULL_CHECK: ${{ github.event_name != 'repository_dispatch' && '1' || '0' }}
+          FULL_CHECK: ${{ (github.event_name != 'repository_dispatch' || github.event.action == 'report-schedule') && '1' || '0' }}
         run: python3 tools/stock_fetch.py
 
       - name: Sync order attribution to Shopify
@@ -97,7 +90,7 @@ jobs:
         run: python3 tools/order_attribution_sync.py
 
       - name: Publish stock changes
-        if: always() && steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'shopify-order')
+        if: always() && steps.gate.outputs.go == '1' && (github.event_name != 'repository_dispatch' || github.event.action == 'report-schedule')
         run: |
           python3 tools/report_preflight.py --phase post stock
           git config user.name "Indifeels stock bot"
@@ -107,3 +100,4 @@ jobs:
           git commit -m "Stock report (order ${{ github.event.client_payload.order || 'manual' }})"
           for i in 1 2 3; do git pull --rebase -q origin main && git push -q origin HEAD:main && exit 0; sleep 5; done
           exit 1
+

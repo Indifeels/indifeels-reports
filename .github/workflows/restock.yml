@@ -3,18 +3,11 @@ name: Restock report
 # Sold-variant restock list (7/15/30 day sales vs current stock).
 # Rebuilds after every Shopify order (so a new sale is added straight away) and at 7am, 3pm and 8pm.
 # Items deleted/confirmed in the report are remembered in Supabase (restock_cleared); only newer sales are counted for them.
+run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
+
 on:
   repository_dispatch:
-    types: [shopify-order]
-  push:
-    branches: [main]
-    paths:
-      - "tools/restock.py"
-      - "tools/restock_template.html"
-      - ".github/workflows/restock.yml"
-  schedule:
-    # Duplicate UTC hours handle Sydney AEST/AEDT; the gate keeps only 7am, 3pm and 8pm local.
-    - cron: "50 20,21,4,5,9,10 * * *"
+    types: [shopify-order, report-schedule]
   workflow_dispatch:
 
 concurrency:
@@ -27,22 +20,14 @@ permissions:
 
 jobs:
   refresh:
+    if: (github.event.action != 'report-schedule' || (contains(github.event.client_payload.report_ids, 'restock'))) && github.event.action != 'shopify-order'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Sydney time gate
+      - name: Schedule Panel dispatch gate
         id: gate
         run: |
-
-          HM=$(TZ=Australia/Sydney date +%H%M)
-          if [ "${{ github.event_name }}" != "schedule" ]; then
-            echo "go=1" >> "$GITHUB_OUTPUT"
-          elif { [ "$HM" -ge 0700 ] && [ "$HM" -le 0745 ]; } || { [ "$HM" -ge 1500 ] && [ "$HM" -le 1545 ]; } || { [ "$HM" -ge 2000 ] && [ "$HM" -le 2045 ]; }; then
-            echo "go=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "Not within Sydney 07:00-07:45, 15:00-15:45 or 20:00-20:45 ($HM); skipping"
-            echo "go=0" >> "$GITHUB_OUTPUT"
-          fi
+          echo "go=1" >> "$GITHUB_OUTPUT"
 
       - name: Let the new order settle in Shopify
         if: steps.gate.outputs.go == '1' && github.event_name == 'repository_dispatch'
@@ -103,3 +88,4 @@ jobs:
             sleep 5
           done
           exit 1
+

@@ -1,13 +1,14 @@
 name: Refresh Call Tracking report
 
+run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
+
 on:
+  repository_dispatch:
+    types: [report-schedule]
   workflow_dispatch:
   push:
     paths:
       - ".github/manual-refresh-call-tracking.txt"
-  schedule:
-    # Candidate UTC hours cover Melbourne 20:00 (partial, today so far) and 06:00 (final, previous calendar day) across AEST/AEDT.
-    - cron: "0 9,10,19,20 * * *"
 
 permissions:
   contents: write
@@ -18,24 +19,15 @@ concurrency:
 
 jobs:
   refresh:
+    if: github.event.action != 'report-schedule' || (contains(github.event.client_payload.report_ids, 'call-tracking'))
     runs-on: ubuntu-latest
 
     steps:
-      - name: Melbourne time gate
+      - name: Schedule Panel dispatch gate
         id: gate
         run: |
-          HM=$(TZ=Australia/Melbourne date +%H%M)
-          if [ "${{ github.event_name }}" != "schedule" ]; then
-            if [ "$(TZ=Australia/Melbourne date +%H)" -lt 12 ]; then echo "mode=final" >> "$GITHUB_OUTPUT"; else echo "mode=partial" >> "$GITHUB_OUTPUT"; fi
-            echo "go=1" >> "$GITHUB_OUTPUT"
-          elif [ "$HM" -ge 2000 ] && [ "$HM" -le 2045 ]; then
-            echo "mode=partial" >> "$GITHUB_OUTPUT"; echo "go=1" >> "$GITHUB_OUTPUT"
-          elif [ "$HM" -ge 0600 ] && [ "$HM" -le 0645 ]; then
-            echo "mode=final" >> "$GITHUB_OUTPUT"; echo "go=1" >> "$GITHUB_OUTPUT"
-          else
-            echo "Not within Melbourne 20:00-20:45 or 06:00-06:45 ($HM); skipping"
-            echo "go=0" >> "$GITHUB_OUTPUT"
-          fi
+          echo "go=1" >> "$GITHUB_OUTPUT"
+          if [ "$(TZ=Australia/Melbourne date +%H)" -lt 12 ]; then echo "mode=final" >> "$GITHUB_OUTPUT"; else echo "mode=partial" >> "$GITHUB_OUTPUT"; fi
 
       - name: Checkout reports
         if: steps.gate.outputs.go == '1'
@@ -149,3 +141,4 @@ jobs:
             sleep 5
           done
           exit 0
+
