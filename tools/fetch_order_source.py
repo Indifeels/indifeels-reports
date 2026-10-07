@@ -3,7 +3,7 @@
 Usage: fetch_order_source.py OUT.json
 
 Writes one JSON file:
-  end         last complete Melbourne day (yesterday); today is never included
+  end         report data end day; evening partial runs include today, morning/final runs end yesterday
   fb          Meta Ads spend by day and campaign
   google      Google Ads spend by day and campaign
   ads_dirs    Google Ads "directions" conversions by day (store visits driven by ads)
@@ -32,8 +32,13 @@ if os.environ.get("REPORT_NOW"):
     now = datetime.fromisoformat(os.environ["REPORT_NOW"]).astimezone(TZ)
 else:
     now = datetime.now(TZ)
-end = now.date() - timedelta(days=1)  # complete days only
-start = end - timedelta(days=59)      # 30 days + the previous 30 days
+# Evening partial runs include the current Melbourne day so current-day sections can refresh.
+# Morning/final runs use the last completed Melbourne day. The builder keeps "Yesterday"
+# anchored to the last completed day when today is included.
+include_today = now.hour >= 12
+end = now.date() if include_today else now.date() - timedelta(days=1)
+completed_end = now.date() - timedelta(days=1)
+start = completed_end - timedelta(days=59)  # 30 complete days + previous 30 days
 
 KEY = os.environ["WINDSOR_API_KEY"]
 FB_ACCT = os.environ.get("WINDSOR_FACEBOOK_ACCOUNT", "1634084963432990")
@@ -63,7 +68,7 @@ def windsor(connector, fields, acct, d_from, d_to):
 
 
 s, e = start.isoformat(), end.isoformat()
-out = {"end": e, "start": s, "now": now.isoformat(), "fetch_status": status}
+out = {"end": e, "completed_end": completed_end.isoformat(), "include_today": include_today, "start": s, "now": now.isoformat(), "fetch_status": status}
 
 # ---- required: Meta Ads spend by day and campaign
 try:
