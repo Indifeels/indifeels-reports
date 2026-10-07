@@ -3,3 +3,4 @@ Manual Order Source refresh after fixing scheduled key loading.
 8 PM catch-up refresh requested 2026-10-07 Australia/Melbourne. Preserve deployed templates.
 Verify dashboard timestamp sync fix after successful publish.
 Current-main refresh requested after Order Source date-window correction.
+Apply dynamic Today-after-8PM display window.
