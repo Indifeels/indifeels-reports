@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-06.4",
+  "manifest_version": "2026-10-07.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -110,7 +110,7 @@
     },
     {
       "id": "call-tracking",
-      "title": "Call Tracking — Nimbata",
+      "title": "Call Tracking \u2014 Nimbata",
       "workflow": "call-tracking.yml",
       "refresh_times": [
         "20:00",
@@ -172,6 +172,28 @@
       "outputs": [
         "r/product-visibility.bin",
         "r/product-visibility.meta.bin"
+      ],
+      "supabase_sync": false
+    },
+    {
+      "id": "restock",
+      "title": "Restock",
+      "workflow": "restock.yml",
+      "refresh_times": [
+        "07:00",
+        "15:00",
+        "20:00"
+      ],
+      "required_env": [
+        "SHOPIFY_TOKEN",
+        "STOCK_KEY"
+      ],
+      "builders": [
+        "tools/restock.py"
+      ],
+      "outputs": [
+        "r/restock.bin",
+        "r/restock.meta.bin"
       ],
       "supabase_sync": false
     },

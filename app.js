@@ -197,6 +197,7 @@
     stock: { c: "orange", icon: "box", stat: ["box", "box", "tag"], line: [] },
     "order-attribution": { c: "teal", icon: "tag", stat: ["tag", "clock", "dollar"], line: ["teal", "purple", "green"] },
     "product-visibility": { c: "purple", icon: "eye", stat: ["eye", "tag", "alert"], line: ["purple", "teal", "rose"] },
+    restock: { c: "orange", icon: "box", stat: ["box", "alert", "tag"], line: [] },
     footwear: { c: "rose", icon: "search", stat: ["search", "bars", "trend"], line: ["rose", "purple", "green"] },
     "google-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["blue", "purple", "green", "teal"] },
     "call-tracking": { c: "teal", icon: "chart", stat: ["msg", "tag", "alert"], line: ["teal", "green", "rose"] },
@@ -1136,6 +1137,46 @@
       st.textContent = e.message === "not-published" ? "This report hasn't been published yet. It appears after tonight's 10 pm update." : "This report couldn't be opened. Pull down to refresh, or sign out and back in.";
     }
   }
+
+
+  // ---------- restock report ----------
+  const RS_KEY = "ir-restock-state";
+  window.addEventListener("message", async (event) => {
+    const fr = $("#rep-frame");
+    if (!fr || event.source !== fr.contentWindow) return;
+    const d = event.data || {};
+    if (d.type !== "restock") return;
+    const reply = (o) => { try { fr.contentWindow?.postMessage(o, "*"); } catch (_) {} };
+    if (d.action === "ready") {
+      try { const s = JSON.parse(localStorage.getItem(RS_KEY) || "null"); if (s) reply({ type: "restock-state", state: s }); } catch (_) {}
+    } else if (d.action === "save") {
+      try { localStorage.setItem(RS_KEY, JSON.stringify(d.state || {})); } catch (_) {}
+    } else if (d.action === "export") {
+      const rows = Array.isArray(d.rows) ? d.rows.slice(0, 5000) : [];
+      const csv = "\ufeff" + rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(",")).join("\r\n");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+      a.download = String(d.filename || "restock.csv").replace(/[^\w.-]/g, "_");
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast("Excel file downloaded");
+    } else if (d.action === "confirm") {
+      try {
+        const { data, error } = await sb.functions.invoke("restock-confirm", { body: { items: d.items } });
+        if (error || !data?.ok) {
+          let msg = data?.error || error?.message || "Couldn't confirm.";
+          try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
+          reply({ type: "restock-confirm-result", req: d.req, ok: false, error: msg });
+          return;
+        }
+        reply({ type: "restock-confirm-result", req: d.req, ok: true, sheet: !!data.sheet,
+          message: (data.sheet ? "Added to the supplier sheet: " : "Confirmed: ") + data.count + " item" + (data.count === 1 ? "" : "s") + " · " + data.units + " units" });
+        toast("Confirmed");
+      } catch (err) {
+        reply({ type: "restock-confirm-result", req: d.req, ok: false, error: err?.message || "Couldn't confirm." });
+      }
+    }
+  });
 
   // ---------- product visibility fixes ----------
   window.addEventListener("message", async (event) => {

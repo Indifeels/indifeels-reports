@@ -1,0 +1,220 @@
+<title>Restock Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: navy brand header with gold hairline, white working area, sticky toolbar. Photo, product + size chip, stock, then stepper with Confirm beneath. */
+:root{
+  --bg:#FFFFFF;--ink:#1B2437;--muted:#6A7285;--line:#E7E5E0;--sub:#F7F6F3;
+  --navy:#14213D;--navy2:#1C2D52;--gold:#C8922A;--goldsoft:#E9D5A6;
+  --accb:#E6EAF3;--accink:#1F3158;
+  --gb:#DDEBE2;--g:#265F44;--yb:#F6EBD3;--y:#7A4F10;--rb:#F3DEDB;--r:#8E2B25;
+  --red:#A4322B;--orange:#B26A12;--green:#2F7D58;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;--bg:#0E1424;--ink:#E8ECF6;--muted:#98A3BC;--line:#222C45;--sub:#151D33;
+  --navy:#0A1020;--navy2:#141E38;--gold:#D9A441;--goldsoft:#8C6A25;
+  --accb:#1E2A4A;--accink:#C9D6F2;
+  --gb:#17352A;--g:#7FD0A5;--yb:#3A2D12;--y:#E5BE6B;--rb:#3F1E1B;--r:#F09A92;
+  --red:#F28B82;--orange:#EDA151;--green:#6CCB9B;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 13.5px/1.4 Figtree,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:inherit}
+.hero{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);color:#fff;padding:calc(18px + env(safe-area-inset-top,0px)) 16px 18px;border-bottom:3px solid var(--gold)}
+.hero-in{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.brand{display:flex;align-items:center;gap:12px}
+.mono{width:40px;height:40px;border:1.5px solid var(--gold);border-radius:10px;display:grid;place-items:center;font:700 16px "Bricolage Grotesque",Figtree,sans-serif;color:var(--gold);letter-spacing:.02em;flex:none}
+.wm{font:700 19px/1.1 "Bricolage Grotesque",Figtree,sans-serif;letter-spacing:.01em}
+.wm small{display:block;font:600 10px Figtree,sans-serif;letter-spacing:.28em;color:var(--goldsoft);margin-top:3px;text-transform:uppercase}
+.ttl{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ttl h1{font:600 24px/1.15 "Bricolage Grotesque",Figtree,sans-serif;margin:0}
+.ttl span{color:#B8C2DA;font-size:12.5px}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);border-radius:999px;padding:4px 12px;font-size:12px;color:#D5DCEC;display:inline-flex;gap:6px;align-items:center}
+.stat b{color:#fff;font-size:13.5px;font-variant-numeric:tabular-nums}
+.stat i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.tools{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.tools-in{max-width:980px;margin:0 auto;padding:9px 16px;display:flex;gap:8px;align-items:center}
+.tools-in .sp{flex:1}
+.b{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:0 13px;height:38px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.b.x{background:var(--accb);border-color:var(--accb);color:var(--accink)}
+.b.c{background:var(--navy);border-color:var(--navy);color:#fff}
+:root[data-theme="dark"] .b.c{background:var(--gold);border-color:var(--gold);color:#0E1424}
+.b:disabled{opacity:.5;cursor:default}
+.b:active{transform:translateY(1px)}
+main{max-width:980px;margin:0 auto;padding:12px 16px 32px}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.bar input{flex:1;min-width:140px;height:38px;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:0 12px}
+.bar input:focus{outline:none;border-color:var(--navy2)}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;max-width:100%}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:0 12px;height:30px;font-weight:600;font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+:root[data-theme="dark"] .chip[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#0E1424}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.sum{color:var(--muted);font-size:12px;margin:2px 0 8px}
+.sum b{color:var(--ink)}
+.panel{border:1px solid var(--green);background:var(--gb);color:var(--g);border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-weight:600}
+.panel span{flex:1;min-width:160px}
+.panel a{text-decoration:underline}
+.th,.tr{display:grid;grid-template-columns:64px minmax(0,1fr) 56px 212px;gap:12px;align-items:center;padding:10px 2px}
+.th{color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--line);padding-block:6px}
+.th span:nth-child(3){text-align:center}.th span:nth-child(4){text-align:right}
+.tr{border-bottom:1px solid var(--line)}
+.pic{width:64px;height:80px;border-radius:10px;object-fit:cover;background:var(--sub);display:block}
+.pic.ph{display:grid;place-items:center;font:700 20px "Bricolage Grotesque",Figtree,sans-serif;color:var(--muted);border:1px solid var(--line)}
+.nm{font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.vr{display:inline-block;margin-top:4px;background:var(--accb);color:var(--accink);border-radius:7px;padding:1px 9px;font-size:12.5px;font-weight:700}
+.n{text-align:center;font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
+.n small{display:block;font-size:10px;font-weight:700;letter-spacing:.04em}
+.n.out{color:var(--red)}.n.low{color:var(--orange)}.n.ok{color:var(--green)}
+.act{display:flex;flex-direction:column;gap:8px;align-items:stretch}
+.ctl{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.ctl button{width:40px;height:40px;border-radius:10px;border:0;font-size:20px;font-weight:700;line-height:1;display:grid;place-items:center}
+.minus{background:var(--yb);color:var(--y)}.plus{background:var(--gb);color:var(--g)}.del{background:var(--rb);color:var(--r);font-size:15px!important;margin-left:6px}
+.q{min-width:28px;text-align:center;font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
+.cf{align-self:flex-end;height:30px;padding:0 14px 0 11px;border-radius:999px;border:1px solid var(--navy);background:transparent;color:var(--navy);font-weight:700;font-size:12.5px;letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;transition:background .15s,color .15s}
+.cf svg{width:13px;height:13px;stroke:var(--gold);stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.cf:hover,.cf:focus-visible{background:var(--navy);color:#fff}
+:root[data-theme="dark"] .cf{border-color:var(--gold);color:var(--gold)}
+:root[data-theme="dark"] .cf:hover,:root[data-theme="dark"] .cf:focus-visible{background:var(--gold);color:#0E1424}
+:root[data-theme="dark"] .cf:hover svg{stroke:#0E1424}
+.ctl button:active,.cf:active{transform:scale(.96)}
+.empty{padding:26px;text-align:center;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(16px);background:var(--navy);color:#fff;padding:9px 16px;border-radius:10px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:9;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%)}
+@media (max-width:720px){
+  .ttl h1{font-size:21px}
+  .b .t{display:none}.b{padding:0 12px}
+  .b.c .t,.tools-in .b.c .t{display:inline}
+  .th{display:none}
+  .tr{grid-template-columns:58px minmax(0,1fr) 46px;gap:8px 10px;padding:12px 2px}
+  .pic{width:58px;height:72px}
+  .tr .act{grid-column:2/4}
+}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+
+<header class="hero"><div class="hero-in">
+  <div class="brand"><div class="mono">IF</div><div class="wm">IndiFeels<small>Australia</small></div></div>
+  <div class="ttl"><h1>Restock Report</h1><span><span id="asof">__ASOF__</span></span></div>
+  <div class="stats" id="stats"></div>
+</div></header>
+<div class="tools"><div class="tools-in">
+  <button class="b" id="theme" aria-label="Switch light or dark mode">🌙</button>
+  <span class="sp"></span>
+  <button class="b x" id="xl" aria-label="Export to Excel">📊 <span class="t">Excel</span></button>
+  <button class="b" id="save" aria-label="Save">💾 <span class="t">Save</span></button>
+  <button class="b c" id="confirm" aria-label="Confirm all"><span class="t">Confirm all</span></button>
+</div></div>
+<main>
+  <div class="panel" id="panel" hidden><span id="panel-t"></span><button class="b" id="panel-no">Cancel</button><button class="b c" id="panel-yes">Yes, confirm</button></div>
+  <div class="panel" id="done" hidden><span id="done-t"></span><a href="__SHEET__" target="_blank" rel="noopener">Open Google Sheet</a></div>
+  <div class="bar">
+    <input id="q" type="search" placeholder="Search product or size" aria-label="Search">
+    <div class="chips" id="per"><button class="chip" data-d="7" aria-pressed="false">7d</button><button class="chip" data-d="15" aria-pressed="false">15d</button><button class="chip" data-d="30" aria-pressed="true">30d</button></div>
+    <div class="chips" id="chips">
+      <button class="chip" data-f="all" aria-pressed="true">All</button>
+      <button class="chip" data-f="out" aria-pressed="false"><i class="dot" style="background:var(--red)"></i>Out</button>
+      <button class="chip" data-f="low" aria-pressed="false"><i class="dot" style="background:var(--orange)"></i>Low</button>
+      <button class="chip" data-f="ok" aria-pressed="false"><i class="dot" style="background:var(--green)"></i>OK</button>
+    </div>
+  </div>
+  <div class="sum" id="sum"></div>
+  <div class="th"><span></span><span>Product · Variant</span><span>Stock</span><span>Sold → restock</span></div>
+  <div id="list"></div>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script>
+const DATA=__DATA__;
+const $=id=>document.getElementById(id);
+const root=document.documentElement,tb=$("theme");
+function setTheme(t){root.dataset.theme=t;tb.textContent=t==="dark"?"☀️":"🌙"}
+setTheme("light");
+tb.addEventListener("click",()=>setTheme(root.dataset.theme==="dark"?"light":"dark"));
+const send=(o)=>{try{parent.postMessage(Object.assign({type:"restock"},o),"*")}catch(e){}};
+// d: [product, variant, stock, img, s7, s15, s30, variantId]
+let days=30,saved={};
+let st=DATA.map((d,i)=>({id:i,p:d[0],v:d[1]==="Default Title"?"Standard":d[1],stock:d[2],img:d[3],s:[d[4],d[5],d[6]],vid:d[7],qty:null,del:false}));
+const soldOf=x=>x.s[days===7?0:days===15?1:2];
+const qtyOf=x=>x.qty===null?soldOf(x):x.qty;
+let filter="all",term="";
+const status=x=>x.stock<=0?"out":(x.stock<soldOf(x)?"low":"ok");
+const lbl={out:"OUT",low:"LOW",ok:"OK"};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const vis=()=>st.filter(x=>!x.del&&soldOf(x)>0);
+function render(){
+  const rows=vis().filter(x=>(filter==="all"||status(x)===filter)&&(!term||(x.p+" "+x.v).toLowerCase().includes(term)));
+  $("list").innerHTML=rows.length?rows.map(x=>{const s=status(x);return `<div class="tr" data-id="${x.id}">
+    <img class="pic" loading="lazy" referrerpolicy="no-referrer" src="${esc(x.img)}" alt="" data-n="${esc(x.p)}">
+    <div><div class="nm">${esc(x.p)}</div><span class="vr">${esc(x.v)}</span></div>
+    <div class="n ${s}">${x.stock}<small>${lbl[s]}</small></div>
+    <div class="act"><div class="ctl"><button class="minus" data-a="m" aria-label="Decrease">−</button><span class="q">${qtyOf(x)}</span><button class="plus" data-a="p" aria-label="Increase">+</button><button class="del" data-a="d" aria-label="Delete row">🗑</button></div><button class="cf" data-a="c"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>Confirm</button></div>
+  </div>`}).join(""):'<div class="empty">Nothing here</div>';
+  totals();
+}
+function totals(){
+  const live=vis(),c=f=>live.filter(x=>status(x)===f).length;
+  const o=live.reduce((a,x)=>a+qtyOf(x),0);
+  $("stats").innerHTML=`<span class="stat"><i style="background:#F28B82"></i><b>${c("out")}</b> out of stock</span><span class="stat"><i style="background:#EDA151"></i><b>${c("low")}</b> running low</span><span class="stat"><b>${o}</b> units to restock</span>`;
+  $("sum").innerHTML=`<b>${live.length}</b> items · <b>${c("out")}</b> out · <b>${c("low")}</b> low · <b>${o}</b> units to restock`;
+}
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("on"),2600)}
+$("list").addEventListener("error",e=>{const i=e.target;if(i&&i.classList&&i.classList.contains("pic")&&i.tagName==="IMG"){const d=document.createElement("div");d.className="pic ph";d.textContent=(i.dataset.n||"?").trim().charAt(0).toUpperCase();i.replaceWith(d)}},true);
+$("list").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  const row=b.closest(".tr"),x=st[+row.dataset.id];
+  if(b.dataset.a==="p")x.qty=qtyOf(x)+1;
+  if(b.dataset.a==="m")x.qty=Math.max(0,qtyOf(x)-1);
+  if(b.dataset.a==="d"){x.del=true;render();toast("Removed. Tap Save to keep.");return}
+  if(b.dataset.a==="c"){confirmRows([x]);return}
+  row.querySelector(".q").textContent=qtyOf(x);totals();
+});
+$("chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;filter=b.dataset.f;document.querySelectorAll("#chips .chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
+$("per").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;days=+b.dataset.d;st.forEach(x=>{x.qty=null});document.querySelectorAll("#per .chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
+$("q").addEventListener("input",e=>{term=e.target.value.trim().toLowerCase();render()});
+const snapshot=()=>({days,rows:st.map(x=>({vid:x.vid,qty:x.qty,del:x.del}))});
+$("save").addEventListener("click",()=>{send({action:"save",state:snapshot()});toast("Saved ✓")});
+// restore saved state pushed by the hub
+window.addEventListener("message",e=>{
+  const d=e.data||{};
+  if(d.type==="restock-state"&&d.state&&Array.isArray(d.state.rows)){
+    const m={};d.state.rows.forEach(r=>{m[r.vid]=r});
+    st.forEach(x=>{const r=m[x.vid];if(r){x.qty=r.qty;x.del=!!r.del}});
+    render();
+  }
+  if(d.type==="restock-confirm-result"){
+    const p=pend[d.req];delete pend[d.req];if(!p)return;
+    if(d.ok){p.forEach(x=>{x.del=true});render();send({action:"save",state:snapshot(),quiet:true});
+      $("done-t").textContent=d.message||"Confirmed";$("done").hidden=false;
+      if(!d.sheet)$("done").querySelector("a").hidden=false}
+    else toast(d.error||"Couldn't confirm. Nothing was changed.");
+  }
+});
+$("xl").addEventListener("click",()=>{
+  const live=vis();
+  const rows=[["Product","Variant","Current stock","Qty to order","Status"],...live.map(x=>[x.p,x.v,x.stock,qtyOf(x),lbl[status(x)]])];
+  send({action:"export",rows,filename:"indifeels-restock-"+new Date().toISOString().slice(0,10)+".csv"});
+});
+const pend={};let reqN=0;
+function confirmRows(p){
+  p=p.filter(x=>!x.del&&qtyOf(x)>0);
+  if(!p.length){toast("Nothing to confirm");return false}
+  const req="r"+(++reqN);pend[req]=p;
+  send({action:"confirm",req,days,items:p.map(x=>({vid:x.vid,product:x.p,variant:x.v,image:x.img,stock:x.stock,qty:qtyOf(x),status:lbl[status(x)]}))});
+  toast("Sending…");
+  return true;
+}
+$("confirm").addEventListener("click",()=>{
+  const p=vis().filter(x=>qtyOf(x)>0);
+  if(!p.length){toast("Nothing to confirm");return}
+  $("done").hidden=true;
+  $("panel-t").textContent="Confirm all "+p.length+" items · "+p.reduce((a,x)=>a+qtyOf(x),0)+" units for the supplier?";
+  $("panel").hidden=false;
+});
+$("panel-no").addEventListener("click",()=>{$("panel").hidden=true});
+$("panel-yes").addEventListener("click",()=>{confirmRows(vis());$("panel").hidden=true});
+render();
+send({action:"ready"});
+</script>
