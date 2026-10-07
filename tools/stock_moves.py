@@ -2,6 +2,7 @@
 The app shows every move that hasn't been finalised yet as a tick box; ticks live in Supabase (stock_ticks).
 File (after decryption, gzip JSON): {"updated": ISO, "moves": [move...], "now": {item_id: {"shop": n, "backup": n}}, "fixes": [fix...]}
 move = {"id", "item", "product", "variant", "sku", "img", "moved_at", "order", "shop_after", "backup_after"}
+negatives = [{"item", "product", "variant", "sku", "img", "shop", "backup"}, ...]  # variants below 0 at Shop or Backup, rebuilt every run
 fix  = {"id", "item", "product", "variant", "sku", "img", "at", "was": "shop-backup", "now": "shop-backup", "why"}
   A fix is a correction of the front-end "ST: shop-backup" numbers (variant metafields custom.melbourne_stock and
   custom.storage_stock) so they match real stock. Every fix is registered here and shown in the app.

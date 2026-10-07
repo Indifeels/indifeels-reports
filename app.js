@@ -280,7 +280,7 @@
     const log = JSON.parse(await decryptFile("r/stock_moves.bin", keys.stock));
     const { data, error } = await sb.from("stock_ticks").select("*");
     if (error) throw new Error(error.message);
-    SM = { moves: log.moves || [], fixes: log.fixes || [], now: log.now || {}, ticks: Object.fromEntries((data || []).map((t) => [t.move_id, t])) };
+    SM = { moves: log.moves || [], fixes: log.fixes || [], neg: log.negatives || [], now: log.now || {}, ticks: Object.fromEntries((data || []).map((t) => [t.move_id, t])) };
     return SM;
   }
   const smPending = () => SM.moves.filter((m) => !SM.ticks[m.id]?.finalised_at).sort((a, b) => b.moved_at.localeCompare(a.moved_at));
@@ -302,11 +302,18 @@
         <span class="sub">${who}</span>${sold ? `<span class="sm-flag">${svg("alert")}Sold before it was moved. Shop location is ${now.shop}.</span>` : ""}</span>
       <span class="sm-q"><span><b class="${now.shop < 0 ? "neg" : ""}">${now.shop}</b>Shop</span><span><b>${now.backup}</b>Backup</span></span></label>`;
   }
+  function negRow(n) {
+    const thumb = n.img ? `<img src="${esc(n.img + (n.img.includes("?") ? "&" : "?") + "width=160")}" alt="" loading="lazy" width="64" height="80">` : `<span class="ph"></span>`;
+    return `<div class="sm-row ng">${thumb}<span class="sm-main"><b>${esc(n.product)}</b><span class="vp">${esc(n.variant || "One size")}</span><span class="sub">${esc(n.sku)}</span></span>
+      <span class="sm-q"><span><b class="${n.shop < 0 ? "neg" : ""}">${n.shop}</b>Shop</span><span><b class="${n.backup < 0 ? "neg" : ""}">${n.backup}</b>Backup</span></span></div>`;
+  }
   function renderStock() {
     const p = smPending(), d = smDone(), st = stockStats();
     $("#sm-sum").innerHTML = st.stats.map((s) => `<div class="st"><b>${esc(s[0])}</b><span>${esc(s[1])}</span></div>`).join("");
     $("#sm-list").innerHTML = p.map((m) => smRow(m, false)).join("");
     $("#sm-status").hidden = p.length > 0; $("#sm-status").textContent = "Nothing to move right now. New moves appear here after each order.";
+    const ng = SM.neg || [];
+    $("#sm-neg-wrap").hidden = !ng.length; $("#sm-neg-sum").textContent = `Negative stock (${ng.length})`; $("#sm-neg").innerHTML = ng.map(negRow).join("");
     $("#sm-done-wrap").hidden = !d.length; $("#sm-done").innerHTML = d.map((m) => smRow(m, true)).join("");
     const fx = (SM.fixes || []).slice().sort((a, b) => b.at.localeCompare(a.at));
     $("#sm-fix-wrap").hidden = !fx.length; $("#sm-fix-sum").textContent = `Website stock numbers corrected (${fx.length})`;
@@ -335,7 +342,7 @@
   $("#sm-report").addEventListener("click", () => openReport("stock", true));
   async function openStock(r) {
     page("stock", r.title);
-    $("#sm-list").innerHTML = ""; $("#sm-sum").innerHTML = ""; $("#sm-bar").hidden = true; $("#sm-done-wrap").hidden = true;
+    $("#sm-list").innerHTML = ""; $("#sm-sum").innerHTML = ""; $("#sm-bar").hidden = true; $("#sm-done-wrap").hidden = true; $("#sm-neg-wrap").hidden = true;
     const st = $("#sm-status"); st.hidden = false; st.textContent = "Loading…";
     try { await loadMoves(); renderStock(); }
     catch (e) { st.textContent = e.message === "not-published" ? "No moves have been logged yet." : "The move list couldn't be loaded. Pull down to refresh."; }

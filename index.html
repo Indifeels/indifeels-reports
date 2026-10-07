@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Indifeels">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=11">
+<link rel="stylesheet" href="app.css?v=12">
 </head>
 <body>
 <div id="app">
@@ -88,6 +88,7 @@
       <div class="sm-sum" id="sm-sum"></div>
       <p id="sm-status" class="rep-status">Loading…</p>
       <div id="sm-list" class="sm-list"></div>
+      <section class="sm-neg" id="sm-neg-wrap" hidden><h3 id="sm-neg-sum">Negative stock</h3><div id="sm-neg" class="sm-list"></div></section>
       <div class="sm-bar" id="sm-bar" hidden><span id="sm-count">0 ticked</span><button class="btn primary" id="sm-final" type="button" disabled>Stock finalised</button></div>
       <details class="sm-done" id="sm-done-wrap" hidden><summary>Finalised moves</summary><div id="sm-done" class="sm-list"></div></details>
       <details class="sm-done" id="sm-fix-wrap" hidden><summary id="sm-fix-sum">Website stock numbers corrected</summary><p class="sm-note">The "ST: shop-backup" numbers on the website are corrected automatically when they don't match Shopify stock. Every correction is listed here.</p><div id="sm-fix" class="sm-fixes"></div></details>
@@ -152,6 +153,6 @@
 </div>
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=25"></script>
+<script src="app.js?v=26"></script>
 </body>
 </html>

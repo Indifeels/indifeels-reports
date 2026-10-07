@@ -132,7 +132,7 @@
     },
     {
       "id": "stock",
-      "title": "Stock / Restock",
+      "title": "Stock management",
       "workflow": "stock.yml",
       "refresh_times": [
         "07:00",

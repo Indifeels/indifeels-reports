@@ -129,6 +129,16 @@ def main():
                 stock_moves.record_fix(log, iid, finfo.get(iid, {}), was, f"{sh}-{bk}", "Scheduled check: front end didn't match Shopify stock")
             stock_moves.save(r_dir, key, log)
         print(f"ST check: {len(bad)} fixed")
+    # every variant with negative stock at Shop or Backup, for the app's "Negative stock" section
+    neg_ids = sorted((i for i, (sh, bk) in lv.items() if sh < 0 or bk < 0), key=lambda i: (min(lv[i]), i))
+    ninfo = {}
+    for i in range(0, len(neg_ids), 100):
+        for nd in gql(ITEMS, {"ids": neg_ids[i:i + 100]})["data"]["nodes"]:
+            if nd: ninfo[nd["id"]] = stock_moves.item_info(nd)
+    log["negatives"] = [dict(item=i, product=ninfo[i]["product"], variant=ninfo[i]["variant"], sku=ninfo[i]["sku"], img=ninfo[i]["img"],
+                             shop=lv[i][0], backup=lv[i][1]) for i in neg_ids if i in ninfo]
+    stock_moves.save(r_dir, key, log)
+    print(f"negative stock: {len(log['negatives'])}")
     # report reflects stock after the moves
     for f in os.listdir(data): os.remove(os.path.join(data, f))
     nodes = [{"q": [{"quantity": bk}], "item": {"id": i, "s": {"q": [{"quantity": sh}]}}} for i, (sh, bk) in lv.items()]

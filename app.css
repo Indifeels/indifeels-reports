@@ -218,3 +218,6 @@ legend{font-weight:600;font-size:13.5px;padding:0;margin-bottom:6px}
 @media(max-width:600px){.oa-resync{width:100%}}
 
 .oa-journey-note{margin-top:3px;padding-top:6px;border-top:1px dashed var(--line);color:var(--muted)}
+.sm-neg h3{margin:22px 0 10px;font-size:15px}
+.sm-row.ng{grid-template-columns:auto 1fr auto;cursor:default}
+@media (max-width:600px){.sm-row.ng{grid-template-columns:auto 1fr}}
