@@ -29,19 +29,19 @@
 @media(max-width:350px){.schedule-fields{grid-template-columns:1fr}.schedule-switch span{display:none}}
 
 /* Solid gradient headers separate reports; inner panels retain their muted palette. */
-.schedule-report[data-report="daily"]{--report-accent:#AE326E;--report-end:#74264E}
-.schedule-report[data-report="monthly"]{--report-accent:#237C4B;--report-end:#175435}
-.schedule-report[data-report="stock"]{--report-accent:#946615;--report-end:#68470F}
-.schedule-report[data-report="restock"]{--report-accent:#B14A22;--report-end:#793018}
-.schedule-report[data-report="product-visibility"]{--report-accent:#7851AC;--report-end:#513477}
-.schedule-report[data-report="order-source"]{--report-accent:#187B80;--report-end:#10545A}
-.schedule-report[data-report="order-attribution"]{--report-accent:#607B24;--report-end:#405319}
-.schedule-report[data-report="call-tracking"]{--report-accent:#95602F;--report-end:#684020}
-.schedule-report[data-report="footwear"]{--report-accent:#B23E4D;--report-end:#7D2A39}
-.schedule-report[data-report="google-tracked"]{--report-accent:#326CC0;--report-end:#234B89}
-.schedule-report[data-report="tech-availability"]{--report-accent:#287761;--report-end:#185242}
+.schedule-report[data-report="daily"]{--report-accent:#725366;--report-end:#604656}
+.schedule-report[data-report="monthly"]{--report-accent:#4F6858;--report-end:#42584A}
+.schedule-report[data-report="stock"]{--report-accent:#756449;--report-end:#63553F}
+.schedule-report[data-report="restock"]{--report-accent:#795D4E;--report-end:#654E42}
+.schedule-report[data-report="product-visibility"]{--report-accent:#665B78;--report-end:#564D65}
+.schedule-report[data-report="order-source"]{--report-accent:#4C696A;--report-end:#40585A}
+.schedule-report[data-report="order-attribution"]{--report-accent:#626A4C;--report-end:#535A41}
+.schedule-report[data-report="call-tracking"]{--report-accent:#71614F;--report-end:#605344}
+.schedule-report[data-report="footwear"]{--report-accent:#7A5B60;--report-end:#674D52}
+.schedule-report[data-report="google-tracked"]{--report-accent:#54657B;--report-end:#475569}
+.schedule-report[data-report="tech-availability"]{--report-accent:#506A60;--report-end:#445A52}
 .schedule-reports{gap:16px}
-.schedule-report{--report-accent:#5256AE;--report-end:#363A82;border-color:var(--report-accent)}
+.schedule-report{--report-accent:#55536B;--report-end:#464458;border-color:var(--report-accent)}
 .schedule-report>summary,.schedule-report[open]>summary{background:linear-gradient(125deg,var(--report-accent),var(--report-end));color:#fff;border-left:0;padding:16px;min-height:66px}
 .schedule-report>summary>span,.schedule-report>summary::after{color:#fff;opacity:.9}
 .schedule-report[open]{border:2px solid var(--report-accent);margin-bottom:24px}
