@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: indifeels-order-source
+  group: ${{ github.event.action == 'report-schedule' && !(contains(github.event.client_payload.report_ids, 'order-source')) && format('ignored-{0}', github.event.client_payload.schedule_group) || 'indifeels-order-source' }}
   cancel-in-progress: false
 
 jobs:

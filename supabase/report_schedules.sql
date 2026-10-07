@@ -102,14 +102,14 @@ revoke all on function public.report_scheduler_secret() from public,anon,authent
 grant execute on function public.report_scheduler_secret() to service_role;
 create or replace function public.claim_report_refreshes() returns setof public.report_refresh_runs
 language plpgsql security invoker set search_path=public,pg_catalog as $$
-declare s record;ev record;stamp timestamptz:=now();
+declare job record;ev record;stamp timestamptz:=now();
 begin
  if not pg_try_advisory_xact_lock(74612081) then return;end if;
- for s in select s.*,c.runner from public.report_schedules s join public.report_refresh_control c using(report_id)
+ for job in select s.*,c.runner from public.report_schedules s join public.report_refresh_control c using(report_id)
  where s.kind='time' and s.enabled and c.enabled and c.time_enabled and s.next_at<=stamp
  and not exists(select 1 from public.report_refresh_runs r where r.report_id=s.report_id and r.status in ('queued','in_progress')) for update of s loop
-  insert into public.report_refresh_runs(report_id,schedule_id,runner,scheduled_at,origin) values(s.report_id,s.id,s.runner,s.next_at,'time') on conflict do nothing;
-  update public.report_schedules set next_at=public.report_next_refresh(s.frequency,s.start_date,s.start_time,s.weekday,stamp,s.interval_minutes) where id=s.id;
+  insert into public.report_refresh_runs(report_id,schedule_id,runner,scheduled_at,origin) values(job.report_id,job.id,job.runner,job.next_at,'time') on conflict do nothing;
+  update public.report_schedules set next_at=public.report_next_refresh(job.frequency,job.start_date,job.start_time,job.weekday,stamp,job.interval_minutes) where id=job.id;
  end loop;
  for ev in select * from public.report_refresh_events where not processed order by id for update skip locked limit 200 loop
   insert into public.report_refresh_runs(report_id,schedule_id,runner,scheduled_at,origin)

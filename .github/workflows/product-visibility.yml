@@ -10,7 +10,7 @@ on:
 
 concurrency:
   # Per-workflow lock: prevents duplicate runs of this workflow from cancelling unrelated report refreshes.
-  group: indifeels-product-visibility
+  group: ${{ github.event.action == 'report-schedule' && !(contains(github.event.client_payload.report_ids, 'product-visibility')) && format('ignored-{0}', github.event.client_payload.schedule_group) || 'indifeels-product-visibility' }}
   cancel-in-progress: false
 
 permissions:

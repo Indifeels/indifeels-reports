@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: indifeels-call-tracking
+  group: ${{ github.event.action == 'report-schedule' && !(contains(github.event.client_payload.report_ids, 'call-tracking')) && format('ignored-{0}', github.event.client_payload.schedule_group) || 'indifeels-call-tracking' }}
   cancel-in-progress: false
 
 jobs:

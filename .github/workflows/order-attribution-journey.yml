@@ -14,7 +14,7 @@ on:
       - ".github/manual-refresh-order-attribution.txt"
 
 concurrency:
-  group: indifeels-order-attribution-journey
+  group: ${{ github.event.action == 'report-schedule' && !(contains(github.event.client_payload.report_ids, 'order-attribution')) && format('ignored-{0}', github.event.client_payload.schedule_group) || 'indifeels-order-attribution-journey' }}
   cancel-in-progress: false
 
 permissions:
