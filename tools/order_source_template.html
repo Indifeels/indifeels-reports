@@ -176,10 +176,6 @@ const paceChip=k=>{const b=BASE[k];return chip((T[k][1]/DAYS[k])/(T[b][1]/DAYS[b
 const fbShare=k=>Object.entries(DATA[k]).filter(([s])=>/MSGS/.test(s)).reduce((a,[,v])=>a+v[1],0)/T[k][1]*100;
 let cur="d30";
 function render(){
-  const leadProfitLabel=LEAD_LABEL==="Today"?"Today's Profit":"Yesterday's Profit";
-  document.getElementById("profitKpis").innerHTML=[
-    ["y",leadProfitLabel],["d7","7 Days Profit"],["d15","15 Days Profit"],["d30","30 Days Profit"]
-  ].map(([k,l])=>`<div class="profit-kpi"><div class="l">${l}</div><div class="v">${mm(M.model[k].all.profit)}</div></div>`).join("");
   document.getElementById("tabs").innerHTML=P.map(([k,l])=>`<button id="t-${k}" aria-pressed="${k===cur}" data-k="${k}">${l}</button>`).join("");
   const b=BASE[cur],[c,t]=T[cur],aov=c?t/c:0,aovB=T[b][1]/T[b][0];
   const vs=b==="p30"?"vs prev 30 days":"vs 30 days";
@@ -219,6 +215,11 @@ const sh=n=>n.replace(" sources","");
 const open=new Set();
 function ranked(p){return M.model[p].groups.map((g,i)=>({...g,i})).sort((a,b)=>b.profit-a.profit)}
 function short(n){let s=n.replace(/^Non Tracked \| (MM \| )?/,"").replace(/^Tracked \| MM Sales \| /,"").replace(/^Tracked_MM_/,"").replace(/^Non Trac- /,"").replace(/\s*[|_]\s*\d{2}\/\d{2}(\/\d{2})?$/,"").replace(/ \| Campaign$/,"").replace(/_/g," ");return s.length>30?s.slice(0,29)+"…":s}
+function renderProfitKpis(){
+  const leadProfitLabel=LEAD_LABEL==="Today"?"Today's Profit":"Yesterday's Profit";
+  $("profitKpis").innerHTML=[["y",leadProfitLabel],["d7","7 Days Profit"],["d15","15 Days Profit"],["d30","30 Days Profit"]]
+    .map(([k,l])=>`<div class="profit-kpi"><div class="l">${l}</div><div class="v">${mm(M.model[k].all.profit)}</div></div>`).join("");
+}
 function renderRank(){
   const al=M.model[cur].all;
   const two=(a,b)=>`<div class="two">${a}${b}</div>`;
@@ -251,7 +252,7 @@ function renderExp(){
 $("etbl").addEventListener("click",e=>{const b=e.target.closest(".tg");if(!b)return;const id=b.dataset.id;open.has(id)?open.delete(id):open.add(id);renderExp();const nb=document.querySelector(`.tg[data-id="${id}"]`);if(nb)nb.focus()});
 $("flag").innerHTML=M.unflagged.length?`<div class="flag bad">${M.unflagged.length} campaign(s) missing Tracked / Non Tracked in the name: ${M.unflagged.join("; ")}</div>`:`<div class="flag">All ${M.ncamp} campaigns are labelled Tracked or Non Tracked.</div>`;
 document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b){cur=b.dataset.k;render()}});
-render();table();
+renderProfitKpis();render();table();
 (function(){
   /* Pinned headers: the real header cells slide down inside their own table, so column widths always match exactly. */
   const bar=document.querySelector(".stick"),ids=["rk","rkt","etbl"];
