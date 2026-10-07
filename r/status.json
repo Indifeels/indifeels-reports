@@ -18,11 +18,11 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-10-07T06:04+11:00",
-  "code_sha": "d7728c26cdf3812a2281d98a9dc6a6f23caf5328",
+  "at": "2026-10-07T20:04+11:00",
+  "code_sha": "33c49a7c32b84af1f3323018779cc426a9466a97",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-10-07T06:04+11:00",
-  "manifest_version": "2026-10-06.4",
+  "last_ok": "2026-10-07T20:04+11:00",
+  "manifest_version": "2026-10-07.1",
   "ok": true,
   "reason": ""
  },
