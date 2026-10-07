@@ -36,10 +36,10 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-10-08T08:03+11:00",
-  "code_sha": "d9412a9a611b9ddd18adec8a48d7651d71939f04",
+  "at": "2026-10-08T08:29+11:00",
+  "code_sha": "7fba721410e03ee41958e590d9080af2b7f0dd99",
   "data_through": null,
-  "last_ok": "2026-10-08T08:03+11:00",
+  "last_ok": "2026-10-08T08:29+11:00",
   "manifest_version": "2026-10-08.schedule-panel.1",
   "ok": true,
   "reason": ""
