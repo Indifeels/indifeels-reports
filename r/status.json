@@ -53,6 +53,15 @@
   "ok": true,
   "reason": ""
  },
+ "restock": {
+  "at": "2026-10-07T18:01+11:00",
+  "code_sha": "15b5d3db7e9b6c1005a85e913f864736ed6aa2ba",
+  "data_through": null,
+  "last_ok": "2026-10-07T18:01+11:00",
+  "manifest_version": "2026-10-07.1",
+  "ok": true,
+  "reason": ""
+ },
  "stock": {
   "at": "2026-10-07T16:59+11:00",
   "code_sha": "335b19a97f046dda81b424b675715e10d2f09d11",
