@@ -203,6 +203,9 @@ function table(){
 }
 
 const M=__MODEL__;
+window.addEventListener("error",e=>{try{parent.postMessage({type:"report-render-error",report:"order-source",message:e.message||"Unknown render error",line:e.lineno||0,col:e.colno||0},"*")}catch(_){}});
+window.addEventListener("unhandledrejection",e=>{try{parent.postMessage({type:"report-render-error",report:"order-source",message:String(e.reason?.message||e.reason||"Unhandled promise rejection")},"*")}catch(_){}});
+try{parent.postMessage({type:"report-render-stage",report:"order-source",stage:"model-loaded"},"*")}catch(_){};
 const $=id=>document.getElementById(id);
 const rc=r=>r==null?"n":r>=3?"g":r>=1?"a":"r";
 const roasTxt=r=>r==null?"–":r.toFixed(2)+"x";
@@ -251,6 +254,7 @@ function renderExp(){
 }
 $("flag").innerHTML=M.unflagged.length?`<div class="flag bad">${M.unflagged.length} campaign(s) missing Tracked / Non Tracked in the name: ${M.unflagged.join("; ")}</div>`:`<div class="flag">All ${M.ncamp} campaigns are labelled Tracked or Non Tracked.</div>`;
 renderProfitKpis();render();table();
+try{parent.postMessage({type:"report-render-stage",report:"order-source",stage:"render-complete"},"*")}catch(_){};
 $("etbl").addEventListener("click",e=>{const b=e.target.closest(".tg");if(!b)return;const id=b.dataset.id;open.has(id)?open.delete(id):open.add(id);renderExp();const nb=document.querySelector(`.tg[data-id="${id}"]`);if(nb)nb.focus()});
 document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b){cur=b.dataset.k;render()}});
 (function(){
