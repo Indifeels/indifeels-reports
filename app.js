@@ -344,8 +344,9 @@
   // ---------- order attribution ----------
   const ORDER_SOURCES = ["Google Online Orders - WEB","Google CALLS MEL - SALE","Google Direction MEL - Store Visit","FB Online Orders - WEB","FB CALLS MEL - SALE","FB/IG PAGE MSGS MEL - SALE","FB WHATSAPP MSGS MEL - SALE","Organic Orders","Repeat Customer","Word of Mouth","Marketplace MEL","Marketplace SYD","Marketplace BRN","AI","Direct order","Invalid","Unknown Online","Unknown Offline"];
   let OA = { rows: [], catalog: [], channel: null };
-  const oaPending = () => OA.rows.filter((r) => !r.order_source || r.sync_status !== "synced");
-  const oaDone = () => OA.rows.filter((r) => r.order_source && r.sync_status === "synced").slice(0, 40);
+  const oaPending = () => OA.rows.filter((r) => r.attribution_auto === true || !r.order_source || r.sync_status !== "synced");
+  const oaDone = () => OA.rows.filter((r) => r.order_source && r.sync_status === "synced" && r.attribution_auto !== true).slice(0, 40);
+  const oaPaidPlatform = (source) => source === "Google Online Orders - WEB" ? "Google" : source === "FB Online Orders - WEB" ? "Facebook" : "";
   const oaMoney = (v, c = "AUD") => new Intl.NumberFormat("en-AU", { style: "currency", currency: c, maximumFractionDigits: 2 }).format(Number(v || 0));
   const oaCampaignValue = (x) => x ? `${x.platform} — ${x.campaign_name}` : "";
   const oaCampaigns = () => {
@@ -382,7 +383,7 @@
   async function loadAttribution() {
     const [q, c] = await Promise.all([
       sb.from("order_attribution_queue")
-        .select("order_id,legacy_id,order_name,created_at,customer_name,contact_email,contact_phone,total,currency,shopify_source,products,order_source,campaign_platform,campaign_id,campaign_name,adset_id,adset_name,sync_status,sync_error,journey_ready,journey_checked_at,journey,attribution_note,updated_at")
+        .select("order_id,legacy_id,order_name,created_at,customer_name,contact_email,contact_phone,total,currency,shopify_source,products,order_source,campaign_platform,campaign_id,campaign_name,adset_id,adset_name,sync_status,sync_error,attribution_auto,journey_ready,journey_checked_at,journey,attribution_note,updated_at")
         .order("created_at", { ascending: false }).limit(150),
       sb.from("ad_attribution_catalog")
         .select("option_key,platform,campaign_id,campaign_name,campaign_status,adset_id,adset_name,adset_status,last_seen_date,refreshed_at")
@@ -399,8 +400,8 @@
     const value = p.reduce((a, r) => a + Number(r.total || 0), 0);
     const newest = OA.rows[0]?.updated_at || OA.rows[0]?.created_at;
     return {
-      stats: [[String(p.length), "orders need a source"], [String(syncing), "syncing now"], [oaMoney(value), "pending order value"]],
-      warn: p.length ? `${p.length} order${p.length === 1 ? "" : "s"} need attribution` : "",
+      stats: [[String(p.length), "orders need review"], [String(syncing), "syncing now"], [oaMoney(value), "pending order value"]],
+      warn: p.length ? `${p.length} order${p.length === 1 ? "" : "s"} need attribution review` : "",
       updated: newest ? fmtTime(newest) : "",
     };
   }
@@ -550,8 +551,8 @@
     const suggest = oaJourneySuggestion(r);
     const selectedSource = r.order_source || suggest.source || "";
     const opts = ['<option value="">Choose source…</option>'].concat(ORDER_SOURCES.map((x) => `<option value="${esc(x)}" ${selectedSource === x ? "selected" : ""}>${esc(x)}</option>`)).join("");
-    const stat = syncing ? '<span class="oa-state syncing">Syncing…</span>' : failed ? '<span class="oa-state error">Sync failed</span>' : r.order_source ? '<span class="oa-state done">Synced</span>' : '<span class="oa-state pending">Pending</span>';
-    const saveText = syncing ? "Saving…" : failed ? "Retry Shopify" : "Save attribution";
+    const stat = syncing ? '<span class="oa-state syncing">Syncing…</span>' : failed ? '<span class="oa-state error">Sync failed</span>' : r.attribution_auto === true ? '<span class="oa-state pending">Auto-detected · confirm</span>' : r.order_source ? '<span class="oa-state done">Confirmed</span>' : '<span class="oa-state pending">Pending</span>';
+    const saveText = syncing ? "Saving…" : failed ? "Retry Shopify" : r.attribution_auto === true ? "Confirm attribution" : "Save attribution";
     const campaign = oaStoredCampaign(r) || suggest.campaign;
     const campaignValue = campaign ? `${campaign.platform} — ${campaign.campaign_name}` : "";
     const cid = `oa-campaign-${r.legacy_id}`, aid = `oa-adset-${r.legacy_id}`;
@@ -627,16 +628,21 @@
       const campaignText = campaignEl.value.trim();
       const row = OA.rows.find((x) => x.order_id === btn.dataset.order);
       const suggested = row ? oaJourneySuggestion(row) : {};
-      let campaign = campaignText ? oaFindCampaign(campaignText) : null;
-      if (!campaign && suggested.campaign && campaignText === oaCampaignValue(suggested.campaign)) campaign = suggested.campaign;
       if (!source) return toast("Choose an order source first");
       if (email && !emailEl.checkValidity()) return toast("Enter a valid email address or leave it blank");
-      if (campaignText && !campaign) return toast("Choose the campaign from the list or use the Shopify-suggested campaign");
-      const adsetText = adsetEl.value.trim();
-      let adset = adsetText && campaign ? oaFindAdset(campaign, adsetText) : null;
-      if (!adset && suggested.adset && adsetText === suggested.adset.adset_name) adset = suggested.adset;
-      if (adsetText && !campaign) return toast("Choose the campaign before the ad set/ad group");
-      if (adsetText && !adset) return toast(campaign?.platform === "Google" ? "Choose the Google ad group from the list or use the Shopify-suggested value" : "Choose the Facebook ad set from the list or use the Shopify-suggested value");
+      const expectedPlatform = oaPaidPlatform(source);
+      let campaign = null, adset = null;
+      if (expectedPlatform) {
+        campaign = campaignText ? oaFindCampaign(campaignText) : null;
+        if (!campaign && suggested.campaign && suggested.campaign.platform === expectedPlatform && campaignText === oaCampaignValue(suggested.campaign)) campaign = suggested.campaign;
+        if (campaignText && !campaign) return toast("Choose the campaign from the list or use the Shopify-suggested campaign");
+        if (campaign && campaign.platform !== expectedPlatform) return toast(`Choose a ${expectedPlatform} campaign for this source`);
+        const adsetText = adsetEl.value.trim();
+        adset = adsetText && campaign ? oaFindAdset(campaign, adsetText) : null;
+        if (!adset && suggested.adset && adsetText === suggested.adset.adset_name) adset = suggested.adset;
+        if (adsetText && !campaign) return toast("Choose the campaign before the ad set/ad group");
+        if (adsetText && !adset) return toast(campaign?.platform === "Google" ? "Choose the Google ad group from the list or use the Shopify-suggested value" : "Choose the Facebook ad set from the list or use the Shopify-suggested value");
+      }
       syncAttribution(btn.dataset.order, source, email, phone, campaign, adset);
     }));
   }
