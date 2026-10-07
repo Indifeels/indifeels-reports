@@ -300,7 +300,7 @@
     const period=meta?.periods?.[selected];
     const unavailable=selected!=="summary" && !period;
     const st=(unavailable ? (meta?.stats || []).map(x=>["—",x[1]]) : period?.stats || meta?.stats || []).slice(0,4);
-    const stats=st.map(x=>{const raw=String(x[0]),suffix=raw.match(/\s*(\([^)]*\))$/),value=suffix?raw.slice(0,suffix.index):raw;const numeric=Number(value.replace(/[^0-9.-]/g,""));const displayed=/\$/.test(value)&&Number.isFinite(numeric)?new Intl.NumberFormat("en-AU",{style:"currency",currency:"AUD",maximumFractionDigits:0,notation:Math.abs(numeric)>=10000?"compact":"standard"}).format(/−/.test(value)?-numeric:numeric):value;return `<div class="report-kpi"><span title="${esc(x[1])}">${esc(compactKpiLabel(x[1]))}</span><strong title="${esc(value)}">${esc(displayed)}</strong><small>${esc(suffix?suffix[1]:"\u00a0")}</small></div>`;}).join("");
+    const stats=st.map(x=>{const raw=String(x[0]),suffix=raw.match(/\s*(\([^)]*\))$/),value=suffix?raw.slice(0,suffix.index):raw;const numeric=Number(value.replace(/[^0-9.-]/g,""));const displayed=/\$/.test(value)&&Number.isFinite(numeric)?new Intl.NumberFormat("en-AU",{style:"currency",currency:"AUD",maximumFractionDigits:0,notation:Math.abs(numeric)>=10000?"compact":"standard"}).format(/−/.test(value)?-numeric:numeric):value;return `<div class="report-kpi"><span title="${esc(x[1])}">${esc(compactKpiLabel(x[1]))}</span><strong title="${esc(value)}">${esc(displayed)}</strong>${suffix?`<small>${esc(suffix[1])}</small>`:""}</div>`;}).join("");
     const periodLabel=st.some(x=>/yesterday/i.test(x[1])) ? "Yesterday" : st.some(x=>/today/i.test(x[1])) ? "Today so far" : r.id === "monthly" ? "This month" : "Summary";
     const timeReport=["order-source","google-tracked","daily","monthly","call-tracking","order-attribution"].includes(r.id);
     const options=timeReport ? [["summary","Summary"],["y","Yesterday"],["d7","7 days"],["d15","15 days"],["d30","30 days"],["life","Lifetime"]] : [["summary","Summary"]];
@@ -330,7 +330,9 @@
     const now=new Date(),hour=Number(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Melbourne",hour:"numeric",hourCycle:"h23"}).format(now));
     const greeting=hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
     $("#hello").textContent=`${greeting}${me.display_name?", "+me.display_name.split(" ")[0]:""}`;
-    $("#home-sub").textContent=new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Melbourne",weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}).format(now)+" · Melbourne";
+    const clock=zone=>new Intl.DateTimeFormat("en-AU",{timeZone:zone,hour:"numeric",minute:"2-digit"}).format(now);
+    const date=new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Melbourne",weekday:"short",day:"numeric",month:"short"}).format(now);
+    $("#home-sub").innerHTML=`<span class="home-date">${esc(date)}</span><span class="home-clocks"><span>🇦🇺 Melbourne <b>${esc(clock("Australia/Melbourne"))}</b></span><span>🇮🇳 New Delhi <b>${esc(clock("Asia/Kolkata"))}</b></span></span>`;
   }
   setInterval(updateHomeClock,60000);
   function syncHomeExpand(){const groups=Array.from(document.querySelectorAll("#tiles .report-category"));$("#home-expand").textContent=groups.length && groups.every(x=>x.open)?"Collapse All":"Expand All";$("#home-expand").disabled=!groups.length;}
@@ -341,7 +343,7 @@
     try{const response=await fetch("https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=-37.81&lon=144.96",{signal:AbortSignal.timeout(7000)});if(!response.ok)return;
       const data=await response.json(),series=data.properties?.timeseries || [],now=Date.now(),entry=series.reduce((best,x)=>Math.abs(Date.parse(x.time)-now)<Math.abs(Date.parse(best.time)-now)?x:best,series[0]);
       const temp=entry?.data?.instant?.details?.air_temperature,code=entry?.data?.next_1_hours?.summary?.symbol_code || "",label=code.replace(/_(day|night|polartwilight)$/,""),icon=/thunder/.test(code)?"⛈️":/snow/.test(code)?"🌨️":/rain|sleet/.test(code)?"🌧️":/fog/.test(code)?"🌫️":/partly|fair/.test(code)?"⛅":/cloud/.test(code)?"☁️":/clearsky/.test(code)?(/night/.test(code)?"🌙":"☀️"):"🌤️";
-      if(Number.isFinite(temp)){const el=$("#home-weather");el.innerHTML=`<span>${icon} ${Math.round(temp)}°C</span><small>MET Norway</small>`;el.title=`Melbourne forecast · ${label} · Weather data: MET Norway`;el.href="https://www.met.no/en";el.hidden=false;}
+      if(Number.isFinite(temp)){const el=$("#home-weather");el.innerHTML=`<small class="weather-city">Melbourne</small><span>${icon} ${Math.round(temp)}°C</span><small class="weather-credit">Weather source</small>`;el.title=`Melbourne forecast · ${label} · Weather data: MET Norway`;el.href="https://www.met.no/en";el.hidden=false;}
     }catch(_){}
   }
   async function renderHome() {
