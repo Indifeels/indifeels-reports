@@ -280,3 +280,17 @@ body::before{display:none}
 .report-heading{min-width:0}.report-heading h3{min-width:0;white-space:nowrap}.report-kpis{min-height:77px}.report-status{overflow:hidden;text-overflow:ellipsis}.report-status.unknown{font-size:11px}
 
 .report-category>summary{background:linear-gradient(135deg,color-mix(in srgb,var(--category-accent) 55%,#142026),color-mix(in srgb,var(--category-accent) 84%,#c8ceca))}
+
+/* Report Access shares the compact, expandable report hierarchy. */
+.access-person>summary,.access-category>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none;font-weight:700;padding:16px 0}
+.access-person>summary span,.access-category>summary span{font-size:12px;font-weight:400;color:var(--muted)}
+.access-person{background:linear-gradient(145deg,#282d35,#181d24);box-shadow:0 8px 20px #0005;border:1px solid #59616b66}
+.access-category{margin:12px 0;border:1px solid color-mix(in srgb,var(--access-accent) 45%,transparent);border-left:6px solid var(--access-accent);border-radius:14px;padding:0 14px;background:linear-gradient(135deg,#ffffff08,#00000012)}
+.access-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid #ffffff0c;font-size:13px}
+.access-row input{flex:0 0 auto;accent-color:var(--access-accent)}
+.access-row span{flex:1;min-width:0}.access-row small{font-size:11px;color:var(--muted)}
+.access-all{flex-wrap:wrap;font-weight:600}.access-all small{flex-basis:100%;padding-left:25px;font-weight:400}
+.role-button{margin:8px 0}.access-person .setpw{margin-top:18px}
+@media(max-width:480px){.access-category{padding:0 10px}.access-row{font-size:12px}.access-row small{font-size:10px}.access-person .setpw{flex-wrap:wrap}.access-person .setpw input{width:100%;min-width:0}}
+.access-row input[type=checkbox]{width:16px;height:16px;min-width:16px;margin:0;padding:0}
+.access-row small{min-width:0;overflow-wrap:anywhere}

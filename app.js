@@ -170,11 +170,15 @@
   // ---------- home ----------
   async function loadReports() {
     const [{ data: reps, error: e1 }, { data: ks, error: e2 }] = await Promise.all([
-      sb.from("reports").select("id,title,description,sort").order("sort"),
+      sb.from("reports").select("id,title,description,sort,category_id,admin_only").order("sort"),
       sb.from("report_keys").select("report_id,key_b64"),
     ]);
     if (e1 || e2) throw new Error((e1 || e2).message);
-    reports = reps || []; keys = Object.fromEntries((ks || []).map((k) => [k.report_id, k.key_b64]));
+    reports = (reps || []).filter(r=>!r.admin_only || me?.is_admin);
+    const {data: cats,error: ce} = await sb.from("report_categories").select("*").order("sort");
+    if(ce) throw new Error(ce.message);
+    if(cats?.length) HOME_GROUPS=cats.map(c=>({id:c.id,name:c.title,color:c.color,ids:reports.filter(r=>r.category_id===c.id).map(r=>r.id)}));
+    keys = Object.fromEntries((ks || []).map((k) => [k.report_id, k.key_b64]));
   }
   // Fixed look per report, so each tile always looks the same.
   const I = {
@@ -238,7 +242,7 @@
     if (age > (MAX_AGE_H[id] || 26)) return { title: "Refresh overdue", text: `No successful refresh since ${s.last_ok ? fmtTime(s.last_ok) : "it was set up"}. Check the scheduled task.` };
     return null;
   }
-  const HOME_GROUPS = [
+  let HOME_GROUPS = [
     {name:"Sales Analysis",color:"#568F8C",ids:["order-source","order-attribution","call-tracking"]},
     {name:"Facebook",color:"#986D7E",ids:["facebook-tracked","daily","monthly"]},
     {name:"Google",color:"#AD915A",ids:["google-tracked","google-non-tracked"]},
@@ -334,7 +338,7 @@
       if(!rows.length)return "";
       const upcoming=i===1?[{title:"Facebook Tracked"}]:i===2?[{title:"Google Non-tracked"}]:[];
       let expanded=false;try{expanded=localStorage.getItem("ir-category-"+i)==="open";}catch(_){}
-      return `<details class="report-category" data-group="${i}" data-ids='${JSON.stringify(rows.map(r=>r.id))}' style="--category-accent:${g.color}" ${expanded?"open":""}><summary><h3>${i+1}. ${g.name}</h3><div class="category-counts"><span>Reports<strong>${rows.length+upcoming.length}</strong></span><span>Actions pending<strong data-count="actions">—</strong></span><span>Warnings<strong data-count="warnings">0</strong></span></div><span class="category-chevron" aria-hidden="true">⌄</span></summary><div class="category-reports">${rows.map(r=>tileHTML(r,homeMeta[r.id])).join("")}${upcoming.map(r=>`<article class="report-upcoming"><strong>${r.title}</strong><span>Upcoming</span></article>`).join("")}</div></details>`;
+      return `<details class="report-category" data-group="${i}" data-ids='${JSON.stringify(rows.map(r=>r.id))}' style="--category-accent:${g.color}" ${expanded?"open":""}><summary><h3>${i+1}. ${esc(g.name)}</h3><div class="category-counts"><span>Reports<strong>${rows.length+upcoming.length}</strong></span><span>Actions pending<strong data-count="actions">—</strong></span><span>Warnings<strong data-count="warnings">0</strong></span></div><span class="category-chevron" aria-hidden="true">⌄</span></summary><div class="category-reports">${rows.map(r=>tileHTML(r,homeMeta[r.id])).join("")}${upcoming.map(r=>`<article class="report-upcoming"><strong>${r.title}</strong><span>Upcoming</span></article>`).join("")}</div></details>`;
     }).join("");
     box.querySelectorAll(".report-category").forEach(el=>el.addEventListener("toggle",()=>{try{localStorage.setItem("ir-category-"+el.dataset.group,el.open?"open":"closed");}catch(_){}}));
     $("#no-reports").hidden=reports.length>0;paintHomeCards();
@@ -344,6 +348,7 @@
         if(r.id==="order-attribution"){await loadAttribution();meta=attributionStats();}
         else if(r.id==="footwear")meta=seoMeta(await loadSeoRankingsData());
         else if(r.id==="tech-availability")meta=techMeta(await loadTechAvailability());
+        else if(r.id==="report-access"){const data=await adminCall({action:"list"});meta={stats:[[String(data.users?.length || 0),"People"],[String(data.users?.filter(x=>x.is_admin && !x.disabled).length || 0),"Admins"],[String(data.reports?.length || 0),"Reports"]]};}
         else if(r.id==="schedule-panel")meta={stats:[[String(Object.keys(scheduleControl).length),"Reports managed"],[String(Object.values(scheduleControl).filter(x=>x.enabled).length),"Enabled"],[String(Object.values(scheduleStatus).filter(x=>x.status==="failed").length),"Failed"]]};
         else if(keys[r.id]){meta=JSON.parse(await decryptFile(`r/${r.id}.meta.bin`,keys[r.id]));if(r.id==="stock"){await loadMoves();Object.assign(meta,stockStats());}}
         if(meta){
@@ -1214,6 +1219,7 @@
   async function openReport(id, full) {
     const r = reports.find((x) => x.id === id); if (!r) return go("home");
     if (location.hash !== "#" + id) history.pushState(null, "", "#" + id);
+    if (id === "report-access") { if(me?.is_admin) return go("admin"); return go("home"); }
     if (id === "schedule-panel") return openSchedulePanel();
     if (id === "stock" && !full) return openStock(r);
     if (id === "order-attribution") return openAttribution(r);
@@ -1366,35 +1372,44 @@
   }
   let adminData = null;
   async function renderAdmin() {
+    if(!me?.is_admin) return go("home");
     $("#users").innerHTML = '<p class="empty">Loading users…</p>';
     try { adminData = await adminCall({ action: "list" }); } catch (e) { $("#users").innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
     const reps = adminData.reports || [];
-    $("#a-reports").innerHTML = reps.map((r) => `<label class="chk"><input type="checkbox" value="${esc(r.id)}"> ${esc(r.title)}</label>`).join("");
+    const categories = adminData.categories || [];
+    function accessGroups(uid,grants,groupGrants) {
+      return categories.map(c=>`<details class="access-category" style="--access-accent:${esc(c.color)}"><summary><strong>${c.sort}. ${esc(c.title)}</strong><span>${reps.filter(r=>r.category_id===c.id).length} reports</span></summary><label class="access-row access-all"><input type="checkbox" data-category="${esc(c.id)}" ${groupGrants.has(c.id)?"checked":""}> Entire category <small>Includes future reports · excludes admin-only reports</small></label>${reps.filter(r=>r.category_id===c.id).map(r=>`<label class="access-row"><input type="checkbox" data-report="${esc(r.id)}" ${r.admin_only?"disabled":groupGrants.has(c.id)?"checked disabled":grants.has(r.id)?"checked":""}> <span>${esc(HOME_TITLES[r.id] || r.title)}</span>${r.admin_only?'<small>Admin only</small>':groupGrants.has(c.id)?'<small>Category access</small>':""}</label>`).join("")}</details>`).join("");
+    }
+    $("#a-reports").innerHTML = reps.filter(r=>!r.admin_only).map((r) => `<label class="chk"><input type="checkbox" value="${esc(r.id)}"> ${esc(r.title)}</label>`).join("");
     const grants = {}; (adminData.grants || []).forEach((g) => (grants[g.user_id] = grants[g.user_id] || new Set()).add(g.report_id));
     $("#users").innerHTML = (adminData.users || []).map((u) => {
       const g = grants[u.id] || new Set();
-      const checks = u.is_admin ? '<p class="uh meta">Admins see every report.</p>' :
-        `<div class="checks">${reps.map((r) => `<label class="chk"><input type="checkbox" data-uid="${u.id}" value="${esc(r.id)}" ${g.has(r.id) ? "checked" : ""}> ${esc(r.title)}</label>`).join("")}</div>`;
+      const cg=new Set((adminData.category_grants || []).filter(x=>x.user_id===u.id).map(x=>x.category_id));
+      const checks = u.is_admin ? '<p class="uh meta">Admins have access to every report, including Report Access.</p>' : `<div class="access-groups">${accessGroups(u.id,g,cg)}</div><button class="btn primary sm" data-act="save" type="button">Save access</button>`;
       const self = u.id === me.id;
-      return `<div class="card user" data-uid="${u.id}">
+      return `<details class="card user access-person" data-uid="${u.id}"><summary>${esc(u.display_name || u.username)} <span>${u.is_admin?"Admin":"Member"}</span></summary>
         <div class="uh"><div><b>${esc(u.display_name || u.username)}</b>${u.is_admin ? '<span class="tag">Admin</span>' : ""}${u.disabled ? '<span class="tag off">Switched off</span>' : ""}
           <div class="meta">Username: ${esc(u.username)}${u.email ? " &nbsp;Email: " + esc(u.email) : ""}</div></div>
           <div class="uact">${self ? "" : `<button class="btn sm" data-act="toggle" type="button">${u.disabled ? "Switch on" : "Switch off"}</button><button class="btn sm danger" data-act="delete" type="button">Delete</button>`}</div></div>
+        ${self?'<p class="meta">Your admin account</p>':`<button class="btn sm role-button" data-act="role" type="button">${u.is_admin?"Remove admin":"Make admin"}</button>`}
         ${checks}
         <div class="setpw"><input type="text" placeholder="New password for ${esc(u.username)}" aria-label="New password for ${esc(u.username)}" autocomplete="off"><button class="btn sm" data-act="gen" type="button">Generate</button><button class="btn sm" data-act="setpw" type="button">Set password</button></div>
-      </div>`;
+      </details>`;
     }).join("") || '<p class="empty">No users yet.</p>';
 
-    $$("#users input[type=checkbox][data-uid]").forEach((c) => c.addEventListener("change", async () => {
-      const uid = c.dataset.uid;
-      const sel = $$(`#users input[type=checkbox][data-uid="${uid}"]`).filter((x) => x.checked).map((x) => x.value);
-      try { await adminCall({ action: "update", id: uid, reports: sel }); toast("Report access saved"); } catch (e) { c.checked = !c.checked; toast(e.message); }
+    $$("#users [data-category]").forEach(c=>c.addEventListener("change",()=>{
+      c.closest(".access-category").querySelectorAll("[data-report]").forEach(r=>{const protectedReport=reps.find(x=>x.id===r.dataset.report)?.admin_only;if(!protectedReport){r.disabled=c.checked;r.checked=c.checked || grants[c.closest(".user").dataset.uid]?.has(r.dataset.report) || false;}});
     }));
     $$("#users .user").forEach((card) => {
       const uid = card.dataset.uid; const u = adminData.users.find((x) => x.id === uid);
       card.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", async () => {
         const inp = card.querySelector(".setpw input");
         try {
+          if (b.dataset.act === "save") {
+            b.disabled=true;
+            try {await adminCall({action:"update",id:uid,reports:Array.from(card.querySelectorAll("[data-report]:checked:not(:disabled)")).map(x=>x.dataset.report),category_ids:Array.from(card.querySelectorAll("[data-category]:checked")).map(x=>x.dataset.category)});toast("Report access saved");} finally {b.disabled=false;} return;
+          }
+          if (b.dataset.act === "role") {await adminCall({action:"update",id:uid,is_admin:!u.is_admin});toast(u.is_admin?"Admin access removed":"Admin access granted");return renderAdmin();}
           if (b.dataset.act === "gen") { inp.value = genPassword(); return; }
           if (b.dataset.act === "setpw") {
             if (inp.value.length < 8) return toast("Use at least 8 characters");
@@ -1448,7 +1463,7 @@
     if (p === "home") { if (location.hash) history.pushState(null, "", location.pathname); page("home"); renderHome(); }
     else if (p === "schedule") { openSchedulePanel(); }
     else if (p === "password") { page("password", "Change password"); }
-    else if (p === "admin" && me?.is_admin) { page("admin", "Admin"); renderAdmin(); }
+    else if (p === "admin" && me?.is_admin) { page("admin", "Report Access"); renderAdmin(); }
   }
   window.addEventListener("popstate", () => { const id = location.hash.slice(1); if (id && reports.some((r) => r.id === id)) openReport(id); else { page("home"); renderHome(); } });
 

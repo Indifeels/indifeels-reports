@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Indifeels">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=15-alignment">
+<link rel="stylesheet" href="app.css?v=16-access">
 <link rel="stylesheet" href="schedule-panel.css?v=3">
 </head>
 <body>
@@ -65,7 +65,7 @@
           <p class="me" id="me-name"></p>
           <button type="button" data-go="home">Reports</button>
           <button type="button" data-go="schedule" id="m-schedule">Schedule Panel</button>
-          <button type="button" data-go="admin" id="m-admin" hidden>Admin</button>
+          <button type="button" data-go="admin" id="m-admin" hidden>Report Access</button>
           <button type="button" data-go="password">Change password</button>
           <button type="button" id="m-theme">Dark mode</button>
           <button type="button" id="m-push">Phone notifications</button>
@@ -128,7 +128,7 @@
     </main>
 
     <main id="v-admin" class="page" hidden>
-      <div class="page-head"><h2>Admin</h2><p>Add people, choose which reports they see, and reset passwords.</p></div>
+      <div class="page-head"><h2>Report Access</h2><p>Add people, choose which reports they see, and reset passwords.</p></div>
       <div class="tabs" role="tablist">
         <button role="tab" id="t-users" aria-selected="true" type="button">Users</button>
         <button role="tab" id="t-resets" aria-selected="false" type="button">Reset requests <span class="badge" id="reset-count" hidden></span></button>
@@ -159,7 +159,7 @@
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
 <script src="schedule-panel.js?v=3"></script>
-<script src="app.js?v=30-alignment"></script>
+<script src="app.js?v=31-access"></script>
 </body>
 </html>
 
