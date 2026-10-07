@@ -1,9 +1,9 @@
 {
  "call-tracking": {
-  "at": "2026-10-07T20:17+11:00",
-  "code_sha": "c17843a24e68c66d8c2d4e45d2b9b09efe73c7e7",
+  "at": "2026-10-08T06:16+11:00",
+  "code_sha": "21f79550f038457da4acf1497edae6b2fc874775",
   "data_through": null,
-  "last_ok": "2026-10-07T20:17+11:00",
+  "last_ok": "2026-10-08T06:16+11:00",
   "manifest_version": "2026-10-07.1",
   "ok": true,
   "reason": ""
