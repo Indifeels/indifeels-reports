@@ -134,7 +134,7 @@ h2{margin:0 0 10px;font-size:22px}
 <section class="panel"><div class="bars" id="bars"></div></section>
 <section>
 <h2>All periods</h2>
-<p class="hint">Yesterday, 7 and 15 days compare with the last 30 days. The 30 days column compares with the previous 30 days (__PREV__). Chips are percentage points of share; totals compare sales per day.</p>
+<p class="hint">The lead period, 7 and 15 days compare with the last 30 days. The 30 days column compares with the previous 30 days (__PREV__). Chips are percentage points of share; totals compare sales per day.</p>
 <div class="panel scroll"><table id="tbl"></table></div>
 </section>
 <ul class="notes">
@@ -145,13 +145,13 @@ h2{margin:0 0 10px;font-size:22px}
 <li>Organic = Organic Orders, Google calls (GMB), Referral SEO and the GMB share of store visits. No-spend = Marketplace, Word of Mouth, Direct, Repeat Customer and unassigned.</li>
 <li>Store visits are split by direction counts, using the 30-day ratio (__ADS__% Google Ads, __GMB__% GMB), because recent GMB data is incomplete.</li>
 <li>Fixed costs per day: Google management $670/month, Facebook management 15,000 INR ÷ 67 per month, organic/SEO $250/month, each ÷ 30. Platform fees are split between tracked and non-tracked by ad spend.</li>
-<li>__WINDOWS__. Today's orders are excluded.</li>
-<li>Yesterday has few orders, so its numbers swing hard. Read 7 and 15 days for direction.</li>
+<li>__WINDOWS__.</li>
+<li>The lead day can have few orders, so its numbers may swing hard. Read 7 and 15 days for direction.</li>
 </ul>
 </div>
 <script>
 const DATA=__DATA__;
-const P=[["y","Yesterday",1],["d7","7 days",7],["d15","15 days",15],["d30","30 days",30]];
+const LEAD_LABEL=__LEAD_LABEL__;\nconst P=[["y",LEAD_LABEL,1],["d7","7 days",7],["d15","15 days",15],["d30","30 days",30]];
 const DAYS={y:1,d7:7,d15:15,d30:30,p30:30};
 const BASE={y:"d30",d7:"d30",d15:"d30",d30:"p30"};
 const money=v=>"$"+Math.round(v).toLocaleString("en-AU");
@@ -217,7 +217,7 @@ function renderRank(){
 }
 function renderRk(){
   const rk={};P.forEach(([k])=>{rk[k]={};ranked(k).forEach((g,r)=>rk[k][g.name]=r+1)});
-  let h="<thead><tr><th>Channel</th>"+P.map(([k,l])=>`<th class="${k===cur?"sel":""}" style="text-align:center">${l.replace(" days","D").replace("Yesterday","Yday")}</th>`).join("")+"</tr></thead><tbody>";
+  let h="<thead><tr><th>Channel</th>"+P.map(([k,l])=>`<th class="${k===cur?"sel":""}" style="text-align:center">${l.replace(" days","D").replace("Yesterday","Yday").replace("Today","Today")}</th>`).join("")+"</tr></thead><tbody>";
   M.model.d30.groups.forEach(g=>{h+=`<tr><td>${sh(g.name)}</td>`+P.map(([k])=>{const x=M.model[k].groups.find(z=>z.name===g.name);const r=rk[k][g.name];return `<td style="text-align:center"><span class="rkb ${rkc(r)}" style="margin:0">${r}</span><span class="sb tx ${mgc(x.profit,x.revenue)}">${mm(x.profit)}</span></td>`}).join("")+"</tr>"});
   $("rkt").innerHTML=h+"</tbody>";
 }
