@@ -17,6 +17,9 @@ API = f"https://{SHOP}/admin/api/2026-04/graphql.json"
 BACKUP, SHOPLOC = "gid://shopify/Location/99841048933", "gid://shopify/Location/99623436645"
 LEVELS = """query($after:String){ location(id:"%s"){ inventoryLevels(first:250, after:$after){ pageInfo{hasNextPage endCursor}
  nodes{ q: quantities(names:["available"]){quantity} item{ id s: inventoryLevel(locationId:"%s"){ q: quantities(names:["available"]){quantity} } } } } } }""" % (BACKUP, SHOPLOC)
+# Same list from the Shop location's side: catches variants that have no Backup level at all (e.g. only stocked at Shop).
+SHOPLEVELS = """query($after:String){ location(id:"%s"){ inventoryLevels(first:250, after:$after){ pageInfo{hasNextPage endCursor}
+ nodes{ q: quantities(names:["available"]){quantity} item{ id b: inventoryLevel(locationId:"%s"){ q: quantities(names:["available"]){quantity} } } } } } }""" % (SHOPLOC, BACKUP)
 MOVE = """mutation($input: InventoryAdjustQuantitiesInput!, $key: String!){ inventoryAdjustQuantities(input:$input) @idempotent(key:$key){
  inventoryAdjustmentGroup{ id } userErrors{ field message code } } }"""
 ITEMS = """query($ids:[ID!]!){ nodes(ids:$ids){ ... on InventoryItem { id sku variant { id title image { url }
@@ -129,14 +132,23 @@ def main():
                 stock_moves.record_fix(log, iid, finfo.get(iid, {}), was, f"{sh}-{bk}", "Scheduled check: front end didn't match Shopify stock")
             stock_moves.save(r_dir, key, log)
         print(f"ST check: {len(bad)} fixed")
-    # every variant with negative stock at Shop or Backup, for the app's "Negative stock" section
-    neg_ids = sorted((i for i, (sh, bk) in lv.items() if sh < 0 or bk < 0), key=lambda i: (min(lv[i]), i))
+    # every variant with negative stock at Shop or Backup, for the app's "Negative stock" section.
+    # lv only has items that have a Backup level, so also walk the Shop location's levels and merge.
+    nv, qq, after = dict(lv), (lambda x: (x or [{}])[0].get("quantity") or 0), None
+    while True:
+        pg = gql(SHOPLEVELS, {"after": after})["data"]["location"]["inventoryLevels"]
+        for nd in pg["nodes"]:
+            iid = nd["item"]["id"]
+            if iid not in nv: nv[iid] = [qq(nd.get("q")), qq((nd["item"].get("b") or {}).get("q"))]
+        if not pg["pageInfo"]["hasNextPage"]: break
+        after = pg["pageInfo"]["endCursor"]
+    neg_ids = sorted((i for i, (sh, bk) in nv.items() if sh < 0 or bk < 0), key=lambda i: (min(nv[i]), i))
     ninfo = {}
     for i in range(0, len(neg_ids), 100):
         for nd in gql(ITEMS, {"ids": neg_ids[i:i + 100]})["data"]["nodes"]:
             if nd: ninfo[nd["id"]] = stock_moves.item_info(nd)
     log["negatives"] = [dict(item=i, product=ninfo[i]["product"], variant=ninfo[i]["variant"], sku=ninfo[i]["sku"], img=ninfo[i]["img"],
-                             shop=lv[i][0], backup=lv[i][1]) for i in neg_ids if i in ninfo]
+                             shop=nv[i][0], backup=nv[i][1]) for i in neg_ids if i in ninfo]
     stock_moves.save(r_dir, key, log)
     print(f"negative stock: {len(log['negatives'])}")
     # report reflects stock after the moves
