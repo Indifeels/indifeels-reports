@@ -1,1 +1,2 @@
 contract-smoke-test 2026-10-06 Melbourne
+8 PM catch-up refresh requested 2026-10-07 Australia/Melbourne. Preserve deployed templates; partial current day, Yesterday completed day only.
