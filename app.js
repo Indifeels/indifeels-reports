@@ -1146,6 +1146,22 @@
   }
 
 
+  // Surface report-frame JavaScript failures instead of silently showing an empty shell.
+  window.addEventListener("message", (event) => {
+    const fr = $("#rep-frame");
+    if (!fr || event.source !== fr.contentWindow) return;
+    const d = event.data || {};
+    if (d.report !== "order-source") return;
+    if (d.type === "report-render-error") {
+      const st = $("#rep-status");
+      st.textContent = "Order Source render error: " + (d.message || "unknown") + (d.line ? " (line " + d.line + ")" : "");
+      st.hidden = false;
+      console.error("Order Source render error", d);
+    } else if (d.type === "report-render-stage" && d.stage === "render-complete") {
+      $("#rep-status").hidden = true;
+    }
+  });
+
   // ---------- restock report ----------
   const RS_KEY = "ir-restock-state";
   window.addEventListener("message", async (event) => {
