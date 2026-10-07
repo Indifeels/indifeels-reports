@@ -204,10 +204,13 @@ def main():
                       fmt_d(w["d30"][0]), fmt_d(w["d30"][1])))
     if r["note_dirs"]:
         windows_txt += ". " + r["note_dirs"]
-    model_json = json.dumps({"model": r["model"], "unflagged": r["unflagged"], "ncamp": r["ncamp"]})
-    # "</" inside inline JSON must not close the script tag
-    model_json = model_json.replace("</", "<\\/")
-    data_json = json.dumps(d).replace("</", "<\\/")
+    # Inline JSON must not contain raw Unicode line/paragraph separators: JavaScript treats
+    # U+2028/U+2029 as source line terminators and the whole report script can fail to parse.
+    def safe_inline_json(obj):
+        return (json.dumps(obj, ensure_ascii=True)
+                .replace("</", "<\\/"))
+    model_json = safe_inline_json({"model": r["model"], "unflagged": r["unflagged"], "ncamp": r["ncamp"]})
+    data_json = safe_inline_json(d)
     for key, val in (("__DATA__", data_json), ("__MODEL__", model_json), ("__PREV__", "%s – %s" % (fmt_d(w["p30"][0]), fmt_d(w["p30"][1]))),
                      ("__WINDOWS__", windows_txt), ("__LEAD_LABEL__", json.dumps(lead_label.replace(" (partial)", ""))), ("__ADS__", str(ads)), ("__GMB__", str(100 - ads))):
         assert key in t, "template placeholder missing: " + key
