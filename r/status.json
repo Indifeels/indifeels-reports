@@ -63,11 +63,11 @@
   "reason": ""
  },
  "stock": {
-  "at": "2026-10-08T01:11+11:00",
-  "code_sha": "b6846dac054a2fea031b7761258676bb2ef47c6c",
+  "at": "2026-10-08T08:04+11:00",
+  "code_sha": "d9412a9a611b9ddd18adec8a48d7651d71939f04",
   "data_through": null,
-  "last_ok": "2026-10-08T01:11+11:00",
-  "manifest_version": "2026-10-07.1",
+  "last_ok": "2026-10-08T08:04+11:00",
+  "manifest_version": "2026-10-08.schedule-panel.1",
   "ok": true,
   "reason": ""
  }
