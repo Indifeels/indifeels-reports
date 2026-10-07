@@ -9,3 +9,4 @@ Publish approved Order Source layout and front-tile period logic.
 Rebuild after JavaScript render syntax fix.
 Rebuild after fixing profit KPI initialization order.
 Rebuild after startup event binding fix.
+Rebuild with hardened inline JSON.
