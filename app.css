@@ -3,7 +3,7 @@
   --navy:#14213D;--mari:#E8A317;--acc:#1D4ED8;--accb:#DCE7FF;
   --g:#17694A;--gb:#D5F2E3;--y:#7A4E00;--yb:#FFEDBF;--r:#A8231B;--rb:#FFE0DC;
   --t:#1D4ED8;--tb:#DCE7FF;--w:#6D28D9;--wb:#ECE3FF;--m:#0F766E;--mb:#D3F2EE;--l:#9A3412;--lb:#FCE6D6;
-  --blue:#2563EB;--green:#16A34A;--orange:#EA580C;--purple:#7C3AED;--teal:#0D9488;--rose:#E11D48;--red:#DC2626;
+  --blue:#7B6894;--green:#527C65;--orange:#A7794D;--purple:#88739F;--teal:#4F827D;--rose:#A46B7B;--red:#B85454;
   --alertbg:#FEF2F2;--alertline:#FCA5A5;--alertink:#B91C1C;
   color-scheme:light;
 }
@@ -11,13 +11,13 @@
   color-scheme:dark;--bg:#070B18;--card:#0E1530;--ink:#EEF2FF;--muted:#A3AEC6;--line:#1E2842;--sub:#131B36;
   --acc:#8FB2FF;--accb:#1A2B52;--g:#6FD6A6;--gb:#123326;--y:#F2C85B;--yb:#362A0E;--r:#FF8C80;--rb:#3D1A17;
   --t:#8FB2FF;--tb:#1A2B52;--w:#C3A6FF;--wb:#2C2150;--m:#5FD4C6;--mb:#123D3A;--l:#FFB085;--lb:#43261A;
-  --blue:#3B82F6;--green:#22C55E;--orange:#F97316;--purple:#A78BFA;--teal:#2DD4BF;--rose:#FB7185;--red:#F87171;
+  --blue:#A28DB7;--green:#7EAB8E;--orange:#C09A72;--purple:#AD97BF;--teal:#7EAAA4;--rose:#BD8D9A;--red:#DF9090;
   --alertbg:rgba(220,38,38,.14);--alertline:rgba(248,113,113,.45);--alertink:#FCA5A5;}}
 :root[data-theme="dark"]{
   color-scheme:dark;--bg:#070B18;--card:#0E1530;--ink:#EEF2FF;--muted:#A3AEC6;--line:#1E2842;--sub:#131B36;
   --acc:#8FB2FF;--accb:#1A2B52;--g:#6FD6A6;--gb:#123326;--y:#F2C85B;--yb:#362A0E;--r:#FF8C80;--rb:#3D1A17;
   --t:#8FB2FF;--tb:#1A2B52;--w:#C3A6FF;--wb:#2C2150;--m:#5FD4C6;--mb:#123D3A;--l:#FFB085;--lb:#43261A;
-  --blue:#3B82F6;--green:#22C55E;--orange:#F97316;--purple:#A78BFA;--teal:#2DD4BF;--rose:#FB7185;--red:#F87171;
+  --blue:#A28DB7;--green:#7EAB8E;--orange:#C09A72;--purple:#AD97BF;--teal:#7EAAA4;--rose:#BD8D9A;--red:#DF9090;
   --alertbg:rgba(220,38,38,.14);--alertline:rgba(248,113,113,.45);--alertink:#FCA5A5;}
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -221,3 +221,12 @@ legend{font-weight:600;font-size:13.5px;padding:0;margin-bottom:6px}
 .sm-neg h3{margin:22px 0 10px;font-size:15px}
 .sm-row.ng{grid-template-columns:auto 1fr auto;cursor:default}
 @media (max-width:600px){.sm-row.ng{grid-template-columns:auto 1fr}}
+
+/* Restrained dashboard palette: flat cards and consistent report accents. */
+body::before{display:none}
+.tile,.tile:hover,:root[data-theme="dark"] .tile{background:var(--card);border-color:var(--line);box-shadow:none}
+.tile::before{display:none}
+.tile .ic{background:color-mix(in srgb,var(--c) 16%,var(--card));color:var(--c);box-shadow:none}
+.tile .open{background:color-mix(in srgb,var(--c) 15%,var(--card));color:var(--ink);border:1px solid color-mix(in srgb,var(--c) 38%,var(--line))}
+.health i{box-shadow:none}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .tile{background:var(--card);border-color:var(--line);box-shadow:none}}
