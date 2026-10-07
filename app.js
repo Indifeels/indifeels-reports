@@ -1378,7 +1378,9 @@
     const reps = adminData.reports || [];
     const categories = adminData.categories || [];
     function accessGroups(uid,grants,groupGrants) {
-      return categories.map(c=>`<details class="access-category" style="--access-accent:${esc(c.color)}"><summary><strong>${c.sort}. ${esc(c.title)}</strong><span>${reps.filter(r=>r.category_id===c.id).length} reports</span></summary><label class="access-row access-all"><input type="checkbox" data-category="${esc(c.id)}" ${groupGrants.has(c.id)?"checked":""}> Entire category <small>Includes future reports · excludes admin-only reports</small></label>${reps.filter(r=>r.category_id===c.id).map(r=>`<label class="access-row"><input type="checkbox" data-report="${esc(r.id)}" ${r.admin_only?"disabled":groupGrants.has(c.id)?"checked disabled":grants.has(r.id)?"checked":""}> <span>${esc(HOME_TITLES[r.id] || r.title)}</span>${r.admin_only?'<small>Admin only</small>':groupGrants.has(c.id)?'<small>Category access</small>':""}</label>`).join("")}</details>`).join("");
+      return categories.map(c=>{const rows=reps.filter(r=>r.category_id===c.id),eligible=rows.filter(r=>!r.admin_only),all=groupGrants.has(c.id),count=all?eligible.length:eligible.filter(r=>grants.has(r.id)).length;
+        return `<details class="access-category" style="--access-accent:${esc(c.color)}"><summary><input type="checkbox" data-category="${esc(c.id)}" aria-label="Grant entire ${esc(c.title)} category" ${all?"checked":""} ${eligible.length?"":"disabled"}><strong>${c.sort}. ${esc(c.title)}</strong><span data-access-count>${count}/${eligible.length} reports</span><span class="access-chevron" aria-hidden="true">⌄</span></summary><p class="access-help">Category access includes future reports. Admin-only reports remain restricted.</p>${rows.map(r=>`<label class="access-row"><input type="checkbox" data-report="${esc(r.id)}" ${r.admin_only?"disabled":all?"checked disabled":grants.has(r.id)?"checked":""}> <span>${esc(HOME_TITLES[r.id] || r.title)}</span>${r.admin_only?'<small>Admin only</small>':all?'<small data-inherited>Category access</small>':""}</label>`).join("")}</details>`;
+      }).join("");
     }
     $("#a-reports").innerHTML = reps.filter(r=>!r.admin_only).map((r) => `<label class="chk"><input type="checkbox" value="${esc(r.id)}"> ${esc(r.title)}</label>`).join("");
     const grants = {}; (adminData.grants || []).forEach((g) => (grants[g.user_id] = grants[g.user_id] || new Set()).add(g.report_id));
@@ -1397,9 +1399,25 @@
       </details>`;
     }).join("") || '<p class="empty">No users yet.</p>';
 
-    $$("#users [data-category]").forEach(c=>c.addEventListener("change",()=>{
-      c.closest(".access-category").querySelectorAll("[data-report]").forEach(r=>{const protectedReport=reps.find(x=>x.id===r.dataset.report)?.admin_only;if(!protectedReport){r.disabled=c.checked;r.checked=c.checked || grants[c.closest(".user").dataset.uid]?.has(r.dataset.report) || false;}});
-    }));
+    function syncAccess(group) {
+      const c=group.querySelector("[data-category]"),eligible=Array.from(group.querySelectorAll("[data-report]")).filter(r=>!reps.find(x=>x.id===r.dataset.report)?.admin_only),count=eligible.filter(r=>r.checked).length;
+      c.indeterminate=!c.checked && count>0;
+      group.querySelector("[data-access-count]").textContent=`${count}/${eligible.length} reports`;
+    }
+    $$("#users .access-category").forEach(group=>{
+      const c=group.querySelector("[data-category]");
+      c.addEventListener("click",e=>e.stopPropagation());
+      c.addEventListener("keydown",e=>e.stopPropagation());
+      c.addEventListener("change",()=>{
+        group.querySelectorAll("[data-report]").forEach(r=>{if(!reps.find(x=>x.id===r.dataset.report)?.admin_only){
+          if(c.checked)r.dataset.individual=r.checked?"1":"0";
+          r.disabled=c.checked;r.checked=c.checked || r.dataset.individual==="1";
+          const label=r.closest("label");label.querySelector("[data-inherited]")?.remove();
+          if(c.checked)label.insertAdjacentHTML("beforeend",'<small data-inherited>Category access</small>');
+        }});syncAccess(group);
+      });
+      group.querySelectorAll("[data-report]").forEach(r=>{r.dataset.individual=grants[group.closest(".user").dataset.uid]?.has(r.dataset.report)?"1":"0";r.addEventListener("change",()=>{r.dataset.individual=r.checked?"1":"0";syncAccess(group);});});syncAccess(group);
+    });
     $$("#users .user").forEach((card) => {
       const uid = card.dataset.uid; const u = adminData.users.find((x) => x.id === uid);
       card.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", async () => {

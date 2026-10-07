@@ -294,3 +294,5 @@ body::before{display:none}
 @media(max-width:480px){.access-category{padding:0 10px}.access-row{font-size:12px}.access-row small{font-size:10px}.access-person .setpw{flex-wrap:wrap}.access-person .setpw input{width:100%;min-width:0}}
 .access-row input[type=checkbox]{width:16px;height:16px;min-width:16px;margin:0;padding:0}
 .access-row small{min-width:0;overflow-wrap:anywhere}
+
+.access-category>summary{justify-content:initial}.access-category>summary strong{flex:1;min-width:0}.access-category>summary input[type=checkbox]{width:16px;height:16px;min-width:16px;margin:0;padding:0;accent-color:var(--access-accent);cursor:pointer}.access-category>summary [data-access-count]{white-space:nowrap;color:var(--access-accent);font-variant-numeric:tabular-nums}.access-help{font-size:11px;color:var(--muted);margin:0 0 12px}.access-category[open] .access-chevron{transform:rotate(180deg)}
