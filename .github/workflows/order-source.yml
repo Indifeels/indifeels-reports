@@ -2,6 +2,8 @@ name: Refresh Order Source report
 
 on:
   workflow_dispatch:
+  repository_dispatch:
+    types: [refresh-order-source]
   push:
     paths:
       - ".github/manual-refresh-order-source.txt"
