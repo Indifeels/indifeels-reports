@@ -5,3 +5,4 @@ Verify dashboard timestamp sync fix after successful publish.
 Current-main refresh requested after Order Source date-window correction.
 Apply dynamic Today-after-8PM display window.
 Rebuild report with dynamic Today/Yesterday internal labels.
+Publish approved Order Source layout and front-tile period logic.
