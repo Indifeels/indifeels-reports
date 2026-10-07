@@ -1147,7 +1147,11 @@
     const d = event.data || {};
     if (d.type !== "restock") return;
     const reply = (o) => { try { fr.contentWindow?.postMessage(o, "*"); } catch (_) {} };
-    if (d.action === "ready") {
+    if (d.action === "theme") {
+      try { if (d.theme === "dark" || d.theme === "light") localStorage.setItem("ir-restock-theme", d.theme); } catch (_) {}
+    } else if (d.action === "ready") {
+      let th = "dark"; try { th = localStorage.getItem("ir-restock-theme") === "light" ? "light" : "dark"; } catch (_) {}
+      reply({ type: "restock-theme", theme: th });
       try { const s = JSON.parse(localStorage.getItem(RS_KEY) || "null"); if (s) reply({ type: "restock-state", state: s }); } catch (_) {}
     } else if (d.action === "save") {
       try { localStorage.setItem(RS_KEY, JSON.stringify(d.state || {})); } catch (_) {}

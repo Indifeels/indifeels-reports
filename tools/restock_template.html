@@ -142,8 +142,8 @@ const ASOF="__ASOFISO__";
 const $=id=>document.getElementById(id);
 const root=document.documentElement,tb=$("theme");
 function setTheme(t){root.dataset.theme=t;tb.textContent=t==="dark"?"☀️":"🌙"}
-setTheme("light");
-tb.addEventListener("click",()=>setTheme(root.dataset.theme==="dark"?"light":"dark"));
+setTheme("dark");   // dark by default; the hub remembers the choice (this sandboxed page can't store it itself)
+tb.addEventListener("click",()=>{const n=root.dataset.theme==="dark"?"light":"dark";setTheme(n);send({action:"theme",theme:n})});
 const send=(o)=>{try{parent.postMessage(Object.assign({type:"restock"},o),"*")}catch(e){}};
 // d: [product, variant, stock, img, s7, s15, s30, variantId, collections[]]
 let days=30,col="";
@@ -202,6 +202,7 @@ $("q").addEventListener("input",e=>{term=e.target.value.trim().toLowerCase();ren
 // restore state pushed by the hub
 window.addEventListener("message",e=>{
   const d=e.data||{};
+  if(d.type==="restock-theme"&&(d.theme==="dark"||d.theme==="light"))setTheme(d.theme);
   if(d.type==="restock-state"&&d.state&&Array.isArray(d.state.rows)){
     const m={};d.state.rows.forEach(r=>{m[r.vid]=r});
     const same=d.state.asof===ASOF,legacy=!d.state.asof,mig=[];
