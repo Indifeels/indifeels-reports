@@ -152,36 +152,6 @@ jobs:
             exit 1
           fi
 
-      - name: Update Order Source dashboard refresh timestamp
-        if: steps.gate.outputs.go == '1' && success()
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          python3 - <<'PY'
-          import datetime, json, os, urllib.request
-
-          url = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/reports?id=eq.order-source"
-          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-          body = json.dumps({"updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}).encode()
-          req = urllib.request.Request(
-              url,
-              method="PATCH",
-              data=body,
-              headers={
-                  "apikey": key,
-                  "Authorization": "Bearer " + key,
-                  "Content-Type": "application/json",
-                  "Prefer": "return=representation",
-              },
-          )
-          with urllib.request.urlopen(req, timeout=30) as response:
-              rows = json.load(response)
-          if len(rows) != 1 or rows[0].get("id") != "order-source":
-              raise SystemExit("Order Source dashboard metadata update was not confirmed")
-          print("Order Source dashboard refresh timestamp updated")
-          PY
-
       - name: Record failed Order Source refresh
         if: failure() && steps.gate.outputs.go == '1'
         run: |
