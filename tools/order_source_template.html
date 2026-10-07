@@ -175,19 +175,37 @@ const shareChip=(k,s)=>chip(share(k,s)-share(BASE[k],s),2,"",1);
 const paceChip=k=>{const b=BASE[k];return chip((T[k][1]/DAYS[k])/(T[b][1]/DAYS[b])*100-100,10,"%",0)};
 const fbShare=k=>Object.entries(DATA[k]).filter(([s])=>/MSGS/.test(s)).reduce((a,[,v])=>a+v[1],0)/T[k][1]*100;
 let cur="d30";
-function render(){
+function renderTabs(){
   document.getElementById("tabs").innerHTML=P.map(([k,l])=>`<button id="t-${k}" aria-pressed="${k===cur}" data-k="${k}">${l}</button>`).join("");
-  const b=BASE[cur],[c,t]=T[cur],aov=c?t/c:0,aovB=T[b][1]/T[b][0];
+}
+function renderKpis(){
+  const b=BASE[cur],[c,t]=T[cur],aov=c?t/c:0,aovB=T[b][0]?T[b][1]/T[b][0]:0;
   const vs=b==="p30"?"vs prev 30 days":"vs 30 days";
   document.getElementById("kpis").innerHTML=
    `<div class="kpi"><div class="l">Total sales</div><div class="v">${money(t)}</div>${paceChip(cur)}<small style="color:var(--muted);font-size:13px">per day ${vs}</small></div>`+
    `<div class="kpi"><div class="l">Orders</div><div class="v">${c}</div>${chip((c/DAYS[cur])/(T[b][0]/DAYS[b])*100-100,10,"%",0)}<small style="color:var(--muted);font-size:13px">per day ${vs}</small></div>`+
-   `<div class="kpi"><div class="l">Avg order</div><div class="v">${money(aov)}</div>${chip((aov/aovB-1)*100,5,"%",0)}<small style="color:var(--muted);font-size:13px">${vs}</small></div>`+
+   `<div class="kpi"><div class="l">Avg order</div><div class="v">${money(aov)}</div>${chip(aovB?(aov/aovB-1)*100:0,5,"%",0)}<small style="color:var(--muted);font-size:13px">${vs}</small></div>`+
    `<div class="kpi"><div class="l">FB messages share</div><div class="v">${fbShare(cur).toFixed(1)}%</div>${chip(fbShare(cur)-fbShare(b),2," pts",1)}<small style="color:var(--muted);font-size:13px">${vs}</small></div>`;
+}
+function renderBars(){
+  const t=T[cur][1];
   const rows=Object.entries(DATA[cur]).sort((a,b)=>b[1][1]-a[1][1]);
   const max=rows.length?rows[0][1][1]:1;
   document.getElementById("bars").innerHTML=rows.length?rows.map(([s,[n,v]])=>`<div class="bar"><div class="n"><span class="dot" style="background:${color(s)}"></span>${s} <small>· ${n} order${n>1?"s":""}</small></div><div class="m"><span class="pill pa">${money(v)}</span><span class="pill pp">${(v/t*100).toFixed(1)}%</span>${shareChip(cur,s)}</div><div class="track"><div class="fill" style="width:${(v/max*100).toFixed(1)}%;background:${color(s)}"></div></div></div>`).join(""):'<p class="empty">No orders in this period.</p>';
-  renderRank();renderExp();renderRk();
+}
+/* Each section renders on its own: a failure in one is reported to the parent and logged,
+   and the other sections still draw. render-complete is only sent when nothing failed. */
+let failed=0;
+function safe(name,fn){
+  try{fn()}catch(err){
+    failed++;
+    try{console.error("Order Source section failed:",name,err)}catch(_){}
+    try{parent.postMessage({type:"report-render-error",report:"order-source",message:name+": "+((err&&err.message)||String(err))},"*")}catch(_){}
+  }
+}
+function render(){
+  safe("tabs",renderTabs);safe("kpis",renderKpis);safe("bars",renderBars);
+  safe("profit ranking",renderRank);safe("spend/revenue/profit",renderExp);safe("rank by period",renderRk);
 }
 function table(){
   let h="<thead><tr><th>Source</th>"+P.map(([,l])=>`<th>${l}</th>`).join("")+"</tr></thead><tbody>";
@@ -230,12 +248,12 @@ function renderRank(){
   <td>${two(`<span class="rg ${mgc(g.profit,g.revenue)}">${mm(g.profit)}</span>`,`<span class="rg ${shc(g.profit/al.profit*100)}">${pc(g.profit/al.profit*100)}</span>`)}</td>
   <td>${two(`<span class="num">${mm(g.revenue)}</span>`,`<span class="rg ${shc(g.revenue/al.revenue*100)}">${pc(g.revenue/al.revenue*100)}</span>`)}</td>
   <td>${g.spend?two(`<span class="num">${mm(g.spend)}</span>`,`<span class="mut">${pc(g.spend/al.spend*100)}</span>`):two(`<span class="num mut">None</span>`,"")}</td>
-  <td>${g.roas!=null?`<span class="rg ${rc(g.roas)}">${roasTxt(g.roas)}</span>`:'<span class="mut">–</span>'}</td></tr>`).join("")+`<tr class="totalrow"><td>Total</td><td><span class="num">${mm(al.profit)}</span></td><td><span class="num">${mm(al.revenue)}</span></td><td><span class="num">${mm(al.spend)}</span></td><td><span class="num">${roasTxt(al.roas)}</span></td></tr></tbody>";
+  <td>${g.roas!=null?`<span class="rg ${rc(g.roas)}">${roasTxt(g.roas)}</span>`:'<span class="mut">–</span>'}</td></tr>`).join("")+`<tr class="totalrow"><td>Total</td><td><span class="num">${mm(al.profit)}</span></td><td><span class="num">${mm(al.revenue)}</span></td><td><span class="num">${mm(al.spend)}</span></td><td><span class="num">${roasTxt(al.roas)}</span></td></tr></tbody>`;
 }
 function renderRk(){
   const rk={};P.forEach(([k])=>{rk[k]={};ranked(k).forEach((g,r)=>rk[k][g.name]=r+1)});
   let h="<thead><tr><th>Channel</th>"+P.map(([k,l])=>`<th class="${k===cur?"sel":""}" style="text-align:center">${l.replace(" days","D").replace("Yesterday","Yday").replace("Today","Today")}</th>`).join("")+"</tr></thead><tbody>";
-  M.model.d30.groups.forEach(g=>{h+=`<tr><td>${sh(g.name)}</td>`+P.map(([k])=>{const x=M.model[k].groups.find(z=>z.name===g.name);const r=rk[k][g.name];return `<td style="text-align:center"><span class="rkb ${rkc(r)}" style="margin:0">${r}</span><span class="sb tx ${mgc(x.profit,x.revenue)}">${mm(x.profit)}</span></td>`}).join("")+"</tr>"});
+  M.model.d30.groups.forEach(g=>{h+=`<tr><td>${sh(g.name)}</td>`+P.map(([k])=>{const x=M.model[k].groups.find(z=>z.name===g.name);const r=rk[k][g.name];if(!x||r==null)return `<td style="text-align:center"><span class="mut">–</span></td>`;return `<td style="text-align:center"><span class="rkb ${rkc(r)}" style="margin:0">${r}</span><span class="sb tx ${mgc(x.profit,x.revenue)}">${mm(x.profit)}</span></td>`}).join("")+"</tr>"});
   const totals=P.map(([k])=>`<td style="text-align:center"><span class="num">${mm(M.model[k].all.profit)}</span></td>`).join("");
   $("rkt").innerHTML=h+`<tr class="totalrow"><td>Total</td>${totals}</tr></tbody>`;
 }
@@ -252,12 +270,12 @@ function renderExp(){
   $("etbl").innerHTML="<thead><tr><th>Channel</th><th>Spend</th><th>Revenue</th><th>% rev</th><th>Profit</th><th>ROAS</th></tr></thead><tbody>"+out.join("")+
    `<tr class="tot"><td>Total with spend</td>${ecells(m.paid,m.all)}</tr><tr class="tot"><td>Total, all sources</td>${ecells(m.all,m.all)}</tr></tbody>`;
 }
-$("flag").innerHTML=M.unflagged.length?`<div class="flag bad">${M.unflagged.length} campaign(s) missing Tracked / Non Tracked in the name: ${M.unflagged.join("; ")}</div>`:`<div class="flag">All ${M.ncamp} campaigns are labelled Tracked or Non Tracked.</div>`;
-renderProfitKpis();render();table();
-try{parent.postMessage({type:"report-render-stage",report:"order-source",stage:"render-complete"},"*")}catch(_){};
-$("etbl").addEventListener("click",e=>{const b=e.target.closest(".tg");if(!b)return;const id=b.dataset.id;expanded.has(id)?expanded.delete(id):expanded.add(id);renderExp();const nb=document.querySelector(`.tg[data-id="${id}"]`);if(nb)nb.focus()});
+$("etbl").addEventListener("click",e=>{const b=e.target.closest(".tg");if(!b)return;const id=b.dataset.id;expanded.has(id)?expanded.delete(id):expanded.add(id);safe("spend/revenue/profit",renderExp);const nb=document.querySelector(`.tg[data-id="${id}"]`);if(nb)nb.focus()});
 document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b){cur=b.dataset.k;render()}});
-(function(){
+safe("campaign flag",()=>{$("flag").innerHTML=M.unflagged.length?`<div class="flag bad">${M.unflagged.length} campaign(s) missing Tracked / Non Tracked in the name: ${M.unflagged.join("; ")}</div>`:`<div class="flag">All ${M.ncamp} campaigns are labelled Tracked or Non Tracked.</div>`});
+safe("profit tiles",renderProfitKpis);render();safe("all periods table",table);
+try{parent.postMessage({type:"report-render-stage",report:"order-source",stage:failed?"render-incomplete":"render-complete"},"*")}catch(_){};
+safe("pinned headers",function(){
   /* Pinned headers: the real header cells slide down inside their own table, so column widths always match exactly. */
   const bar=document.querySelector(".stick"),ids=["rk","rkt","etbl"];
   let q=0;
@@ -278,5 +296,5 @@ document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.cl
   addEventListener("scroll",go,{passive:true});addEventListener("resize",go);
   document.addEventListener("click",()=>setTimeout(go,0));
   go();
-})();
+});
 </script>

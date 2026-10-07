@@ -15,7 +15,8 @@ Business rules (agreed with the owner):
   Fixed costs per day (monthly / 30): Google mgmt $670, Facebook mgmt 15,000 INR / 67, organic/SEO $250.
   Platform fees are split between tracked and non-tracked by ad spend.
   Profit = revenue / 1.1 (GST) x 0.75 (after 25% product cost) - ad spend - fees.   ROAS = revenue / spend.
-Periods use complete Melbourne days only (today is excluded).
+Lead period: Yesterday (complete Melbourne day) from the 6 AM refresh until 7:59 PM; from the 8 PM refresh until 5:59 AM it is Today
+(current Melbourne day so far). 7/15/30 days end on the same displayed day.
 """
 import json
 import os
@@ -198,7 +199,7 @@ def main():
     d = r["data"]
     ads = round(r["ads_share"] * 100)
     t = open(os.path.join(HERE, "order_source_template.html"), encoding="utf-8").read()
-    lead_label = "Today (partial)" if r["display_today"] else "Yesterday"
+    lead_label = "Today" if r["display_today"] else "Yesterday"
     windows_txt = ("%s = %s · 7 days = %s – %s · 15 days = %s – %s · 30 days = %s – %s"
                    % (lead_label, fmt_d(w["y"][0]), fmt_d(w["d7"][0]), fmt_d(w["d7"][1]), fmt_d(w["d15"][0]), fmt_d(w["d15"][1]),
                       fmt_d(w["d30"][0]), fmt_d(w["d30"][1])))
@@ -212,7 +213,7 @@ def main():
     model_json = safe_inline_json({"model": r["model"], "unflagged": r["unflagged"], "ncamp": r["ncamp"]})
     data_json = safe_inline_json(d)
     for key, val in (("__DATA__", data_json), ("__MODEL__", model_json), ("__PREV__", "%s – %s" % (fmt_d(w["p30"][0]), fmt_d(w["p30"][1]))),
-                     ("__WINDOWS__", windows_txt), ("__LEAD_LABEL__", json.dumps(lead_label.replace(" (partial)", ""))), ("__ADS__", str(ads)), ("__GMB__", str(100 - ads))):
+                     ("__WINDOWS__", windows_txt), ("__LEAD_LABEL__", json.dumps(lead_label)), ("__ADS__", str(ads)), ("__GMB__", str(100 - ads))):
         assert key in t, "template placeholder missing: " + key
         t = t.replace(key, val)
     for left in ("__DATA__", "__MODEL__", "__PREV__", "__WINDOWS__", "__LEAD_LABEL__", "__ADS__", "__GMB__"):
@@ -235,7 +236,7 @@ def main():
     if r["unflagged"]:
         meta["warn"] = "%d campaign(s) missing Tracked / Non Tracked" % len(r["unflagged"])
     json.dump(meta, open(out_meta, "w"), separators=(",", ":"))
-    print("Order Source built through", r["end"], "| yesterday spend", round(y["spend"] or 0, 2), "revenue", round(y["revenue"] or 0, 2),
+    print("Order Source built through", r["end"], "|", lead_label.lower(), "spend", round(y["spend"] or 0, 2), "revenue", round(y["revenue"] or 0, 2),
           "ROAS", None if y["roas"] is None else round(y["roas"], 2), "profit", round(y["profit"] or 0, 2), "| unflagged:", r["unflagged"])
 
 

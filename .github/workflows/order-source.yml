@@ -106,6 +106,16 @@ jobs:
             .refresh/os/order-source.html \
             .refresh/os/order-source.meta.json
 
+      - name: Validate generated report renders (JS syntax + DOM smoke test; failure stops publishing)
+        if: steps.gate.outputs.go == '1'
+        run: |
+          LEAD=$(python3 -c "import json;m=json.load(open('.refresh/os/order-source.meta.json'));print('Today' if m['stats'][0][1].endswith(' today') else 'Yesterday')")
+          mkdir -p .refresh/jsdom
+          (cd .refresh/jsdom && npm init -y >/dev/null && npm install jsdom --no-audit --no-fund --silent)
+          echo "NODE_PATH=$PWD/.refresh/jsdom/node_modules" >> "$GITHUB_ENV"
+          NODE_PATH="$PWD/.refresh/jsdom/node_modules" node tools/validate_order_source.js .refresh/os/order-source.html "$LEAD"
+          echo "ORDER_SOURCE_LEAD=$LEAD" >> "$GITHUB_ENV"
+
       - name: Encrypt Order Source report
         if: steps.gate.outputs.go == '1'
         run: |
@@ -129,6 +139,18 @@ jobs:
           PY
           test -s .refresh/out/order-source.bin
           test -s .refresh/out/order-source.meta.bin
+
+      - name: Validate the ENCRYPTED report decrypts to a page that renders
+        if: steps.gate.outputs.go == '1'
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, os
+          from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+          key=base64.b64decode(os.environ["ORDER_SOURCE_KEY"].strip())
+          raw=open(".refresh/out/order-source.bin","rb").read()
+          open(".refresh/os/roundtrip.html","wb").write(gzip.decompress(AESGCM(key).decrypt(raw[:12], raw[12:], None)))
+          PY
+          node tools/validate_order_source.js .refresh/os/roundtrip.html "$ORDER_SOURCE_LEAD"
 
       - name: Publish Order Source report
         if: steps.gate.outputs.go == '1'
