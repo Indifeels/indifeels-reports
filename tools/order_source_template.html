@@ -215,7 +215,7 @@ const shc=p=>p>=25?"g":p>=10?"a":"r";
 const mgc=(pr,rv)=>!rv?"n":(pr/(rv/1.1)*100)>=40?"g":(pr/(rv/1.1)*100)>=15?"a":"r";
 const rkc=r=>r<=2?"g":r===3?"a":"r";
 const sh=n=>n.replace(" sources","");
-const open=new Set();
+const expanded=new Set();
 function ranked(p){return M.model[p].groups.map((g,i)=>({...g,i})).sort((a,b)=>b.profit-a.profit)}
 function short(n){let s=n.replace(/^Non Tracked \| (MM \| )?/,"").replace(/^Tracked \| MM Sales \| /,"").replace(/^Tracked_MM_/,"").replace(/^Non Trac- /,"").replace(/\s*[|_]\s*\d{2}\/\d{2}(\/\d{2})?$/,"").replace(/ \| Campaign$/,"").replace(/_/g," ");return s.length>30?s.slice(0,29)+"…":s}
 function renderProfitKpis(){
@@ -241,7 +241,7 @@ function renderRk(){
 }
 function ecells(n,all){return `<td>${n.spend!=null?`<span class="num">${mm(n.spend)}</span>`:'<span class="mut">–</span>'}</td><td>${n.revenue!=null?`<span class="num">${mm(n.revenue)}</span>`:'<span class="mut">–</span>'}</td><td>${n.revenue!=null&&all.revenue?`<span class="rg ${shc(n.revenue/all.revenue*100)}">${pc(n.revenue/all.revenue*100)}</span>`:""}</td><td>${n.profit!=null?`<span class="rg ${mgc(n.profit,n.revenue)}">${mm(n.profit)}</span>`:""}</td><td>${n.roas!=null?`<span class="rg ${rc(n.roas)}">${roasTxt(n.roas)}</span>`:""}</td>`}
 function erows(n,depth,id,out,all){
-  const has=!!n.kids,isOpen=open.has(id),d=Math.min(depth,3);
+  const has=!!n.kids,isOpen=expanded.has(id),d=Math.min(depth,3);
   const nm=has?`<button class="tg" aria-expanded="${isOpen}" data-id="${id}"><span class="car">▸</span><span>${depth?short(n.name):sh(n.name)}</span></button>`:`<span class="lead"></span><span title="${n.name}">${short(n.name)}</span>`;
   out.push(`<tr class="l${d}"><td class="i${d}">${nm}</td>${ecells(n,all)}</tr>`);
   if(has&&isOpen)n.kids.forEach((k,i)=>erows(k,depth+1,id+"/"+i,out,all));
@@ -255,7 +255,7 @@ function renderExp(){
 $("flag").innerHTML=M.unflagged.length?`<div class="flag bad">${M.unflagged.length} campaign(s) missing Tracked / Non Tracked in the name: ${M.unflagged.join("; ")}</div>`:`<div class="flag">All ${M.ncamp} campaigns are labelled Tracked or Non Tracked.</div>`;
 renderProfitKpis();render();table();
 try{parent.postMessage({type:"report-render-stage",report:"order-source",stage:"render-complete"},"*")}catch(_){};
-$("etbl").addEventListener("click",e=>{const b=e.target.closest(".tg");if(!b)return;const id=b.dataset.id;open.has(id)?open.delete(id):open.add(id);renderExp();const nb=document.querySelector(`.tg[data-id="${id}"]`);if(nb)nb.focus()});
+$("etbl").addEventListener("click",e=>{const b=e.target.closest(".tg");if(!b)return;const id=b.dataset.id;expanded.has(id)?expanded.delete(id):expanded.add(id);renderExp();const nb=document.querySelector(`.tg[data-id="${id}"]`);if(nb)nb.focus()});
 document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b){cur=b.dataset.k;render()}});
 (function(){
   /* Pinned headers: the real header cells slide down inside their own table, so column widths always match exactly. */
