@@ -19,6 +19,11 @@ h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,6vw,42px);lin
 .tabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .tabs button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.profit-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.profit-kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:5px}
+.profit-kpi .l{font-size:12px;color:var(--muted);font-weight:600}
+.profit-kpi .v{font:600 22px var(--mono);font-variant-numeric:tabular-nums}
+@media(max-width:640px){.profit-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:6px;align-content:start}
 .kpi .v{font-family:var(--mono);font-size:28px;font-variant-numeric:tabular-nums;font-weight:600;line-height:1.1}
 .kpi .l{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
@@ -50,6 +55,8 @@ td .chip{margin-top:6px}
 td.zero .amt{color:var(--muted)}
 td.cellbg{background:var(--cell)}
 tfoot td{font-weight:600;border-bottom:0;border-top:2px solid var(--fg);background:var(--surface)}
+.cmp thead th{background:var(--tb)!important;color:var(--fg)}
+.cmp tr.totalrow td,.cmp tr.totalrow td:first-child{background:var(--tb)!important}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;vertical-align:middle}
 .legend{display:grid;gap:12px}
 .lrow{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px;color:var(--muted);align-items:center}
@@ -111,6 +118,7 @@ h2{margin:0 0 10px;font-size:22px}
 <h1>Sales, ROAS and Profit by Source</h1>
 </header>
 <div id="flag"></div>
+<div class="profit-kpis" id="profitKpis"></div>
 <div class="stick"><div class="tabs" role="group" aria-label="Period" id="tabs"></div></div>
 <div class="rag"><span class="rg g">Green</span><span class="rg a">Amber</span><span class="rg r">Red</span><span>Rules at the bottom</span></div>
 <section>
@@ -167,6 +175,10 @@ const paceChip=k=>{const b=BASE[k];return chip((T[k][1]/DAYS[k])/(T[b][1]/DAYS[b
 const fbShare=k=>Object.entries(DATA[k]).filter(([s])=>/MSGS/.test(s)).reduce((a,[,v])=>a+v[1],0)/T[k][1]*100;
 let cur="d30";
 function render(){
+  const leadProfitLabel=LEAD_LABEL==="Today"?"Today's Profit":"Yesterday's Profit";
+  document.getElementById("profitKpis").innerHTML=[
+    ["y",leadProfitLabel],["d7","7 Days Profit"],["d15","15 Days Profit"],["d30","30 Days Profit"]
+  ].map(([k,l])=>`<div class="profit-kpi"><div class="l">${l}</div><div class="v">${mm(M.model[k].all.profit)}</div></div>`).join("");
   document.getElementById("tabs").innerHTML=P.map(([k,l])=>`<button id="t-${k}" aria-pressed="${k===cur}" data-k="${k}">${l}</button>`).join("");
   const b=BASE[cur],[c,t]=T[cur],aov=c?t/c:0,aovB=T[b][1]/T[b][0];
   const vs=b==="p30"?"vs prev 30 days":"vs 30 days";
@@ -213,13 +225,14 @@ function renderRank(){
   <td>${two(`<span class="rg ${mgc(g.profit,g.revenue)}">${mm(g.profit)}</span>`,`<span class="rg ${shc(g.profit/al.profit*100)}">${pc(g.profit/al.profit*100)}</span>`)}</td>
   <td>${two(`<span class="num">${mm(g.revenue)}</span>`,`<span class="rg ${shc(g.revenue/al.revenue*100)}">${pc(g.revenue/al.revenue*100)}</span>`)}</td>
   <td>${g.spend?two(`<span class="num">${mm(g.spend)}</span>`,`<span class="mut">${pc(g.spend/al.spend*100)}</span>`):two(`<span class="num mut">None</span>`,"")}</td>
-  <td>${g.roas!=null?`<span class="rg ${rc(g.roas)}">${roasTxt(g.roas)}</span>`:'<span class="mut">–</span>'}</td></tr>`).join("")+"</tbody>";
+  <td>${g.roas!=null?`<span class="rg ${rc(g.roas)}">${roasTxt(g.roas)}</span>`:'<span class="mut">–</span>'}</td></tr>`).join("")+`<tr class="totalrow"><td>Total</td><td><span class="num">${mm(al.profit)}</span></td><td><span class="num">${mm(al.revenue)}</span></td><td><span class="num">${mm(al.spend)}</span></td><td><span class="num">${roasTxt(al.roas)}</span></td></tr></tbody>";
 }
 function renderRk(){
   const rk={};P.forEach(([k])=>{rk[k]={};ranked(k).forEach((g,r)=>rk[k][g.name]=r+1)});
   let h="<thead><tr><th>Channel</th>"+P.map(([k,l])=>`<th class="${k===cur?"sel":""}" style="text-align:center">${l.replace(" days","D").replace("Yesterday","Yday").replace("Today","Today")}</th>`).join("")+"</tr></thead><tbody>";
   M.model.d30.groups.forEach(g=>{h+=`<tr><td>${sh(g.name)}</td>`+P.map(([k])=>{const x=M.model[k].groups.find(z=>z.name===g.name);const r=rk[k][g.name];return `<td style="text-align:center"><span class="rkb ${rkc(r)}" style="margin:0">${r}</span><span class="sb tx ${mgc(x.profit,x.revenue)}">${mm(x.profit)}</span></td>`}).join("")+"</tr>"});
-  $("rkt").innerHTML=h+"</tbody>";
+  const totals=P.map(([k])=>`<td style="text-align:center"><span class="num">${mm(M.model[k].all.profit)}</span></td>`).join("");
+  $("rkt").innerHTML=h+`<tr class="totalrow"><td>Total</td>${totals}</tr></tbody>`;
 }
 function ecells(n,all){return `<td>${n.spend!=null?`<span class="num">${mm(n.spend)}</span>`:'<span class="mut">–</span>'}</td><td>${n.revenue!=null?`<span class="num">${mm(n.revenue)}</span>`:'<span class="mut">–</span>'}</td><td>${n.revenue!=null&&all.revenue?`<span class="rg ${shc(n.revenue/all.revenue*100)}">${pc(n.revenue/all.revenue*100)}</span>`:""}</td><td>${n.profit!=null?`<span class="rg ${mgc(n.profit,n.revenue)}">${mm(n.profit)}</span>`:""}</td><td>${n.roas!=null?`<span class="rg ${rc(n.roas)}">${roasTxt(n.roas)}</span>`:""}</td>`}
 function erows(n,depth,id,out,all){
