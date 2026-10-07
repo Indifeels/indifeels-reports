@@ -325,10 +325,29 @@
       el.classList.toggle("has-warning",warnings>0);
     });
   }
+  function updateHomeClock() {
+    if(!me)return;
+    const now=new Date(),hour=Number(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Melbourne",hour:"numeric",hourCycle:"h23"}).format(now));
+    const greeting=hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
+    $("#hello").textContent=`${greeting}${me.display_name?", "+me.display_name.split(" ")[0]:""}`;
+    $("#home-sub").textContent=new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Melbourne",weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}).format(now)+" · Melbourne";
+  }
+  setInterval(updateHomeClock,60000);
+  function syncHomeExpand(){const groups=Array.from(document.querySelectorAll("#tiles .report-category"));$("#home-expand").textContent=groups.length && groups.every(x=>x.open)?"Collapse All":"Expand All";$("#home-expand").disabled=!groups.length;}
+  $("#home-expand").addEventListener("click",()=>{const groups=Array.from(document.querySelectorAll("#tiles .report-category")),open=!groups.every(x=>x.open);groups.forEach(x=>{x.open=open;try{localStorage.setItem("ir-category-"+x.dataset.group,open?"open":"closed");}catch(_){}});syncHomeExpand();});
+  let weatherChecked=0;
+  async function loadHomeWeather(){
+    if(Date.now()-weatherChecked<1800000)return;weatherChecked=Date.now();
+    try{const response=await fetch("https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=-37.81&lon=144.96",{signal:AbortSignal.timeout(7000)});if(!response.ok)return;
+      const data=await response.json(),series=data.properties?.timeseries || [],now=Date.now(),entry=series.reduce((best,x)=>Math.abs(Date.parse(x.time)-now)<Math.abs(Date.parse(best.time)-now)?x:best,series[0]);
+      const temp=entry?.data?.instant?.details?.air_temperature,code=entry?.data?.next_1_hours?.summary?.symbol_code || "",label=code.replace(/_(day|night|polartwilight)$/,""),icon=/thunder/.test(code)?"⛈️":/snow/.test(code)?"🌨️":/rain|sleet/.test(code)?"🌧️":/fog/.test(code)?"🌫️":/partly|fair/.test(code)?"⛅":/cloud/.test(code)?"☁️":/clearsky/.test(code)?(/night/.test(code)?"🌙":"☀️"):"🌤️";
+      if(Number.isFinite(temp)){const el=$("#home-weather");el.innerHTML=`<span>${icon} ${Math.round(temp)}°C</span><small>MET Norway</small>`;el.title=`Melbourne forecast · ${label} · Weather data: MET Norway`;el.href="https://www.met.no/en";el.hidden=false;}
+    }catch(_){}
+  }
   async function renderHome() {
     const box=$("#tiles");
-    $("#hello").textContent=me.display_name ? `Hi ${me.display_name.split(" ")[0]}` : "Your reports";
-    $("#home-sub").textContent="Melbourne time";
+    updateHomeClock();
+    loadHomeWeather();
     await loadStatus();
     try { const [rr,cc]=await Promise.all([sb.from("report_refresh_runs").select("report_id,status,scheduled_at,finished_at,detail").order("scheduled_at",{ascending:false}),sb.from("report_refresh_control").select("report_id,enabled,runner,runner_note")]);scheduleStatus={};(rr.data||[]).forEach(x=>{if(!scheduleStatus[x.report_id])scheduleStatus[x.report_id]=x;});scheduleControl=Object.fromEntries((cc.data||[]).map(x=>[x.report_id,x])); } catch(_) {}
     const knownIds=HOME_GROUPS.flatMap(g=>g.ids);
@@ -340,7 +359,9 @@
       let expanded=false;try{expanded=localStorage.getItem("ir-category-"+i)==="open";}catch(_){}
       return `<details class="report-category" data-group="${i}" data-ids='${JSON.stringify(rows.map(r=>r.id))}' style="--category-accent:${g.color}" ${expanded?"open":""}><summary><h3>${i+1}. ${esc(g.name)}</h3><div class="category-counts"><span>Reports<strong>${rows.length+upcoming.length}</strong></span><span>Actions pending<strong data-count="actions">—</strong></span><span>Warnings<strong data-count="warnings">0</strong></span></div><span class="category-chevron" aria-hidden="true">⌄</span></summary><div class="category-reports">${rows.map(r=>tileHTML(r,homeMeta[r.id])).join("")}${upcoming.map(r=>`<article class="report-upcoming"><strong>${r.title}</strong><span>Upcoming</span></article>`).join("")}</div></details>`;
     }).join("");
-    box.querySelectorAll(".report-category").forEach(el=>el.addEventListener("toggle",()=>{try{localStorage.setItem("ir-category-"+el.dataset.group,el.open?"open":"closed");}catch(_){}}));
+    box.querySelectorAll(".report-category").forEach(el=>el.addEventListener("toggle",()=>{try{localStorage.setItem("ir-category-"+el.dataset.group,el.open?"open":"closed");}catch(_){}syncHomeExpand();}));
+    syncHomeExpand();
+    $("#home-report-count").textContent=`${reports.length} reports · ${box.querySelectorAll(".report-category").length} categories`;
     $("#no-reports").hidden=reports.length>0;paintHomeCards();
     await Promise.all(reports.map(async r=>{
       try {
