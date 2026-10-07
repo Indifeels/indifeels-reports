@@ -27,3 +27,23 @@
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111318;--card:#1A1E25;--sub:#222730;--ink:#F1F0F4;--muted:#B7B5C2;--line:#363A45;--navy:#171A21;--acc:#AE98BF;--accb:#302A38;--t:#AE98BF;--tb:#302A38;--w:#AE98BF;--wb:#302A38;--purple:#A28CAF;--g:#90C69D;--gb:#203629;--y:#E1C06C;--yb:#3B321A;--r:#E4A0A0;--rb:#3D2528}}
 @media(max-width:600px){.schedule-heading h2{font-size:25px}.schedule-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.schedule-actions .primary{grid-column:1/-1}.schedule-body{padding:14px 12px}.schedule-report>summary{padding:12px;gap:8px}.schedule-report>summary strong{font-size:15px}.schedule-report>summary>span{font-size:12px;white-space:normal;max-width:90px}.schedule-item{gap:7px;padding:6px 9px}.schedule-item>span{font-size:14px}.schedule-checks{gap:4px 14px}.schedule-run-title>span{margin-left:0}.schedule-fields{gap:12px}}
 @media(max-width:350px){.schedule-fields{grid-template-columns:1fr}.schedule-switch span{display:none}}
+
+/* Report headers carry distinct colours; expanded content keeps its calm palette. */
+.schedule-report[data-report="daily"]{--report-accent:#C886AB}
+.schedule-report[data-report="monthly"]{--report-accent:#87B897}
+.schedule-report[data-report="stock"]{--report-accent:#D0AC6D}
+.schedule-report[data-report="restock"]{--report-accent:#CF9873}
+.schedule-report[data-report="product-visibility"]{--report-accent:#B09CCF}
+.schedule-report[data-report="order-source"]{--report-accent:#88BCB6}
+.schedule-report[data-report="order-attribution"]{--report-accent:#A5BA79}
+.schedule-report[data-report="call-tracking"]{--report-accent:#D0AF86}
+.schedule-report[data-report="footwear"]{--report-accent:#D49BA1}
+.schedule-report[data-report="google-tracked"]{--report-accent:#BA9CC8}
+.schedule-report[data-report="tech-availability"]{--report-accent:#8FB9A4}
+.schedule-reports{gap:14px}
+.schedule-report{--report-accent:var(--purple);border-color:color-mix(in srgb,var(--report-accent) 50%,var(--line))}
+.schedule-report>summary{background:color-mix(in srgb,var(--report-accent) 34%,var(--card));border-left:5px solid var(--report-accent)}
+.schedule-report>summary>span,.schedule-report>summary::after{color:var(--ink);opacity:.8}
+.schedule-report[open]{border:2px solid color-mix(in srgb,var(--report-accent) 70%,var(--line));margin-bottom:20px}
+.schedule-report[open]>summary{border-bottom:1px solid var(--report-accent);background:color-mix(in srgb,var(--report-accent) 42%,var(--card))}
+.schedule-report[open]>.schedule-body{border-left:3px solid color-mix(in srgb,var(--report-accent) 45%,var(--line))}
