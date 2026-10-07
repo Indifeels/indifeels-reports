@@ -40,24 +40,30 @@ a{color:inherit}
 .tools-in .sp{flex:1}
 .b{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:0 13px;height:38px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .b.x{background:var(--accb);border-color:var(--accb);color:var(--accink)}
+.tools-in a.b{text-decoration:none}
 .b.c{background:var(--navy);border-color:var(--navy);color:#fff}
 :root[data-theme="dark"] .b.c{background:var(--gold);border-color:var(--gold);color:#0E1424}
 .b:disabled{opacity:.5;cursor:default}
 .b:active{transform:translateY(1px)}
 main{max-width:980px;margin:0 auto;padding:12px 16px 32px}
-.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.bar input{flex:1;min-width:140px;height:38px;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:0 12px}
-.bar input:focus{outline:none;border-color:var(--navy2)}
-.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;max-width:100%}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.bar{flex-wrap:nowrap}
+.bar input,.bar select{height:38px;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:0 12px;min-width:0}
+.bar input{flex:1 1 0}
+.bar select{flex:0 1 44%;text-overflow:ellipsis}
+.bar input:focus,.bar select:focus{outline:none;border-color:var(--navy2)}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;max-width:100%;align-items:center;margin-bottom:8px}
+.grp{display:flex;gap:6px}
+.vsep{width:1px;height:18px;background:var(--line);flex:none;margin:0 2px}
 .chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:0 12px;height:30px;font-weight:600;font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
 .chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
 :root[data-theme="dark"] .chip[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#0E1424}
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .sum{color:var(--muted);font-size:12px;margin:2px 0 8px}
 .sum b{color:var(--ink)}
-.panel{border:1px solid var(--green);background:var(--gb);color:var(--g);border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-weight:600}
-.panel span{flex:1;min-width:160px}
-.panel a{text-decoration:underline}
+.ask{border:1px solid var(--line);background:var(--sub);border-radius:12px;padding:8px 8px 8px 14px;margin-bottom:10px;display:flex;gap:8px;align-items:center;font-weight:600;font-size:13px}
+.ask span{flex:1;min-width:0}
+.ask .b{height:34px;padding:0 12px}
 .th,.tr{display:grid;grid-template-columns:64px minmax(0,1fr) 56px 212px;gap:12px;align-items:center;padding:10px 2px}
 .th{color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--line);padding-block:6px}
 .th span:nth-child(3){text-align:center}.th span:nth-child(4){text-align:right}
@@ -105,21 +111,24 @@ main{max-width:980px;margin:0 auto;padding:12px 16px 32px}
   <button class="b" id="theme" aria-label="Switch light or dark mode">🌙</button>
   <span class="sp"></span>
   <button class="b x" id="xl" aria-label="Export to Excel">📊 <span class="t">Excel</span></button>
-  <button class="b" id="save" aria-label="Save">💾 <span class="t">Save</span></button>
+  <a class="b" id="sheet" href="__SHEET__" target="_blank" rel="noopener" aria-label="Open Google Sheet">📄 <span class="t">Sheet</span></a>
   <button class="b c" id="confirm" aria-label="Confirm all"><span class="t">Confirm all</span></button>
 </div></div>
 <main>
-  <div class="panel" id="panel" hidden><span id="panel-t"></span><button class="b" id="panel-no">Cancel</button><button class="b c" id="panel-yes">Yes, confirm</button></div>
-  <div class="panel" id="done" hidden><span id="done-t"></span><a href="__SHEET__" target="_blank" rel="noopener">Open Google Sheet</a></div>
+  <div class="ask" id="panel" hidden><span id="panel-t"></span><button class="b" id="panel-no">Cancel</button><button class="b c" id="panel-yes">Yes, confirm</button></div>
   <div class="bar">
     <input id="q" type="search" placeholder="Search product or size" aria-label="Search">
-    <div class="chips" id="per"><button class="chip" data-d="7" aria-pressed="false">7d</button><button class="chip" data-d="15" aria-pressed="false">15d</button><button class="chip" data-d="30" aria-pressed="true">30d</button></div>
-    <div class="chips" id="chips">
+    <select id="col" aria-label="Collection"><option value="">All collections</option></select>
+  </div>
+  <div class="chips">
+    <div class="grp" id="chips">
       <button class="chip" data-f="all" aria-pressed="true">All</button>
       <button class="chip" data-f="out" aria-pressed="false"><i class="dot" style="background:var(--red)"></i>Out</button>
       <button class="chip" data-f="low" aria-pressed="false"><i class="dot" style="background:var(--orange)"></i>Low</button>
       <button class="chip" data-f="ok" aria-pressed="false"><i class="dot" style="background:var(--green)"></i>OK</button>
     </div>
+    <span class="vsep"></span>
+    <div class="grp" id="per"><button class="chip" data-d="7" aria-pressed="false">7d</button><button class="chip" data-d="15" aria-pressed="false">15d</button><button class="chip" data-d="30" aria-pressed="true">30d</button></div>
   </div>
   <div class="sum" id="sum"></div>
   <div class="th"><span></span><span>Product · Variant</span><span>Stock</span><span>Sold → restock</span></div>
@@ -128,15 +137,16 @@ main{max-width:980px;margin:0 auto;padding:12px 16px 32px}
 <div class="toast" id="toast" role="status"></div>
 <script>
 const DATA=__DATA__;
+const ASOF="__ASOFISO__";
 const $=id=>document.getElementById(id);
 const root=document.documentElement,tb=$("theme");
 function setTheme(t){root.dataset.theme=t;tb.textContent=t==="dark"?"☀️":"🌙"}
 setTheme("light");
 tb.addEventListener("click",()=>setTheme(root.dataset.theme==="dark"?"light":"dark"));
 const send=(o)=>{try{parent.postMessage(Object.assign({type:"restock"},o),"*")}catch(e){}};
-// d: [product, variant, stock, img, s7, s15, s30, variantId]
-let days=30,saved={};
-let st=DATA.map((d,i)=>({id:i,p:d[0],v:d[1]==="Default Title"?"Standard":d[1],stock:d[2],img:d[3],s:[d[4],d[5],d[6]],vid:d[7],qty:null,del:false}));
+// d: [product, variant, stock, img, s7, s15, s30, variantId, collections[]]
+let days=30,col="";
+let st=DATA.map((d,i)=>({id:i,p:d[0],v:d[1]==="Default Title"?"Standard":d[1],stock:d[2],img:d[3],s:[d[4],d[5],d[6]],vid:d[7],c:d[8]||[],qty:null,del:false}));
 const soldOf=x=>x.s[days===7?0:days===15?1:2];
 const qtyOf=x=>x.qty===null?soldOf(x):x.qty;
 let filter="all",term="";
@@ -144,8 +154,11 @@ const status=x=>x.stock<=0?"out":(x.stock<soldOf(x)?"low":"ok");
 const lbl={out:"OUT",low:"LOW",ok:"OK"};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const vis=()=>st.filter(x=>!x.del&&soldOf(x)>0);
+const shown=()=>vis().filter(x=>(filter==="all"||status(x)===filter)&&(!col||x.c.includes(col))&&(!term||(x.p+" "+x.v).toLowerCase().includes(term)));
+// collection dropdown
+[...new Set(st.flatMap(x=>x.c))].sort((a,b)=>a.localeCompare(b)).forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;$("col").appendChild(o)});
 function render(){
-  const rows=vis().filter(x=>(filter==="all"||status(x)===filter)&&(!term||(x.p+" "+x.v).toLowerCase().includes(term)));
+  const rows=shown();
   $("list").innerHTML=rows.length?rows.map(x=>{const s=status(x);return `<div class="tr" data-id="${x.id}">
     <img class="pic" loading="lazy" referrerpolicy="no-referrer" src="${esc(x.img)}" alt="" data-n="${esc(x.p)}">
     <div><div class="nm">${esc(x.p)}</div><span class="vr">${esc(x.v)}</span></div>
@@ -158,63 +171,78 @@ function totals(){
   const live=vis(),c=f=>live.filter(x=>status(x)===f).length;
   const o=live.reduce((a,x)=>a+qtyOf(x),0);
   $("stats").innerHTML=`<span class="stat"><i style="background:#F28B82"></i><b>${c("out")}</b> out of stock</span><span class="stat"><i style="background:#EDA151"></i><b>${c("low")}</b> running low</span><span class="stat"><b>${o}</b> units to restock</span>`;
-  $("sum").innerHTML=`<b>${live.length}</b> items · <b>${c("out")}</b> out · <b>${c("low")}</b> low · <b>${o}</b> units to restock`;
+  const sh=shown(),su=sh.reduce((a,x)=>a+qtyOf(x),0);
+  $("sum").innerHTML=sh.length===live.length?`<b>${live.length}</b> items · <b>${o}</b> units to restock`:`<b>${sh.length}</b> of ${live.length} items · <b>${su}</b> units`;
 }
-function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("on"),2600)}
+function toast(m,ms){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("on"),ms||2600)}
 $("list").addEventListener("error",e=>{const i=e.target;if(i&&i.classList&&i.classList.contains("pic")&&i.tagName==="IMG"){const d=document.createElement("div");d.className="pic ph";d.textContent=(i.dataset.n||"?").trim().charAt(0).toUpperCase();i.replaceWith(d)}},true);
+// requests waiting for the hub's reply: confirm -> rows, clear -> rows
+const pend={},pendClear={};let reqN=0;
+function clearRows(p){
+  const req="c"+(++reqN);pendClear[req]=p;
+  send({action:"clear",req,asof:ASOF,items:p.map(x=>({vid:x.vid}))});
+}
+let saveT;
+function persist(){clearTimeout(saveT);saveT=setTimeout(()=>send({action:"save",state:snapshot(),quiet:true}),400)}
+const snapshot=()=>({asof:ASOF,days,rows:st.filter(x=>x.qty!==null||x.del).map(x=>({vid:x.vid,qty:x.qty,del:x.del,s:x.s[2]}))});
 $("list").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   const row=b.closest(".tr"),x=st[+row.dataset.id];
   if(b.dataset.a==="p")x.qty=qtyOf(x)+1;
   if(b.dataset.a==="m")x.qty=Math.max(0,qtyOf(x)-1);
-  if(b.dataset.a==="d"){x.del=true;render();toast("Removed. Tap Save to keep.");return}
+  if(b.dataset.a==="d"){x.del=true;render();clearRows([x]);persist();toast("Removed. It returns only if it sells again.");return}
   if(b.dataset.a==="c"){confirmRows([x]);return}
-  row.querySelector(".q").textContent=qtyOf(x);totals();
+  row.querySelector(".q").textContent=qtyOf(x);totals();persist();
 });
 $("chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;filter=b.dataset.f;document.querySelectorAll("#chips .chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
 $("per").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;days=+b.dataset.d;st.forEach(x=>{x.qty=null});document.querySelectorAll("#per .chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
+$("col").addEventListener("change",e=>{col=e.target.value;render()});
 $("q").addEventListener("input",e=>{term=e.target.value.trim().toLowerCase();render()});
-const snapshot=()=>({days,rows:st.map(x=>({vid:x.vid,qty:x.qty,del:x.del}))});
-$("save").addEventListener("click",()=>{send({action:"save",state:snapshot()});toast("Saved ✓")});
-// restore saved state pushed by the hub
+// restore state pushed by the hub
 window.addEventListener("message",e=>{
   const d=e.data||{};
   if(d.type==="restock-state"&&d.state&&Array.isArray(d.state.rows)){
     const m={};d.state.rows.forEach(r=>{m[r.vid]=r});
-    st.forEach(x=>{const r=m[x.vid];if(r){x.qty=r.qty;x.del=!!r.del}});
+    const same=d.state.asof===ASOF,legacy=!d.state.asof,mig=[];
+    st.forEach(x=>{
+      const r=m[x.vid];if(!r)return;
+      if(r.qty!==null&&r.qty!==undefined&&r.s===x.s[2])x.qty=r.qty;   // keep edited qty only while sales are unchanged
+      if(r.del&&(same||legacy)){x.del=true;if(legacy)mig.push(x)}      // same build: stay hidden. Newer build: the server already applies it
+    });
+    if(mig.length){clearRows(mig);persist()}                           // one-time: save earlier deletions to the server
     render();
+  }
+  if(d.type==="restock-clear-result"){
+    const p=pendClear[d.req];delete pendClear[d.req];if(!p)return;
+    if(!d.ok){p.forEach(x=>{x.del=false});render();persist();toast(d.error||"Couldn't save the removal. It's back in the list.")}
   }
   if(d.type==="restock-confirm-result"){
     const p=pend[d.req];delete pend[d.req];if(!p)return;
-    if(d.ok){p.forEach(x=>{x.del=true});render();send({action:"save",state:snapshot(),quiet:true});
-      $("done-t").textContent=d.message||"Confirmed";$("done").hidden=false;
-      if(!d.sheet)$("done").querySelector("a").hidden=false}
+    if(d.ok){p.forEach(x=>{x.del=true});render();persist();toast(d.message||"Confirmed",4200)}
     else toast(d.error||"Couldn't confirm. Nothing was changed.");
   }
 });
 $("xl").addEventListener("click",()=>{
-  const live=vis();
+  const live=shown();
   const rows=[["Product","Variant","Current stock","Qty to order","Status"],...live.map(x=>[x.p,x.v,x.stock,qtyOf(x),lbl[status(x)]])];
   send({action:"export",rows,filename:"indifeels-restock-"+new Date().toISOString().slice(0,10)+".csv"});
 });
-const pend={};let reqN=0;
 function confirmRows(p){
   p=p.filter(x=>!x.del&&qtyOf(x)>0);
   if(!p.length){toast("Nothing to confirm");return false}
   const req="r"+(++reqN);pend[req]=p;
-  send({action:"confirm",req,days,items:p.map(x=>({vid:x.vid,product:x.p,variant:x.v,image:x.img,stock:x.stock,qty:qtyOf(x),status:lbl[status(x)]}))});
+  send({action:"confirm",req,days,asof:ASOF,items:p.map(x=>({vid:x.vid,product:x.p,variant:x.v,image:x.img,stock:x.stock,qty:qtyOf(x),status:lbl[status(x)]}))});
   toast("Sending…");
   return true;
 }
 $("confirm").addEventListener("click",()=>{
-  const p=vis().filter(x=>qtyOf(x)>0);
+  const p=shown().filter(x=>qtyOf(x)>0);
   if(!p.length){toast("Nothing to confirm");return}
-  $("done").hidden=true;
-  $("panel-t").textContent="Confirm all "+p.length+" items · "+p.reduce((a,x)=>a+qtyOf(x),0)+" units for the supplier?";
+  $("panel-t").textContent="Confirm "+p.length+" item"+(p.length===1?"":"s")+" · "+p.reduce((a,x)=>a+qtyOf(x),0)+" units?";
   $("panel").hidden=false;
 });
 $("panel-no").addEventListener("click",()=>{$("panel").hidden=true});
-$("panel-yes").addEventListener("click",()=>{confirmRows(vis());$("panel").hidden=true});
+$("panel-yes").addEventListener("click",()=>{confirmRows(shown());$("panel").hidden=true});
 render();
 send({action:"ready"});
 </script>

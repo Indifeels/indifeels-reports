@@ -1160,9 +1160,22 @@
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       toast("Excel file downloaded");
+    } else if (d.action === "clear") {
+      try {
+        const { data, error } = await sb.functions.invoke("restock-confirm", { body: { action: "clear", items: d.items, asof: d.asof } });
+        if (error || !data?.ok) {
+          let msg = data?.error || error?.message || "Couldn't save the removal.";
+          try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
+          reply({ type: "restock-clear-result", req: d.req, ok: false, error: msg });
+          return;
+        }
+        reply({ type: "restock-clear-result", req: d.req, ok: true });
+      } catch (err) {
+        reply({ type: "restock-clear-result", req: d.req, ok: false, error: err?.message || "Couldn't save the removal." });
+      }
     } else if (d.action === "confirm") {
       try {
-        const { data, error } = await sb.functions.invoke("restock-confirm", { body: { items: d.items } });
+        const { data, error } = await sb.functions.invoke("restock-confirm", { body: { items: d.items, asof: d.asof } });
         if (error || !data?.ok) {
           let msg = data?.error || error?.message || "Couldn't confirm.";
           try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}

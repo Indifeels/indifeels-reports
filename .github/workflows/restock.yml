@@ -1,7 +1,11 @@
 name: Restock report
 
 # Sold-variant restock list (7/15/30 day sales vs current stock).
+# Rebuilds after every Shopify order (so a new sale is added straight away) and at 7am, 3pm and 8pm.
+# Items deleted/confirmed in the report are remembered in Supabase (restock_cleared); only newer sales are counted for them.
 on:
+  repository_dispatch:
+    types: [shopify-order]
   push:
     branches: [main]
     paths:
@@ -40,6 +44,10 @@ jobs:
             echo "go=0" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Let the new order settle in Shopify
+        if: steps.gate.outputs.go == '1' && github.event_name == 'repository_dispatch'
+        run: sleep 45
+
       - uses: actions/checkout@v4
         if: steps.gate.outputs.go == '1'
         with:
@@ -59,6 +67,7 @@ jobs:
         env:
           SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
           STOCK_KEY: ${{ secrets.STOCK_KEY }}
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
         run: python3 tools/report_preflight.py --phase pre restock
 
       - name: Build restock report
@@ -67,6 +76,7 @@ jobs:
           SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
           SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
           STOCK_KEY: ${{ secrets.STOCK_KEY }}
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
         run: python3 tools/restock.py
 
       - name: Verify report files
@@ -86,7 +96,7 @@ jobs:
           [ -f r/restock.bin ] && git add r/restock.bin || true
           [ -f r/restock.meta.bin ] && git add r/restock.meta.bin || true
           git diff --cached --quiet && exit 0
-          git commit -m "Refresh restock report"
+          git commit -m "Refresh restock report (${{ github.event.client_payload.order || github.event_name }})"
           for i in 1 2 3; do
             git pull --rebase -q origin main
             git push -q origin HEAD:main && exit 0

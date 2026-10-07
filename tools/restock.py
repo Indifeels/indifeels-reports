@@ -1,15 +1,23 @@
 """Build the encrypted Restock report for the Indifeels dashboard.
 
 Sold units per variant over the last 7/15/30 days (Shopify orders, cancelled excluded),
-joined with current stock and product image. Rows with no sales in 30 days are omitted.
+joined with current stock, product image and collections. Rows with no sales are omitted.
 
-Env: SHOPIFY_TOKEN, SHOPIFY_SHOP, STOCK_KEY
+Cleared items: a row that was deleted or confirmed in the report is stored in Supabase
+(restock_cleared) with the data cut-off the user was looking at. Only orders created AFTER that
+cut-off are counted for that variant, so nothing is fetched twice and a cleared item reappears
+only when it sells again, with just the new sales.
+
+Runs after every Shopify order (repository_dispatch) and at 7am / 3pm / 8pm.
+
+Env: SHOPIFY_TOKEN, SHOPIFY_SHOP, STOCK_KEY, SYNC_READ_TOKEN
 Writes: r/restock.bin, r/restock.meta.bin, r/status.json
 """
 import datetime as dt
 import json
 import os
 import sys
+import urllib.request
 from collections import defaultdict
 from zoneinfo import ZoneInfo
 
@@ -17,8 +25,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import product_visibility as pv  # reuse gql, encrypt, write_encrypted, set_status
 
 RID = "restock"
-NOW = dt.datetime.now(ZoneInfo("Australia/Sydney"))
+TZ = ZoneInfo("Australia/Sydney")
+NOW = dt.datetime.now(TZ)
+# Data cut-off: orders newer than this are left for the next build, so every order is counted once
+# and the cut-off the page shows is also the watermark used when an item is cleared.
+CUT = NOW.astimezone(dt.timezone.utc) - dt.timedelta(seconds=20)
 SHEET_URL = os.environ.get("RESTOCK_SHEET_URL", "https://docs.google.com/spreadsheets/d/1YF_K9jObp1WqQ-HZZWSXwWaaFh6-UyOJE-d2AsmWOVs/edit")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://yrigvovwyfpaybibfjva.supabase.co")
+SUPABASE_ANON = os.environ.get("SUPABASE_ANON_KEY", "sb_publishable_8xv46B6mvnAN2McGDc4VEg_pNF0qHvD")  # public publishable key, same as the other builders
 
 ORDERS = """
 query Orders($after:String,$q:String!){
@@ -37,30 +51,55 @@ query V($ids:[ID!]!){
     ... on ProductVariant{
       id title inventoryQuantity
       image{url}
-      product{title status featuredMedia{preview{image{url}}}}
+      product{title status featuredMedia{preview{image{url}}} collections(first:25){nodes{title}}}
     }
   }
 }
 """
 
 
-def sold_by_variant():
-    since = (NOW - dt.timedelta(days=30)).astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+def parse_ts(s):
+    return dt.datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+
+
+def load_cleared():
+    """{variant numeric id: cleared_at (aware datetime)}. Fails the build if unreadable, so the last
+    good report stays published instead of showing items that were already cleared."""
+    token = os.environ["SYNC_READ_TOKEN"]
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/rest/v1/rpc/sync_get_restock_cleared",
+        data=json.dumps({"p_token": token}).encode(),
+        headers={"Content-Type": "application/json", "apikey": SUPABASE_ANON},
+        method="POST",
+    )
+    rows = json.load(urllib.request.urlopen(req, timeout=60))
+    return {str(r["vid"]): parse_ts(r["cleared_at"]) for r in rows}
+
+
+def sold_by_variant(cleared):
+    """Units per variant for 7/15/30 days, counting only orders after the variant's cleared_at
+    and not newer than the data cut-off."""
+    since = (CUT - dt.timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
     q = f"created_at:>={since}"
     out = defaultdict(lambda: [0, 0, 0])
     after = None
-    cut7 = NOW - dt.timedelta(days=7)
-    cut15 = NOW - dt.timedelta(days=15)
+    cut7 = CUT - dt.timedelta(days=7)
+    cut15 = CUT - dt.timedelta(days=15)
     while True:
         d = pv.gql(ORDERS, {"after": after, "q": q})["data"]["orders"]
         for o in d["nodes"]:
             if o.get("cancelledAt"):
                 continue
-            at = dt.datetime.fromisoformat(o["createdAt"].replace("Z", "+00:00"))
+            at = parse_ts(o["createdAt"])
+            if at > CUT:
+                continue
             for li in o["lineItems"]["nodes"]:
                 v = (li.get("variant") or {}).get("id")
                 n = int(li.get("quantity") or 0)
                 if not v or n <= 0:
+                    continue
+                mark = cleared.get(v.rsplit("/", 1)[-1])
+                if mark and at <= mark:
                     continue
                 out[v][2] += n
                 if at >= cut15:
@@ -90,7 +129,8 @@ def thumb(url):
 
 
 def build():
-    sold = sold_by_variant()
+    cleared = load_cleared()
+    sold = sold_by_variant(cleared)
     info = variant_details(sold.keys())
     rows = []
     for vid, s in sold.items():
@@ -99,12 +139,15 @@ def build():
             continue
         p = n["product"]
         img = (n.get("image") or {}).get("url") or (((p.get("featuredMedia") or {}).get("preview") or {}).get("image") or {}).get("url") or ""
-        rows.append([p["title"], n["title"], int(n.get("inventoryQuantity") or 0), thumb(img), s[0], s[1], s[2], vid.rsplit("/", 1)[-1]])
+        cols = sorted({c["title"] for c in ((p.get("collections") or {}).get("nodes") or []) if c.get("title")})
+        rows.append([p["title"], n["title"], int(n.get("inventoryQuantity") or 0), thumb(img), s[0], s[1], s[2], vid.rsplit("/", 1)[-1], cols])
     # most urgent first: out of stock, then biggest shortfall
     rows.sort(key=lambda r: (r[2] > 0, -(r[6] - r[2]), r[0], r[1]))
     tpl = open(os.path.join(pv.ROOT, "tools", "restock_template.html"), encoding="utf-8").read()
     updated = NOW.strftime("%d %b %Y, %H:%M")
+    asof_iso = CUT.strftime("%Y-%m-%dT%H:%M:%SZ")
     page = (tpl.replace("__DATA__", json.dumps(rows, ensure_ascii=False).replace("</", "<\\/"))
+               .replace("__ASOFISO__", asof_iso)
                .replace("__ASOF__", f"Shopify sales · updated {updated}")
                .replace("__SHEET__", SHEET_URL))
     out = sum(1 for r in rows if r[2] <= 0)
@@ -119,7 +162,7 @@ def build():
     pv.write_encrypted(key, f"{RID}.meta.bin", json.dumps(meta).encode())
     pv.RID = RID
     pv.set_status(True)
-    print(json.dumps({"variants": len(rows), "out": out, "low": low}))
+    print(json.dumps({"variants": len(rows), "out": out, "low": low, "cleared": len(cleared), "cutoff": asof_iso}))
 
 
 if __name__ == "__main__":

@@ -110,7 +110,7 @@
     },
     {
       "id": "call-tracking",
-      "title": "Call Tracking \u2014 Nimbata",
+      "title": "Call Tracking — Nimbata",
       "workflow": "call-tracking.yml",
       "refresh_times": [
         "20:00",
@@ -182,11 +182,13 @@
       "refresh_times": [
         "07:00",
         "15:00",
-        "20:00"
+        "20:00",
+        "after each Shopify order"
       ],
       "required_env": [
         "SHOPIFY_TOKEN",
-        "STOCK_KEY"
+        "STOCK_KEY",
+        "SYNC_READ_TOKEN"
       ],
       "builders": [
         "tools/restock.py"
