@@ -36,13 +36,13 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-10-07T20:37+11:00",
-  "code_sha": "713cb2a4caeb0b1cb8ca74bdbdca2611ffd81e95",
+  "at": "2026-10-07T20:52+11:00",
+  "code_sha": "1ec42b22471bce30d38fcf583bed3a2ad6939b2d",
   "data_through": null,
-  "last_ok": "2026-10-07T20:37+11:00",
+  "last_ok": "2026-10-07T20:52+11:00",
   "manifest_version": "2026-10-07.1",
-  "ok": false,
-  "reason": "Order Source refresh failed; check GitHub Actions"
+  "ok": true,
+  "reason": ""
  },
  "product-visibility": {
   "at": "2026-10-07T16:56+11:00",
