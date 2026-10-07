@@ -56,3 +56,5 @@
 .schedule-actions .schedule-theme{width:46px;height:46px;min-width:46px;padding:0;border-radius:50%;display:grid;place-items:center;color:var(--ink);background:var(--card);border:1px solid var(--line)}
 .schedule-theme:focus-visible{outline:2px solid var(--purple);outline-offset:3px}
 @media(max-width:600px){.schedule-actions{display:flex;width:auto;align-items:center}.schedule-actions [data-act="reload"]{flex:1}.schedule-save-bar{gap:12px;justify-content:space-between;padding-left:16px;padding-right:16px}.schedule-save-bar .primary{min-width:0;flex:1;max-width:260px}.schedule-save-state{max-width:115px}}
+
+.schedule-manual .btn{min-height:46px;border-color:var(--purple);color:var(--ink)}.schedule-manual .btn:disabled{opacity:.55;cursor:not-allowed}.schedule-manual-message{font-size:14px;color:var(--ink);margin:8px 0;line-height:1.5}
