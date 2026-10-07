@@ -249,10 +249,10 @@ function renderExp(){
   $("etbl").innerHTML="<thead><tr><th>Channel</th><th>Spend</th><th>Revenue</th><th>% rev</th><th>Profit</th><th>ROAS</th></tr></thead><tbody>"+out.join("")+
    `<tr class="tot"><td>Total with spend</td>${ecells(m.paid,m.all)}</tr><tr class="tot"><td>Total, all sources</td>${ecells(m.all,m.all)}</tr></tbody>`;
 }
-$("etbl").addEventListener("click",e=>{const b=e.target.closest(".tg");if(!b)return;const id=b.dataset.id;open.has(id)?open.delete(id):open.add(id);renderExp();const nb=document.querySelector(`.tg[data-id="${id}"]`);if(nb)nb.focus()});
 $("flag").innerHTML=M.unflagged.length?`<div class="flag bad">${M.unflagged.length} campaign(s) missing Tracked / Non Tracked in the name: ${M.unflagged.join("; ")}</div>`:`<div class="flag">All ${M.ncamp} campaigns are labelled Tracked or Non Tracked.</div>`;
-document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b){cur=b.dataset.k;render()}});
 renderProfitKpis();render();table();
+$("etbl").addEventListener("click",e=>{const b=e.target.closest(".tg");if(!b)return;const id=b.dataset.id;open.has(id)?open.delete(id):open.add(id);renderExp();const nb=document.querySelector(`.tg[data-id="${id}"]`);if(nb)nb.focus()});
+document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b){cur=b.dataset.k;render()}});
 (function(){
   /* Pinned headers: the real header cells slide down inside their own table, so column widths always match exactly. */
   const bar=document.querySelector(".stick"),ids=["rk","rkt","etbl"];
