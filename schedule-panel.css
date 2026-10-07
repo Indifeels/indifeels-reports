@@ -47,3 +47,12 @@
 .schedule-report[open]{border:2px solid var(--report-accent);margin-bottom:24px}
 .schedule-report[open]>summary{border-bottom:1px solid var(--report-accent)}
 .schedule-report[open]>.schedule-body{border-left:3px solid color-mix(in srgb,var(--report-accent) 45%,var(--line))}
+
+/* Persistent mobile save action and compact theme control. */
+#v-schedule{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+.schedule-save-bar{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;align-items:center;justify-content:center;gap:24px;padding:14px 20px calc(14px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line);box-shadow:0 -5px 20px #00000012}
+.schedule-save-bar .primary{margin:0;min-height:48px;min-width:180px;background:var(--purple);border-color:var(--purple);color:#fff}
+.schedule-save-state{font-size:14px;color:var(--muted)}
+.schedule-actions .schedule-theme{width:46px;height:46px;min-width:46px;padding:0;border-radius:50%;display:grid;place-items:center;color:var(--ink);background:var(--card);border:1px solid var(--line)}
+.schedule-theme:focus-visible{outline:2px solid var(--purple);outline-offset:3px}
+@media(max-width:600px){.schedule-actions{display:flex;width:auto;align-items:center}.schedule-actions [data-act="reload"]{flex:1}.schedule-save-bar{gap:12px;justify-content:space-between;padding-left:16px;padding-right:16px}.schedule-save-bar .primary{min-width:0;flex:1;max-width:260px}.schedule-save-state{max-width:115px}}
