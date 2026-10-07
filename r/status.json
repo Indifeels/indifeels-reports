@@ -41,8 +41,8 @@
   "data_through": null,
   "last_ok": "2026-10-07T20:37+11:00",
   "manifest_version": "2026-10-07.1",
-  "ok": true,
-  "reason": ""
+  "ok": false,
+  "reason": "Order Source refresh failed; check GitHub Actions"
  },
  "product-visibility": {
   "at": "2026-10-07T16:56+11:00",
