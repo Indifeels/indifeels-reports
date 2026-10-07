@@ -9,10 +9,10 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-10-08T08:06+11:00",
-  "code_sha": "d9412a9a611b9ddd18adec8a48d7651d71939f04",
+  "at": "2026-10-08T08:31+11:00",
+  "code_sha": "7fba721410e03ee41958e590d9080af2b7f0dd99",
   "data_through": "2026-10-07T23:59:59+11:00",
-  "last_ok": "2026-10-08T08:06+11:00",
+  "last_ok": "2026-10-08T08:31+11:00",
   "manifest_version": "2026-10-08.schedule-panel.1",
   "ok": true,
   "reason": ""
@@ -27,10 +27,10 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-10-08T08:06+11:00",
-  "code_sha": "d9412a9a611b9ddd18adec8a48d7651d71939f04",
+  "at": "2026-10-08T08:31+11:00",
+  "code_sha": "7fba721410e03ee41958e590d9080af2b7f0dd99",
   "data_through": "2026-10-07T23:59:59+11:00",
-  "last_ok": "2026-10-08T08:06+11:00",
+  "last_ok": "2026-10-08T08:31+11:00",
   "manifest_version": "2026-10-08.schedule-panel.1",
   "ok": true,
   "reason": ""
