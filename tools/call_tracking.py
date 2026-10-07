@@ -26,8 +26,8 @@ ORIGIN_COL = {"Google paid": "#16a34a", "GMB paid": "#db2777", "GMB organic": "#
               "Meta": "#6366f1", "Referral": "#8b5cf6", "Website direct": "#64748b"}
 LCOL = lambda ln: LINE_COL.get(ln, "#94a3b8")
 OCOL = lambda o: ORIGIN_COL.get(o, "#94a3b8")
-PERIODS = [("yesterday", "Yesterday"), ("last_7", "Last 7 days"), ("last_30", "Last 30 days"), ("lifetime", "Lifetime"), ("today_partial", "Today — partial")]
-BREAK_PERIODS = [("yesterday", "Yesterday"), ("last_7", "Last 7 days"), ("last_30", "Last 30 days")]
+PERIODS = [("yesterday", "Yesterday"), ("last_7", "Last 7 days"), ("last_15", "Last 15 days"), ("last_30", "Last 30 days"), ("lifetime", "Lifetime"), ("today_partial", "Today — partial")]
+BREAK_PERIODS = [("yesterday", "Yesterday"), ("last_7", "Last 7 days"), ("last_15", "Last 15 days"), ("last_30", "Last 30 days")]
 
 
 def n0(v):
@@ -54,6 +54,8 @@ def period_days(today, key):
         return today - timedelta(days=1), today - timedelta(days=1)
     if key == "last_7":
         return today - timedelta(days=7), today - timedelta(days=1)
+    if key == "last_15":
+        return today - timedelta(days=15), today - timedelta(days=1)
     if key == "last_30":
         return today - timedelta(days=30), today - timedelta(days=1)
     return today, today

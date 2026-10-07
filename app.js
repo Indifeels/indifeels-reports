@@ -246,7 +246,7 @@
     {name:"SEO",color:"#927CA2",ids:["footwear"]},
     {name:"Admin Panel",color:"#838099",ids:["schedule-panel","tech-availability"]}
   ];
-  const HOME_TITLES = {daily:"Facebook Non-tracked",monthly:"Facebook Monthly Profitability",stock:"Stock Movement and Negative Stock",footwear:"SEO Rankings","google-tracked":"Google Tracked"};
+  const HOME_TITLES = {daily:"Facebook Non-tracked",monthly:"Facebook Monthly Profitability",stock:"Stock Movement & Negative Stock",footwear:"SEO Rankings","google-tracked":"Google Tracked"};
   const homeMeta = {}, homePeriods = {};
   function homePending(id) {
     if (id === "order-attribution" && homeMeta[id]) return oaPending().length;
@@ -260,23 +260,57 @@
     if (iso && !isNaN(Date.parse(iso))) return new Date(iso).toLocaleString("en-AU",{timeZone:"Australia/Melbourne",day:"2-digit",month:"short",year:"numeric",hour:"numeric",minute:"2-digit"});
     return meta?.updated || "Not available";
   }
+  function compactKpiLabel(label) {
+    const clean=String(label).replace(/(?:,?\s*)(yesterday|today(?: so far)?|last \d+ days|this month)/ig,"").trim();
+    const names={"orders need review":"Review","syncing now":"Syncing","pending order value":"Value","overall ROAS":"ROAS","Google Ads":"Google Ads","GMB":"GMB","ad spend":"Spend","net profit":"Profit","cost per message":"Cost/msg","to move and tick":"To move","ticked, not finalised":"Ticked","sold before moved":"Sold","Reports managed":"Reports"};
+    return names[clean] || clean.replace(/^./,x=>x.toUpperCase());
+  }
+  function publishedPeriods(id,html) {
+    const doc=new DOMParser().parseFromString(html,"text/html"),out={};
+    const text=el=>el?.textContent.replace(/\s+/g," ").trim() || "—";
+    const fromKpis=nodes=>Array.from(nodes).slice(0,4).map(el=>{const v=el.querySelector("b,.v");return [text(v),text(el.querySelector(".l") || el.querySelector("span:not(.chg):not(.ar):not(.dl)"))];});
+    if(id==="order-source"){
+      const match=html.match(/^const M=(.+);$/m);
+      if(match){const model=JSON.parse(match[1]).model;for(const [key,label] of [["y","Yesterday"],["d7","7 days"],["d15","15 days"],["d30","30 days"]]){const a=model[key]?.all,paid=model[key]?.paid;if(a)out[key]={label,stats:[[oaMoney(paid?.spend || 0),"Spend"],[oaMoney(a.revenue || 0),"Revenue"],[a.roas==null?"—":Number(a.roas).toFixed(2)+"×","ROAS"],[oaMoney(a.profit || 0),"Profit"]]};}}
+    } else if(id==="google-tracked"){
+      const total=Array.from(doc.querySelectorAll("tr.total")).find(el=>text(el.querySelector("th"))==="All tracked campaigns");
+      if(total)for(const [key,cls,label] of [["y","t","Yesterday"],["d7","w","7 days"],["d15","x","15 days"],["d30","m","30 days"],["life","l","Lifetime"]]){const cells=total.querySelectorAll("td.c"+cls);if(cells.length===4)out[key]={label,stats:Array.from(cells).map((el,i)=>{const copy=el.cloneNode(true);copy.querySelectorAll(".ar,.chg").forEach(x=>x.remove());return [text(copy),["Spend","Revenue","ROAS","Profit"][i]];})};}
+    } else if(id==="call-tracking"){
+      for(const [key,pub,label] of [["y","yesterday","Yesterday"],["d7","last_7","7 days"],["d15","last_15","15 days"],["d30","last_30","30 days"],["life","lifetime","Lifetime"]]){const node=doc.querySelector(`[data-p="${pub}"] .kpis`);if(node){const cards=Array.from(node.querySelectorAll(".kpi"));const total=cards[0],google=cards.find(x=>text(x.querySelector(".l"))==="Google Ads Paid"),website=cards.find(x=>text(x.querySelector(".l"))==="Website");out[key]={label,stats:[[text(total?.querySelector(".v")),"Calls"],[text(google?.querySelector(".v")),"Google Ads"],[text(website?.querySelector(".v")),"Website"]]};}}
+    } else {
+      if(id==="daily"){
+        const total=Array.from(doc.querySelectorAll("tr.total")).find(el=>text(el.querySelector("th"))==="All non-tracked campaigns");
+        if(total)for(const [key,cls,label] of [["y","t","Yesterday"],["d7","w","7 days"],["d15","x","15 days"],["d30","m","30 days"],["life","l","Lifetime"]]){const cells=total.querySelectorAll("td.c"+cls);if(cells.length===3)out[key]={label,stats:Array.from(cells).map((el,i)=>{const copy=el.cloneNode(true);copy.querySelectorAll(".ar").forEach(x=>x.remove());return [text(copy),["Spend","Messages","Cost/msg"][i]];})};}
+      }
+      for(const node of doc.querySelectorAll(".kpi")){const heading=text(node.querySelector("h2")),key=/yesterday/i.test(heading)?"y":/7 days/i.test(heading)?"d7":/15 days/i.test(heading)?"d15":/30 days/i.test(heading)?"d30":/lifetime/i.test(heading)?"life":null;if(key && !out[key]){const cells=node.querySelectorAll(".kv:not(.sv) > div");if(cells.length)out[key]={label:heading,stats:fromKpis(cells)};}}
+    }
+    return out;
+  }
   function tileHTML(r,meta) {
     const L=look(r.id), hl=health(r.id), sr=scheduleStatus[r.id];
     const failed=sr?.status === "failed" || (!sr && status[r.id]?.ok === false);
     const pending=homePending(r.id);
-    const label=sr?.status === "in_progress" ? "In progress" : sr?.status === "queued" ? "Queued" : failed ? "Refresh failed" : scheduleControl[r.id]?.enabled === false ? "Paused" : pending ? `${pending} pending` : homeWarning(r.id) ? "Needs review" : meta ? "Up to date" : "Summary unavailable";
+    const label=sr?.status === "in_progress" ? "In progress" : sr?.status === "queued" ? "Queued" : failed ? "Refresh failed" : scheduleControl[r.id]?.enabled === false ? "Paused" : pending ? `${pending} pending` : homeWarning(r.id) ? "Review" : meta ? "Up to date" : "No data";
     const tone=failed ? "failed" : homeWarning(r.id) || pending ? "warning" : meta ? "good" : "unknown";
-    const selected=homePeriods[r.id] || "summary";
+    const selected=homePeriods[r.id] || (meta?.periods?.y ? "y" : "summary");
     const period=meta?.periods?.[selected];
-    const st=(period?.stats || meta?.stats || []).slice(0,4);
-    const stats=st.map(x=>`<div class="report-kpi"><span>${esc(x[1])}</span><strong>${esc(x[0])}</strong></div>`).join("");
-    const periodLabel=st.some(x=>/yesterday/i.test(x[1])) ? "Yesterday" : st.some(x=>/today/i.test(x[1])) ? "Today so far" : r.id === "monthly" ? "This month" : "Report summary";
-    const choices=meta?.periods ? Object.entries(meta.periods).filter(([,v])=>Array.isArray(v.stats)).map(([k,v])=>`<option value="${esc(k)}" ${selected===k?"selected":""}>${esc(v.label || k)}</option>`).join("") : "";
-    return `<article class="report-card" data-id="${esc(r.id)}" style="--report-accent:var(--${L.c})"><div class="report-heading"><span class="report-icon">${svg(L.icon)}</span><h3>${esc(HOME_TITLES[r.id] || r.title)}</h3></div><p class="report-updated">Last updated · ${esc(homeUpdated(r.id,meta))}</p><div class="report-kpis">${stats || '<span class="report-unavailable">Summary not available yet</span>'}</div><div class="report-bottom"><span class="report-status ${tone}" title="${esc(hl?.text || meta?.warn || label)}">${homeWarning(r.id)?svg("alert"):"<i></i>"}${esc(label)}</span><select class="report-period" aria-label="Summary period for ${esc(r.title)}"><option value="summary">${esc(periodLabel)}</option>${choices}</select><button type="button" class="report-open" data-open="${esc(r.id)}">Open Report <span aria-hidden="true">›</span></button></div>${hl?`<p class="report-issue">${esc(hl.text)}</p>`:""}</article>`;
+    const unavailable=selected!=="summary" && !period;
+    const st=(unavailable ? (meta?.stats || []).map(x=>["—",x[1]]) : period?.stats || meta?.stats || []).slice(0,4);
+    const stats=st.map(x=>{const raw=String(x[0]),suffix=raw.match(/\s*(\([^)]*\))$/),value=suffix?raw.slice(0,suffix.index):raw;const numeric=Number(value.replace(/[^0-9.-]/g,""));const displayed=/\$/.test(value)&&Number.isFinite(numeric)?new Intl.NumberFormat("en-AU",{style:"currency",currency:"AUD",maximumFractionDigits:0,notation:Math.abs(numeric)>=10000?"compact":"standard"}).format(/−/.test(value)?-numeric:numeric):value;return `<div class="report-kpi"><span title="${esc(x[1])}">${esc(compactKpiLabel(x[1]))}</span><strong title="${esc(value)}">${esc(displayed)}</strong><small>${esc(suffix?suffix[1]:"\u00a0")}</small></div>`;}).join("");
+    const periodLabel=st.some(x=>/yesterday/i.test(x[1])) ? "Yesterday" : st.some(x=>/today/i.test(x[1])) ? "Today so far" : r.id === "monthly" ? "This month" : "Summary";
+    const timeReport=["order-source","google-tracked","daily","monthly","call-tracking","order-attribution"].includes(r.id);
+    const options=timeReport ? [["summary","Summary"],["y","Yesterday"],["d7","7 days"],["d15","15 days"],["d30","30 days"],["life","Lifetime"]] : [["summary","Summary"]];
+    const choices=options.map(([key,label])=>`<option value="${key}" ${selected===key?"selected":""}>${key==="summary"?"Summary":label}</option>`).join("");
+    return `<article class="report-card" data-id="${esc(r.id)}" style="--report-accent:var(--${L.c})"><div class="report-heading"><span class="report-icon">${svg(L.icon)}</span><h3>${esc(HOME_TITLES[r.id] || r.title)}</h3></div><p class="report-updated">Last updated · ${esc(homeUpdated(r.id,meta))}</p><div class="report-kpis">${stats || '<span class="report-unavailable">Summary not available yet</span>'}</div><div class="report-bottom"><span class="report-status ${tone}" title="${esc(hl?.text || meta?.warn || label)}">${homeWarning(r.id)?svg("alert"):"<i></i>"}${esc(label)}</span><select class="report-period" aria-label="Summary period for ${esc(r.title)}">${choices}</select><button type="button" class="report-open" data-open="${esc(r.id)}">Open Report <span aria-hidden="true">›</span></button></div>${unavailable?`<p class="report-issue">This period is not available in the published data yet.</p>`:hl?`<p class="report-issue">${esc(hl.text)}</p>`:""}</article>`;
   }
+  function fitHomeTitles() {
+    document.querySelectorAll(".report-heading h3").forEach(el=>{let size=16;el.style.fontSize=size+"px";while(el.scrollWidth>el.clientWidth && size>10){size-=.5;el.style.fontSize=size+"px";}});
+  }
+  window.addEventListener("resize",fitHomeTitles);
   function paintHomeCards() {
     const box=$("#tiles");
     box.querySelectorAll(".report-card").forEach(el=>{const r=reports.find(x=>x.id===el.dataset.id);if(r) el.outerHTML=tileHTML(r,homeMeta[r.id]);});
+    fitHomeTitles();
     box.querySelectorAll(".report-open").forEach(b=>b.addEventListener("click",()=>openReport(b.dataset.open)));
     box.querySelectorAll(".report-period").forEach(select=>select.addEventListener("change",()=>{homePeriods[select.closest(".report-card").dataset.id]=select.value;paintHomeCards();}));
     box.querySelectorAll(".report-category").forEach(el=>{
@@ -312,7 +346,15 @@
         else if(r.id==="tech-availability")meta=techMeta(await loadTechAvailability());
         else if(r.id==="schedule-panel")meta={stats:[[String(Object.keys(scheduleControl).length),"Reports managed"],[String(Object.values(scheduleControl).filter(x=>x.enabled).length),"Enabled"],[String(Object.values(scheduleStatus).filter(x=>x.status==="failed").length),"Failed"]]};
         else if(keys[r.id]){meta=JSON.parse(await decryptFile(`r/${r.id}.meta.bin`,keys[r.id]));if(r.id==="stock"){await loadMoves();Object.assign(meta,stockStats());}}
-        if(meta)homeMeta[r.id]=meta;
+        if(meta){
+          if(r.id==="order-attribution"){
+            meta.periods={};const today=new Date().toLocaleDateString("en-CA",{timeZone:"Australia/Melbourne"});
+            for(const [key,days,label] of [["y",1,"Yesterday"],["d7",7,"7 days"],["d15",15,"15 days"],["d30",30,"30 days"]]){const end=new Date(today+"T00:00:00Z"),start=new Date(end.getTime()-days*86400000).toISOString().slice(0,10);const rows=OA.rows.filter(x=>{const date=new Date(x.created_at).toLocaleDateString("en-CA",{timeZone:"Australia/Melbourne"});return date>=start && date<today;}),pending=rows.filter(x=>x.attribution_auto || !x.order_source || x.sync_status!=="synced");meta.periods[key]={label,stats:[[String(rows.length),"Orders"],[String(rows.length-pending.length),"Confirmed"],[String(pending.length),"Review"]]};}
+          } else if(keys[r.id] && ["order-source","google-tracked","daily","monthly","call-tracking"].includes(r.id)){
+            try{meta.periods={...publishedPeriods(r.id,await decryptFile(`r/${r.id}.bin`,keys[r.id])),...meta.periods};}catch(_){}
+          }
+          homeMeta[r.id]=meta;
+        }
       }catch(_){}paintHomeCards();
     }));
   }
