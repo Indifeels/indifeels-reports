@@ -21,6 +21,8 @@
     themeLabel(); closeMenu();
   });
 
+  $("#dashboard-theme").addEventListener("click", () => $("#m-theme").click());
+
   // ---------- helpers ----------
   function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 2600); }
   function showErr(id, msg) { const e = $(id); e.textContent = msg; e.hidden = !msg; }
@@ -236,57 +238,82 @@
     if (age > (MAX_AGE_H[id] || 26)) return { title: "Refresh overdue", text: `No successful refresh since ${s.last_ok ? fmtTime(s.last_ok) : "it was set up"}. Check the scheduled task.` };
     return null;
   }
-  function tileHTML(r, meta) {
-    const L = look(r.id), hl = health(r.id), metaBad = meta?.health === "bad";
-    const alertBox = hl ? `<div class="alert">${svg("alert")}<div><b>${esc(hl.title)}</b><span>${esc(hl.text)}</span></div></div>`
-      : metaBad ? `<div class="alert">${svg("alert")}<div><b>Infrastructure issue</b><span>${esc(meta.health_text || "One or more services are affecting IndiFeels.")}</span></div></div>` : "";
-    const sr = scheduleStatus[r.id], sc = scheduleControl[r.id];
-    const failed = sr?.status === "failed" || status[r.id]?.ok === false && !sr;
-    const healthBadge = sc?.enabled === false ? '<span class="health paused">Paused</span>' : sr?.status === "in_progress" ? '<span class="health running">In progress</span>' : sr?.status === "queued" ? '<span class="health queued">Queued</span>' : failed ? '<span class="health failed">Failed</span>' : (hl || metaBad) ? `<span class="health bad">${svg("alert")}Attention</span>` : (meta ? `<span class="health good"><i></i>Healthy</span>` : "");
-    const st = (meta?.stats || []).slice(0, ["google-tracked", "order-source"].includes(r.id) ? 4 : 3);
-    const stats = st.map((s, i) => `<div class="st" style="--sc:var(--${L.line[i] || L.c})">${L.stat[i] ? svg(L.stat[i], "si") : ""}<b>${esc(s[0])}</b><span>${esc(s[1])}</span>${spark(meta?.spark?.[i], L.line[i] || L.c)}</div>`).join("");
-    const sig = meta?.signal ? `<p class="sig"><span class="pl">${esc(meta.signal.label)}</span>${esc(meta.signal.reason)}</p>` : "";
-    const upd = meta?.updated ? `Updated ${esc(meta.updated)}` : "Waiting for the next update";
-    const warn = meta?.warn ? `<span class="wn">${svg("alert")}${esc(meta.warn)}</span>` : "";
-    return `<button class="tile t-${L.c}${(hl || metaBad) ? " alerted" : ""}${failed ? " failed" : ""}" type="button" data-id="${esc(r.id)}">
-      <div class="th"><span class="ic">${svg(L.icon)}</span><div class="tt"><h3>${esc(r.title)}</h3><p class="ds">${esc(r.description || "")}</p></div>${healthBadge}</div>
-      ${alertBox}${stats ? `<div class="sts n${st.length}">${stats}</div>` : ""}${sig}<div class="ft"><span class="u">${svg("clock")}${upd}</span>${warn}<span class="open" aria-hidden="true">Open <span class="ar">&rsaquo;</span></span></div></button>`;
+  const HOME_GROUPS = [
+    {name:"Sales Analysis",color:"#568F8C",ids:["order-source","order-attribution","call-tracking"]},
+    {name:"Facebook",color:"#986D7E",ids:["facebook-tracked","daily","monthly"]},
+    {name:"Google",color:"#AD915A",ids:["google-tracked","google-non-tracked"]},
+    {name:"Stock Management",color:"#708C74",ids:["stock","product-visibility","restock"]},
+    {name:"SEO",color:"#927CA2",ids:["footwear"]},
+    {name:"Admin Panel",color:"#838099",ids:["schedule-panel","tech-availability"]}
+  ];
+  const HOME_TITLES = {daily:"Facebook Non-tracked",monthly:"Facebook Monthly Profitability",stock:"Stock Movement and Negative Stock",footwear:"SEO Rankings","google-tracked":"Google Tracked"};
+  const homeMeta = {}, homePeriods = {};
+  function homePending(id) {
+    if (id === "order-attribution" && homeMeta[id]) return oaPending().length;
+    if (id === "stock" && homeMeta[id]) return smPending().length;
+    const v=homeMeta[id]?.actions_pending;
+    return Number.isFinite(Number(v)) && v != null ? Number(v) : null;
+  }
+  function homeWarning(id) { return !!(health(id) || homeMeta[id]?.warn || homeMeta[id]?.health === "bad"); }
+  function homeUpdated(id,meta) {
+    const iso=status[id]?.last_ok || (scheduleStatus[id]?.status === "succeeded" ? scheduleStatus[id]?.finished_at : null);
+    if (iso && !isNaN(Date.parse(iso))) return new Date(iso).toLocaleString("en-AU",{timeZone:"Australia/Melbourne",day:"2-digit",month:"short",year:"numeric",hour:"numeric",minute:"2-digit"});
+    return meta?.updated || "Not available";
+  }
+  function tileHTML(r,meta) {
+    const L=look(r.id), hl=health(r.id), sr=scheduleStatus[r.id];
+    const failed=sr?.status === "failed" || (!sr && status[r.id]?.ok === false);
+    const pending=homePending(r.id);
+    const label=sr?.status === "in_progress" ? "In progress" : sr?.status === "queued" ? "Queued" : failed ? "Refresh failed" : scheduleControl[r.id]?.enabled === false ? "Paused" : pending ? `${pending} pending` : homeWarning(r.id) ? "Needs review" : meta ? "Up to date" : "Summary unavailable";
+    const tone=failed ? "failed" : homeWarning(r.id) || pending ? "warning" : meta ? "good" : "unknown";
+    const selected=homePeriods[r.id] || "summary";
+    const period=meta?.periods?.[selected];
+    const st=(period?.stats || meta?.stats || []).slice(0,4);
+    const stats=st.map(x=>`<div class="report-kpi"><span>${esc(x[1])}</span><strong>${esc(x[0])}</strong></div>`).join("");
+    const periodLabel=st.some(x=>/yesterday/i.test(x[1])) ? "Yesterday" : st.some(x=>/today/i.test(x[1])) ? "Today so far" : r.id === "monthly" ? "This month" : "Report summary";
+    const choices=meta?.periods ? Object.entries(meta.periods).filter(([,v])=>Array.isArray(v.stats)).map(([k,v])=>`<option value="${esc(k)}" ${selected===k?"selected":""}>${esc(v.label || k)}</option>`).join("") : "";
+    return `<article class="report-card" data-id="${esc(r.id)}" style="--report-accent:var(--${L.c})"><div class="report-heading"><span class="report-icon">${svg(L.icon)}</span><h3>${esc(HOME_TITLES[r.id] || r.title)}</h3></div><p class="report-updated">Last updated · ${esc(homeUpdated(r.id,meta))}</p><div class="report-kpis">${stats || '<span class="report-unavailable">Summary not available yet</span>'}</div><div class="report-bottom"><span class="report-status ${tone}" title="${esc(hl?.text || meta?.warn || label)}">${homeWarning(r.id)?svg("alert"):"<i></i>"}${esc(label)}</span><select class="report-period" aria-label="Summary period for ${esc(r.title)}"><option value="summary">${esc(periodLabel)}</option>${choices}</select><button type="button" class="report-open" data-open="${esc(r.id)}">Open Report <span aria-hidden="true">›</span></button></div>${hl?`<p class="report-issue">${esc(hl.text)}</p>`:""}</article>`;
+  }
+  function paintHomeCards() {
+    const box=$("#tiles");
+    box.querySelectorAll(".report-card").forEach(el=>{const r=reports.find(x=>x.id===el.dataset.id);if(r) el.outerHTML=tileHTML(r,homeMeta[r.id]);});
+    box.querySelectorAll(".report-open").forEach(b=>b.addEventListener("click",()=>openReport(b.dataset.open)));
+    box.querySelectorAll(".report-period").forEach(select=>select.addEventListener("change",()=>{homePeriods[select.closest(".report-card").dataset.id]=select.value;paintHomeCards();}));
+    box.querySelectorAll(".report-category").forEach(el=>{
+      const ids=JSON.parse(el.dataset.ids), counts=ids.map(homePending), known=counts.filter(x=>x!=null);
+      el.querySelector('[data-count="actions"]').textContent=known.length ? known.reduce((a,b)=>a+b,0)+(known.length<ids.length?"+":"") : "—";
+      const warnings=ids.filter(homeWarning).length;
+      el.querySelector('[data-count="warnings"]').textContent=String(warnings);
+      el.classList.toggle("has-warning",warnings>0);
+    });
   }
   async function renderHome() {
-    const box = $("#tiles");
-    $("#hello").textContent = me.display_name ? `Hi ${me.display_name.split(" ")[0]}, here are your reports` : "Your reports";
+    const box=$("#tiles");
+    $("#hello").textContent=me.display_name ? `Hi ${me.display_name.split(" ")[0]}` : "Your reports";
+    $("#home-sub").textContent="Melbourne time";
     await loadStatus();
-    try {
-      const [rr, cc] = await Promise.all([sb.from("report_refresh_runs").select("report_id,status,scheduled_at,finished_at,detail").order("scheduled_at", {ascending:false}),sb.from("report_refresh_control").select("report_id,enabled,runner,runner_note")]);
-      scheduleStatus = {}; (rr.data || []).forEach(x => { if (!scheduleStatus[x.report_id]) scheduleStatus[x.report_id]=x; });
-      scheduleControl = Object.fromEntries((cc.data || []).map(x => [x.report_id,x]));
-    } catch (_) {}
-    box.innerHTML = reports.map((r) => tileHTML(r, null)).join("");
-    $("#no-reports").hidden = reports.length > 0;
-    box.querySelectorAll(".tile").forEach((t) => t.addEventListener("click", () => openReport(t.dataset.id)));
-    await Promise.all(reports.map(async (r) => {
-      if (r.id === "order-attribution") {
-        try {
-          await loadAttribution();
-          const meta = attributionStats();
-          const el = box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`);
-          if (el) { el.outerHTML = tileHTML(r, meta); box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`).addEventListener("click", () => openReport(r.id)); }
-        } catch (_) {}
-        return;
-      }
-      if (r.id === "footwear") { try { const meta = seoMeta(await loadSeoRankingsData()); const el = box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`); if (el) { el.outerHTML = tileHTML(r, meta); box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`).addEventListener("click", () => openReport(r.id)); } } catch (_) {} return; }
-      if (r.id === "tech-availability") { try { const meta = techMeta(await loadTechAvailability()); const el = box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`); if (el) { el.outerHTML = tileHTML(r, meta); box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`).addEventListener("click", () => openReport(r.id)); } } catch (_) {} return; }
-      if (r.id === "schedule-panel") {
-        const el=box.querySelector('.tile[data-id="schedule-panel"]');
-        if(el){el.outerHTML=tileHTML(r,{stats:[[String(Object.keys(scheduleControl).length),"Reports managed"]],signal:{label:"Shared schedules",reason:"Time refreshes, event triggers and recent results."}});box.querySelector('.tile[data-id="schedule-panel"]').addEventListener("click",openSchedulePanel);}return;
-      }
-      if (!keys[r.id]) return;
+    try { const [rr,cc]=await Promise.all([sb.from("report_refresh_runs").select("report_id,status,scheduled_at,finished_at,detail").order("scheduled_at",{ascending:false}),sb.from("report_refresh_control").select("report_id,enabled,runner,runner_note")]);scheduleStatus={};(rr.data||[]).forEach(x=>{if(!scheduleStatus[x.report_id])scheduleStatus[x.report_id]=x;});scheduleControl=Object.fromEntries((cc.data||[]).map(x=>[x.report_id,x])); } catch(_) {}
+    const knownIds=HOME_GROUPS.flatMap(g=>g.ids);
+    const extras=reports.filter(r=>!knownIds.includes(r.id));
+    box.innerHTML=HOME_GROUPS.map((g,i)=>{
+      const rows=g.ids.map(id=>reports.find(r=>r.id===id)).filter(Boolean).concat(i===5?extras:[]);
+      if(!rows.length)return "";
+      const upcoming=i===1?[{title:"Facebook Tracked"}]:i===2?[{title:"Google Non-tracked"}]:[];
+      let expanded=false;try{expanded=localStorage.getItem("ir-category-"+i)==="open";}catch(_){}
+      return `<details class="report-category" data-group="${i}" data-ids='${JSON.stringify(rows.map(r=>r.id))}' style="--category-accent:${g.color}" ${expanded?"open":""}><summary><h3>${i+1}. ${g.name}</h3><div class="category-counts"><span>Reports<strong>${rows.length+upcoming.length}</strong></span><span>Actions pending<strong data-count="actions">—</strong></span><span>Warnings<strong data-count="warnings">0</strong></span></div><span class="category-chevron" aria-hidden="true">⌄</span></summary><div class="category-reports">${rows.map(r=>tileHTML(r,homeMeta[r.id])).join("")}${upcoming.map(r=>`<article class="report-upcoming"><strong>${r.title}</strong><span>Upcoming</span></article>`).join("")}</div></details>`;
+    }).join("");
+    box.querySelectorAll(".report-category").forEach(el=>el.addEventListener("toggle",()=>{try{localStorage.setItem("ir-category-"+el.dataset.group,el.open?"open":"closed");}catch(_){}}));
+    $("#no-reports").hidden=reports.length>0;paintHomeCards();
+    await Promise.all(reports.map(async r=>{
       try {
-        const meta = JSON.parse(await decryptFile(`r/${r.id}.meta.bin`, keys[r.id]));
-        if (r.id === "stock") { try { await loadMoves(); Object.assign(meta, stockStats()); } catch (_) {} }
-        const el = box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`);
-        if (el) { el.outerHTML = tileHTML(r, meta); box.querySelector(`.tile[data-id="${CSS.escape(r.id)}"]`).addEventListener("click", () => openReport(r.id)); }
-      } catch (_) { /* no published summary yet */ }
+        let meta;
+        if(r.id==="order-attribution"){await loadAttribution();meta=attributionStats();}
+        else if(r.id==="footwear")meta=seoMeta(await loadSeoRankingsData());
+        else if(r.id==="tech-availability")meta=techMeta(await loadTechAvailability());
+        else if(r.id==="schedule-panel")meta={stats:[[String(Object.keys(scheduleControl).length),"Reports managed"],[String(Object.values(scheduleControl).filter(x=>x.enabled).length),"Enabled"],[String(Object.values(scheduleStatus).filter(x=>x.status==="failed").length),"Failed"]]};
+        else if(keys[r.id]){meta=JSON.parse(await decryptFile(`r/${r.id}.meta.bin`,keys[r.id]));if(r.id==="stock"){await loadMoves();Object.assign(meta,stockStats());}}
+        if(meta)homeMeta[r.id]=meta;
+      }catch(_){}paintHomeCards();
     }));
   }
 
