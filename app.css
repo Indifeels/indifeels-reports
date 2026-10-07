@@ -231,3 +231,21 @@ body::before{display:none}
 .health i{box-shadow:none}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .tile{background:var(--card);border-color:var(--line);box-shadow:none}}
 
+
+/* Distinct, muted report colour families. */
+.tile[data-id="schedule-panel"]{--c:#9C86AF}
+.tile[data-id="daily"]{--c:#A56F8C}
+.tile[data-id="monthly"]{--c:#6B9877}
+.tile[data-id="stock"]{--c:#B6925B}
+.tile[data-id="restock"]{--c:#B87E5D}
+.tile[data-id="product-visibility"]{--c:#9585B5}
+.tile[data-id="order-source"]{--c:#6F9A98}
+.tile[data-id="order-attribution"]{--c:#879B62}
+.tile[data-id="call-tracking"]{--c:#B5936F}
+.tile[data-id="footwear"]{--c:#BB8287}
+.tile[data-id="google-tracked"]{--c:#8F789A}
+.tile[data-id="tech-availability"]{--c:#739688}
+.tile,.tile:hover,:root[data-theme="dark"] .tile{background:color-mix(in srgb,var(--c) 13%,var(--card));border-color:color-mix(in srgb,var(--c) 38%,var(--line));border-top:3px solid var(--c);box-shadow:none}
+.tile .ic{background:color-mix(in srgb,var(--c) 21%,var(--card));color:var(--c)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .tile{background:color-mix(in srgb,var(--c) 13%,var(--card));border-color:color-mix(in srgb,var(--c) 38%,var(--line));border-top:3px solid var(--c);box-shadow:none}}
+
