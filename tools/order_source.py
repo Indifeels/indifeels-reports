@@ -43,8 +43,13 @@ def fmt_d(d):
 def build(src):
     end = pd(src["end"])
     completed_end = pd(src.get("completed_end", src["end"]))
-    windows = {k: (completed_end - timedelta(days=n - 1), completed_end) for k, n in PERIODS}
-    windows["p30"] = (end - timedelta(days=59), end - timedelta(days=30))
+    # The lead period is dynamic: before 8 PM it shows yesterday; from 8 PM onward it
+    # shows today's partial Melbourne day. Rolling periods end on the same displayed
+    # day, so after 8 PM "last 7 days" means today + the previous 6 days.
+    now_local = datetime.fromisoformat(src["now"]).astimezone(TZ)
+    display_end = end if (src.get("include_today") and now_local.hour >= 20) else completed_end
+    windows = {k: (display_end - timedelta(days=n - 1), display_end) for k, n in PERIODS}
+    windows["p30"] = (display_end - timedelta(days=59), display_end - timedelta(days=30))
 
     # ---- orders by order_source per period: {source: [orders, amount]}
     rows = []
@@ -182,7 +187,7 @@ def build(src):
 
     camps_30 = set(FB["d30"]) | set(G["d30"])
     return dict(data=data, model=model, unflagged=sorted(set(unflagged)), ncamp=len(camps_30), ads_share=ads_share,
-                note_dirs=note_dirs, windows=windows, end=completed_end)
+                note_dirs=note_dirs, windows=windows, end=display_end, display_today=(display_end == now_local.date()))
 
 
 def main():
@@ -193,8 +198,9 @@ def main():
     d = r["data"]
     ads = round(r["ads_share"] * 100)
     t = open(os.path.join(HERE, "order_source_template.html"), encoding="utf-8").read()
-    windows_txt = ("Yesterday = %s · 7 days = %s – %s · 15 days = %s – %s · 30 days = %s – %s"
-                   % (fmt_d(w["y"][0]), fmt_d(w["d7"][0]), fmt_d(w["d7"][1]), fmt_d(w["d15"][0]), fmt_d(w["d15"][1]),
+    lead_label = "Today (partial)" if r["display_today"] else "Yesterday"
+    windows_txt = ("%s = %s · 7 days = %s – %s · 15 days = %s – %s · 30 days = %s – %s"
+                   % (lead_label, fmt_d(w["y"][0]), fmt_d(w["d7"][0]), fmt_d(w["d7"][1]), fmt_d(w["d15"][0]), fmt_d(w["d15"][1]),
                       fmt_d(w["d30"][0]), fmt_d(w["d30"][1])))
     if r["note_dirs"]:
         windows_txt += ". " + r["note_dirs"]
@@ -218,10 +224,10 @@ def main():
     money = lambda v: ("−" if v < 0 else "") + "${:,.0f}".format(abs(v))
     meta = {
         "updated": datetime.fromisoformat(src["now"]).astimezone(TZ).strftime("%-d %b %Y, %-I:%M %p"),
-        "stats": [[money(y["spend"] or 0), "spend yesterday"],
-                  [money(ya["revenue"] or 0), "revenue yesterday"],
-                  ["%.2fx" % ya["roas"] if ya["roas"] is not None else "—", "overall ROAS yesterday"],
-                  [money(ya["profit"] or 0) + (" (%d%%)" % round(ya["profit"] / ya["revenue"] * 100) if ya["revenue"] else ""), "profit yesterday"]],
+        "stats": [[money(y["spend"] or 0), "spend " + lead_label.lower()],
+                  [money(ya["revenue"] or 0), "revenue " + lead_label.lower()],
+                  ["%.2fx" % ya["roas"] if ya["roas"] is not None else "—", "overall ROAS " + lead_label.lower()],
+                  [money(ya["profit"] or 0) + (" (%d%%)" % round(ya["profit"] / ya["revenue"] * 100) if ya["revenue"] else ""), "profit " + lead_label.lower()]],
     }
     if r["unflagged"]:
         meta["warn"] = "%d campaign(s) missing Tracked / Non Tracked" % len(r["unflagged"])
