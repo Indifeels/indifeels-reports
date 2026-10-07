@@ -209,10 +209,10 @@ def main():
     model_json = model_json.replace("</", "<\\/")
     data_json = json.dumps(d).replace("</", "<\\/")
     for key, val in (("__DATA__", data_json), ("__MODEL__", model_json), ("__PREV__", "%s – %s" % (fmt_d(w["p30"][0]), fmt_d(w["p30"][1]))),
-                     ("__WINDOWS__", windows_txt), ("__ADS__", str(ads)), ("__GMB__", str(100 - ads))):
+                     ("__WINDOWS__", windows_txt), ("__LEAD_LABEL__", json.dumps(lead_label.replace(" (partial)", ""))), ("__ADS__", str(ads)), ("__GMB__", str(100 - ads))):
         assert key in t, "template placeholder missing: " + key
         t = t.replace(key, val)
-    for left in ("__DATA__", "__MODEL__", "__PREV__", "__WINDOWS__", "__ADS__", "__GMB__"):
+    for left in ("__DATA__", "__MODEL__", "__PREV__", "__WINDOWS__", "__LEAD_LABEL__", "__ADS__", "__GMB__"):
         assert left not in t
     # sanity: every order in the 30-day window reaches the all-sources total
     tot30 = sum(v[1] for v in d["d30"].values())
