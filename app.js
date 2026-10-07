@@ -616,8 +616,8 @@
         if (oaFindCampaign(input.value)) oaRefreshAdsetList(input.closest(".oa-row"));
       });
     });
-    $(".oa-resync").forEach((btn) => btn.addEventListener("click", () => refreshAttributionJourney(btn.dataset.order, btn)));
-    $(".oa-save").forEach((btn) => btn.addEventListener("click", () => {
+    $$(".oa-resync").forEach((btn) => btn.addEventListener("click", () => refreshAttributionJourney(btn.dataset.order, btn)));
+    $$(".oa-save").forEach((btn) => btn.addEventListener("click", () => {
       const card = btn.closest(".oa-row");
       const source = card.querySelector(".oa-source").value;
       const emailEl = card.querySelector(".oa-email");
