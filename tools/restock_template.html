@@ -54,6 +54,10 @@ main{max-width:980px;margin:0 auto;padding:12px 16px 32px}
 .bar input:focus,.bar select:focus{outline:none;border-color:var(--navy2)}
 .chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;max-width:100%;align-items:center;margin-bottom:8px}
 .grp{display:flex;gap:6px}
+.range{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:12.5px;color:var(--muted)}
+.range input[type=date]{height:34px;font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:0 8px;color-scheme:inherit}
+.range b{color:var(--ink)}
+.ls{font-size:11.5px;color:var(--muted);margin-top:5px}
 .vsep{width:1px;height:18px;background:var(--line);flex:none;margin:0 2px}
 .chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:0 12px;height:30px;font-weight:600;font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
 .chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
@@ -120,6 +124,11 @@ main{max-width:980px;margin:0 auto;padding:12px 16px 32px}
     <input id="q" type="search" placeholder="Search product or size" aria-label="Search">
     <select id="col" aria-label="Collection"><option value="">All collections</option></select>
   </div>
+  <div class="range">
+    <label>From <input type="date" id="from" aria-label="Start date"></label>
+    <span>to <b id="to"></b> <small>(latest order)</small></span>
+    <div class="grp" id="per"><button class="chip" data-d="7" aria-pressed="false">7d</button><button class="chip" data-d="15" aria-pressed="false">15d</button><button class="chip" data-d="30" aria-pressed="true">30d</button></div>
+  </div>
   <div class="chips">
     <div class="grp" id="chips">
       <button class="chip" data-f="all" aria-pressed="true">All</button>
@@ -129,7 +138,7 @@ main{max-width:980px;margin:0 auto;padding:12px 16px 32px}
       <button class="chip" data-f="ok" aria-pressed="false"><i class="dot" style="background:var(--green)"></i>OK</button>
     </div>
     <span class="vsep"></span>
-    <div class="grp" id="per"><button class="chip" data-d="7" aria-pressed="false">7d</button><button class="chip" data-d="15" aria-pressed="false">15d</button><button class="chip" data-d="30" aria-pressed="true">30d</button></div>
+    <div class="grp" id="srt"><button class="chip" data-s="urgent" aria-pressed="true">Urgent</button><button class="chip" data-s="last" aria-pressed="false">Last sold</button></div>
   </div>
   <div class="sum" id="sum"></div>
   <div class="th"><span></span><span>Product · Variant</span><span>Stock</span><span>Sold → restock</span></div>
@@ -138,31 +147,35 @@ main{max-width:980px;margin:0 auto;padding:12px 16px 32px}
 <div class="toast" id="toast" role="status"></div>
 <script>
 const DATA=__DATA__;
-const ASOF="__ASOFISO__";
+const ASOF="__ASOFISO__",LATEST=__LATEST__,HIST=__HIST__;   // LATEST = time of the newest order in this report (epoch s)
 const $=id=>document.getElementById(id);
 const root=document.documentElement,tb=$("theme");
 function setTheme(t){root.dataset.theme=t;tb.textContent=t==="dark"?"☀️":"🌙"}
 setTheme("dark");   // dark by default; the hub remembers the choice (this sandboxed page can't store it itself)
 tb.addEventListener("click",()=>{const n=root.dataset.theme==="dark"?"light":"dark";setTheme(n);send({action:"theme",theme:n})});
 const send=(o)=>{try{parent.postMessage(Object.assign({type:"restock"},o),"*")}catch(e){}};
-// d: [product, variant, stock, img, s7, s15, s30, variantId, collections[]]
-let days=30,col="";
-let st=DATA.map((d,i)=>({id:i,p:d[0],v:d[1]==="Default Title"?"Standard":d[1],stock:d[2],img:d[3],s:[d[4],d[5],d[6]],vid:d[7],c:d[8]||[],qty:null,del:false}));
-const soldOf=x=>x.s[days===7?0:days===15?1:2];
+// d: [product, variant, stock, img, sales[[orderTime, units]...], variantId, collections[]]
+let col="",sort="urgent";
+const DAY=86400,dayStart=t=>{const d=new Date(t*1000);d.setHours(0,0,0,0);return d.getTime()/1000};
+const ymd=t=>{const d=new Date(t*1000),z=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())};
+const fmt=t=>new Date(t*1000).toLocaleString("en-AU",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
+let fromTs=dayStart(LATEST-29*DAY);
+let st=DATA.map((d,i)=>({id:i,p:d[0],v:d[1]==="Default Title"?"Standard":d[1],stock:d[2],img:d[3],ev:d[4],tot:d[4].reduce((a,e)=>a+e[1],0),last:d[4].length?d[4][d[4].length-1][0]:0,vid:d[5],c:d[6]||[],qty:null,del:false}));
+const soldOf=x=>x.ev.reduce((a,e)=>e[0]>=fromTs?a+e[1]:a,0);
 const qtyOf=x=>x.qty===null?soldOf(x):x.qty;
 let filter="all",term="";
 const status=x=>x.stock<=0?"out":(x.stock<soldOf(x)?"low":"ok");
 const lbl={out:"OUT",low:"LOW",ok:"OK"};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const vis=()=>st.filter(x=>!x.del&&soldOf(x)>0);
-const shown=()=>vis().filter(x=>(filter==="all"||(filter==="neg"?x.stock<0:status(x)===filter))&&(!col||x.c.includes(col))&&(!term||(x.p+" "+x.v).toLowerCase().includes(term)));
+const shown=()=>{const r=vis().filter(x=>(filter==="all"||(filter==="neg"?x.stock<0:status(x)===filter))&&(!col||x.c.includes(col))&&(!term||(x.p+" "+x.v).toLowerCase().includes(term)));return sort==="last"?r.sort((a,b)=>b.last-a.last):r};
 // collection dropdown
 [...new Set(st.flatMap(x=>x.c))].sort((a,b)=>a.localeCompare(b)).forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;$("col").appendChild(o)});
 function render(){
   const rows=shown();
   $("list").innerHTML=rows.length?rows.map(x=>{const s=status(x);return `<div class="tr" data-id="${x.id}">
     <img class="pic" loading="lazy" referrerpolicy="no-referrer" src="${esc(x.img)}" alt="" data-n="${esc(x.p)}">
-    <div><div class="nm">${esc(x.p)}</div><span class="vr">${esc(x.v)}</span></div>
+    <div><div class="nm">${esc(x.p)}</div><span class="vr">${esc(x.v)}</span><div class="ls">Last sold ${x.last?fmt(x.last):"—"}</div></div>
     <div class="n ${s}">${x.stock}<small>${lbl[s]}</small></div>
     <div class="act"><div class="ctl"><button class="minus" data-a="m" aria-label="Decrease">−</button><span class="q">${qtyOf(x)}</span><button class="plus" data-a="p" aria-label="Increase">+</button><button class="del" data-a="d" aria-label="Delete row">🗑</button></div><button class="cf" data-a="c"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>Confirm</button></div>
   </div>`}).join(""):'<div class="empty">Nothing here</div>';
@@ -173,6 +186,7 @@ function totals(){
   const o=live.reduce((a,x)=>a+qtyOf(x),0);
   $("stats").innerHTML=`<span class="stat"><i style="background:#F28B82"></i><b>${c("out")}</b> out of stock</span><span class="stat"><i style="background:#EDA151"></i><b>${c("low")}</b> running low</span><span class="stat"><b>${o}</b> units to restock</span>`;
   const sh=shown(),su=sh.reduce((a,x)=>a+qtyOf(x),0);
+  $("to").textContent=fmt(LATEST);
   $("sum").innerHTML=sh.length===live.length?`<b>${live.length}</b> items · <b>${o}</b> units to restock`:`<b>${sh.length}</b> of ${live.length} items · <b>${su}</b> units`;
 }
 function toast(m,ms){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("on"),ms||2600)}
@@ -185,7 +199,7 @@ function clearRows(p){
 }
 let saveT;
 function persist(){clearTimeout(saveT);saveT=setTimeout(()=>send({action:"save",state:snapshot(),quiet:true}),400)}
-const snapshot=()=>({asof:ASOF,days,rows:st.filter(x=>x.qty!==null||x.del).map(x=>({vid:x.vid,qty:x.qty,del:x.del,s:x.s[2]}))});
+const snapshot=()=>({asof:ASOF,rows:st.filter(x=>x.qty!==null||x.del).map(x=>({vid:x.vid,qty:x.qty,del:x.del,s:x.tot}))});
 $("list").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   const row=b.closest(".tr"),x=st[+row.dataset.id];
@@ -196,7 +210,14 @@ $("list").addEventListener("click",e=>{
   row.querySelector(".q").textContent=qtyOf(x);totals();persist();
 });
 $("chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;filter=b.dataset.f;document.querySelectorAll("#chips .chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
-$("per").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;days=+b.dataset.d;st.forEach(x=>{x.qty=null});document.querySelectorAll("#per .chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
+function setFrom(t,preset){
+  fromTs=t;st.forEach(x=>{x.qty=null});$("from").value=ymd(t);
+  document.querySelectorAll("#per .chip").forEach(c=>c.setAttribute("aria-pressed",String(preset!==undefined&&+c.dataset.d===preset)));render();
+}
+$("per").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;const d=+b.dataset.d;setFrom(dayStart(LATEST-(d-1)*DAY),d)});
+$("from").min=ymd(LATEST-HIST*DAY);$("from").max=ymd(LATEST);$("from").value=ymd(fromTs);
+$("from").addEventListener("change",e=>{if(!e.target.value)return;const t=new Date(e.target.value+"T00:00:00").getTime()/1000;setFrom(Math.min(t,dayStart(LATEST)))});
+$("srt").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;sort=b.dataset.s;document.querySelectorAll("#srt .chip").forEach(c=>c.setAttribute("aria-pressed",c===b));render()});
 $("col").addEventListener("change",e=>{col=e.target.value;render()});
 $("q").addEventListener("input",e=>{term=e.target.value.trim().toLowerCase();render()});
 // restore state pushed by the hub
@@ -208,7 +229,7 @@ window.addEventListener("message",e=>{
     const same=d.state.asof===ASOF,legacy=!d.state.asof,mig=[];
     st.forEach(x=>{
       const r=m[x.vid];if(!r)return;
-      if(r.qty!==null&&r.qty!==undefined&&r.s===x.s[2])x.qty=r.qty;   // keep edited qty only while sales are unchanged
+      if(r.qty!==null&&r.qty!==undefined&&r.s===x.tot)x.qty=r.qty;   // keep edited qty only while sales are unchanged
       if(r.del&&(same||legacy)){x.del=true;if(legacy)mig.push(x)}      // same build: stay hidden. Newer build: the server already applies it
     });
     if(mig.length){clearRows(mig);persist()}                           // one-time: save earlier deletions to the server
@@ -226,14 +247,14 @@ window.addEventListener("message",e=>{
 });
 $("xl").addEventListener("click",()=>{
   const live=shown();
-  const rows=[["Product","Variant","Current stock","Qty to order","Status"],...live.map(x=>[x.p,x.v,x.stock,qtyOf(x),lbl[status(x)]])];
+  const rows=[["Product","Variant","Current stock","Qty to order","Status","Last sold"],...live.map(x=>[x.p,x.v,x.stock,qtyOf(x),lbl[status(x)],x.last?fmt(x.last):""])];
   send({action:"export",rows,filename:"indifeels-restock-"+new Date().toISOString().slice(0,10)+".csv"});
 });
 function confirmRows(p){
   p=p.filter(x=>!x.del&&qtyOf(x)>0);
   if(!p.length){toast("Nothing to confirm");return false}
   const req="r"+(++reqN);pend[req]=p;
-  send({action:"confirm",req,days,asof:ASOF,items:p.map(x=>({vid:x.vid,product:x.p,variant:x.v,image:x.img,stock:x.stock,qty:qtyOf(x),status:lbl[status(x)]}))});
+  send({action:"confirm",req,from:fromTs,asof:ASOF,items:p.map(x=>({vid:x.vid,product:x.p,variant:x.v,image:x.img,stock:x.stock,qty:qtyOf(x),status:lbl[status(x)]}))});
   toast("Sending…");
   return true;
 }

@@ -1,6 +1,6 @@
 """Build the encrypted Restock report for the Indifeels dashboard.
 
-Sold units per variant over the last 7/15/30 days (Shopify orders, cancelled excluded),
+Sold units per variant (order-by-order for the last 90 days, so the page can total any start date) (Shopify orders, cancelled excluded),
 joined with current stock, product image and collections. Rows with no sales are omitted.
 
 Cleared items: a row that was deleted or confirmed in the report is stored in Supabase
@@ -76,15 +76,18 @@ def load_cleared():
     return {str(r["vid"]): parse_ts(r["cleared_at"]) for r in rows}
 
 
+HISTORY_DAYS = 90   # how far back the report's start date can go
+
+
 def sold_by_variant(cleared):
-    """Units per variant for 7/15/30 days, counting only orders after the variant's cleared_at
-    and not newer than the data cut-off."""
-    since = (CUT - dt.timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    """({variant gid: [[order epoch seconds, units], ...]}, latest order epoch).
+    Only orders after the variant's cleared_at and not newer than the data cut-off are included, so the report can
+    total any start/end range in the page without fetching anything twice."""
+    since = (CUT - dt.timedelta(days=HISTORY_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
     q = f"created_at:>={since}"
-    out = defaultdict(lambda: [0, 0, 0])
+    out = defaultdict(list)
+    latest = 0
     after = None
-    cut7 = CUT - dt.timedelta(days=7)
-    cut15 = CUT - dt.timedelta(days=15)
     while True:
         d = pv.gql(ORDERS, {"after": after, "q": q})["data"]["orders"]
         for o in d["nodes"]:
@@ -93,6 +96,9 @@ def sold_by_variant(cleared):
             at = parse_ts(o["createdAt"])
             if at > CUT:
                 continue
+            ts = int(at.timestamp())
+            latest = max(latest, ts)
+            per = defaultdict(int)
             for li in o["lineItems"]["nodes"]:
                 v = (li.get("variant") or {}).get("id")
                 n = int(li.get("quantity") or 0)
@@ -101,15 +107,15 @@ def sold_by_variant(cleared):
                 mark = cleared.get(v.rsplit("/", 1)[-1])
                 if mark and at <= mark:
                     continue
-                out[v][2] += n
-                if at >= cut15:
-                    out[v][1] += n
-                if at >= cut7:
-                    out[v][0] += n
+                per[v] += n
+            for v, n in per.items():
+                out[v].append([ts, n])
         if not d["pageInfo"]["hasNextPage"]:
             break
         after = d["pageInfo"]["endCursor"]
-    return out
+    for v in out:
+        out[v].sort()
+    return out, latest
 
 
 def variant_details(ids):
@@ -130,7 +136,7 @@ def thumb(url):
 
 def build():
     cleared = load_cleared()
-    sold = sold_by_variant(cleared)
+    sold, latest = sold_by_variant(cleared)
     info = variant_details(sold.keys())
     rows = []
     for vid, s in sold.items():
@@ -140,21 +146,26 @@ def build():
         p = n["product"]
         img = (n.get("image") or {}).get("url") or (((p.get("featuredMedia") or {}).get("preview") or {}).get("image") or {}).get("url") or ""
         cols = sorted({c["title"] for c in ((p.get("collections") or {}).get("nodes") or []) if c.get("title")})
-        rows.append([p["title"], n["title"], int(n.get("inventoryQuantity") or 0), thumb(img), s[0], s[1], s[2], vid.rsplit("/", 1)[-1], cols])
-    # most urgent first: out of stock, then biggest shortfall
-    rows.sort(key=lambda r: (r[2] > 0, -(r[6] - r[2]), r[0], r[1]))
+        rows.append([p["title"], n["title"], int(n.get("inventoryQuantity") or 0), thumb(img), s, vid.rsplit("/", 1)[-1], cols])
+    # default order: out of stock first, then biggest shortfall over the last 30 days (the page can re-sort)
+    c30 = int((CUT - dt.timedelta(days=30)).timestamp())
+    sold30 = lambda r: sum(q for t, q in r[4] if t >= c30)
+    rows.sort(key=lambda r: (r[2] > 0, -(sold30(r) - r[2]), r[0], r[1]))
     tpl = open(os.path.join(pv.ROOT, "tools", "restock_template.html"), encoding="utf-8").read()
     updated = NOW.strftime("%d %b %Y, %H:%M")
     asof_iso = CUT.strftime("%Y-%m-%dT%H:%M:%SZ")
     page = (tpl.replace("__DATA__", json.dumps(rows, ensure_ascii=False).replace("</", "<\\/"))
                .replace("__ASOFISO__", asof_iso)
+               .replace("__LATEST__", str(latest or int(CUT.timestamp())))
+               .replace("__HIST__", str(HISTORY_DAYS))
                .replace("__ASOF__", f"Shopify sales · updated {updated}")
                .replace("__SHEET__", SHEET_URL))
-    out = sum(1 for r in rows if r[2] <= 0)
-    low = sum(1 for r in rows if 0 < r[2] < r[6])
+    live = [r for r in rows if sold30(r) > 0]
+    out = sum(1 for r in live if r[2] <= 0)
+    low = sum(1 for r in live if 0 < r[2] < sold30(r))
     meta = {
         "updated": updated,
-        "stats": [[str(len(rows)), "variants sold (30d)"], [str(out), "out of stock"], [str(low), "running low"]],
+        "stats": [[str(len(live)), "variants sold (30d)"], [str(out), "out of stock"], [str(low), "running low"]],
         "warn": f"{out} sold-out variants need restocking" if out else "",
     }
     key = os.environ["STOCK_KEY"]
@@ -162,7 +173,7 @@ def build():
     pv.write_encrypted(key, f"{RID}.meta.bin", json.dumps(meta).encode())
     pv.RID = RID
     pv.set_status(True)
-    print(json.dumps({"variants": len(rows), "out": out, "low": low, "cleared": len(cleared), "cutoff": asof_iso}))
+    print(json.dumps({"variants": len(rows), "latest_order": latest, "out": out, "low": low, "cleared": len(cleared), "cutoff": asof_iso}))
 
 
 if __name__ == "__main__":
