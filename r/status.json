@@ -45,11 +45,11 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-10-06T09:42+11:00",
-  "code_sha": "65a512ca6c28021c35612332e016120d67e1e203",
+  "at": "2026-10-07T16:55+11:00",
+  "code_sha": "69769e5554925af89549d2177dfb9832320f4217",
   "data_through": null,
-  "last_ok": "2026-10-06T09:42+11:00",
-  "manifest_version": "2026-10-06.2",
+  "last_ok": "2026-10-07T16:55+11:00",
+  "manifest_version": "2026-10-06.4",
   "ok": true,
   "reason": ""
  },
