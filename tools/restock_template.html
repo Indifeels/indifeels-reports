@@ -124,6 +124,7 @@ main{max-width:980px;margin:0 auto;padding:12px 16px 32px}
     <div class="grp" id="chips">
       <button class="chip" data-f="all" aria-pressed="true">All</button>
       <button class="chip" data-f="out" aria-pressed="false"><i class="dot" style="background:var(--red)"></i>Out</button>
+      <button class="chip" data-f="neg" aria-pressed="false"><i class="dot" style="background:var(--red)"></i>Negative</button>
       <button class="chip" data-f="low" aria-pressed="false"><i class="dot" style="background:var(--orange)"></i>Low</button>
       <button class="chip" data-f="ok" aria-pressed="false"><i class="dot" style="background:var(--green)"></i>OK</button>
     </div>
@@ -154,7 +155,7 @@ const status=x=>x.stock<=0?"out":(x.stock<soldOf(x)?"low":"ok");
 const lbl={out:"OUT",low:"LOW",ok:"OK"};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const vis=()=>st.filter(x=>!x.del&&soldOf(x)>0);
-const shown=()=>vis().filter(x=>(filter==="all"||status(x)===filter)&&(!col||x.c.includes(col))&&(!term||(x.p+" "+x.v).toLowerCase().includes(term)));
+const shown=()=>vis().filter(x=>(filter==="all"||(filter==="neg"?x.stock<0:status(x)===filter))&&(!col||x.c.includes(col))&&(!term||(x.p+" "+x.v).toLowerCase().includes(term)));
 // collection dropdown
 [...new Set(st.flatMap(x=>x.c))].sort((a,b)=>a.localeCompare(b)).forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;$("col").appendChild(o)});
 function render(){
