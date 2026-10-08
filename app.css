@@ -330,3 +330,7 @@ body::before{display:none}
 @media(max-width:420px){#v-home .home-top{grid-template-columns:minmax(0,1fr) 105px;gap:10px}#v-home .home-welcome{padding:12px}#v-home .home-welcome h2{font-size:17px}#v-home .home-welcome p{font-size:10px}.home-overview{gap:10px}.overview-tile{padding:14px 9px 14px 18px;gap:7px;min-height:92px;grid-template-columns:minmax(34px,.6fr) minmax(0,1fr)}.overview-tile::before{left:8px;top:15px;bottom:15px;width:2px}.overview-number{font-size:32px}.overview-description{font-size:11px;gap:5px}.overview-description svg{width:18px;height:18px}.home-tools .home-weather>span{font-size:20px}}
 @media(max-width:420px){.overview-tile{grid-template-columns:minmax(32px,.4fr) minmax(0,1fr);gap:6px}.overview-description{font-size:10px}.overview-description span{white-space:nowrap}}
 @media(max-width:360px){.overview-tile{grid-template-columns:minmax(28px,.35fr) minmax(0,1fr);padding-right:8px}.overview-number{font-size:28px}.overview-description{font-size:9px}}
+
+/* Compact, borderless overview cards. */
+.overview-tile{border:0}
+@media(min-width:760px){.home-overview{grid-template-columns:repeat(4,minmax(0,220px));gap:12px}.overview-tile{min-height:80px;padding:12px 12px 12px 22px;gap:10px;border-radius:13px}.overview-number{font-size:30px}.overview-description{font-size:12px;gap:4px}.overview-description svg{width:18px;height:18px}.overview-tile::before{top:14px;bottom:14px}}
