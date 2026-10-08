@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Indifeels">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=21-colours">
+<link rel="stylesheet" href="app.css?v=22-overview">
 <link rel="stylesheet" href="schedule-panel.css?v=3">
 </head>
 <body>
@@ -76,7 +76,11 @@
     </header>
 
     <main id="v-home" class="page" hidden>
-      <div class="page-head home-welcome"><div><h2 id="hello">Your reports</h2><p id="home-sub">Melbourne time</p></div><a id="home-weather" class="home-weather" href="https://www.bom.gov.au/vic/forecasts/melbourne.shtml" target="_blank" rel="noopener" hidden></a></div><div class="home-toolbar"><span id="home-report-count"></span><button id="home-expand" class="btn sm" type="button">Expand All</button></div>
+      <div class="home-top">
+        <div class="home-welcome"><h2 id="hello">Your reports</h2><p id="home-sub">Melbourne time</p><span id="home-report-count"></span></div>
+        <div class="home-tools"><a id="home-weather" class="home-weather" href="https://www.bom.gov.au/vic/forecasts/melbourne.shtml" target="_blank" rel="noopener" hidden></a><button id="home-expand" class="btn sm" type="button">Expand All</button></div>
+      </div>
+      <div id="home-overview" class="home-overview" aria-label="Report overview" aria-live="polite"></div>
       <div id="tiles" class="tiles"></div>
       <p id="no-reports" class="empty" hidden>No reports are switched on for your account yet. Ask your admin to give you access.</p>
     </main>
@@ -159,7 +163,7 @@
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
 <script src="schedule-panel.js?v=3"></script>
-<script src="app.js?v=35-colours"></script>
+<script src="app.js?v=36-overview"></script>
 </body>
 </html>
 
