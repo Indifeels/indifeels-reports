@@ -384,3 +384,19 @@ body::before{display:none}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111214;--card:#222325;--sub:#292a2c;--line:#3c3d40;--ink:#f5f5f6;--muted:#bec0c5}:root:not([data-theme="light"]) :is(.report-card,.sm-row,.oa-row,.oa-sum .st,.sm-sum .st,.schedule-card){background:linear-gradient(135deg,#292a2c,#191a1c);box-shadow:5px 8px 14px #0008,inset 1px 1px 1px #ffffff22,inset -1px -2px 2px #0007}}
 @media(min-width:761px){#v-home .home-top{grid-template-columns:minmax(0,1fr) 132px;padding:18px 24px}#v-home .home-welcome h2{font-size:24px}#v-home .home-clocks{display:flex;gap:20px}#v-home .home-tools>*{min-height:0}}
 @media(max-width:360px){#v-home .home-top{padding:14px 12px;grid-template-columns:minmax(0,1fr) 88px;gap:8px}#v-home .home-welcome h2{font-size:18px}#v-home .home-clocks>span{font-size:13px}}
+
+/* Expanded report tiles match the approved charcoal header in every shell theme. */
+#v-home .category-reports .report-card{
+--card:#222325;--ink:#f5f5f6;--muted:#bec0c5;--line:#3c3d40;
+color:#f5f5f6;background:linear-gradient(135deg,#292a2c,#151618 85%);
+border:0;border-radius:18px;
+box-shadow:7px 10px 18px #0008,inset 1px 2px 1px #ffffff38,inset -2px -3px 3px #0008;
+}
+#v-home .category-reports .report-icon{color:var(--report-accent);background:color-mix(in srgb,var(--report-accent) 20%,#222325);box-shadow:none}
+#v-home .category-reports .report-heading h3,#v-home .category-reports .report-kpi strong{color:#f5f5f6}
+#v-home .category-reports .report-kpi span,#v-home .category-reports .report-kpi small,#v-home .category-reports .report-updated{color:#bec0c5}
+#v-home .category-reports .report-period{background-color:#222325;color:#f5f5f6}
+#v-home .category-reports .report-open{background:var(--report-accent);color:#111214}
+#v-home .category-reports .report-status.good{color:#86dcaf}
+#v-home .category-reports .report-status.warning{color:#f2c85b}
+#v-home .category-reports .report-status.failed{color:#ff9999}
