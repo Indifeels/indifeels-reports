@@ -365,7 +365,18 @@
       let expanded=false;try{expanded=localStorage.getItem("ir-category-"+i)==="open";}catch(_){}
       return `<details class="report-category" data-group="${i}" data-ids='${JSON.stringify(rows.map(r=>r.id))}' style="--category-accent:${g.color}" ${expanded?"open":""}><summary><h3>${i+1}. ${esc(g.name)}</h3><div class="category-counts"><span>Reports<strong>${rows.length+upcoming.length}</strong></span><span>Actions pending<strong data-count="actions">—</strong></span><span>Warnings<strong data-count="warnings">0</strong></span></div><span class="category-chevron" aria-hidden="true">⌄</span></summary><div class="category-reports">${rows.map(r=>tileHTML(r,homeMeta[r.id])).join("")}${upcoming.map(r=>`<article class="report-upcoming"><strong>${r.title}</strong><span>Upcoming</span></article>`).join("")}</div></details>`;
     }).join("");
-    box.querySelectorAll(".report-category").forEach(el=>el.addEventListener("toggle",()=>{try{localStorage.setItem("ir-category-"+el.dataset.group,el.open?"open":"closed");}catch(_){}syncHomeExpand();}));
+    // Individual category activation is an accordion; Expand All remains explicit.
+    box.querySelectorAll(".report-category").forEach(el=>{
+      el.querySelector(":scope > summary").addEventListener("click",()=>{
+        if (!el.open) box.querySelectorAll(".report-category").forEach(other=>{
+          if (other !== el) {
+            other.open=false;
+            try { localStorage.setItem("ir-category-"+other.dataset.group,"closed"); } catch (_) {}
+          }
+        });
+      });
+      el.addEventListener("toggle",()=>{try{localStorage.setItem("ir-category-"+el.dataset.group,el.open?"open":"closed");}catch(_){}syncHomeExpand();});
+    });
     syncHomeExpand();
     $("#home-report-count").textContent=`${reports.length} reports · ${box.querySelectorAll(".report-category").length} categories`;
     $("#no-reports").hidden=reports.length>0;paintHomeCards();
