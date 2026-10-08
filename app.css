@@ -360,3 +360,27 @@ body::before{display:none}
 #home-overview{display:none!important}
 @media(min-width:761px){#v-home .home-top{grid-template-columns:minmax(0,1fr) minmax(320px,.8fr);align-items:center;max-width:1100px;padding:24px 28px}#v-home .home-tools>*{min-height:76px}}
 @media(max-width:420px){#v-home .home-top{padding:20px 16px;gap:18px;border-radius:20px}#v-home .home-welcome h2{font-size:22px}#v-home .home-welcome p{font-size:12px}#v-home .home-tools{gap:9px}#v-home .home-tools>*,#v-home #home-report-count{padding:10px 6px;border-radius:18px;font-size:11px}#v-home .home-tools #home-expand{font-size:11px}#v-home .home-tools .home-weather>span{font-size:18px}}
+
+/* Compact charcoal layout: greeting and clocks left, weather/actions right. */
+.bar .icon-btn{display:grid;place-items:center;width:38px;min-width:38px;height:38px;padding:0;line-height:1;flex-shrink:0}
+.bar .menu-wrap{display:flex;align-items:center}
+#v-home .home-top{grid-template-columns:minmax(0,1fr) 104px;align-items:start;padding:16px 18px;gap:12px;margin-bottom:18px;max-width:1180px;border-radius:20px}
+#v-home .home-welcome h2{font-size:20px;line-height:1.25;margin:0 0 5px}
+#v-home .home-welcome p{font-size:14px;line-height:1.4;margin:0}
+#v-home .home-date{display:block;margin-bottom:9px;color:#bec0c5}
+#v-home .home-clocks{display:grid;gap:5px}
+#v-home .home-clocks>span{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:14px}
+.home-clocks svg{width:14px;height:14px;flex-shrink:0;color:#bec0c5}
+#v-home .home-tools{display:flex;flex-direction:column;gap:8px}
+#v-home .home-tools>*{min-height:0;padding:8px;border-radius:14px}
+#v-home #home-report-count{display:none}
+#v-home .home-tools .home-weather{gap:1px}
+#v-home .home-tools .weather-city{font-size:12px}
+#v-home .home-tools .home-weather>span{font-size:19px}
+#v-home .home-tools .weather-credit{display:none}
+#v-home .home-tools #home-expand{font-size:12px;min-height:36px;padding:7px 5px}
+:root[data-theme="dark"]{--bg:#111214;--card:#222325;--sub:#292a2c;--line:#3c3d40;--ink:#f5f5f6;--muted:#bec0c5}
+:root[data-theme="dark"] :is(.report-card,.sm-row,.oa-row,.oa-sum .st,.sm-sum .st,.schedule-card){background:linear-gradient(135deg,#292a2c,#191a1c);box-shadow:5px 8px 14px #0008,inset 1px 1px 1px #ffffff22,inset -1px -2px 2px #0007}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111214;--card:#222325;--sub:#292a2c;--line:#3c3d40;--ink:#f5f5f6;--muted:#bec0c5}:root:not([data-theme="light"]) :is(.report-card,.sm-row,.oa-row,.oa-sum .st,.sm-sum .st,.schedule-card){background:linear-gradient(135deg,#292a2c,#191a1c);box-shadow:5px 8px 14px #0008,inset 1px 1px 1px #ffffff22,inset -1px -2px 2px #0007}}
+@media(min-width:761px){#v-home .home-top{grid-template-columns:minmax(0,1fr) 132px;padding:18px 24px}#v-home .home-welcome h2{font-size:24px}#v-home .home-clocks{display:flex;gap:20px}#v-home .home-tools>*{min-height:0}}
+@media(max-width:360px){#v-home .home-top{padding:14px 12px;grid-template-columns:minmax(0,1fr) 88px;gap:8px}#v-home .home-welcome h2{font-size:18px}#v-home .home-clocks>span{font-size:13px}}
