@@ -464,18 +464,23 @@ def trio(cur,prev,lab):
             f'<td class="c{k}" data-l="{lab} msgs">{int(m):,}{arrow(m,pm,True) if pm is not None else ""}</td>'
             f'<td class="c{k}" data-l="{lab} cost/msg"><span class="p {band(c)}">{fcpm(c)}</span>{arrow(c,cpm(ps,pm),False) if ps else ""}</td>')
 def hrag(p,n): return "n" if n<3 else ("g" if p>=0.60 else ("y" if p>=0.35 else "r"))
+def hchip(b_,n_):
+    """Health chip. 3+ spend days = coloured rating. 1-2 spend days = early read: the real % in neutral grey with an asterisk. No spend days = dash."""
+    if n_<=0: return '<span class="hv n" title="No days with spend in this window">–</span>'
+    p=f'{round(100*b_/n_)}%'
+    if n_<3: return f'<span class="hv n" title="Early read: {b_} of {n_} spend day{"s" if n_>1 else ""} under $4.50. Colour rating starts at 3 spend days.">{p}*</span>'
+    return f'<span class="hv {hrag(b_/n_,n_)}" title="{b_} of {n_} spend days under $4.50">{p}</span>'
 def hcell(m):
     if m["health"]==("none","Paused"):
         ch=""
         for cap,(b_,n_) in (("7 days",m["h7"]),("15 days",m["h15"]),("30 days",(m["hb"],m["hn"])),("Last run",m["lr"]),("Lifetime",m["lh"])):
-            v=(f'<span class="hv {hrag(b_/n_,n_)}" title="{b_} of {n_} spend days under $4.50">{round(100*b_/n_)}%</span>' if n_>=3 else '<span class="hv n" title="Fewer than 3 days with spend">–</span>')
+            v=hchip(b_,n_)
             ch+=f'<span class="hch"><span class="hcap">{cap}</span>{v}</span>'
         last=f'<span class="hlast">Paused. Last spend {m["ls"].strftime("%-d %b")}</span>' if m["ls"] else '<span class="hlast">Paused, no spend</span>'
         return f'<td class="s1 hc"><span class="hcs">{ch}</span>{last}</td>'
     chips=""
     for cap,(b_,n_) in (("7 days",m["h7"]),("15 days",m["h15"]),("30 days",(m["hb"],m["hn"])),("Current run",m["lr"]),("Lifetime",m["lh"])):
-        if n_>=3: v=f'<span class="hv {hrag(b_/n_,n_)}" title="{b_} of {n_} spend days under $4.50">{round(100*b_/n_)}%</span>'
-        else: v='<span class="hv n" title="Fewer than 3 days with spend">–</span>'
+        v=hchip(b_,n_)
         chips+=f'<span class="hch"><span class="hcap">{cap}</span>{v}</span>'
     return f'<td class="s1 hc"><span class="hcs">{chips}</span></td>'
 def rkcol(pos,n):
@@ -754,7 +759,7 @@ tbody th{{min-width:340px;max-width:370px}}
 </section>
 {SECTION}
 <details class="how"><summary>How to read health, rank and spend signal</summary><dl>
-<dt>Health</dt><dd>Share of days with spend where each message cost under $4.50, for the last 7, 15 and 30 full days. Green is 60% or more, amber 35 to 59%, red under 35% (a window with fewer than 3 spend days shows a dash). Hover a figure to see the day count.</dd>
+<dt>Health</dt><dd>Share of days with spend where each message cost under $4.50, for the last 7, 15 and 30 full days. Green is 60% or more, amber 35 to 59%, red under 35%. A window with only 1 or 2 spend days shows the figure in grey with an asterisk (early read, no colour rating yet); a dash means no spend in that window. Hover a figure to see the day count.</dd>
 <dt>Rank</dt><dd>Under each campaign name. Overall rank among active campaigns (ad sets rank inside their campaign), then the rank on 7, 15 and 30 days alone. Score is 70% messages received plus 30% cost per message; the overall number blends 30 days (60%) and 7 days (40%). Green is the top third, red the bottom third; under $20 spend in a window is not ranked.</dd>
 <dt>Flags</dt><dd><b>Close #1</b> (active): 30-day health is red or amber, 7-day health is not green, at least $20 spent in 30 days, and it ranks in the bottom half of its group. #1 is the worst. <b>Reopen #1</b> (paused): lifetime health is green over at least 5 spend days and $50 spent, so a weak last run may just have been a bad season. Ranked best first (inside its group, and across all paused rows) on lifetime messages (70%) and lifetime cost per message (30%), inside its group. <b>Keep closed</b> (paused): lifetime health is red on the same evidence. Paused rows show 7, 15 and 30 day health too (blank if it did not spend), plus Last run (its latest stretch of spending, no gap over 3 days) and Lifetime.</dd>
 <dt>Notes</dt><dd>Messages are Meta "messaging conversations started". Periods end on {TODAY.strftime("%-d %b")}; arrows compare each period with the one before it. Health, rank and signal use completed days only. Ad sets shown are those with spend in the last 30 days.</dd>
