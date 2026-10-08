@@ -400,3 +400,29 @@ box-shadow:7px 10px 18px #0008,inset 1px 2px 1px #ffffff38,inset -2px -3px 3px #
 #v-home .category-reports .report-status.good{color:#86dcaf}
 #v-home .category-reports .report-status.warning{color:#f2c85b}
 #v-home .category-reports .report-status.failed{color:#ff9999}
+
+/* Charcoal category redesign 2026-10-08.
+   Revert checkpoint: app.css blob 6331d6229473bcc791ac8983c4df1d81b6ff36d8.
+   Remove this block to restore coloured category tiles and previous background. */
+:root{--bg:#ecebea}
+:root[data-theme="dark"]{--bg:#111214}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111214}}
+html,body,#app,#v-shell{background:var(--bg);background-image:none}
+body::before{display:none}
+#v-home .report-category{--category-pastel:color-mix(in srgb,var(--category-accent) 50%,#ffffff)}
+#v-home .report-category>summary{
+background:linear-gradient(135deg,#292a2c,#151618 85%);
+color:var(--category-pastel);border:0;
+box-shadow:7px 10px 18px #0008,inset 1px 2px 1px #ffffff38,inset -2px -3px 3px #0008;
+}
+#v-home .report-category>summary h3{color:#ddc7a7}
+#v-home .category-counts>span{color:var(--category-pastel);border-left-color:#ffffff22}
+#v-home .category-counts strong{color:var(--category-pastel)}
+#v-home .category-chevron{color:#ddc7a7}
+#v-home .category-counts strong[data-rag="green"]{color:#a4cbb0}
+#v-home .category-counts strong[data-rag="amber"]{color:#dec58f}
+#v-home .category-counts strong[data-rag="red"]{color:#dfa2a2}
+#v-home .category-counts strong[data-rag="unknown"]{color:#bfc1c5}
+#v-home .category-reports .report-heading h3{color:var(--category-pastel)}
+#v-home .category-reports .report-icon{color:var(--category-pastel)}
+#v-home .category-reports .report-updated{color:var(--category-pastel)}
