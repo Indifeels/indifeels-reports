@@ -334,3 +334,29 @@ body::before{display:none}
 /* Compact, borderless overview cards. */
 .overview-tile{border:0}
 @media(min-width:760px){.home-overview{grid-template-columns:repeat(4,minmax(0,220px));gap:12px}.overview-tile{min-height:80px;padding:12px 12px 12px 22px;gap:10px;border-radius:13px}.overview-number{font-size:30px}.overview-description{font-size:12px;gap:4px}.overview-description svg{width:18px;height:18px}.overview-tile::before{top:14px;bottom:14px}}
+
+/* Approved charcoal 3D dashboard header, shared by browser and installed app. */
+#v-shell>.bar{background:linear-gradient(135deg,#252628,#111214);color:#f5f5f6;border-bottom:0;box-shadow:0 8px 16px #0008}
+.bar .rail{background:#eee;box-shadow:1px 2px 3px #0008}
+.bar .icon-btn{background:linear-gradient(145deg,#303133,#141517);color:#f5f5f6;border:0;box-shadow:4px 6px 10px #0009,inset 1px 2px 1px #ffffff35,inset -1px -2px 2px #0009}
+.bar .dashboard-theme{color:#f5f5f6}
+#v-home .home-top{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;padding:24px;margin-bottom:22px;background:linear-gradient(135deg,#292a2c,#151618 85%);color:#f5f5f6;border:0;border-radius:24px;box-shadow:7px 12px 20px #0008,inset 1px 2px 1px #ffffff38,inset -2px -3px 3px #0008}
+#v-home .home-welcome{padding:0;background:none;border:0;border-radius:0;box-shadow:none}
+#v-home .home-welcome h2{font-size:25px;font-weight:700;margin:0 0 10px;color:#f5f5f6}
+#v-home .home-welcome p{font-size:14px;line-height:1.7;color:#bec0c5}
+#v-home .home-date{margin-bottom:12px}
+#v-home .home-clocks{display:flex;flex-direction:row;flex-wrap:wrap;gap:8px 20px;color:#e2e3e6}
+#v-home .home-tools{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:stretch}
+#v-home .home-tools>*,#v-home #home-report-count{margin:0;padding:12px 8px;min-height:64px;display:flex;align-items:center;justify-content:center;text-align:center;color:#f5f5f6;background:linear-gradient(145deg,#343537,#191a1c);border:0;border-radius:22px;box-shadow:4px 7px 10px #0009,inset 1px 2px 1px #ffffff32,inset -1px -2px 2px #0009}
+#v-home .home-tools .home-weather{flex-direction:column;gap:2px}
+#v-home .home-tools .home-weather[hidden]{display:none}
+#v-home .home-tools .weather-city{font-size:12px;color:#dadbdf}
+#v-home .home-tools .home-weather>span{font-size:20px;line-height:1.3}
+#v-home .home-tools .weather-credit{font-size:8px;color:#b5b7bc}
+#v-home #home-report-count{font-size:12px;line-height:1.5}
+#v-home .home-tools #home-expand{font-size:13px;font-weight:500;white-space:nowrap}
+#v-home .home-tools #home-expand:hover{filter:brightness(1.15)}
+#v-home .home-tools #home-expand:active{box-shadow:inset 2px 3px 6px #0009,inset -1px -1px 2px #ffffff15}
+#home-overview{display:none!important}
+@media(min-width:761px){#v-home .home-top{grid-template-columns:minmax(0,1fr) minmax(320px,.8fr);align-items:center;max-width:1100px;padding:24px 28px}#v-home .home-tools>*{min-height:76px}}
+@media(max-width:420px){#v-home .home-top{padding:20px 16px;gap:18px;border-radius:20px}#v-home .home-welcome h2{font-size:22px}#v-home .home-welcome p{font-size:12px}#v-home .home-tools{gap:9px}#v-home .home-tools>*,#v-home #home-report-count{padding:10px 6px;border-radius:18px;font-size:11px}#v-home .home-tools #home-expand{font-size:11px}#v-home .home-tools .home-weather>span{font-size:18px}}
