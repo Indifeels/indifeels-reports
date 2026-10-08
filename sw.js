@@ -1,6 +1,6 @@
 // Caches the app shell so it opens fast; report files always come fresh from the network.
-const CACHE = "ir-shell-v37-accordion";
-const SHELL = ["./", "index.html", "app.css?v=26-inside-charcoal", "app.js?v=39-accordion", "schedule-panel.css?v=3", "schedule-panel.js?v=3", "report-charcoal.css?v=1", "config.js", "vendor/supabase.js", "manifest.webmanifest", "icons/icon-192.png"];
+const CACHE = "ir-shell-v38-category-charcoal";
+const SHELL = ["./", "index.html", "app.css?v=27-category-charcoal", "app.js?v=40-category-rag", "schedule-panel.css?v=3", "schedule-panel.js?v=3", "report-charcoal.css?v=1", "config.js", "vendor/supabase.js", "manifest.webmanifest", "icons/icon-192.png"];
 self.addEventListener("install", (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("activate", (e) => e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener("fetch", (e) => {
