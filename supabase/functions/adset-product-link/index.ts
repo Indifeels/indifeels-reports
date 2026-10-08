@@ -64,7 +64,7 @@ Deno.serve(async (req: Request) => {
   if (!handle) return json({ error: "That doesn't look like an Indifeels product link (it should contain /products/...)" }, 400);
 
   // Look the product up so the link is checked before it is saved.
-  let title = "", n = 0, a = 0, asof = "", live = false;
+  let title = "", image = "", n = 0, a = 0, asof = "", live = false;
   const token = Deno.env.get("SHOPIFY_TOKEN");
   if (token) {
     try {
@@ -72,22 +72,22 @@ Deno.serve(async (req: Request) => {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },
         body: JSON.stringify({
-          query: `query($q:String!){ products(first:1,query:$q){ nodes{ title handle variants(first:100){nodes{inventoryQuantity}} } } }`,
+          query: `query($q:String!){ products(first:1,query:$q){ nodes{ title handle featuredImage{url} variants(first:100){nodes{inventoryQuantity}} } } }`,
           variables: { q: `handle:${handle}` },
         }),
       });
       const x = await r.json();
       const p = x?.data?.products?.nodes?.[0];
       if (p && String(p.handle).toLowerCase() === handle) {
-        title = p.title; const v = p.variants.nodes;
+        title = p.title; image = p.featuredImage?.url || ""; const v = p.variants.nodes;
         n = v.length; a = v.filter((i: any) => (i.inventoryQuantity || 0) > 0).length; asof = new Date().toISOString(); live = true;
       }
     } catch (e) { console.error("shopify lookup failed", String(e)); }
   }
   if (!live) {
-    const { data: p } = await svc.from("voice_product_cache").select("title,variants,synced_at").eq("handle", handle).maybeSingle();
+    const { data: p } = await svc.from("voice_product_cache").select("title,variants,synced_at,featured_image").eq("handle", handle).maybeSingle();
     if (p && Array.isArray(p.variants) && p.variants.length) {
-      title = p.title; n = p.variants.length;
+      title = p.title; image = p.featured_image || ""; n = p.variants.length;
       a = p.variants.filter((i: any) => (Number(i.inventory_quantity) || 0) > 0).length; asof = p.synced_at;
     }
   }
@@ -98,5 +98,5 @@ Deno.serve(async (req: Request) => {
     { onConflict: "adset_id" },
   );
   if (error) { console.error(error.message); return json({ error: "Could not save the link" }, 500); }
-  return json({ ok: true, title, handle, n, a, asof, live });
+  return json({ ok: true, title, handle, image, n, a, asof, live });
 });

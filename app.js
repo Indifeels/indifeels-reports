@@ -1349,7 +1349,7 @@
         reply({ ok: false, action: d.action, error: msg });
         return;
       }
-      reply({ ok: true, action: d.action, title: data.title, handle: data.handle, n: data.n, a: data.a, asof: data.asof, live: !!data.live });
+      reply({ ok: true, action: d.action, title: data.title, handle: data.handle, n: data.n, a: data.a, image: data.image || "", asof: data.asof, live: !!data.live });
       toast(d.action === "set" ? "Product linked" : "Link removed");
     } catch (err) {
       reply({ ok: false, action: d.action, error: err?.message || "Couldn't save the link." });
