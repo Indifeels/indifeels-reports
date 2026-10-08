@@ -324,6 +324,11 @@
       const warnings=ids.filter(homeWarning).length;
       el.querySelector('[data-count="warnings"]').textContent=String(warnings);
       el.classList.toggle("has-warning",warnings>0);
+      const actionKpi=el.querySelector('[data-count="actions"]');
+      const actionTotal=known.reduce((a,b)=>a+b,0);
+      actionKpi.dataset.rag=known.length===0?"unknown":actionTotal>0?"amber":known.length<ids.length?"unknown":"green";
+      el.querySelector('[data-count="warnings"]').dataset.rag=warnings>0?"red":"green";
+
     });
   }
   function paintHomeOverview() {
