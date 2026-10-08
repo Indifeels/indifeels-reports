@@ -7,3 +7,10 @@
 :root:not([data-theme="light"]) body{background:#111214!important;color:#f5f5f6}
 :root:not([data-theme="light"]) :is(.panel,.card,.kpi,.stat,.catbox,.explain>div,.profit-kpi,.summary-card,.metric-card){background:linear-gradient(135deg,#292a2c,#191a1c)!important;box-shadow:5px 8px 14px #0008,inset 1px 1px 1px #ffffff22,inset -1px -2px 2px #0007;border-color:#3c3d40!important}
 }
+
+/* Tile surfaces remain charcoal even when a report has its own light default. */
+:root :is(.panel,.card,.kpi,.stat,.catbox,.explain>div,.profit-kpi,.summary-card,.metric-card){
+--surface:#222325;--card:#222325;--panel:#222325;--panel2:#292a2c;--soft:#292a2c;--line:#3c3d40;--text:#f5f5f6;--ink:#f5f5f6;--fg:#f5f5f6;--muted:#bec0c5;
+background:linear-gradient(135deg,#292a2c,#151618 85%)!important;color:#f5f5f6;
+border-color:#3c3d40!important;box-shadow:7px 10px 18px #0008,inset 1px 2px 1px #ffffff38,inset -2px -3px 3px #0008;
+}
