@@ -83,6 +83,36 @@ thm={}
 for _f in sorted(glob.glob(f"{S}/adthumbs*")):
     try: thm.update(json.load(open(_f)))
     except Exception: pass
+adnm={}
+for _f in sorted(glob.glob(f"{S}/adnames*")):
+    try: adnm.update(json.load(open(_f)))
+    except Exception: pass
+stockp=[]
+for _f in sorted(glob.glob(f"{S}/adstock*")):
+    try: stockp+=json.load(open(_f))
+    except Exception: pass
+import re
+_MAP_F=os.path.join(os.path.dirname(os.path.abspath(__file__)),"ad_product_map.json")
+try: _MAP={_k.lower().strip():_v for _k,_v in json.load(open(_MAP_F)).items()}
+except Exception: _MAP={}
+def _toks(t):
+    t=re.sub(r"\s*[-\u2013]\s*\d{1,2}/\d{1,2}/\d{2,4}\s*$","",t or "")
+    return re.sub(r"[^a-z0-9 ]"," ",t.lower()).split()
+_PT=[(set(_toks(p["t"])),p) for p in stockp]
+def stock_for(adname):
+    """Match an ad name to a product: manual map, else exact title, else the single closest title containing every word of the ad name. None if unsure."""
+    if not adname or not _PT: return None
+    k=" ".join(_toks(adname)); pr=None
+    if k in _MAP: pr=next((p for _,p in _PT if p["h"]==_MAP[k]),None)
+    if pr is None:
+        a=set(k.split())
+        ex=[p for t,p in _PT if t==a]
+        if len(ex)==1: pr=ex[0]
+        elif not ex:
+            c=sorted(((len(t-a),p) for t,p in _PT if a<=t),key=lambda x:x[0])
+            if c and c[0][0]<=2 and (len(c)==1 or c[1][0]>c[0][0]): pr=c[0][1]
+    if pr is None or not pr["v"]: return None
+    return dict(t=pr["t"],n=len(pr["v"]),a=sum(1 for _,q in pr["v"] if (q or 0)>0))
 asd={}
 for _r in sorted(adrows,key=lambda r:r["date"]):
     if not _r.get("spend") and not _r.get(M): continue
@@ -109,6 +139,14 @@ def metrics(days,act):
             _lr.append(d)
         m["lr"]=(sum(1 for d in _lr if cpm(*days[d])<4.5),len(_lr))
     else: m["ls"]=None; m["lr"]=(0,0)
+    _all=sorted(d for d in days if days[d][0]>0)
+    if _all:
+        m["first"]=dt.date.fromisoformat(_all[0]); _rs=_all[-1]
+        for d in reversed(_all[:-1]):
+            if (dt.date.fromisoformat(_rs)-dt.date.fromisoformat(d)).days>3: break
+            _rs=d
+        m["rs"]=dt.date.fromisoformat(_rs)
+    else: m["first"]=m["rs"]=None
     s30,m30=m["f30"]
     if not act: m["health"]=("none","Paused")
     elif m["hn"]<3: m["health"]=("none","New")
@@ -180,7 +218,7 @@ def flag_for(m):
 for r in rows:
     r["m2"]=metrics(by[r["key"]],r["act"]); r["allsets"]=[]
     for aid,a in asd.get(r["key"],{}).items():
-        am=metrics(a["days"],a["act"] and r["act"]); am["name"]=a["name"]; am["aid"]=aid; r["allsets"].append(am)
+        am=metrics(a["days"],a["act"] and r["act"]); am["name"]=a["name"]; am["aid"]=aid; am["stock"]=stock_for(adnm.get(str(aid)) or (thm.get(str(aid)) or {}).get("n")); r["allsets"].append(am)
     _rk=rank_group({i:x for i,x in enumerate(r["allsets"]) if x["act"]})
     for i,x in enumerate(r["allsets"]): x["rank"]=_rk.get(i); x["sig"]=sig_for(x); x["flag"]=flag_for(x)
     finalize(r["allsets"])
@@ -463,26 +501,39 @@ def trio(cur,prev,lab):
     return (f'<td class="s1 c{k}" data-l="{lab} spend">{money(s)}{arrow(s,ps,None) if ps else ""}</td>'
             f'<td class="c{k}" data-l="{lab} msgs">{int(m):,}{arrow(m,pm,True) if pm is not None else ""}</td>'
             f'<td class="c{k}" data-l="{lab} cost/msg"><span class="p {band(c)}">{fcpm(c)}</span>{arrow(c,cpm(ps,pm),False) if ps else ""}</td>')
-def hrag(p,n): return "n" if n<3 else ("g" if p>=0.60 else ("y" if p>=0.35 else "r"))
+def hrag(p,n): return "n" if n<1 else ("g" if p>=0.60 else ("y" if p>=0.35 else "r"))
 def hchip(b_,n_):
-    """Health chip. 3+ spend days = coloured rating. 1-2 spend days = early read: the real % in neutral grey with an asterisk. No spend days = dash."""
+    """Health chip: share of spend days under $4.50, colour coded from the first spend day (no minimum). No spend in the window = dash."""
     if n_<=0: return '<span class="hv n" title="No days with spend in this window">–</span>'
-    p=f'{round(100*b_/n_)}%'
-    if n_<3: return f'<span class="hv n" title="Early read: {b_} of {n_} spend day{"s" if n_>1 else ""} under $4.50. Colour rating starts at 3 spend days.">{p}*</span>'
-    return f'<span class="hv {hrag(b_/n_,n_)}" title="{b_} of {n_} spend days under $4.50">{p}</span>'
+    return f'<span class="hv {hrag(b_/n_,n_)}" title="{b_} of {n_} spend day{"s" if n_>1 else ""} under $4.50">{round(100*b_/n_)}%</span>'
+_SC=["#F04A23","#F36227","#F5772A","#F8912F","#FBA52F","#FCB927","#FCD02B","#F2DA2D","#DFE02F","#BDD83A","#A2CF3E","#8DC83F","#76BF44","#5EBB4A"]
+def stockbar(sk):
+    if not sk: return '<span class="stkn">Stock: no product match</span>'
+    idx=min(13,int(13*sk["a"]/sk["n"]+0.5))
+    segs="".join(f'<i style="background:{c}"{" class=\"mk\"" if i==idx else ""}></i>' for i,c in enumerate(_SC))
+    return (f'<span class="stkw" title="{html.escape(sk["t"],quote=True)}: {sk["a"]} of {sk["n"]} variants in stock"><span class="stk">{segs}</span>'
+            f'<span class="stkl">{sk["a"]} of {sk["n"]} variants in stock</span></span>')
+def agenote(m):
+    f,rs=m.get("first"),m.get("rs")
+    if not f: return ""
+    def ago(d): n=(TODAY-d).days; return "today" if n<=0 else ("1 day ago" if n==1 else f"{n} days ago")
+    if (TODAY-f).days<7: return f'<span class="hage">Launched {ago(f)}</span>'
+    if rs>f and (TODAY-rs).days<7: return f'<span class="hage">Reactivated {ago(rs)}</span>'
+    return ""
 def hcell(m):
+    pre=(stockbar(m.get("stock")) if "aid" in m else "")+agenote(m)
     if m["health"]==("none","Paused"):
         ch=""
         for cap,(b_,n_) in (("7 days",m["h7"]),("15 days",m["h15"]),("30 days",(m["hb"],m["hn"])),("Last run",m["lr"]),("Lifetime",m["lh"])):
             v=hchip(b_,n_)
             ch+=f'<span class="hch"><span class="hcap">{cap}</span>{v}</span>'
         last=f'<span class="hlast">Paused. Last spend {m["ls"].strftime("%-d %b")}</span>' if m["ls"] else '<span class="hlast">Paused, no spend</span>'
-        return f'<td class="s1 hc"><span class="hcs">{ch}</span>{last}</td>'
+        return f'<td class="s1 hc">{pre}<span class="hcs">{ch}</span>{last}</td>'
     chips=""
     for cap,(b_,n_) in (("7 days",m["h7"]),("15 days",m["h15"]),("30 days",(m["hb"],m["hn"])),("Current run",m["lr"]),("Lifetime",m["lh"])):
         v=hchip(b_,n_)
         chips+=f'<span class="hch"><span class="hcap">{cap}</span>{v}</span>'
-    return f'<td class="s1 hc"><span class="hcs">{chips}</span></td>'
+    return f'<td class="s1 hc">{pre}<span class="hcs">{chips}</span></td>'
 def rkcol(pos,n):
     if not pos or n<=1: return "n"
     if n==2: return "g" if pos==1 else "y"
@@ -738,6 +789,9 @@ tbody th{{min-width:340px;max-width:370px}}
 .hv{{display:inline-block;min-width:56px;text-align:center;padding:2px 8px;border-radius:7px;font-weight:700;font-size:14px;border:1px solid transparent}}
 .hv.g,.rkc.g{{background:var(--gb);color:var(--g);border-color:var(--gl)}}.hv.y,.rkc.y{{background:var(--yb);color:var(--y);border-color:var(--yl)}}
 .hv.r,.rkc.r{{background:var(--rb);color:var(--r);border-color:var(--rl)}}.sp.close{{background:#C62828;color:#fff;border-color:#C62828}}.sp.reopen{{background:#1B7F5C;color:#fff;border-color:#1B7F5C}}.sp.keep{{background:var(--sub);color:var(--muted);border-color:var(--line)}}
+.stkw{{display:block;margin:0 0 8px}}.stk{{display:flex;gap:2px;margin-bottom:9px}}.stk i{{display:block;width:12px;height:9px;border-radius:2px;position:relative}}
+.stk i.mk::after{{content:"";position:absolute;left:50%;top:11px;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:8px solid var(--ink)}}
+.stkl,.stkn,.hage{{display:block;font-size:11.5px;color:var(--muted)}}.hage{{margin:0 0 6px;font-weight:600}}.stkn{{margin:0 0 6px}}
 .hlast{{display:block;margin-top:5px;font-size:11.5px;color:var(--muted)}}
 .hv.n,.rkc.n{{background:var(--sub);color:var(--muted);border-color:var(--line)}}
 .sigrow,.rkrow{{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:6px}}
@@ -759,7 +813,7 @@ tbody th{{min-width:340px;max-width:370px}}
 </section>
 {SECTION}
 <details class="how"><summary>How to read health, rank and spend signal</summary><dl>
-<dt>Health</dt><dd>Share of days with spend where each message cost under $4.50, for the last 7, 15 and 30 full days. Green is 60% or more, amber 35 to 59%, red under 35%. A window with only 1 or 2 spend days shows the figure in grey with an asterisk (early read, no colour rating yet); a dash means no spend in that window. Hover a figure to see the day count.</dd>
+<dt>Health</dt><dd>Share of days with spend where each message cost under $4.50, for the last 7, 15 and 30 full days. Green is 60% or more, amber 35 to 59%, red under 35%. Every window is colour coded from the first spend day, however few days it has; a dash means no spend in that window. Hover a figure to see the day count. Ad sets under 7 days old show <b>Launched N days ago</b>, or <b>Reactivated N days ago</b> if they restarted after a gap of over 3 days. The colour bar above the health figures is stock for the ad's product: the marker moves right as more of its variants (sizes) are in stock, so 2 of 4 sits in the middle. The ad is matched to its product by name; \"no product match\" means no confident match.</dd>
 <dt>Rank</dt><dd>Under each campaign name. Overall rank among active campaigns (ad sets rank inside their campaign), then the rank on 7, 15 and 30 days alone. Score is 70% messages received plus 30% cost per message; the overall number blends 30 days (60%) and 7 days (40%). Green is the top third, red the bottom third; under $20 spend in a window is not ranked.</dd>
 <dt>Flags</dt><dd><b>Close #1</b> (active): 30-day health is red or amber, 7-day health is not green, at least $20 spent in 30 days, and it ranks in the bottom half of its group. #1 is the worst. <b>Reopen #1</b> (paused): lifetime health is green over at least 5 spend days and $50 spent, so a weak last run may just have been a bad season. Ranked best first (inside its group, and across all paused rows) on lifetime messages (70%) and lifetime cost per message (30%), inside its group. <b>Keep closed</b> (paused): lifetime health is red on the same evidence. Paused rows show 7, 15 and 30 day health too (blank if it did not spend), plus Last run (its latest stretch of spending, no gap over 3 days) and Lifetime.</dd>
 <dt>Notes</dt><dd>Messages are Meta "messaging conversations started". Periods end on {TODAY.strftime("%-d %b")}; arrows compare each period with the one before it. Health, rank and signal use completed days only. Ad sets shown are those with spend in the last 30 days.</dd>

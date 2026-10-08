@@ -55,6 +55,11 @@ try:
     for r in trows:
         k=str(r.get("adset_id"))
         if k in used and r.get("thumbnail_url") and float(r.get("spend") or 0)>=float((best.get(k) or {}).get("spend") or -1): best[k]=r
+    bestn={}
+    for r in trows:
+        k=str(r.get("adset_id"))
+        if k in used and r.get("ad_name") and float(r.get("spend") or 0)>=float((bestn.get(k) or {}).get("spend") or -1): bestn[k]=r
+    json.dump({k:r["ad_name"] for k,r in bestn.items()},open(os.path.join(OUT,"adnames_01.json"),"w"))
     thumbs={}
     for k,r in best.items():
         e={"n":r.get("ad_name") or "","u":r["thumbnail_url"]}
@@ -98,4 +103,23 @@ while True:
 if not nodes:
     raise RuntimeError("Shopify returned no orders")
 json.dump({"data":{"orders":{"nodes":nodes}}},open(os.path.join(OUT,"shopify_01.json"),"w"))
+# Product variants and stock, used for the stock bar on each ad set (best effort, never fails the report).
+try:
+    pq='''query($after:String){ products(first:25,after:$after,query:"status:active"){ pageInfo{hasNextPage endCursor} nodes{ title handle variants(first:25){nodes{title inventoryQuantity}} } } }'''
+    pn=[]; pa=None
+    while True:
+        body=json.dumps({"query":pq,"variables":{"after":pa}}).encode()
+        req=urllib.request.Request(api,body,{"Content-Type":"application/json","X-Shopify-Access-Token":os.environ["SHOPIFY_TOKEN"]})
+        with urllib.request.urlopen(req,timeout=120) as r:
+            px=json.load(r)
+        if px.get("errors"): raise RuntimeError(json.dumps(px["errors"])[:300])
+        pc=px["data"]["products"]
+        for n_ in pc["nodes"]:
+            pn.append({"t":n_["title"],"h":n_["handle"],"v":[[v["title"],v["inventoryQuantity"]] for v in n_["variants"]["nodes"]]})
+        if not pc["pageInfo"]["hasNextPage"]: break
+        pa=pc["pageInfo"]["endCursor"]; time.sleep(.3)
+    json.dump(pn,open(os.path.join(OUT,"adstock_01.json"),"w"))
+    print("product stock:",len(pn),"products")
+except Exception as e:
+    print("product stock skipped:",e)
 print("inputs ready through",end,":",len(rows),"Meta rows,",len(nodes),"Shopify orders")
