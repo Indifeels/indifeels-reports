@@ -527,6 +527,24 @@ def hchip(b_,n_):
     if n_<=0: return '<span class="hv n" title="No days with spend in this window">–</span>'
     return f'<span class="hv {hrag(b_/n_,n_)}" title="{b_} of {n_} spend day{"s" if n_>1 else ""} under $4.50">{round(100*b_/n_)}%</span>'
 _SC=["#F04A23","#F36227","#F5772A","#F8912F","#FBA52F","#FCB927","#FCD02B","#F2DA2D","#DFE02F","#BDD83A","#A2CF3E","#8DC83F","#76BF44","#5EBB4A"]
+_IMGC={}
+def img_src(url):
+    """Product photo for the stock cell as an embedded 140px JPEG (data: URI), so the report is self-contained and the photo shows
+    wherever the file is opened. Best effort: falls back to the Shopify CDN link if the download fails."""
+    if url in _IMGC: return _IMGC[url]
+    out=url+("&" if "?" in url else "?")+"width=140"
+    try:
+        import urllib.request,io,base64
+        from PIL import Image
+        rq=urllib.request.Request(out+"0",headers={"User-Agent":"Mozilla/5.0"})
+        with urllib.request.urlopen(rq,timeout=15) as r: bts=r.read(4_000_001)
+        if 0<len(bts)<=4_000_000:
+            im=Image.open(io.BytesIO(bts)).convert("RGB"); w_,h_=im.size; s_=min(w_,h_)
+            im=im.crop(((w_-s_)//2,(h_-s_)//2,(w_-s_)//2+s_,(h_-s_)//2+s_)).resize((140,140),Image.LANCZOS)
+            buf=io.BytesIO(); im.save(buf,"JPEG",quality=80,optimize=True)
+            out="data:image/jpeg;base64,"+base64.b64encode(buf.getvalue()).decode()
+    except Exception: pass
+    _IMGC[url]=out; return out
 def stockbar(sk,aid):
     """Stock cell for an ad set: the bar when its product is known, otherwise a box to paste the product link."""
     A=html.escape(str(aid),quote=True)
@@ -539,7 +557,7 @@ def stockbar(sk,aid):
     idx=min(13,int(13*sk["a"]/sk["n"]+0.5))
     segs="".join('<i style="background:'+c+'"'+(' class="mk"' if i==idx else '')+'></i>' for i,c in enumerate(_SC))
     T=html.escape(sk["t"],quote=True); im=sk.get("i") or ""
-    img=(f'<img class="stki" src="{html.escape(im+("&" if "?" in im else "?")+"width=140",quote=True)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">' if im.startswith("https://cdn.shopify.com/") else "")
+    img=(f'<img class="stki" src="{html.escape(img_src(im),quote=True)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">' if im.startswith("https://cdn.shopify.com/") else "")
     return (f'<div class="lk" data-aid="{A}"><span class="stkw" title="{T}: {sk["a"]} of {sk["n"]} variants in stock"><span class="stkc"><span class="stk">{segs}</span>'
             f'<span class="stkl">{sk["a"]} of {sk["n"]} variants in stock</span><button class="lkc" type="button">Change</button></span>'
             f'<span class="stkr">{img}<span class="stkp">{html.escape(sk["t"])}</span></span></span></div>')
