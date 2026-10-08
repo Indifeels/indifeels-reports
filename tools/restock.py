@@ -51,7 +51,7 @@ query V($ids:[ID!]!){
     ... on ProductVariant{
       id title inventoryQuantity
       image{url}
-      product{title status featuredMedia{preview{image{url}}} collections(first:25){nodes{title}}}
+      product{title handle status featuredMedia{preview{image{url}}} collections(first:25){nodes{title}}}
     }
   }
 }
@@ -146,7 +146,8 @@ def build():
         p = n["product"]
         img = (n.get("image") or {}).get("url") or (((p.get("featuredMedia") or {}).get("preview") or {}).get("image") or {}).get("url") or ""
         cols = sorted({c["title"] for c in ((p.get("collections") or {}).get("nodes") or []) if c.get("title")})
-        rows.append([p["title"], n["title"], int(n.get("inventoryQuantity") or 0), thumb(img), s, vid.rsplit("/", 1)[-1], cols])
+        url = ("https://indifeels.com/products/" + p["handle"]) if p.get("handle") else ""
+        rows.append([p["title"], n["title"], int(n.get("inventoryQuantity") or 0), thumb(img), s, vid.rsplit("/", 1)[-1], cols, url])
     # default order: out of stock first, then biggest shortfall over the last 30 days (the page can re-sort)
     c30 = int((CUT - dt.timedelta(days=30)).timestamp())
     sold30 = lambda r: sum(q for t, q in r[4] if t >= c30)

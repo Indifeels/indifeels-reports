@@ -160,7 +160,7 @@ const DAY=86400,dayStart=t=>{const d=new Date(t*1000);d.setHours(0,0,0,0);return
 const ymd=t=>{const d=new Date(t*1000),z=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())};
 const fmt=t=>new Date(t*1000).toLocaleString("en-AU",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
 let fromTs=dayStart(LATEST-29*DAY);
-let st=DATA.map((d,i)=>({id:i,p:d[0],v:d[1]==="Default Title"?"Standard":d[1],stock:d[2],img:d[3],ev:d[4],tot:d[4].reduce((a,e)=>a+e[1],0),last:d[4].length?d[4][d[4].length-1][0]:0,vid:d[5],c:d[6]||[],qty:null,del:false}));
+let st=DATA.map((d,i)=>({id:i,p:d[0],v:d[1]==="Default Title"?"Standard":d[1],stock:d[2],img:d[3],ev:d[4],tot:d[4].reduce((a,e)=>a+e[1],0),last:d[4].length?d[4][d[4].length-1][0]:0,vid:d[5],c:d[6]||[],url:d[7]||"",qty:null,del:false}));
 const soldOf=x=>x.ev.reduce((a,e)=>e[0]>=fromTs?a+e[1]:a,0);
 const qtyOf=x=>x.qty===null?soldOf(x):x.qty;
 let filter="all",term="";
@@ -247,14 +247,15 @@ window.addEventListener("message",e=>{
 });
 $("xl").addEventListener("click",()=>{
   const live=shown();
-  const rows=[["Product","Variant","Current stock","Qty to order","Status","Last sold"],...live.map(x=>[x.p,x.v,x.stock,qtyOf(x),lbl[status(x)],x.last?fmt(x.last):""])];
+  const full=u=>(u||"").replace(/[?&]width=160$/,"");
+  const rows=[["Product","Variant","Current stock","Qty to order","Status","Last sold","Product link","Image link"],...live.map(x=>[x.p,x.v,x.stock,qtyOf(x),lbl[status(x)],x.last?fmt(x.last):"",x.url,full(x.img)])];
   send({action:"export",rows,filename:"indifeels-restock-"+new Date().toISOString().slice(0,10)+".csv"});
 });
 function confirmRows(p){
   p=p.filter(x=>!x.del&&qtyOf(x)>0);
   if(!p.length){toast("Nothing to confirm");return false}
   const req="r"+(++reqN);pend[req]=p;
-  send({action:"confirm",req,from:fromTs,asof:ASOF,items:p.map(x=>({vid:x.vid,product:x.p,variant:x.v,image:x.img,stock:x.stock,qty:qtyOf(x),status:lbl[status(x)]}))});
+  send({action:"confirm",req,from:fromTs,asof:ASOF,items:p.map(x=>({vid:x.vid,product:x.p,variant:x.v,image:x.img,url:x.url,stock:x.stock,qty:qtyOf(x),status:lbl[status(x)]}))});
   toast("Sending…");
   return true;
 }

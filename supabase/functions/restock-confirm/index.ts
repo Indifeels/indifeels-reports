@@ -57,6 +57,7 @@ Deno.serve(async (req: Request) => {
     variant: String(i.variant || "").slice(0, 100),
     vid: String(i.vid || "").slice(0, 20),
     image: /^https:\/\/cdn\.shopify\.com\//.test(String(i.image || "")) ? String(i.image).split("?")[0] : "",
+    url: /^https:\/\/(www\.)?indifeels\.com\/products\//.test(String(i.url || "")) ? String(i.url).split("?")[0].slice(0, 300) : "",
     stock: Number(i.stock) || 0,
     qty: Math.floor(Number(i.qty) || 0),
     status: String(i.status || "").slice(0, 8),
