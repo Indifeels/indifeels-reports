@@ -336,7 +336,7 @@
     $("#hello").textContent=`${greeting}${me.display_name?", "+me.display_name.split(" ")[0]:""}`;
     const clock=zone=>new Intl.DateTimeFormat("en-AU",{timeZone:zone,hour:"numeric",minute:"2-digit"}).format(now);
     const date=new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Melbourne",weekday:"short",day:"numeric",month:"short"}).format(now);
-    $("#home-sub").innerHTML=`<span class="home-date">${esc(date)}</span><span class="home-clocks"><span>🇦🇺 Melbourne <b>${esc(clock("Australia/Melbourne"))}</b></span><span>🇮🇳 New Delhi <b>${esc(clock("Asia/Kolkata"))}</b></span></span>`;
+    $("#home-sub").innerHTML=`<span class="home-date">${esc(date)}</span><span class="home-clocks"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg>🇦🇺 Melbourne <b>${esc(clock("Australia/Melbourne"))}</b></span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg>🇮🇳 New Delhi <b>${esc(clock("Asia/Kolkata"))}</b></span></span>`;
   }
   setInterval(updateHomeClock,60000);
   function syncHomeExpand(){const groups=Array.from(document.querySelectorAll("#tiles .report-category"));$("#home-expand").textContent=groups.length && groups.every(x=>x.open)?"Collapse All":"Expand All";$("#home-expand").disabled=!groups.length;}
@@ -1127,7 +1127,7 @@
     page("report", r.title);
     const st=$("#rep-status"), fr=$("#rep-frame");
     st.hidden=false; st.textContent="Loading SEO rankings…"; fr.hidden=true;
-    try { fr.srcdoc=seoReportHTML(await loadSeoRankingsData(true)); fr.hidden=false; st.hidden=true; }
+    try { fr.srcdoc=charcoalReport(seoReportHTML(await loadSeoRankingsData(true))); fr.hidden=false; st.hidden=true; }
     catch(e){ st.textContent="The SEO Rankings report couldn't be loaded. Pull down to refresh."; }
   }
 
@@ -1237,9 +1237,16 @@
     st.hidden=false; st.textContent="Checking infrastructure…"; fr.hidden=true;
     try {
       const [rows, voiceCost] = await Promise.all([loadTechAvailability(), loadVoiceCostSummary()]);
-      fr.srcdoc=techReportHTML(rows, voiceCost); fr.hidden=false; st.hidden=true;
+      fr.srcdoc=charcoalReport(techReportHTML(rows, voiceCost)); fr.hidden=false; st.hidden=true;
     }
     catch(e){ st.textContent="The Tech Availability Report couldn't be loaded. Pull down to refresh."; }
+  }
+
+  // Shared presentation layer for decrypted and locally generated reports.
+  function charcoalReport(html) {
+    const href = new URL("report-charcoal.css?v=1", location.href).href;
+    const link = `<link rel="stylesheet" href="${href}">`;
+    return /<\/head>/i.test(html) ? html.replace(/<\/head>/i, link + "</head>") : link + html;
   }
 
   // ---------- report viewer ----------
@@ -1258,7 +1265,7 @@
     try {
       let html = await decryptFile(`r/${id}.bin`, keys[id]);
       html = html.replace(/<a href="\.\/"[^>]*>[^<]*All reports<\/a>/, ""); // hub-only back link
-      fr.srcdoc = html; fr.hidden = false; st.hidden = true;
+      fr.srcdoc = charcoalReport(html); fr.hidden = false; st.hidden = true;
     } catch (e) {
       st.textContent = e.message === "not-published" ? "This report hasn't been published yet. It appears after tonight's 10 pm update." : "This report couldn't be opened. Pull down to refresh, or sign out and back in.";
     }
