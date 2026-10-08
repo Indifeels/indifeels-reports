@@ -113,6 +113,26 @@ def stock_for(adname):
             if c and c[0][0]<=2 and (len(c)==1 or c[1][0]>c[0][0]): pr=c[0][1]
     if pr is None or not pr["v"]: return None
     return dict(t=pr["t"],n=len(pr["v"]),a=sum(1 for _,q in pr["v"] if (q or 0)>0))
+def _load_links():
+    """{ad set id: product handle} saved from the report's link boxes. Best effort: the report still builds without it."""
+    try:
+        f=os.environ.get("ADSET_LINKS_FILE")
+        if f: rows=json.load(open(f))
+        else:
+            tok=os.environ.get("SYNC_READ_TOKEN")
+            if not tok: return {}
+            import urllib.request
+            rq=urllib.request.Request(os.environ.get("SUPABASE_URL","https://yrigvovwyfpaybibfjva.supabase.co")+"/rest/v1/rpc/sync_get_adset_product_links",
+                json.dumps({"p_token":tok}).encode(),{"Content-Type":"application/json","apikey":os.environ.get("SUPABASE_ANON_KEY","sb_publishable_8xv46B6mvnAN2McGDc4VEg_pNF0qHvD")})
+            rows=json.load(urllib.request.urlopen(rq,timeout=30))
+        return {str(r["adset_id"]):r["handle"] for r in rows}
+    except Exception as e:
+        print("ad set links skipped:",e); return {}
+LINKS=_load_links()
+def stock_by_handle(h):
+    pr=next((p for _,p in _PT if p["h"]==h),None)
+    if pr is None: return dict(t=h,n=0,a=0,link=True)      # linked, but the product is not in the stock list (e.g. not active)
+    return dict(t=pr["t"],n=len(pr["v"]),a=sum(1 for _,q in pr["v"] if (q or 0)>0),link=True)
 asd={}
 for _r in sorted(adrows,key=lambda r:r["date"]):
     if not _r.get("spend") and not _r.get(M): continue
@@ -218,7 +238,7 @@ def flag_for(m):
 for r in rows:
     r["m2"]=metrics(by[r["key"]],r["act"]); r["allsets"]=[]
     for aid,a in asd.get(r["key"],{}).items():
-        am=metrics(a["days"],a["act"] and r["act"]); am["name"]=a["name"]; am["aid"]=aid; am["stock"]=stock_for(adnm.get(str(aid)) or (thm.get(str(aid)) or {}).get("n")); r["allsets"].append(am)
+        am=metrics(a["days"],a["act"] and r["act"]); am["name"]=a["name"]; am["aid"]=aid; am["stock"]=(stock_by_handle(LINKS[str(aid)]) if str(aid) in LINKS else stock_for(adnm.get(str(aid)) or (thm.get(str(aid)) or {}).get("n"))); r["allsets"].append(am)
     _rk=rank_group({i:x for i,x in enumerate(r["allsets"]) if x["act"]})
     for i,x in enumerate(r["allsets"]): x["rank"]=_rk.get(i); x["sig"]=sig_for(x); x["flag"]=flag_for(x)
     finalize(r["allsets"])
@@ -507,12 +527,21 @@ def hchip(b_,n_):
     if n_<=0: return '<span class="hv n" title="No days with spend in this window">–</span>'
     return f'<span class="hv {hrag(b_/n_,n_)}" title="{b_} of {n_} spend day{"s" if n_>1 else ""} under $4.50">{round(100*b_/n_)}%</span>'
 _SC=["#F04A23","#F36227","#F5772A","#F8912F","#FBA52F","#FCB927","#FCD02B","#F2DA2D","#DFE02F","#BDD83A","#A2CF3E","#8DC83F","#76BF44","#5EBB4A"]
-def stockbar(sk):
-    if not sk: return '<span class="stkn">Stock: no product match</span>'
+def stockbar(sk,aid):
+    """Stock cell for an ad set: the bar when its product is known, otherwise a box to paste the product link."""
+    A=html.escape(str(aid),quote=True)
+    box=(f'<div class="lk" data-aid="{A}"><span class="lkw"><input class="lki" type="url" inputmode="url" placeholder="Paste product link to track stock" aria-label="Product link">'
+         f'<button class="lkb" type="button">Track</button><span class="lke" role="status"></span></span></div>')
+    if not sk: return box
+    if not sk["n"]:
+        return (f'<div class="lk" data-aid="{A}"><span class="stkw"><span class="stkn">Linked: {html.escape(sk["t"])} (stock unavailable)</span>'
+                f'<button class="lkc" type="button">Change</button></span></div>')
     idx=min(13,int(13*sk["a"]/sk["n"]+0.5))
     segs="".join(f'<i style="background:{c}"{" class=\"mk\"" if i==idx else ""}></i>' for i,c in enumerate(_SC))
-    return (f'<span class="stkw" title="{html.escape(sk["t"],quote=True)}: {sk["a"]} of {sk["n"]} variants in stock"><span class="stk">{segs}</span>'
-            f'<span class="stkl">{sk["a"]} of {sk["n"]} variants in stock</span></span>')
+    T=html.escape(sk["t"],quote=True)
+    return (f'<div class="lk" data-aid="{A}"><span class="stkw" title="{T}: {sk["a"]} of {sk["n"]} variants in stock"><span class="stk">{segs}</span>'
+            f'<span class="stkl">{sk["a"]} of {sk["n"]} variants in stock</span><span class="stkp">{html.escape(sk["t"])}</span>'
+            f'<button class="lkc" type="button">Change</button></span></div>')
 def agenote(m):
     f,rs=m.get("first"),m.get("rs")
     if not f: return ""
@@ -521,7 +550,7 @@ def agenote(m):
     if rs>f and (TODAY-rs).days<7: return f'<span class="hage">Reactivated {ago(rs)}</span>'
     return ""
 def hcell(m):
-    pre=(stockbar(m.get("stock")) if "aid" in m else "")+agenote(m)
+    pre=(stockbar(m.get("stock"),m["aid"]) if "aid" in m else "")+agenote(m)
     if m["health"]==("none","Paused"):
         ch=""
         for cap,(b_,n_) in (("7 days",m["h7"]),("15 days",m["h15"]),("30 days",(m["hb"],m["hn"])),("Last run",m["lr"]),("Lifetime",m["lh"])):
@@ -595,6 +624,7 @@ def kpi(k,label,rng,cur,prev,note,sp=None,extra=""):
             f'<div><b>{int(m):,}{arrow(m,pm,True) if pm is not None else ""}</b><span>messages</span></div>'
             f'<div><b><span class="p {band(c)}">{fcpm(c)}</span>{arrow(c,cpm(ps,pm),False) if ps else ""}</b><span>per message</span></div>'
             f'</div>'+srow+f'<p class="kn">{note}</p></div>')
+ADLK_JS='<script>\n(function(){var C=["#F04A23","#F36227","#F5772A","#F8912F","#FBA52F","#FCB927","#FCD02B","#F2DA2D","#DFE02F","#BDD83A","#A2CF3E","#8DC83F","#76BF44","#5EBB4A"],pend={},old={};\nfunction esc(t){return String(t).replace(/[&<>"\']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",\'"\':"&quot;","\'":"&#39;"}[c]})}\nfunction box(){return \'<span class="lkw"><input class="lki" type="url" inputmode="url" placeholder="Paste product link to track stock" aria-label="Product link"><button class="lkb" type="button">Track</button><span class="lke" role="status"></span></span>\'}\nfunction bar(r){var idx=Math.min(13,Math.floor(13*r.a/r.n+0.5)),g="";for(var i=0;i<14;i++)g+=\'<i style="background:\'+C[i]+\'"\'+(i===idx?\' class="mk"\':\'\')+\'></i>\';\nreturn \'<span class="stkw" title="\'+esc(r.title)+\': \'+r.a+\' of \'+r.n+\' variants in stock"><span class="stk">\'+g+\'</span><span class="stkl">\'+r.a+\' of \'+r.n+\' variants in stock</span><span class="stkp">\'+esc(r.title)+\'</span><button class="lkc" type="button">Change</button></span>\'}\nfunction wrap(el){return el.closest(\'.lk\')}\ndocument.addEventListener(\'click\',function(e){var b=e.target.closest&&e.target.closest(\'.lkb,.lkc\');if(!b)return;var w=wrap(b);if(!w)return;var aid=w.getAttribute(\'data-aid\');\nif(b.classList.contains(\'lkc\')){old[aid]=w.innerHTML;w.innerHTML=box().replace(\'<span class="lke"\',\'<button class="lkb lkn" type="button">Cancel</button><span class="lke"\');var i=w.querySelector(\'.lki\');if(i)i.focus();return}\nif(b.classList.contains(\'lkn\')){if(old[aid]!==undefined)w.innerHTML=old[aid];return}\nvar inp=w.querySelector(\'.lki\'),err=w.querySelector(\'.lke\'),url=(inp&&inp.value||\'\').trim();\nif(!url){err.textContent=\'Paste the product link first.\';return}\nerr.textContent=\'\';b.disabled=true;b.textContent=\'Saving…\';var req=\'l\'+Date.now()+Math.random().toString(36).slice(2,6);pend[req]=aid;\ntry{parent.postMessage({type:\'adset-link\',action:\'set\',aid:aid,url:url,req:req},\'*\')}catch(x){err.textContent="Couldn\'t reach the app.";b.disabled=false;b.textContent=\'Track\'}});\ndocument.addEventListener(\'keydown\',function(e){if(e.key===\'Enter\'&&e.target.classList&&e.target.classList.contains(\'lki\')){var w=wrap(e.target),b=w&&w.querySelector(\'.lkb:not(.lkn)\');if(b)b.click()}});\nwindow.addEventListener(\'message\',function(e){var d=e.data||{};if(d.type!==\'adset-link-result\')return;var aid=pend[d.req]||d.aid;delete pend[d.req];\nvar w=document.querySelector(\'.lk[data-aid="\'+String(aid).replace(/[^0-9]/g,\'\')+\'"]\');if(!w)return;\nif(d.ok&&d.action===\'set\'&&d.n){w.innerHTML=bar({title:d.title,a:d.a,n:d.n});return}\nvar err=w.querySelector(\'.lke\'),b=w.querySelector(\'.lkb:not(.lkn)\');if(err)err.textContent=d.error||"Couldn\'t save the link.";if(b){b.disabled=false;b.textContent=\'Track\'}});})();\n</script>'
 DK="--bg:#0E1116;--card:#171B22;--ink:#EDEFF3;--muted:#A0A8B6;--line:#2A303B;--sub:#1F242D;--g:#6FD6A6;--gb:#123326;--gl:#27604A;--y:#F2C85B;--yb:#362A0E;--yl:#6B5419;--r:#FF8C80;--rb:#3D1A17;--rl:#7A3129;--t:#8FB2FF;--tb:#1A2B52;--tc:#141E36;--w:#C3A6FF;--wb:#2C2150;--wc:#1D1834;--m:#5FD4C6;--mb:#123D3A;--mc:#0F2927;--l:#FFB085;--lb:#43261A;--lc:#2C1B14;--x:#F0A6F5;--xb:#3E1F42;--xc:#2A1730;--camp-bg:#000000;--as-bg:#262B34"
 def cells(i):
     out=""
@@ -792,6 +822,9 @@ tbody th{{min-width:340px;max-width:370px}}
 .stkw{{display:block;margin:0 0 8px}}.stk{{display:flex;gap:2px;margin-bottom:9px}}.stk i{{display:block;width:12px;height:9px;border-radius:2px;position:relative}}
 .stk i.mk::after{{content:"";position:absolute;left:50%;top:11px;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:8px solid var(--ink)}}
 .stkl,.stkn,.hage{{display:block;font-size:11.5px;color:var(--muted)}}.hage{{margin:0 0 6px;font-weight:600}}.stkn{{margin:0 0 6px}}
+.lkw{{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;align-items:center}}.lki{{width:150px;font:inherit;font-size:12px;padding:4px 7px;border-radius:7px;border:1px solid var(--line);background:var(--sub);color:var(--ink)}}
+.lkb,.lkc{{font:inherit;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:7px;border:1px solid var(--line);background:var(--sub);color:var(--ink);cursor:pointer}}.lkc{{margin-top:2px;font-weight:500;color:var(--muted)}}
+.lkb[disabled]{{opacity:.55;cursor:default}}.lke{{flex-basis:100%;font-size:11.5px;color:var(--r);white-space:normal}}.stkp{{display:block;font-size:11.5px;color:var(--ink);max-width:200px;overflow:hidden;text-overflow:ellipsis}}
 .hlast{{display:block;margin-top:5px;font-size:11.5px;color:var(--muted)}}
 .hv.n,.rkc.n{{background:var(--sub);color:var(--muted);border-color:var(--line)}}
 .sigrow,.rkrow{{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:6px}}
@@ -856,7 +889,7 @@ var tb=document.createElement('button');tb.id='totop';tb.type='button';tb.setAtt
 function tt(){{tb.classList.toggle('on',window.scrollY>400||wrap.scrollTop>120)}}
 tb.addEventListener('click',function(){{wrap.scrollTop=0;window.scrollTo({{top:0,behavior:'smooth'}})}});
 window.addEventListener('scroll',tt,{{passive:true}});wrap.addEventListener('scroll',tt,{{passive:true}});tt();}})();
-</script></body></html>'''
+</script>{ADLK_JS}</body></html>'''
 open(OUT,"w").write(page)
 for k,v in tot.items(): print(k,round(v[0],2),v[1])
 

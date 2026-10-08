@@ -1333,6 +1333,29 @@
     }
   });
 
+  // ---------- daily report: link an ad set to a product (stock bar) ----------
+  window.addEventListener("message", async (event) => {
+    const fr = $("#rep-frame");
+    if (!fr || event.source !== fr.contentWindow) return;
+    const d = event.data || {};
+    if (d.type !== "adset-link") return;
+    const reply = (o) => { try { fr.contentWindow?.postMessage(Object.assign({ type: "adset-link-result", req: d.req, aid: d.aid }, o), "*"); } catch (_) {} };
+    if (!["set", "clear"].includes(d.action)) return;
+    try {
+      const { data, error } = await sb.functions.invoke("adset-product-link", { body: { action: d.action, adset_id: String(d.aid || ""), url: String(d.url || "").slice(0, 600) } });
+      if (error || !data?.ok) {
+        let msg = data?.error || error?.message || "Couldn't save the link.";
+        try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
+        reply({ ok: false, action: d.action, error: msg });
+        return;
+      }
+      reply({ ok: true, action: d.action, title: data.title, handle: data.handle, n: data.n, a: data.a, asof: data.asof, live: !!data.live });
+      toast(d.action === "set" ? "Product linked" : "Link removed");
+    } catch (err) {
+      reply({ ok: false, action: d.action, error: err?.message || "Couldn't save the link." });
+    }
+  });
+
   // ---------- product visibility fixes ----------
   window.addEventListener("message", async (event) => {
     const fr = $("#rep-frame");
