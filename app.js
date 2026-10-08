@@ -327,14 +327,7 @@
     });
   }
   function paintHomeOverview() {
-    const ids=reports.map(r=>r.id), pending=ids.map(homePending), known=pending.filter(x=>x!=null);
-    const actions=known.length ? String(known.reduce((a,b)=>a+b,0))+(known.length<ids.length?"+":"") : "—";
-    const issues=ids.filter(id=>homeMeta[id]?.warn || homeMeta[id]?.health==="bad").length;
-    const failed=ids.filter(id=>scheduleStatus[id]?.status==="failed" || (!scheduleStatus[id] && status[id]?.ok===false)).length;
-    const doc='<path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6"/>';
-    const circle='<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/>';
-    const entries=[["Warnings",String(ids.filter(homeWarning).length),I.alert,"amber","Reports with a refresh or data warning"],["Actions pending",actions,doc,"amber","Known pending actions; + means some report counts are unavailable"],["Report issues",String(issues),doc,"coral","Reports reporting a data issue"],["Failed refreshes",String(failed),circle,"coral","Reports whose latest refresh failed"]];
-    $("#home-overview").innerHTML=entries.map(([label,value,icon,tone,detail])=>`<div class="overview-tile ${tone}" title="${esc(detail)}"><strong class="overview-number">${esc(value)}</strong><div class="overview-description"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon}</svg><span>${label}</span></div></div>`).join("");
+    // Global summary tiles removed; category warnings and actions remain available.
   }
   function updateHomeClock() {
     if(!me)return;
