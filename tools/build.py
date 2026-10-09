@@ -516,19 +516,19 @@ else: MRV=f'${_headroom(c14):.2f}' if c14 and c14["s"] else "—"; MRL="return p
 def roasf(x): return "—" if x is None else f"{x:.2f}x"
 
 def rkbadge(rk,key):
-    """Small rank number shown next to the cost per message of a period (1 = best). Only for ranked rows."""
+    """Medal in the top-left corner of a period (1 = best): gold / silver / bronze for 1-3, then green / amber / red by position in the group."""
     if not rk or not rk.get("r"+key): return ""
     pos,n=rk["r"+key],rk["n"+key]
-    c="n" if n<2 else "g1" if pos==1 else "g2" if pos==2 else "g3" if pos==3 else ("l" if pos==n and n>2 else "n")
-    return f'<span class="rkn {c}" title="Rank #{pos} of {n} by messages (70%) and cost per message (30%) in this period. 1 is best.">{pos}</span>'
+    c="g1" if (pos==1 and n>1) else "g2" if (pos==2 and n>2) else "g3" if (pos==3 and n>3) else {"g":"cg","y":"cy","r":"cr","n":"cn"}[rkcol(pos,n)]
+    return f'<span class="mdl {c}" title="Rank #{pos} of {n} in this period, by messages (70%) and cost per message (30%). 1 is best."><span class="mg"><i>{pos}</i></span></span>'
 def trio(cur,prev,lab,rk=None):
     k={"Today":"t","Week":"w","15d":"x","Month":"m","Lifetime":"l"}[lab]
     s,m=cur; ps,pm=prev if prev and prev[0] else (None,None)
     if not s: return f'<td class="s1 c{k}" data-l="{lab} spend">—</td><td class="c{k}" data-l="{lab} msgs">—</td><td class="c{k}" data-l="{lab} cost/msg">—</td>'
     c=cpm(s,m)
-    return (f'<td class="s1 c{k}" data-l="{lab} spend">{money(s)}{arrow(s,ps,None) if ps else ""}</td>'
+    return (f'<td class="s1 c{k}" data-l="{lab} spend">{rkbadge(rk,{"t":"1","w":"7","x":"15","m":"30"}.get(k,"")) if rk else ""}{money(s)}{arrow(s,ps,None) if ps else ""}</td>'
             f'<td class="c{k}" data-l="{lab} msgs">{int(m):,}{arrow(m,pm,True) if pm is not None else ""}</td>'
-            f'<td class="c{k}" data-l="{lab} cost/msg">{rkbadge(rk,{"t":"1","w":"7","x":"15","m":"30"}.get(k,"")) if rk else ""}<span class="p {band(c)}">{fcpm(c)}</span>{arrow(c,cpm(ps,pm),False) if ps else ""}</td>')
+            f'<td class="c{k}" data-l="{lab} cost/msg"><span class="p {band(c)}">{fcpm(c)}</span>{arrow(c,cpm(ps,pm),False) if ps else ""}</td>')
 def hrag(p,n): return "n" if n<1 else ("g" if p>=0.60 else ("y" if p>=0.35 else "r"))
 def hchip(b_,n_):
     """Health chip: share of spend days under $4.50, colour coded from the first spend day (no minimum). No spend in the window = dash."""
@@ -596,6 +596,7 @@ def rkcol(pos,n):
     f=(pos-1)/(n-1)
     return "g" if f<=1/3 else ("r" if f>=2/3 else "y")
 def ovr(m):
+    return ""   # overall rank is not shown in the name column; period ranks are the medals in the numbers columns
     rk=m.get("rank")
     if not m.get("act") or not rk: return ""
     return f'<span class="ln2 ovr" title="Overall rank: 60% last 30 days + 40% last 7 days. Ranks for each period sit next to the cost per message.">Rank <b>#{rk["rank"]}</b> of {rk["n"]}</span>'
@@ -858,8 +859,15 @@ tbody th{{min-width:340px;max-width:370px}}
 .lka{{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}}.lka .lkc{{margin-top:0}}.lkp,.lkx{{font:inherit;font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:7px;border:1px solid var(--line);background:var(--sub);color:var(--muted);cursor:pointer}}.lkx:hover{{color:var(--r);border-color:var(--rl)}}.lkp:hover{{color:var(--ink)}}
 .lkw{{position:relative}}.lks{{position:absolute;left:0;top:30px;width:290px;max-width:80vw;z-index:20;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.55);overflow:hidden}}.lks[hidden]{{display:none}}
 .lks .lsi{{display:flex;gap:9px;align-items:center;padding:7px 9px;cursor:pointer;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink);text-align:left}}.lks .lsi:last-child{{border-bottom:0}}.lks .lsi:hover{{background:var(--sub)}}.lks .lsi img,.lks .lsi i{{width:34px;height:42px;border-radius:5px;object-fit:cover;flex:none;background:var(--sub)}}.lks .lsi small{{display:block;color:var(--muted);font-size:11px}}.lks .lse{{padding:9px;color:var(--muted);font-size:12px}}
-.rkn{{display:inline-block;min-width:17px;height:17px;line-height:17px;padding:0 4px;margin-right:5px;border-radius:9px;font-size:10.5px;font-weight:700;text-align:center;vertical-align:1px;background:var(--sub);color:var(--muted);border:1px solid var(--line);cursor:help}}
-.rkn.g1{{background:#E8B923;color:#2b2100;border-color:#E8B923}}.rkn.g2{{background:#BFC4CC;color:#1d2026;border-color:#BFC4CC}}.rkn.g3{{background:#C98A5B;color:#2a1708;border-color:#C98A5B}}.rkn.l{{color:var(--r);border-color:var(--rl)}}
+td.s1{{position:relative;z-index:0}}
+.mdl{{position:absolute;top:5px;left:6px;width:24px;height:30px;cursor:help;--rc:#8d1c1c;--rc2:#c9302c}}
+.mdl .mg{{position:absolute;top:0;left:2px;width:20px;height:20px;border-radius:50%;background:var(--mc);display:grid;place-items:center;z-index:2;box-shadow:0 1px 2px rgba(0,0,0,.6)}}
+.mdl .mg i{{width:14px;height:14px;border-radius:50%;background:#15181e;color:#fff;font:700 9.5px/14px Figtree,sans-serif;font-style:normal;text-align:center}}
+.mdl:before,.mdl:after{{content:"";position:absolute;top:15px;width:7px;height:14px;z-index:1;clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%)}}
+.mdl:before{{left:4px;background:var(--rc2);transform:rotate(12deg)}}.mdl:after{{right:4px;background:var(--rc);transform:rotate(-12deg)}}
+.mdl.g1{{--mc:linear-gradient(135deg,#FFE27A,#D99A12)}}.mdl.g2{{--mc:linear-gradient(135deg,#F4F4F6,#9A9FA9)}}.mdl.g3{{--mc:linear-gradient(135deg,#F0B48F,#B0643A)}}
+.mdl.cg{{--mc:linear-gradient(135deg,#8FE3BA,#1E9A64);--rc:#12503A;--rc2:#1E9A64}}.mdl.cy{{--mc:linear-gradient(135deg,#FBE08A,#C99A1B);--rc:#6B5419;--rc2:#C99A1B}}.mdl.cr{{--mc:linear-gradient(135deg,#FFA79D,#D8483C);--rc:#7A3129;--rc2:#D8483C}}.mdl.cn{{--mc:#555B66;--rc:#3a3f48;--rc2:#555B66}}
+.lka{{flex-wrap:nowrap}}.stkw:has(.stkn){{flex-direction:column;gap:2px}}
 .ovr:before{{content:" · "}}.ovr b{{color:var(--ink)}}
 .sigrow{{margin-top:8px}}tr.cp>th,tr.as>th{{padding-top:16px;padding-bottom:16px}}
 .fsb{{margin-left:auto;font:inherit;font-size:12px;font-weight:600;padding:5px 11px;border-radius:99px;border:1px solid var(--line);background:var(--sub);color:var(--ink);cursor:pointer;white-space:nowrap;position:sticky;right:0}}
