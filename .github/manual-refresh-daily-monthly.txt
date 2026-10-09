@@ -1,3 +1,4 @@
 contract-smoke-test 2026-10-06 Melbourne
 8 PM catch-up refresh requested 2026-10-07 Australia/Melbourne. Preserve deployed templates; partial current day, Yesterday completed day only.
 Refresh requested 2026-10-09 16:40 Australia/Sydney: apply saved product links on page load.
+Refresh requested 2026-10-09 23:00 Australia/Melbourne: apply saved links to unsaved boxes on load.
