@@ -45,10 +45,10 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-10-09T07:00+11:00",
-  "code_sha": "ca5625ab69d8a83fb3b45298a00380a8881e5afe",
+  "at": "2026-10-09T20:00+11:00",
+  "code_sha": "f428ff41523a17fe9db10cebc3b8d79a8eb1fbb9",
   "data_through": null,
-  "last_ok": "2026-10-09T07:00+11:00",
+  "last_ok": "2026-10-09T20:00+11:00",
   "manifest_version": "2026-10-08.schedule-panel.1",
   "ok": true,
   "reason": ""
