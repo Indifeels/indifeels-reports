@@ -198,6 +198,17 @@ def rank_group(ms):
     order=sorted(fin,key=lambda i:(-fin[i],-ms[i]["f30"][1]))
     o15=sorted(s15,key=lambda i:(-s15[i],-ms[i]["f15"][1])); o7=sorted(s7,key=lambda i:(-s7[i],-ms[i]["f7"][1])); o30=sorted(s30,key=lambda i:(-s30[i],-ms[i]["f30"][1])); o1=sorted(s1,key=lambda i:(-s1[i],-ms[i]["f1"][1]))
     return {i:dict(rank=order.index(i)+1,n=len(order),r7=(o7.index(i)+1 if i in s7 else None),r15=(o15.index(i)+1 if i in s15 else None),r30=o30.index(i)+1,r1=(o1.index(i)+1 if i in s1 else None),n1=len(o1),n7=len(o7),n15=len(o15),n30=len(o30)) for i in order}
+def period_ranks(ms):
+    """Rank for each period on its own (yesterday, 7, 15, 30 days), shown as the medal in that column.
+    Same score as the overall rank (70% messages + 30% cost per message), but any spend counts, so every row that spent in a period gets a medal."""
+    out={i:{} for i in ms}
+    for k,w in (("1","f1"),("7","f7"),("15","f15"),("30","f30")):
+        el={i:v[w] for i,v in ms.items() if v[w][0]>0}
+        if not el: continue
+        a=pctl({i:v[1] for i,v in el.items()},True); b=pctl({i:cpm(*v) for i,v in el.items()},False)
+        sc={i:0.7*a[i]+0.3*b[i] for i in el}; order=sorted(sc,key=lambda i:(-sc[i],-el[i][1]))
+        for pos,i in enumerate(order,1): out[i]["r"+k]=pos; out[i]["n"+k]=len(order)
+    return out
 def sig_for(m):
     if not m["act"]: return None
     (s30,m30),(s7,m7)=m["f30"],m["f7"]
@@ -242,12 +253,14 @@ for r in rows:
     for aid,a in asd.get(r["key"],{}).items():
         am=metrics(a["days"],a["act"] and r["act"]); am["name"]=a["name"]; am["aid"]=aid; am["stock"]=(stock_by_handle(LINKS[str(aid)]) if str(aid) in LINKS else stock_for(adnm.get(str(aid)) or (thm.get(str(aid)) or {}).get("n"))); r["allsets"].append(am)
     _rk=rank_group({i:x for i,x in enumerate(r["allsets"]) if x["act"]})
-    for i,x in enumerate(r["allsets"]): x["rank"]=_rk.get(i); x["sig"]=sig_for(x); x["flag"]=flag_for(x)
+    _pk=period_ranks({i:x for i,x in enumerate(r["allsets"]) if x["act"]})
+    for i,x in enumerate(r["allsets"]): x["rank"]=_rk.get(i); x["prk"]=_pk.get(i); x["sig"]=sig_for(x); x["flag"]=flag_for(x)
     finalize(r["allsets"])
     r["sets"]=[x for x in r["allsets"] if x["m"][0]>0 or (x["flag"] and x["flag"][0]=="reopen")]   # spend in last 30 days, or a reopen candidate
     r["sets"].sort(key=lambda x:(not x["act"],-x["m"][0],-x["l"][0]))
 _rk=rank_group({i:r["m2"] for i,r in enumerate(rows) if r["act"]})
-for i,r in enumerate(rows): r["m2"]["rank"]=_rk.get(i); r["m2"]["sig"]=sig_for(r["m2"]); r["m2"]["flag"]=flag_for(r["m2"])
+_pk=period_ranks({i:r["m2"] for i,r in enumerate(rows) if r["act"]})
+for i,r in enumerate(rows): r["m2"]["prk"]=_pk.get(i); r["m2"]["rank"]=_rk.get(i); r["m2"]["sig"]=sig_for(r["m2"]); r["m2"]["flag"]=flag_for(r["m2"])
 finalize([r["m2"] for r in rows])
 _go=[x for r in rows for x in [r["m2"]]+r["allsets"] if x.get("rr")]
 if _go:
@@ -617,7 +630,7 @@ def sigrow(sg,fl=None):
     return f'<span class="sigrow"><span class="sp {x[0]}" title="{html.escape(x[2])}">{x[1]}</span><small>{html.escape(x[2])}</small></span>' if x else ""
 def prow(cls,name,m,attrs=""):
     return (f'<tr class="{cls}"{attrs}>{name}'+hcell(m)
-            +trio(m["t"],m["pt"],"Today",m.get("rank"))+trio(m["w"],m["pw"],"Week",m.get("rank"))+trio(m["x"],m["px"],"15d",m.get("rank"))+trio(m["m"],m["pm"],"Month",m.get("rank"))+trio(m["l"],None,"Lifetime")+'</tr>')
+            +trio(m["t"],m["pt"],"Today",m.get("prk"))+trio(m["w"],m["pw"],"Week",m.get("prk"))+trio(m["x"],m["px"],"15d",m.get("prk"))+trio(m["m"],m["pm"],"Month",m.get("prk"))+trio(m["l"],None,"Lifetime")+'</tr>')
 trs=""; first_p=True
 for i,r in enumerate(rows):
     cls="cp act" if r["act"] else "cp paused"
@@ -869,11 +882,11 @@ tbody th{{min-width:340px;max-width:370px}}
 .lkw{{position:relative}}.lks{{position:absolute;left:0;top:30px;width:290px;max-width:80vw;z-index:20;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.55);overflow:hidden}}.lks[hidden]{{display:none}}
 .lks .lsi{{display:flex;gap:9px;align-items:center;padding:7px 9px;cursor:pointer;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink);text-align:left}}.lks .lsi:last-child{{border-bottom:0}}.lks .lsi:hover{{background:var(--sub)}}.lks .lsi img,.lks .lsi i{{width:34px;height:42px;border-radius:5px;object-fit:cover;flex:none;background:var(--sub)}}.lks .lsi small{{display:block;color:var(--muted);font-size:11px}}.lks .lse{{padding:9px;color:var(--muted);font-size:12px}}
 td.s1{{position:relative;z-index:0}}td.s1:has(.lks:not([hidden])){{z-index:40}}
-.mdl{{position:absolute;top:5px;left:6px;width:24px;height:30px;cursor:help;--rc:#8d1c1c;--rc2:#c9302c}}
-.mdl .mg{{position:absolute;top:0;left:2px;width:20px;height:20px;border-radius:50%;background:var(--mc);display:grid;place-items:center;z-index:2;box-shadow:0 1px 2px rgba(0,0,0,.6)}}
-.mdl .mg i{{width:14px;height:14px;border-radius:50%;background:#15181e;color:#fff;font:700 9.5px/14px Figtree,sans-serif;font-style:normal;text-align:center}}
-.mdl:before,.mdl:after{{content:"";position:absolute;top:15px;width:7px;height:14px;z-index:1;clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%)}}
-.mdl:before{{left:4px;background:var(--rc2);transform:rotate(12deg)}}.mdl:after{{right:4px;background:var(--rc);transform:rotate(-12deg)}}
+.mdl{{position:absolute;top:5px;left:6px;width:28px;height:34px;cursor:help;--rc:#8d1c1c;--rc2:#c9302c}}
+.mdl .mg{{position:absolute;top:0;left:1px;width:26px;height:26px;border-radius:50%;background:var(--mc);display:grid;place-items:center;z-index:2;box-shadow:0 1px 2px rgba(0,0,0,.6)}}
+.mdl .mg i{{width:16px;height:16px;border-radius:50%;background:#15181e;color:#fff;font:700 10.5px/16px Figtree,sans-serif;font-style:normal;text-align:center}}
+.mdl:before,.mdl:after{{content:"";position:absolute;top:19px;width:8px;height:15px;z-index:1;clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%)}}
+.mdl:before{{left:6px;background:var(--rc2);transform:rotate(12deg)}}.mdl:after{{right:6px;background:var(--rc);transform:rotate(-12deg)}}
 .mdl.g1{{--mc:linear-gradient(135deg,#FFE27A,#D99A12)}}.mdl.g2{{--mc:linear-gradient(135deg,#F4F4F6,#9A9FA9)}}.mdl.g3{{--mc:linear-gradient(135deg,#F0B48F,#B0643A)}}
 .mdl.cg{{--mc:linear-gradient(135deg,#8FE3BA,#1E9A64);--rc:#12503A;--rc2:#1E9A64}}.mdl.cy{{--mc:linear-gradient(135deg,#FBE08A,#C99A1B);--rc:#6B5419;--rc2:#C99A1B}}.mdl.cr{{--mc:linear-gradient(135deg,#FFA79D,#D8483C);--rc:#7A3129;--rc2:#D8483C}}.mdl.cn{{--mc:#555B66;--rc:#3a3f48;--rc2:#555B66}}
 .lka{{flex-wrap:nowrap}}.stkw:has(.stkn){{flex-direction:column;gap:2px}}
@@ -904,7 +917,7 @@ td.s1{{position:relative;z-index:0}}td.s1:has(.lks:not([hidden])){{z-index:40}}
 {SECTION}
 <details class="how"><summary>How to read health, rank and spend signal</summary><dl>
 <dt>Health</dt><dd>Share of days with spend where each message cost under $4.50, for the last 7, 15 and 30 full days. Green is 60% or more, amber 35 to 59%, red under 35%. Every window is colour coded from the first spend day, however few days it has; a dash means no spend in that window. Hover a figure to see the day count. Ad sets under 7 days old show <b>Launched N days ago</b>, or <b>Reactivated N days ago</b> if they restarted after a gap of over 3 days. The colour bar above the health figures is stock for the ad's product: the marker moves right as more of its variants (sizes) are in stock, so 2 of 4 sits in the middle. The ad is matched to its product by name; \"no product match\" means no confident match.</dd>
-<dt>Rank</dt><dd>Overall rank sits in the status line under each name (campaigns among active campaigns, ad sets inside their campaign). The small number next to each cost per message is the rank for that period alone (yesterday, 7, 15 and 30 days); 1 is best. Yesterday needs at least $5 spend, the others $20. Score is 70% messages received plus 30% cost per message; the overall number blends 30 days (60%) and 7 days (40%). Green is the top third, red the bottom third; under $20 spend in a window is not ranked.</dd>
+<dt>Rank</dt><dd>Overall rank sits in the status line under each name (campaigns among active campaigns, ad sets inside their campaign). The small number next to each cost per message is the rank for that period alone (yesterday, 7, 15 and 30 days); 1 is best. A row is ranked in a period if it spent in it, among the active rows of its group. Score is 70% messages received plus 30% cost per message; the overall number blends 30 days (60%) and 7 days (40%). Green is the top third, red the bottom third; under $20 spend in a window is not ranked.</dd>
 <dt>Flags</dt><dd><b>Close #1</b> (active): 30-day health is red or amber, 7-day health is not green, at least $20 spent in 30 days, and it ranks in the bottom half of its group. #1 is the worst. <b>Reopen #1</b> (paused): lifetime health is green over at least 5 spend days and $50 spent, so a weak last run may just have been a bad season. Ranked best first (inside its group, and across all paused rows) on lifetime messages (70%) and lifetime cost per message (30%), inside its group. <b>Keep closed</b> (paused): lifetime health is red on the same evidence. Paused rows show 7, 15 and 30 day health too (blank if it did not spend), plus Last run (its latest stretch of spending, no gap over 3 days) and Lifetime.</dd>
 <dt>Stock bar</dt><dd>Variants in stock out of all variants of the linked product, read from Shopify when this report was built ({NOW.strftime("%-d %b, %-I:%M %p")}). It does not change until the next refresh; hover the bar to see the time.</dd>
 <dt>Notes</dt><dd>Messages are Meta "messaging conversations started". Periods end on {TODAY.strftime("%-d %b")}; arrows compare each period with the one before it. Health, rank and signal use completed days only. Ad sets shown are those with spend in the last 30 days.</dd>
