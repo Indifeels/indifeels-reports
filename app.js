@@ -841,8 +841,33 @@
       row.sync_status = "error"; row.sync_error = e.message; renderAttribution(); toast(e.message);
     }
   }
+  async function loadAttributionWebsiteTraffic() {
+    const status = $("#oa-website-status"), content = $("#oa-website-content");
+    status.hidden = false;
+    status.textContent = "Loading website traffic…";
+    content.replaceChildren();
+    if (!keys["order-source"]) {
+      status.textContent = "Website traffic requires access to the Order Source data report.";
+      return;
+    }
+    try {
+      const html = await decryptFile("r/order-source.bin", keys["order-source"]);
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const data = doc.querySelector("#website-link-tracking-data");
+      const section = data?.content.querySelector("#website-link-tracking") || doc.querySelector("#website-link-tracking");
+      if (!section) throw new Error("not-published");
+      section.querySelector("h2")?.remove();
+      content.append(document.importNode(section, true));
+      status.hidden = true;
+    } catch (e) {
+      status.textContent = e.message === "not-published"
+        ? "Website traffic is being published. Reopen this report after the refresh finishes."
+        : "Website traffic could not be loaded. Reopen the report to try again.";
+    }
+  }
   async function openAttribution(r) {
     page("attribution", r.title);
+    const websiteTraffic = loadAttributionWebsiteTraffic();
     $("#oa-pending").innerHTML = ""; $("#oa-sum").innerHTML = ""; $("#oa-done-wrap").hidden = true;
     const st = $("#oa-status"); st.hidden = false; st.textContent = "Loading…";
     try {
@@ -851,6 +876,7 @@
       if (!OA.catalog.length) toast("Campaign list is refreshing; source attribution still works.");
     } catch (e) { st.textContent = "The order queue couldn't be loaded. Pull down to refresh."; }
     updateOrderNotifyButton();
+    await websiteTraffic;
   }
   function updateOrderNotifyButton() {
     const b = $("#oa-notify"); if (!b) return;

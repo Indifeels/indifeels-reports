@@ -405,3 +405,14 @@ box-shadow:7px 10px 18px #0008,inset 1px 2px 1px #ffffff38,inset -2px -3px 3px #
 /* report full screen */
 #rep-frame.rep-full{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-height:none!important;z-index:9999;background:#0E1116;border:0;border-radius:0}
 body.rep-full-on{overflow:hidden}
+
+/* Website traffic is section 2 within the native Order Attribution page. */
+.oa-website-links{margin-top:32px;padding-top:24px;border-top:1px solid var(--line);--fg:var(--ink);--surface:var(--card)}
+.oa-website-links .panel{padding:18px;background:var(--card);border:1px solid var(--line);border-radius:16px}
+.oa-website-links .hint{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 14px}
+.oa-website-links .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.oa-website-links table{border-collapse:separate;border-spacing:0;min-width:680px;width:100%;font-variant-numeric:tabular-nums}
+.oa-website-links th,.oa-website-links td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.oa-website-links th{font-size:12px;color:var(--muted)}
+.oa-website-links th:first-child,.oa-website-links td:first-child{position:sticky;left:0;text-align:left;white-space:normal;min-width:180px;max-width:250px;background:var(--card);border-right:1px solid var(--line);overflow-wrap:anywhere}
+.oa-website-links .bad{color:var(--r)}

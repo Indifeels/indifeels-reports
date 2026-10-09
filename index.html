@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Indifeels">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=28-reverted-categories">
+<link rel="stylesheet" href="app.css?v=29-attribution-website-traffic">
 <link rel="stylesheet" href="schedule-panel.css?v=3">
 </head>
 <body>
@@ -109,6 +109,7 @@
         <div><h2>Order Attribution</h2><p>Review new Shopify orders and save the source, campaign and ad set / ad group. Changes sync back to Shopify automatically.</p></div>
         <button class="btn sm" id="oa-notify" type="button">Enable notifications</button>
       </div>
+      <section id="oa-orders-section" aria-label="Order source attribution">
       <div class="oa-sum" id="oa-sum"></div>
       <p id="oa-status" class="rep-status">Loading…</p>
       <div id="oa-pending" class="oa-list"></div>
@@ -116,6 +117,12 @@
         <summary>Recently attributed</summary>
         <div id="oa-done" class="oa-list"></div>
       </details>
+      </section>
+      <section class="oa-website-links" id="oa-website-section" aria-labelledby="oa-website-title">
+        <div class="page-head"><h2 id="oa-website-title">Website Traffic</h2><p>Visits and shopping activity by channel · Section 2</p></div>
+        <p id="oa-website-status" class="rep-status" role="status">Loading website traffic…</p>
+        <div id="oa-website-content"></div>
+      </section>
     </main>
 
     <main id="v-password" class="page narrow" hidden>
@@ -163,7 +170,7 @@
 <script src="vendor/supabase.js"></script>
 <script src="config.js"></script>
 <script src="schedule-panel.js?v=3"></script>
-<script src="app.js?v=41-reverted-categories"></script>
+<script src="app.js?v=42-attribution-website-traffic"></script>
 </body>
 </html>
 
