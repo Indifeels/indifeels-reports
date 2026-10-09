@@ -12,9 +12,21 @@ function rid(aid){var r='l'+Date.now()+Math.random().toString(36).slice(2,6);pen
 function copy(t,b){var done=function(ok){var o=b.textContent;b.textContent=ok?'Copied':'Copy failed';setTimeout(function(){b.textContent=o},1400)};
 function fb(){try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);done(ok)}catch(e){done(false)}}
 if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){done(true)},fb)}else fb()}
+var PR=null,coll={};
+function prods(){if(PR===null){try{PR=JSON.parse(document.getElementById('prods').textContent)}catch(e){PR=[]}}return PR}
+function chips(){var c={};prods().forEach(function(p){(p[5]||[]).forEach(function(n){if(!/^(all|home ?page|frontpage|featured|best ?sellers?)$/i.test(n))c[n]=(c[n]||0)+1})});return Object.keys(c).filter(function(n){return c[n]>=2}).sort(function(a,b){return c[b]-c[a]}).slice(0,10)}
+function render(w){var l=w.querySelector('.lks'),i=w.querySelector('.lki');if(!l||!i)return;var aid=w.getAttribute('data-aid'),q=i.value.trim().toLowerCase(),words=q?q.split(/\s+/):[],cur=coll[aid]||'';
+if(/^https?:\/\//.test(q)){l.hidden=true;return}
+var ch=chips(),res=prods().filter(function(p){var t=p[0].toLowerCase();return words.every(function(x){return t.indexOf(x)>-1})&&(!cur||(p[5]||[]).indexOf(cur)>-1)});
+if(!q&&!cur&&ch.length===0){l.hidden=true;return}
+res.sort(function(a,b){return (b[3]>0)-(a[3]>0)||a[0].localeCompare(b[0])});
+var h=(ch.length?'<div class="lch">'+ch.map(function(n){return '<button type="button" class="lc'+(n===cur?' on':'')+'" data-c="'+esc(n)+'">'+esc(n)+'</button>'}).join('')+'</div>':'');
+h+='<div class="lsl">'+(res.length?res.slice(0,40).map(function(p){var im=img(p[2],80);return '<div class="lsi" data-url="https://indifeels.com/products/'+esc(p[1])+'">'+(im?'<img src="'+im+'" alt="" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">':'<i></i>')+'<span>'+esc(p[0])+'<small>'+p[3]+' of '+p[4]+' variants in stock</small></span></div>'}).join(''):'<div class="lse">No active product matches.</div>')+'</div>';
+l.innerHTML=h;l.hidden=false}
 function hideList(w){var l=w&&w.querySelector('.lks');if(l)l.hidden=true}
 document.addEventListener('click',function(e){
 var t=e.target;if(!t.closest)return;
+var lc=t.closest('.lc');if(lc){var w1=wrap(lc),a1=w1.getAttribute('data-aid'),c1=lc.getAttribute('data-c');coll[a1]=(coll[a1]===c1)?'':c1;render(w1);return}
 var it=t.closest('.lsi');if(it){var w0=wrap(it),i0=w0.querySelector('.lki');i0.value=it.getAttribute('data-url');hideList(w0);var tb=w0.querySelector('.lkb:not(.lkn)');if(tb)tb.click();return}
 document.querySelectorAll('.lks:not([hidden])').forEach(function(l){if(!l.closest('.lk').contains(t))l.hidden=true});
 var b=t.closest('.lkb,.lkc,.lkp,.lkx');if(!b)return;var w=wrap(b);if(!w)return;var aid=w.getAttribute('data-aid');
@@ -27,8 +39,10 @@ if(!/^https?:\/\//i.test(url)){err.textContent=url?'Pick a product from the list
 err.textContent='';b.disabled=true;b.textContent='Saving…';
 if(!post({type:'adset-link',action:'set',aid:aid,url:url,req:rid(aid)})){err.textContent="Couldn't reach the app.";b.disabled=false;b.textContent='Track'}});
 document.addEventListener('input',function(e){var i=e.target;if(!i.classList||!i.classList.contains('lki'))return;var w=wrap(i),aid=w.getAttribute('data-aid'),q=i.value.trim(),l=w.querySelector('.lks');
+if(prods().length){render(w);return}
 clearTimeout(tmr[aid]);if(q.length<2||/^https?:\/\//i.test(q)){if(l)l.hidden=true;return}
 tmr[aid]=setTimeout(function(){var r=rid(aid);last[aid]=r;if(l){l.hidden=false;l.innerHTML='<div class="lse">Searching…</div>'}post({type:'adset-link',action:'search',aid:aid,q:q,req:r})},250)});
+document.addEventListener('focusin',function(e){var i=e.target;if(i.classList&&i.classList.contains('lki')&&prods().length)render(wrap(i))});
 document.addEventListener('keydown',function(e){if(e.target.classList&&e.target.classList.contains('lki')){if(e.key==='Enter'){var w=wrap(e.target),b=w&&w.querySelector('.lkb:not(.lkn)');if(b)b.click()}else if(e.key==='Escape')hideList(wrap(e.target))}});
 window.addEventListener('message',function(e){var d=e.data||{};if(d.type!=='adset-link-result')return;var aid=pend[d.req]||d.aid;delete pend[d.req];
 var w=document.querySelector('.lk[data-aid="'+String(aid).replace(/[^0-9]/g,'')+'"]');if(!w)return;

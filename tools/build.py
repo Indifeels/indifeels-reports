@@ -656,6 +656,15 @@ def kpi(k,label,rng,cur,prev,note,sp=None,extra=""):
             f'<div><b>{int(m):,}{arrow(m,pm,True) if pm is not None else ""}</b><span>messages</span></div>'
             f'<div><b><span class="p {band(c)}">{fcpm(c)}</span>{arrow(c,cpm(ps,pm),False) if ps else ""}</b><span>per message</span></div>'
             f'</div>'+srow+f'<p class="kn">{note}</p></div>')
+def _prods_json():
+    out=[]
+    for p_ in stockp:
+        v=p_.get("v") or []
+        if not v or not p_.get("h"): continue
+        im=(p_.get("i") or "").split("?")[0]
+        out.append([p_["t"],p_["h"],im if im.startswith("https://cdn.shopify.com/") else "",sum(1 for _,q in v if (q or 0)>0),len(v),p_.get("c") or []])
+    return json.dumps(out,separators=(",",":")).replace("</","<\\/")
+PRODS_TAG='<script type="application/json" id="prods">'+_prods_json()+'</script>'
 ADLK_JS="<script>\n"+open(os.path.join(os.path.dirname(os.path.abspath(__file__)),"adset_link.js"),encoding="utf-8").read()+"</script>"
 DK="--bg:#0E1116;--card:#171B22;--ink:#EDEFF3;--muted:#A0A8B6;--line:#2A303B;--sub:#1F242D;--g:#6FD6A6;--gb:#123326;--gl:#27604A;--y:#F2C85B;--yb:#362A0E;--yl:#6B5419;--r:#FF8C80;--rb:#3D1A17;--rl:#7A3129;--t:#8FB2FF;--tb:#1A2B52;--tc:#141E36;--w:#C3A6FF;--wb:#2C2150;--wc:#1D1834;--m:#5FD4C6;--mb:#123D3A;--mc:#0F2927;--l:#FFB085;--lb:#43261A;--lc:#2C1B14;--x:#F0A6F5;--xb:#3E1F42;--xc:#2A1730;--camp-bg:#000000;--as-bg:#262B34"
 def cells(i):
@@ -859,7 +868,7 @@ tbody th{{min-width:340px;max-width:370px}}
 .lka{{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}}.lka .lkc{{margin-top:0}}.lkp,.lkx{{font:inherit;font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:7px;border:1px solid var(--line);background:var(--sub);color:var(--muted);cursor:pointer}}.lkx:hover{{color:var(--r);border-color:var(--rl)}}.lkp:hover{{color:var(--ink)}}
 .lkw{{position:relative}}.lks{{position:absolute;left:0;top:30px;width:290px;max-width:80vw;z-index:20;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.55);overflow:hidden}}.lks[hidden]{{display:none}}
 .lks .lsi{{display:flex;gap:9px;align-items:center;padding:7px 9px;cursor:pointer;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink);text-align:left}}.lks .lsi:last-child{{border-bottom:0}}.lks .lsi:hover{{background:var(--sub)}}.lks .lsi img,.lks .lsi i{{width:34px;height:42px;border-radius:5px;object-fit:cover;flex:none;background:var(--sub)}}.lks .lsi small{{display:block;color:var(--muted);font-size:11px}}.lks .lse{{padding:9px;color:var(--muted);font-size:12px}}
-td.s1{{position:relative;z-index:0}}
+td.s1{{position:relative;z-index:0}}td.s1:has(.lks:not([hidden])){{z-index:40}}
 .mdl{{position:absolute;top:5px;left:6px;width:24px;height:30px;cursor:help;--rc:#8d1c1c;--rc2:#c9302c}}
 .mdl .mg{{position:absolute;top:0;left:2px;width:20px;height:20px;border-radius:50%;background:var(--mc);display:grid;place-items:center;z-index:2;box-shadow:0 1px 2px rgba(0,0,0,.6)}}
 .mdl .mg i{{width:14px;height:14px;border-radius:50%;background:#15181e;color:#fff;font:700 9.5px/14px Figtree,sans-serif;font-style:normal;text-align:center}}
@@ -871,6 +880,7 @@ td.s1{{position:relative;z-index:0}}
 .ovr:before{{content:" · "}}.ovr b{{color:var(--ink)}}
 .sigrow{{margin-top:8px}}tr.cp>th,tr.as>th{{padding-top:16px;padding-bottom:16px}}
 .fsb{{margin-left:auto;font:inherit;font-size:12px;font-weight:600;padding:5px 11px;border-radius:99px;border:1px solid var(--line);background:var(--sub);color:var(--ink);cursor:pointer;white-space:nowrap;position:sticky;right:0}}
+.lks .lch{{display:flex;flex-wrap:wrap;gap:4px;padding:7px 8px;border-bottom:1px solid var(--line)}}.lks .lc{{font:inherit;font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);background:var(--sub);color:var(--muted);cursor:pointer}}.lks .lc.on{{background:var(--ink);color:var(--bg);border-color:var(--ink)}}.lks .lsl{{max-height:250px;overflow:auto}}
 .lkb[disabled]{{opacity:.55;cursor:default}}.lke{{flex-basis:100%;font-size:11.5px;color:var(--r);white-space:normal}}.stkp{{display:block;font-size:11px;line-height:1.25;color:var(--ink);white-space:normal;overflow-wrap:anywhere;max-height:3.75em;overflow:hidden}}.hc:has(.stkw){{min-width:300px}}
 .hlast{{display:block;margin-top:5px;font-size:11.5px;color:var(--muted)}}
 .hv.n,.rkc.n{{background:var(--sub);color:var(--muted);border-color:var(--line)}}
@@ -936,7 +946,7 @@ var tb=document.createElement('button');tb.id='totop';tb.type='button';tb.setAtt
 function tt(){{tb.classList.toggle('on',window.scrollY>400||wrap.scrollTop>120)}}
 tb.addEventListener('click',function(){{wrap.scrollTop=0;window.scrollTo({{top:0,behavior:'smooth'}})}});
 window.addEventListener('scroll',tt,{{passive:true}});wrap.addEventListener('scroll',tt,{{passive:true}});tt();}})();
-</script>{ADLK_JS}</body></html>'''
+</script>{PRODS_TAG}{ADLK_JS}</body></html>'''
 open(OUT,"w").write(page)
 for k,v in tot.items(): print(k,round(v[0],2),v[1])
 

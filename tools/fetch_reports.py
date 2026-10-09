@@ -105,7 +105,7 @@ if not nodes:
 json.dump({"data":{"orders":{"nodes":nodes}}},open(os.path.join(OUT,"shopify_01.json"),"w"))
 # Product variants and stock, used for the stock bar on each ad set (best effort, never fails the report).
 try:
-    pq='''query($after:String){ products(first:25,after:$after,query:"status:active"){ pageInfo{hasNextPage endCursor} nodes{ title handle featuredImage{url} variants(first:25){nodes{title inventoryQuantity}} } } }'''
+    pq='''query($after:String){ products(first:25,after:$after,query:"status:active"){ pageInfo{hasNextPage endCursor} nodes{ title handle featuredImage{url} collections(first:8){nodes{title}} variants(first:25){nodes{title inventoryQuantity}} } } }'''
     pn=[]; pa=None
     while True:
         body=json.dumps({"query":pq,"variables":{"after":pa}}).encode()
@@ -115,7 +115,7 @@ try:
         if px.get("errors"): raise RuntimeError(json.dumps(px["errors"])[:300])
         pc=px["data"]["products"]
         for n_ in pc["nodes"]:
-            pn.append({"t":n_["title"],"h":n_["handle"],"i":((n_.get("featuredImage") or {}).get("url") or ""),"v":[[v["title"],v["inventoryQuantity"]] for v in n_["variants"]["nodes"]]})
+            pn.append({"t":n_["title"],"h":n_["handle"],"i":((n_.get("featuredImage") or {}).get("url") or ""),"v":[[v["title"],v["inventoryQuantity"]] for v in n_["variants"]["nodes"]],"c":[c_["title"] for c_ in ((n_.get("collections") or {}).get("nodes") or [])]})
         if not pc["pageInfo"]["hasNextPage"]: break
         pa=pc["pageInfo"]["endCursor"]; time.sleep(.3)
     json.dump(pn,open(os.path.join(OUT,"adstock_01.json"),"w"))
