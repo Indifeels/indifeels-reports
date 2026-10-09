@@ -5,6 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 //   { action: "set",   adset_id, url }  -> saves the link, returns { ok, title, handle, n, a, asof, live }
 //   { action: "clear", adset_id }       -> removes the link
 //   { action: "remove", adset_id }      -> marks "no product" (blocks the name match)
+//   { action: "list" }                  -> every saved link: { items:[{adset_id,handle}] } (handle "-" = removed)
 //   { action: "search", q }             -> active products by title: { items:[{title,handle,image,n,a}] }
 // n = variants, a = variants with stock. Live Shopify is used when SHOPIFY_TOKEN is set on this function,
 // otherwise the synced voice_product_cache (as of its last sync, returned in "asof").
@@ -65,6 +66,11 @@ Deno.serve(async (req: Request) => {
       a: p.variants.filter((i: any) => (Number(i.inventory_quantity) || 0) > 0).length,
     }));
     return json({ ok: true, items });
+  }
+  if (body.action === "list") {
+    const { data: rows, error: le } = await svc.from("adset_product_links").select("adset_id,handle");
+    if (le) { console.error(le.message); return json({ error: "Could not load links" }, 500); }
+    return json({ ok: true, items: rows || [] });
   }
   const adsetId = String(body.adset_id || "");
   if (!/^\d{5,25}$/.test(adsetId)) return json({ error: "Bad ad set" }, 400);
