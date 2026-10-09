@@ -841,6 +841,80 @@
       row.sync_status = "error"; row.sync_error = e.message; renderAttribution(); toast(e.message);
     }
   }
+  function websiteTrafficPeriod(data, period) {
+    const end = period === 'today' ? data.today : data.completed.slice(0,10);
+    const days = ({today:1,yesterday:1,d7:7,d15:15,d30:30})[period] || 1;
+    const start = new Date(end+'T12:00:00Z'); start.setUTCDate(start.getUTCDate()-days+1);
+    return {start:start.toISOString().slice(0,10),end};
+  }
+  function websiteTrafficAggregate(data, period, channel) {
+    const range=websiteTrafficPeriod(data,period), groups=new Map();
+    for(const row of data.rows){
+      if(row.date<range.start||row.date>range.end||(channel&&row.channel!==channel))continue;
+      if(!groups.has(row.channel))groups.set(row.channel,{channel:row.channel,values:[0,0,0,0,0],details:new Map()});
+      const g=groups.get(row.channel);
+      if(!g.details.has(row.detail))g.details.set(row.detail,[0,0,0,0,0]);
+      row.values.forEach((v,i)=>{g.values[i]+=Number(v)||0;g.details.get(row.detail)[i]+=Number(v)||0;});
+    }
+    const totals=[0,0,0,0,0]; for(const g of groups.values())g.values.forEach((v,i)=>totals[i]+=v);
+    return {range,groups:[...groups.values()],totals};
+  }
+  function initWebsiteTraffic(section) {
+    const data=JSON.parse(section.querySelector('.wt-data').textContent), view=section.querySelector('.wt-view');
+    const state={period:'yesterday',channel:'',sort:'visits',showEmpty:false,expanded:''};
+    const fmt=n=>Number(n||0).toLocaleString('en-AU',{maximumFractionDigits:0});
+    const money=n=>Number(n||0).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const rate=v=>v[0]>0?v[3]/v[0]*100:0;
+    const tone=c=>/Paid/.test(c)?'paid':/Instagram/.test(c)?'instagram':/^FB/.test(c)?'facebook':/Organic Search|GMB/.test(c)?'organic':/Direct/.test(c)?'direct':'referral';
+    const date=s=>new Date(s+'T12:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+    function render(){
+      const a=websiteTrafficAggregate(data,state.period,state.channel), totals=a.totals;
+      let groups=a.groups.slice();
+      if(state.showEmpty)for(const channel of data.channels){if((!state.channel||state.channel===channel)&&!groups.some(g=>g.channel===channel))groups.push({channel,values:[0,0,0,0,0],details:new Map()});}
+      groups.sort((x,y)=>state.sort==='revenue'?y.values[4]-x.values[4]:state.sort==='conversion'?rate(y.values)-rate(x.values):y.values[0]-x.values[0]);
+      const max=Array.from({length:5},(_,i)=>Math.max(1,...groups.map(g=>g.values[i])));
+      const periods=[['today','Today'],['yesterday','Yesterday'],['d7','7D'],['d15','15D'],['d30','30D']];
+      const tile=(label,value,sub,cls)=>`<div class="wt-tile ${cls}"><span>${label}</span><strong>${value}</strong><small>${sub}</small></div>`;
+      let h=`<div class="wt-tabs" role="group" aria-label="Website traffic period">${periods.map(([id,label])=>`<button type="button" data-wt-period="${id}" aria-pressed="${state.period===id}">${label}</button>`).join('')}</div>`;
+      h+=`<div class="wt-dates">${date(a.range.start)}${a.range.start!==a.range.end?' – '+date(a.range.end):''} <span>Updated ${new Date(data.updated).toLocaleString('en-AU',{timeZone:'Australia/Melbourne',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})} Melbourne</span></div>`;
+      if(state.period==='today')h+='<p class="wt-notice">Today so far · GA4 data is delayed and may be incomplete. Zero means no activity reported yet.</p>';
+      if(data.ok){
+        h+='<div class="wt-tiles">'+tile('Website visits',fmt(totals[0]),'Sessions','visits')+tile('Purchases',fmt(totals[3]),'GA4 purchases','purchases')+tile('Revenue',money(totals[4]),'GA4 property currency','revenue')+tile('Purchase rate',rate(totals).toFixed(1)+'%','Purchases ÷ visits','conversion')+'</div>';
+        h+=`<div class="wt-controls"><label>Channel<select class="wt-channel"><option value="">All channels</option>${data.channels.map(c=>`<option value="${esc(c)}" ${state.channel===c?'selected':''}>${esc(c)}</option>`).join('')}</select></label><label>Sort by<select class="wt-sort">${[['visits','Most visits'],['revenue','Most revenue'],['conversion','Purchase rate']].map(([v,t])=>`<option value="${v}" ${state.sort===v?'selected':''}>${t}</option>`).join('')}</select></label><label class="wt-zero"><input type="checkbox" class="wt-empty" ${state.showEmpty?'checked':''}> Show inactive</label></div>`;
+        h+='<div class="wt-legend"><span class="wt-dot instagram"></span>Instagram <span class="wt-dot facebook"></span>FB organic <span class="wt-dot organic"></span>Search / GMB <span class="wt-dot paid"></span>Paid <span class="wt-dot direct"></span>Direct</div>';
+        h+='<div class="wt-table-wrap"><table class="wt-table"><thead><tr><th>Channel</th><th>Visits</th><th>Carts</th><th>Checkouts</th><th>Purchases</th><th>Revenue</th><th>Rate</th></tr></thead><tbody>';
+        const cells=(v,child=false)=>v.map((n,i)=>`<td data-label="${['Visits','Carts','Checkouts','Purchases','Revenue'][i]}" style="--wt-heat:${child?0:Math.max(0,n)/max[i]*.16}">${i===4?money(n):fmt(n)}${i===0&&!child?`<small>${totals[0]?(n/totals[0]*100).toFixed(1):'0.0'}% of visits</small>`:''}</td>`).join('')+`<td data-label="Rate">${rate(v).toFixed(1)}%</td>`;
+        for(const g of groups){const open=state.expanded===g.channel,has=g.details.size>0;
+          h+=`<tr class="wt-channel-row ${tone(g.channel)}"><th scope="row"><button type="button" class="wt-expand" data-wt-expand="${esc(g.channel)}" aria-expanded="${open}" ${has?'':'disabled'}><span class="wt-dot ${tone(g.channel)}"></span><span>${esc(g.channel)}</span><span class="wt-chevron">${has?(open?'▾':'▸'):''}</span></button><div class="wt-share"><i style="width:${totals[0]?g.values[0]/totals[0]*100:0}%"></i></div></th>${cells(g.values)}</tr>`;
+          if(open)for(const [detail,v] of [...g.details].sort((x,y)=>y[1][0]-x[1][0]))h+=`<tr class="wt-detail"><th scope="row">${esc(detail||'Unspecified')}</th>${cells(v,true)}</tr>`;
+        }
+        if(!groups.length)h+='<tr><td colspan="7" class="wt-no-data">No activity reported for this selection.</td></tr>';
+        h+='</tbody></table></div><p class="wt-footnote">Tap a channel for campaign / page details. Stronger cell shading means a higher value within this view.</p>';
+      }else h+='<p class="wt-notice wt-error">Website traffic data is unavailable for this refresh. No zero totals have been substituted.</p>';
+      const links=[['Instagram – Organic','ig'],['FB Page – Organic','fb'],['FB Marketplace','fm'],['GMB – Organic','gm']];
+      h+='<details class="wt-links"><summary>Tracking links <span>Click to copy</span></summary><div class="wt-link-grid">'+links.map(([name,code])=>`<div class="wt-link-card"><b>${name}</b><div><input aria-label="${name} tracking link" readonly value="https://indifeels.com/?source=${code}"><button type="button" data-wt-copy="https://indifeels.com/?source=${code}">Copy</button></div></div>`).join('')+'</div><p class="wt-footnote">Third-party page codes can be added later. Keep existing paid campaign tracking.</p></details>';
+      h+='<details class="wt-notes"><summary>About these numbers</summary><p>Visits are website sessions, not raw link clicks. Revenue and purchases use GA4 session attribution, separate from saved Shopify order sources. Rolling periods end yesterday. Untagged Facebook visits cannot distinguish your page, Marketplace or third-party pages.</p></details>';
+      view.innerHTML=h;
+    }
+    view.addEventListener('click',async e=>{
+      const p=e.target.closest('[data-wt-period]');if(p){state.period=p.dataset.wtPeriod;state.expanded='';render();return;}
+      const x=e.target.closest('[data-wt-expand]');if(x){state.expanded=state.expanded===x.dataset.wtExpand?'':x.dataset.wtExpand;render();return;}
+      const copy=e.target.closest('[data-wt-copy]');if(copy){
+        const input=copy.parentElement.querySelector('input');input.select();input.setSelectionRange(0,input.value.length);
+        try{if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(copy.dataset.wtCopy);else if(!document.execCommand('copy'))throw Error('copy');copy.textContent='Copied ✓';setTimeout(()=>{if(copy.isConnected)copy.textContent='Copy';},1800);}
+        catch(_){copy.textContent='Selected';toast('Link selected—press and hold to copy');}
+      }
+    });
+    view.addEventListener('change',e=>{
+      if(e.target.matches('.wt-channel')){state.channel=e.target.value;state.expanded='';}
+      else if(e.target.matches('.wt-sort'))state.sort=e.target.value;
+      else if(e.target.matches('.wt-empty'))state.showEmpty=e.target.checked;
+      else return;
+      render();
+    });
+    render();
+  }
+
   async function loadAttributionWebsiteTraffic() {
     const status = $("#oa-website-status"), content = $("#oa-website-content");
     status.hidden = false;
@@ -857,7 +931,9 @@
       const section = data?.content.querySelector("#website-link-tracking") || doc.querySelector("#website-link-tracking");
       if (!section) throw new Error("not-published");
       section.querySelector("h2")?.remove();
-      content.append(document.importNode(section, true));
+      const imported = document.importNode(section, true);
+      content.append(imported);
+      initWebsiteTraffic(imported);
       status.hidden = true;
     } catch (e) {
       status.textContent = e.message === "not-published"

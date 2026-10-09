@@ -112,7 +112,7 @@ except Exception as ex:
 # ---- optional: GA4 source/campaign website activity (separate from Shopify totals)
 from website_link_tracking import FIELDS as LINK_FIELDS, ACCOUNT as GA4_ACCOUNT
 try:
-    out["website_links"] = windsor("googleanalytics4", LINK_FIELDS, GA4_ACCOUNT, (completed_end - timedelta(days=29)).isoformat(), completed_end.isoformat())
+    out["website_links"] = windsor("googleanalytics4", LINK_FIELDS, GA4_ACCOUNT, (completed_end - timedelta(days=29)).isoformat(), now.date().isoformat())
     status["website_links"] = {"ok": True, "rows": len(out["website_links"])}
 except Exception as ex:
     out["website_links"] = None
