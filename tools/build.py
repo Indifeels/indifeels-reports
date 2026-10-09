@@ -76,6 +76,7 @@ tot={k:(sum(r[k][0] for r in rows),sum(r[k][1] for r in rows)) for k in ["t","pt
 
 # ---- ad sets, health, rank and spend signal (campaign and ad-set level) ----
 MIN_SPEND=20.0
+MIN_SPEND_1=5.0   # yesterday alone: lower floor, one day rarely reaches $20
 H30=(FULL_END-D(29),FULL_END); H15=(FULL_END-D(14),FULL_END); H7=(FULL_END-D(6),FULL_END)
 adrows=[]
 for _f in sorted(glob.glob(f"{S}/adset*")): adrows+=unwrap(json.load(open(_f)))
@@ -112,7 +113,7 @@ def stock_for(adname):
             c=sorted(((len(t-a),p) for t,p in _PT if a<=t),key=lambda x:x[0])
             if c and c[0][0]<=2 and (len(c)==1 or c[1][0]>c[0][0]): pr=c[0][1]
     if pr is None or not pr["v"]: return None
-    return dict(t=pr["t"],n=len(pr["v"]),a=sum(1 for _,q in pr["v"] if (q or 0)>0),i=pr.get("i") or "")
+    return dict(t=pr["t"],n=len(pr["v"]),a=sum(1 for _,q in pr["v"] if (q or 0)>0),i=pr.get("i") or "",h=pr["h"])
 def _load_links():
     """{ad set id: product handle} saved from the report's link boxes. Best effort: the report still builds without it."""
     try:
@@ -130,9 +131,10 @@ def _load_links():
         print("ad set links skipped:",e); return {}
 LINKS=_load_links()
 def stock_by_handle(h):
+    if h=="-": return None                                   # "Remove" pressed: no product for this ad set (blocks the name match)
     pr=next((p for _,p in _PT if p["h"]==h),None)
-    if pr is None: return dict(t=h,n=0,a=0,link=True)      # linked, but the product is not in the stock list (e.g. not active)
-    return dict(t=pr["t"],n=len(pr["v"]),a=sum(1 for _,q in pr["v"] if (q or 0)>0),i=pr.get("i") or "",link=True)
+    if pr is None: return dict(t=h,n=0,a=0,link=True,h=h)      # linked, but the product is not in the stock list (e.g. not active)
+    return dict(t=pr["t"],n=len(pr["v"]),a=sum(1 for _,q in pr["v"] if (q or 0)>0),i=pr.get("i") or "",link=True,h=h)
 asd={}
 for _r in sorted(adrows,key=lambda r:r["date"]):
     if not _r.get("spend") and not _r.get(M): continue
@@ -143,7 +145,7 @@ def metrics(days,act):
     m={}
     for k,(a,b,pa,pb) in P.items(): m[k]=rng(days,a,b); m["p"+k]=rng(days,pa,pb)
     m["l"]=rng(days,"0000","9999")
-    m["f30"]=rng(days,*H30); m["f15"]=rng(days,*H15); m["f7"]=rng(days,*H7)
+    m["f30"]=rng(days,*H30); m["f15"]=rng(days,*H15); m["f7"]=rng(days,*H7); m["f1"]=rng(days,FULL_END,FULL_END)
     sp=[d for d in days if days[d][0]>0 and str(H30[0])<=d<=str(H30[1])]
     m["hn"]=len(sp); m["hb"]=sum(1 for d in sp if cpm(*days[d])<4.5); m["act"]=act
     def _hw(h):
@@ -186,16 +188,16 @@ def pctl(vals,higher_good):
 def rank_group(ms):
     """Score = 70% messages received + 30% cost per message (each as a percentile among peers).
     Final = 60% last 30 days + 40% last 7 days (full days). Under $20 spend in a window = not ranked on that window."""
-    def score(win):
-        el={i:v[win] for i,v in ms.items() if v[win][0]>=MIN_SPEND}
+    def score(win,floor=MIN_SPEND):
+        el={i:v[win] for i,v in ms.items() if v[win][0]>=floor}
         if not el: return {}
         a=pctl({i:v[1] for i,v in el.items()},True); b=pctl({i:cpm(*v) for i,v in el.items()},False)
         return {i:0.7*a[i]+0.3*b[i] for i in el}
-    s30=score("f30"); s15=score("f15"); s7=score("f7")
+    s30=score("f30"); s15=score("f15"); s7=score("f7"); s1=score("f1",MIN_SPEND_1)
     fin={i:(0.6*s30[i]+0.4*s7[i] if i in s7 else s30[i]) for i in s30}
     order=sorted(fin,key=lambda i:(-fin[i],-ms[i]["f30"][1]))
-    o15=sorted(s15,key=lambda i:(-s15[i],-ms[i]["f15"][1])); o7=sorted(s7,key=lambda i:(-s7[i],-ms[i]["f7"][1])); o30=sorted(s30,key=lambda i:(-s30[i],-ms[i]["f30"][1]))
-    return {i:dict(rank=order.index(i)+1,n=len(order),r7=(o7.index(i)+1 if i in s7 else None),r15=(o15.index(i)+1 if i in s15 else None),r30=o30.index(i)+1,n7=len(o7),n15=len(o15),n30=len(o30)) for i in order}
+    o15=sorted(s15,key=lambda i:(-s15[i],-ms[i]["f15"][1])); o7=sorted(s7,key=lambda i:(-s7[i],-ms[i]["f7"][1])); o30=sorted(s30,key=lambda i:(-s30[i],-ms[i]["f30"][1])); o1=sorted(s1,key=lambda i:(-s1[i],-ms[i]["f1"][1]))
+    return {i:dict(rank=order.index(i)+1,n=len(order),r7=(o7.index(i)+1 if i in s7 else None),r15=(o15.index(i)+1 if i in s15 else None),r30=o30.index(i)+1,r1=(o1.index(i)+1 if i in s1 else None),n1=len(o1),n7=len(o7),n15=len(o15),n30=len(o30)) for i in order}
 def sig_for(m):
     if not m["act"]: return None
     (s30,m30),(s7,m7)=m["f30"],m["f7"]
@@ -513,14 +515,20 @@ elif RS["cmp"] and RS["cmp"]["mode"]=="down": MRV="Spend fell"; MRL="marginal re
 else: MRV=f'${_headroom(c14):.2f}' if c14 and c14["s"] else "—"; MRL="return per $1 of ads now (spend too steady for the extra-spend test)"
 def roasf(x): return "—" if x is None else f"{x:.2f}x"
 
-def trio(cur,prev,lab):
+def rkbadge(rk,key):
+    """Small rank number shown next to the cost per message of a period (1 = best). Only for ranked rows."""
+    if not rk or not rk.get("r"+key): return ""
+    pos,n=rk["r"+key],rk["n"+key]
+    c="n" if n<2 else "g1" if pos==1 else "g2" if pos==2 else "g3" if pos==3 else ("l" if pos==n and n>2 else "n")
+    return f'<span class="rkn {c}" title="Rank #{pos} of {n} by messages (70%) and cost per message (30%) in this period. 1 is best.">{pos}</span>'
+def trio(cur,prev,lab,rk=None):
     k={"Today":"t","Week":"w","15d":"x","Month":"m","Lifetime":"l"}[lab]
     s,m=cur; ps,pm=prev if prev and prev[0] else (None,None)
     if not s: return f'<td class="s1 c{k}" data-l="{lab} spend">—</td><td class="c{k}" data-l="{lab} msgs">—</td><td class="c{k}" data-l="{lab} cost/msg">—</td>'
     c=cpm(s,m)
     return (f'<td class="s1 c{k}" data-l="{lab} spend">{money(s)}{arrow(s,ps,None) if ps else ""}</td>'
             f'<td class="c{k}" data-l="{lab} msgs">{int(m):,}{arrow(m,pm,True) if pm is not None else ""}</td>'
-            f'<td class="c{k}" data-l="{lab} cost/msg"><span class="p {band(c)}">{fcpm(c)}</span>{arrow(c,cpm(ps,pm),False) if ps else ""}</td>')
+            f'<td class="c{k}" data-l="{lab} cost/msg">{rkbadge(rk,{"t":"1","w":"7","x":"15","m":"30"}.get(k,"")) if rk else ""}<span class="p {band(c)}">{fcpm(c)}</span>{arrow(c,cpm(ps,pm),False) if ps else ""}</td>')
 def hrag(p,n): return "n" if n<1 else ("g" if p>=0.60 else ("y" if p>=0.35 else "r"))
 def hchip(b_,n_):
     """Health chip: share of spend days under $4.50, colour coded from the first spend day (no minimum). No spend in the window = dash."""
@@ -548,18 +556,18 @@ def img_src(url):
 def stockbar(sk,aid):
     """Stock cell for an ad set: the bar when its product is known, otherwise a box to paste the product link."""
     A=html.escape(str(aid),quote=True)
-    box=(f'<div class="lk" data-aid="{A}"><span class="lkw"><input class="lki" type="url" inputmode="url" placeholder="Paste product link to track stock" aria-label="Product link">'
-         f'<button class="lkb" type="button">Track</button><span class="lke" role="status"></span></span></div>')
+    box=(f'<div class="lk" data-aid="{A}"><span class="lkw"><input class="lki" type="url" inputmode="url" placeholder="Search product or paste link" aria-label="Search product or paste link" autocomplete="off">'
+         f'<button class="lkb" type="button">Track</button><span class="lke" role="status"></span><span class="lks" hidden></span></span></div>')
     if not sk: return box
     if not sk["n"]:
-        return (f'<div class="lk" data-aid="{A}"><span class="stkw"><span class="stkn">Linked: {html.escape(sk["t"])} (stock unavailable)</span>'
-                f'<button class="lkc" type="button">Change</button></span></div>')
+        return (f'<div class="lk" data-aid="{A}" data-h="{html.escape(sk.get("h") or "",quote=True)}"><span class="stkw"><span class="stkn">Linked: {html.escape(sk["t"])} (stock unavailable)</span>'
+                f'<span class="lka"><button class="lkp" type="button">Copy link</button><button class="lkc" type="button">Change</button><button class="lkx" type="button">Remove</button></span></span></div>')
     idx=min(13,int(13*sk["a"]/sk["n"]+0.5))
     segs="".join('<i style="background:'+c+'"'+(' class="mk"' if i==idx else '')+'></i>' for i,c in enumerate(_SC))
     T=html.escape(sk["t"],quote=True); im=sk.get("i") or ""
     img=(f'<img class="stki" src="{html.escape(img_src(im),quote=True)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">' if im.startswith("https://cdn.shopify.com/") else "")
-    return (f'<div class="lk" data-aid="{A}"><span class="stkw" title="{T}: {sk["a"]} of {sk["n"]} variants in stock"><span class="stkc"><span class="stk">{segs}</span>'
-            f'<span class="stkl">{sk["a"]} of {sk["n"]} variants in stock</span><button class="lkc" type="button">Change</button></span>'
+    return (f'<div class="lk" data-aid="{A}" data-h="{html.escape(sk.get("h") or "",quote=True)}"><span class="stkw" title="{T}: {sk["a"]} of {sk["n"]} variants in stock"><span class="stkc"><span class="stk">{segs}</span>'
+            f'<span class="stkl">{sk["a"]} of {sk["n"]} variants in stock</span><span class="lka"><button class="lkp" type="button">Copy link</button><button class="lkc" type="button">Change</button><button class="lkx" type="button">Remove</button></span></span>'
             f'<span class="stkr">{img}<span class="stkp">{html.escape(sk["t"])}</span></span></span></div>')
 def agenote(m):
     f,rs=m.get("first"),m.get("rs")
@@ -587,6 +595,10 @@ def rkcol(pos,n):
     if n==2: return "g" if pos==1 else "y"
     f=(pos-1)/(n-1)
     return "g" if f<=1/3 else ("r" if f>=2/3 else "y")
+def ovr(m):
+    rk=m.get("rank")
+    if not m.get("act") or not rk: return ""
+    return f'<span class="ln2 ovr" title="Overall rank: 60% last 30 days + 40% last 7 days. Ranks for each period sit next to the cost per message.">Rank <b>#{rk["rank"]}</b> of {rk["n"]}</span>'
 def rkrow(rk,adset):
     if rk is None: return '<span class="rkrow"><span class="rkl">Not ranked, under $20 spend</span></span>'
     ch=""
@@ -604,7 +616,7 @@ def sigrow(sg,fl=None):
     return f'<span class="sigrow"><span class="sp {x[0]}" title="{html.escape(x[2])}">{x[1]}</span><small>{html.escape(x[2])}</small></span>' if x else ""
 def prow(cls,name,m,attrs=""):
     return (f'<tr class="{cls}"{attrs}>{name}'+hcell(m)
-            +trio(m["t"],m["pt"],"Today")+trio(m["w"],m["pw"],"Week")+trio(m["x"],m["px"],"15d")+trio(m["m"],m["pm"],"Month")+trio(m["l"],None,"Lifetime")+'</tr>')
+            +trio(m["t"],m["pt"],"Today",m.get("rank"))+trio(m["w"],m["pw"],"Week",m.get("rank"))+trio(m["x"],m["px"],"15d",m.get("rank"))+trio(m["m"],m["pm"],"Month",m.get("rank"))+trio(m["l"],None,"Lifetime")+'</tr>')
 trs=""; first_p=True
 for i,r in enumerate(rows):
     cls="cp act" if r["act"] else "cp paused"
@@ -612,8 +624,8 @@ for i,r in enumerate(rows):
     m=r["m2"]
     btn=(f'<button type="button" class="xp" aria-expanded="false" aria-label="Show ad sets">&#9656;</button>' if r["sets"] else '<span class="xp0"></span>')
     nm=(f'<th scope="row" title="Launched {r["L"].strftime("%-d %b %Y")} ({r["live"]} days ago)"><div class="nmrow">{btn}<span class="nmw"><span class="nm">{html.escape(r["n"])}</span>'
-        f'<span class="meta"><span class="st {"on" if r["act"] else "off"}">{"Active" if r["act"] else "Paused"}</span>'+(f'<span class="ln2">{len(r["sets"])} ad sets</span>' if r["sets"] else "")+'</span>'
-        +(sigrow(m.get("sig"),m.get("flag"))+rkrow(m.get("rank"),False) if r["act"] else sigrow(None,m.get("flag"))+rkrow_p(m))+'</span></div></th>')
+        f'<span class="meta"><span class="st {"on" if r["act"] else "off"}">{"Active" if r["act"] else "Paused"}</span>'+(f'<span class="ln2">{len(r["sets"])} ad sets</span>' if r["sets"] else "")+ovr(m)+'</span>'
+        +(sigrow(m.get("sig"),m.get("flag")) if r["act"] else sigrow(None,m.get("flag"))+rkrow_p(m))+'</span></div></th>')
     trs+='<tbody class="grp">'+prow(cls,nm,m,f' data-id="c{i}"')
     for x in r["sets"]:
         _t=thm.get(str(x.get("aid")))
@@ -622,8 +634,8 @@ for i,r in enumerate(rows):
             _src=("data:image/jpeg;base64,"+_t["b"]) if _t.get("b") else html.escape(_t["u"],quote=True)
             _img=f'<img class="thm" src="{_src}" alt="" loading="lazy" referrerpolicy="no-referrer" title="{html.escape(_t.get("n") or "Top ad by spend",quote=True)}" onerror="this.style.display=\'none\'">'
         an=(f'<th scope="row" class="asn"><div class="asw">{_img}<div class="asb"><span class="nm">{html.escape(x["name"])}</span>'
-            f'<span class="meta"><span class="st {"on" if x["act"] else "off"}">{"Active" if x["act"] else "Paused"}</span></span>'
-            +(sigrow(x.get("sig"),x.get("flag"))+rkrow(x.get("rank"),True) if x["act"] else sigrow(None,x.get("flag"))+rkrow_p(x))+'</div></div></th>')
+            f'<span class="meta"><span class="st {"on" if x["act"] else "off"}">{"Active" if x["act"] else "Paused"}</span>{ovr(x)}</span>'
+            +(sigrow(x.get("sig"),x.get("flag")) if x["act"] else sigrow(None,x.get("flag"))+rkrow_p(x))+'</div></div></th>')
         trs+=prow("as"+("" if x["act"] else " paused"),an,x,f' data-p="c{i}" hidden')
     trs+='</tbody>'
 trs+=('<tbody><tr class="total"><th scope="row">All non-tracked campaigns</th><td class="s1"></td>'+trio(tot["t"],tot["pt"],"Today")+trio(tot["w"],tot["pw"],"Week")+trio(tot["x"],tot["px"],"15d")
@@ -843,6 +855,14 @@ tbody th{{min-width:340px;max-width:370px}}
 .stkl,.stkn,.hage{{display:block;font-size:11.5px;color:var(--muted)}}.hage{{margin:0 0 6px;font-weight:600}}.stkn{{margin:0 0 6px}}
 .lkw{{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;align-items:center}}.lki{{width:150px;font:inherit;font-size:12px;padding:4px 7px;border-radius:7px;border:1px solid var(--line);background:var(--sub);color:var(--ink)}}
 .lkb,.lkc{{font:inherit;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:7px;border:1px solid var(--line);background:var(--sub);color:var(--ink);cursor:pointer}}.lkc{{margin-top:2px;font-weight:500;color:var(--muted)}}
+.lka{{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}}.lka .lkc{{margin-top:0}}.lkp,.lkx{{font:inherit;font-size:11.5px;font-weight:500;padding:3px 9px;border-radius:7px;border:1px solid var(--line);background:var(--sub);color:var(--muted);cursor:pointer}}.lkx:hover{{color:var(--r);border-color:var(--rl)}}.lkp:hover{{color:var(--ink)}}
+.lkw{{position:relative}}.lks{{position:absolute;left:0;top:30px;width:290px;max-width:80vw;z-index:20;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.55);overflow:hidden}}.lks[hidden]{{display:none}}
+.lks .lsi{{display:flex;gap:9px;align-items:center;padding:7px 9px;cursor:pointer;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink);text-align:left}}.lks .lsi:last-child{{border-bottom:0}}.lks .lsi:hover{{background:var(--sub)}}.lks .lsi img,.lks .lsi i{{width:34px;height:42px;border-radius:5px;object-fit:cover;flex:none;background:var(--sub)}}.lks .lsi small{{display:block;color:var(--muted);font-size:11px}}.lks .lse{{padding:9px;color:var(--muted);font-size:12px}}
+.rkn{{display:inline-block;min-width:17px;height:17px;line-height:17px;padding:0 4px;margin-right:5px;border-radius:9px;font-size:10.5px;font-weight:700;text-align:center;vertical-align:1px;background:var(--sub);color:var(--muted);border:1px solid var(--line);cursor:help}}
+.rkn.g1{{background:#E8B923;color:#2b2100;border-color:#E8B923}}.rkn.g2{{background:#BFC4CC;color:#1d2026;border-color:#BFC4CC}}.rkn.g3{{background:#C98A5B;color:#2a1708;border-color:#C98A5B}}.rkn.l{{color:var(--r);border-color:var(--rl)}}
+.ovr:before{{content:" · "}}.ovr b{{color:var(--ink)}}
+.sigrow{{margin-top:8px}}tr.cp>th,tr.as>th{{padding-top:16px;padding-bottom:16px}}
+.fsb{{margin-left:auto;font:inherit;font-size:12px;font-weight:600;padding:5px 11px;border-radius:99px;border:1px solid var(--line);background:var(--sub);color:var(--ink);cursor:pointer;white-space:nowrap;position:sticky;right:0}}
 .lkb[disabled]{{opacity:.55;cursor:default}}.lke{{flex-basis:100%;font-size:11.5px;color:var(--r);white-space:normal}}.stkp{{display:block;font-size:11px;line-height:1.25;color:var(--ink);white-space:normal;overflow-wrap:anywhere;max-height:3.75em;overflow:hidden}}.hc:has(.stkw){{min-width:300px}}
 .hlast{{display:block;margin-top:5px;font-size:11.5px;color:var(--muted)}}
 .hv.n,.rkc.n{{background:var(--sub);color:var(--muted);border-color:var(--line)}}
@@ -866,12 +886,12 @@ tbody th{{min-width:340px;max-width:370px}}
 {SECTION}
 <details class="how"><summary>How to read health, rank and spend signal</summary><dl>
 <dt>Health</dt><dd>Share of days with spend where each message cost under $4.50, for the last 7, 15 and 30 full days. Green is 60% or more, amber 35 to 59%, red under 35%. Every window is colour coded from the first spend day, however few days it has; a dash means no spend in that window. Hover a figure to see the day count. Ad sets under 7 days old show <b>Launched N days ago</b>, or <b>Reactivated N days ago</b> if they restarted after a gap of over 3 days. The colour bar above the health figures is stock for the ad's product: the marker moves right as more of its variants (sizes) are in stock, so 2 of 4 sits in the middle. The ad is matched to its product by name; \"no product match\" means no confident match.</dd>
-<dt>Rank</dt><dd>Under each campaign name. Overall rank among active campaigns (ad sets rank inside their campaign), then the rank on 7, 15 and 30 days alone. Score is 70% messages received plus 30% cost per message; the overall number blends 30 days (60%) and 7 days (40%). Green is the top third, red the bottom third; under $20 spend in a window is not ranked.</dd>
+<dt>Rank</dt><dd>Overall rank sits in the status line under each name (campaigns among active campaigns, ad sets inside their campaign). The small number next to each cost per message is the rank for that period alone (yesterday, 7, 15 and 30 days); 1 is best. Yesterday needs at least $5 spend, the others $20. Score is 70% messages received plus 30% cost per message; the overall number blends 30 days (60%) and 7 days (40%). Green is the top third, red the bottom third; under $20 spend in a window is not ranked.</dd>
 <dt>Flags</dt><dd><b>Close #1</b> (active): 30-day health is red or amber, 7-day health is not green, at least $20 spent in 30 days, and it ranks in the bottom half of its group. #1 is the worst. <b>Reopen #1</b> (paused): lifetime health is green over at least 5 spend days and $50 spent, so a weak last run may just have been a bad season. Ranked best first (inside its group, and across all paused rows) on lifetime messages (70%) and lifetime cost per message (30%), inside its group. <b>Keep closed</b> (paused): lifetime health is red on the same evidence. Paused rows show 7, 15 and 30 day health too (blank if it did not spend), plus Last run (its latest stretch of spending, no gap over 3 days) and Lifetime.</dd>
 <dt>Notes</dt><dd>Messages are Meta "messaging conversations started". Periods end on {TODAY.strftime("%-d %b")}; arrows compare each period with the one before it. Health, rank and signal use completed days only. Ad sets shown are those with spend in the last 30 days.</dd>
 <dt>Spend signal</dt><dd>Spend more when 30-day health is Good and the 7-day cost per message is at or below the 30-day figure. Spend less when health is Poor or the 7-day cost per message is over $6. Otherwise Hold.</dd></dl></details>
 <p class="key"><button class="tg" id="xa" type="button" data-o="0">Expand all ad sets</button><span class="p g">Under $4.50</span><span class="p y">$4.50 to $6</span><span class="p r">Over $6</span><span>▲▼ change vs the previous period: green is better, red is worse, grey is spend</span></p>
-<div class="wrapx"><div class="wrap"><nav class="jump" aria-label="Jump to a period"><button type="button" class="stp" data-step="-1" aria-label="Previous">&#8249;</button><button type="button" data-i="0">Health</button><button type="button" data-i="1">{LBL_T}</button><button type="button" data-i="2">7 days</button><button type="button" data-i="3">15 days</button><button type="button" data-i="4">30 days</button><button type="button" data-i="5">Lifetime</button><button type="button" class="stp" data-step="1" aria-label="Next">&#8250;</button></nav><table>
+<div class="wrapx"><div class="wrap"><nav class="jump" aria-label="Jump to a period"><button type="button" class="stp" data-step="-1" aria-label="Previous">&#8249;</button><button type="button" data-i="0">Health</button><button type="button" data-i="1">{LBL_T}</button><button type="button" data-i="2">7 days</button><button type="button" data-i="3">15 days</button><button type="button" data-i="4">30 days</button><button type="button" data-i="5">Lifetime</button><button type="button" class="stp" data-step="1" aria-label="Next">&#8250;</button><button type="button" class="fsb" id="fsb" aria-label="Full screen">&#x26F6; Full screen</button></nav><table>
 <thead><tr><th rowspan="2" class="hcamp">Campaign</th><th rowspan="2" class="s1 hh">Health<small>% of days under $4.50. Run = latest stretch of spend, no gap over 3 days</small></th><th colspan="3" class="s1 gh ct">{LBL_T}<small>{TODAY.strftime("%a %-d %b")}</small></th><th colspan="3" class="s1 gh cw">Last 7 days<small>{W7.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cx">Last 15 days<small>{M15.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cm">Last 30 days<small>{M30.strftime("%-d %b")} to {TODAY.strftime("%-d %b")}</small></th><th colspan="3" class="s1 gh cl">Lifetime<small>Since {dt.date.fromisoformat(FIRST).strftime("%-d %b %Y")}</small></th></tr>
 <tr>{"".join(f'<th class="s1 c{k}">Spend</th><th class="c{k}">Msgs</th><th class="c{k}">Cost/msg</th>' for k in "twxml")}</tr></thead>
 {trs}</table></div></div>

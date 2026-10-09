@@ -1362,21 +1362,39 @@
     const d = event.data || {};
     if (d.type !== "adset-link") return;
     const reply = (o) => { try { fr.contentWindow?.postMessage(Object.assign({ type: "adset-link-result", req: d.req, aid: d.aid }, o), "*"); } catch (_) {} };
-    if (!["set", "clear"].includes(d.action)) return;
+    if (!["set", "clear", "remove", "search"].includes(d.action)) return;
     try {
-      const { data, error } = await sb.functions.invoke("adset-product-link", { body: { action: d.action, adset_id: String(d.aid || ""), url: String(d.url || "").slice(0, 600) } });
+      const { data, error } = await sb.functions.invoke("adset-product-link", { body: { action: d.action, adset_id: String(d.aid || ""), url: String(d.url || "").slice(0, 600), q: String(d.q || "").slice(0, 60) } });
       if (error || !data?.ok) {
         let msg = data?.error || error?.message || "Couldn't save the link.";
         try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
         reply({ ok: false, action: d.action, error: msg });
         return;
       }
+      if (d.action === "search") { reply({ ok: true, action: "search", items: data.items || [] }); return; }
       reply({ ok: true, action: d.action, title: data.title, handle: data.handle, n: data.n, a: data.a, image: data.image || "", asof: data.asof, live: !!data.live });
-      toast(d.action === "set" ? "Product linked" : "Link removed");
+      toast(d.action === "set" ? "Product linked" : "Product removed");
     } catch (err) {
       reply({ ok: false, action: d.action, error: err?.message || "Couldn't save the link." });
     }
   });
+
+  // ---------- report full screen ----------
+  (function () {
+    const set = (on) => {
+      const fr = $("#rep-frame"); if (!fr) return;
+      fr.classList.toggle("rep-full", !!on);
+      document.body.classList.toggle("rep-full-on", !!on);
+      try { fr.contentWindow?.postMessage({ type: "report-fullscreen-state", on: !!on }, "*"); } catch (_) {}
+    };
+    window.addEventListener("message", (event) => {
+      const fr = $("#rep-frame");
+      if (!fr || event.source !== fr.contentWindow) return;
+      const d = event.data || {};
+      if (d.type === "report-fullscreen") set(!!d.on);
+    });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") set(false); });
+  })();
 
   // ---------- product visibility fixes ----------
   window.addEventListener("message", async (event) => {

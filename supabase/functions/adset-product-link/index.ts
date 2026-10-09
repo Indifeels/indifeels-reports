@@ -4,6 +4,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // Daily report: link an ad set to a product page so its variant stock shows as a bar.
 //   { action: "set",   adset_id, url }  -> saves the link, returns { ok, title, handle, n, a, asof, live }
 //   { action: "clear", adset_id }       -> removes the link
+//   { action: "remove", adset_id }      -> marks "no product" (blocks the name match)
+//   { action: "search", q }             -> active products by title: { items:[{title,handle,image,n,a}] }
 // n = variants, a = variants with stock. Live Shopify is used when SHOPIFY_TOKEN is set on this function,
 // otherwise the synced voice_product_cache (as of its last sync, returned in "asof").
 
@@ -50,12 +52,35 @@ Deno.serve(async (req: Request) => {
 
   let body: any = {};
   try { body = await req.json(); } catch { return json({ error: "Bad request" }, 400); }
+  if (body.action === "search") {
+    const q = String(body.q || "").trim().slice(0, 60).replace(/[%_,()\\]/g, " ").trim();
+    if (q.length < 2) return json({ ok: true, items: [] });
+    const words = q.split(/\s+/).slice(0, 5);
+    let qb = svc.from("voice_product_cache").select("title,handle,variants,featured_image").limit(8);
+    for (const w of words) qb = qb.ilike("title", `%${w}%`);
+    const { data: rows, error: se } = await qb;
+    if (se) { console.error(se.message); return json({ error: "Search failed" }, 500); }
+    const items = (rows || []).filter((p: any) => Array.isArray(p.variants) && p.variants.length).map((p: any) => ({
+      title: p.title, handle: p.handle, image: p.featured_image || "", n: p.variants.length,
+      a: p.variants.filter((i: any) => (Number(i.inventory_quantity) || 0) > 0).length,
+    }));
+    return json({ ok: true, items });
+  }
   const adsetId = String(body.adset_id || "");
   if (!/^\d{5,25}$/.test(adsetId)) return json({ error: "Bad ad set" }, 400);
 
   if (body.action === "clear") {
     const { error } = await svc.from("adset_product_links").delete().eq("adset_id", adsetId);
     if (error) { console.error(error.message); return json({ error: "Could not remove the link" }, 500); }
+    return json({ ok: true });
+  }
+  if (body.action === "remove") {
+    // "-" = no product for this ad set; it also stops the name match from bringing the wrong product back.
+    const { error } = await svc.from("adset_product_links").upsert(
+      { adset_id: adsetId, handle: "-", title: "", linked_by: who.user.id, updated_at: new Date().toISOString() },
+      { onConflict: "adset_id" },
+    );
+    if (error) { console.error(error.message); return json({ error: "Could not remove the product" }, 500); }
     return json({ ok: true });
   }
   if (body.action !== "set") return json({ error: "Bad request" }, 400);
