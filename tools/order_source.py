@@ -21,6 +21,7 @@ Lead period: Yesterday (complete Melbourne day) from the 6 AM refresh until 7:59
 import json
 import os
 import sys
+from website_link_tracking import section as link_tracking_section
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -218,6 +219,7 @@ def main():
         t = t.replace(key, val)
     for left in ("__DATA__", "__MODEL__", "__PREV__", "__WINDOWS__", "__LEAD_LABEL__", "__ADS__", "__GMB__"):
         assert left not in t
+    t = t.replace("__WEBSITE_LINK_TRACKING__", link_tracking_section(src))
     # sanity: every order in the 30-day window reaches the all-sources total
     tot30 = sum(v[1] for v in d["d30"].values())
     assert abs(tot30 - r["model"]["d30"]["all"]["revenue"]) < 0.5, "revenue does not reconcile to Shopify"

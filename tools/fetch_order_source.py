@@ -109,6 +109,15 @@ except Exception as ex:
     out["gmb_dirs"] = None
     status["gmb_dirs"] = {"ok": False, "error": str(ex)}
 
+# ---- optional: GA4 source/campaign website activity (separate from Shopify totals)
+from website_link_tracking import FIELDS as LINK_FIELDS, ACCOUNT as GA4_ACCOUNT
+try:
+    out["website_links"] = windsor("googleanalytics4", LINK_FIELDS, GA4_ACCOUNT, (completed_end - timedelta(days=29)).isoformat(), completed_end.isoformat())
+    status["website_links"] = {"ok": True, "rows": len(out["website_links"])}
+except Exception as ex:
+    out["website_links"] = None
+    status["website_links"] = {"ok": False, "error": str(ex)}
+
 # ---- required: Shopify orders with the custom.order_source metafield
 shop = os.environ.get("SHOPIFY_SHOP", "bvdxj3-r8.myshopify.com")
 api = "https://" + shop + "/admin/api/2026-04/graphql.json"

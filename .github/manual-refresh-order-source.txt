@@ -1,12 +1,1 @@
-Manual Order Source refresh after fixing scheduled key loading.
-2026-10-07 Melbourne.
-8 PM catch-up refresh requested 2026-10-07 Australia/Melbourne. Preserve deployed templates.
-Verify dashboard timestamp sync fix after successful publish.
-Current-main refresh requested after Order Source date-window correction.
-Apply dynamic Today-after-8PM display window.
-Rebuild report with dynamic Today/Yesterday internal labels.
-Publish approved Order Source layout and front-tile period logic.
-Rebuild after JavaScript render syntax fix.
-Rebuild after fixing profit KPI initialization order.
-Rebuild after startup event binding fix.
-Rebuild with hardened inline JSON.
+Refresh website link tracking for existing source=ig and source=fb links: 2026-10-09T19:45:00Z

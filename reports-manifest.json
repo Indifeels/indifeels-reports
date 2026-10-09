@@ -100,7 +100,8 @@
       "builders": [
         "tools/fetch_order_source.py",
         "tools/order_source.py",
-        "tools/order_source_template.html"
+        "tools/order_source_template.html",
+        "tools/website_link_tracking.py"
       ],
       "outputs": [
         "r/order-source.bin",
