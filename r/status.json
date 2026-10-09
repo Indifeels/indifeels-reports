@@ -1,9 +1,9 @@
 {
  "call-tracking": {
-  "at": "2026-10-09T20:00+11:00",
-  "code_sha": "f428ff41523a17fe9db10cebc3b8d79a8eb1fbb9",
+  "at": "2026-10-10T06:00+11:00",
+  "code_sha": "64cb7e7eab34861c67762312935b80eea6d7485e",
   "data_through": null,
-  "last_ok": "2026-10-09T20:00+11:00",
+  "last_ok": "2026-10-10T06:00+11:00",
   "manifest_version": "2026-10-08.schedule-panel.1",
   "ok": true,
   "reason": ""
