@@ -50,7 +50,7 @@ if(d.action==='search'){if(last[aid]!==d.req)return;var l=w.querySelector('.lks'
 if(!d.ok){l.innerHTML='<div class="lse">'+esc(d.error||"Search failed")+'</div>';return}
 var it=d.items||[];l.innerHTML=it.length?it.map(function(p){var im=img(p.image,80);return '<div class="lsi" data-url="https://indifeels.com/products/'+esc(p.handle)+'">'+(im?'<img src="'+im+'" alt="" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">':'<i></i>')+'<span>'+esc(p.title)+'<small>'+p.a+' of '+p.n+' variants in stock</small></span></div>'}).join(''):'<div class="lse">No active product matches that name.</div>';l.hidden=false;return}
 if(d.ok&&d.action==='remove'){w.removeAttribute('data-h');w.innerHTML=box();return}
-if(d.ok&&d.action==='set'&&d.n){if(d.handle)w.setAttribute('data-h',d.handle);w.innerHTML=bar({title:d.title,a:d.a,n:d.n,image:d.image});return}
+if(d.ok&&d.action==='set'&&d.n){if(d.handle)w.setAttribute('data-h',d.handle);var a2=d.a,n2=d.n,p2=prods().filter(function(p){return p[1]===d.handle})[0];if(p2&&!d.live){a2=p2[3];n2=p2[4]}w.innerHTML=bar({title:d.title,a:a2,n:n2,image:d.image});return}
 var err=w.querySelector('.lke'),b=w.querySelector('.lkb:not(.lkn)'),x=w.querySelector('.lkx');if(err)err.textContent=d.error||"Couldn't save the link.";if(b){b.disabled=false;b.textContent='Track'}if(x){x.disabled=false;x.textContent='Remove'}});
 // full screen: the app shell enlarges this report's frame
 var fs=false;function setFs(on){fs=on;var b=document.getElementById('fsb');if(b)b.innerHTML=on?'&#x2715; Exit full screen':'&#x26F6; Full screen';post({type:'report-fullscreen',on:on})}
