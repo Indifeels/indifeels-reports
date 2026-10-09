@@ -199,10 +199,10 @@ def rank_group(ms):
     o15=sorted(s15,key=lambda i:(-s15[i],-ms[i]["f15"][1])); o7=sorted(s7,key=lambda i:(-s7[i],-ms[i]["f7"][1])); o30=sorted(s30,key=lambda i:(-s30[i],-ms[i]["f30"][1])); o1=sorted(s1,key=lambda i:(-s1[i],-ms[i]["f1"][1]))
     return {i:dict(rank=order.index(i)+1,n=len(order),r7=(o7.index(i)+1 if i in s7 else None),r15=(o15.index(i)+1 if i in s15 else None),r30=o30.index(i)+1,r1=(o1.index(i)+1 if i in s1 else None),n1=len(o1),n7=len(o7),n15=len(o15),n30=len(o30)) for i in order}
 def period_ranks(ms):
-    """Rank for each period on its own (yesterday, 7, 15, 30 days), shown as the medal in that column.
+    """Rank for each period on its own, shown as the medal in that column, using exactly the numbers that column shows.
     Same score as the overall rank (70% messages + 30% cost per message), but any spend counts, so every row that spent in a period gets a medal."""
     out={i:{} for i in ms}
-    for k,w in (("1","f1"),("7","f7"),("15","f15"),("30","f30")):
+    for k,w in (("1","t"),("7","w"),("15","x"),("30","m")):   # the same windows the columns show (Today/Yesterday, 7, 15, 30 days)
         el={i:v[w] for i,v in ms.items() if v[w][0]>0}
         if not el: continue
         a=pctl({i:v[1] for i,v in el.items()},True); b=pctl({i:cpm(*v) for i,v in el.items()},False)
