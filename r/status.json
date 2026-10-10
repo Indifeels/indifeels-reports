@@ -54,10 +54,10 @@
   "reason": ""
  },
  "restock": {
-  "at": "2026-10-10T15:06+11:00",
-  "code_sha": "b88ebfed1702a1ba7a9d39faeb7d3caa11ca183b",
+  "at": "2026-10-10T16:11+11:00",
+  "code_sha": "5e7c193cfd60796d87a78383bc6e76f91e9a4754",
   "data_through": null,
-  "last_ok": "2026-10-10T15:06+11:00",
+  "last_ok": "2026-10-10T16:11+11:00",
   "manifest_version": "2026-10-08.schedule-panel.1",
   "ok": true,
   "reason": ""
