@@ -63,10 +63,10 @@
   "reason": "Restock build failed: RuntimeError"
  },
  "stock": {
-  "at": "2026-10-10T12:42+11:00",
-  "code_sha": "1bf7a3d2cce24e066bca0fe1f0a6c08b7311828d",
+  "at": "2026-10-10T14:09+11:00",
+  "code_sha": "89bfa0117b580c0b497d9e8419ecc98cb13acdd8",
   "data_through": null,
-  "last_ok": "2026-10-10T12:42+11:00",
+  "last_ok": "2026-10-10T14:09+11:00",
   "manifest_version": "2026-10-08.schedule-panel.1",
   "ok": true,
   "reason": ""
