@@ -1,0 +1,29 @@
+name: SEO Rankings refresh
+run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [report-schedule]
+  push:
+    paths:
+      - ".github/manual-refresh-seo.txt"
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.event.action == 'report-schedule' && !contains(github.event.client_payload.report_ids, 'footwear') && format('ignored-seo-{0}', github.event.client_payload.schedule_group) || 'indifeels-seo-rankings' }}
+  cancel-in-progress: false
+jobs:
+  refresh:
+    if: github.event.action != 'report-schedule' || contains(github.event.client_payload.report_ids, 'footwear')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch finalized GSC rankings and publish snapshots
+        env:
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
+        run: python3 tools/refresh_seo_rankings.py
