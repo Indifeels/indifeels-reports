@@ -14,7 +14,7 @@ begin
  join public.seo_rank_products p using(category_id,handle)
  on conflict(category_id,handle,snapshot_date) do update set clicks=excluded.clicks,impressions=excluded.impressions,avg_position=excluded.avg_position,target_position=excluded.target_position,target_impressions=excluded.target_impressions,top_query=excluded.top_query,top_query_position=excluded.top_query_position,top_query_impressions=excluded.top_query_impressions,top_queries=excluded.top_queries;
  get diagnostics n=row_count;
- update public.seo_rank_categories set refreshed_at=now(),gsc_settled_through=p_through;
+ update public.seo_rank_categories set refreshed_at=now(),gsc_settled_through=p_through where id in (select x->>'category_id' from jsonb_array_elements(p_rows) x);
  return jsonb_build_object('ok',true,'products',n,'snapshot_date',p_snapshot,'settled_through',p_through);
 end;$$;
 revoke all on function public.publish_seo_rank_refresh(date,date,jsonb) from public,anon,authenticated;
