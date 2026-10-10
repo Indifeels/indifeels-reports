@@ -1,1 +1,1 @@
-Refresh SEO rankings: publication validation retry 2.
+Refresh SEO rankings after scoped publication fix, run 3.
