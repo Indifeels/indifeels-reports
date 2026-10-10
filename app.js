@@ -260,6 +260,7 @@
   }
   function homeWarning(id) { return !!(health(id) || homeMeta[id]?.warn || homeMeta[id]?.health === "bad"); }
   function homeUpdated(id,meta) {
+    if (id === "footwear" && meta?.updated) return meta.updated;
     const iso=status[id]?.last_ok || (scheduleStatus[id]?.status === "succeeded" ? scheduleStatus[id]?.finished_at : null);
     if (iso && !isNaN(Date.parse(iso))) return new Date(iso).toLocaleString("en-AU",{timeZone:"Australia/Melbourne",day:"2-digit",month:"short",year:"numeric",hour:"numeric",minute:"2-digit"});
     return meta?.updated || "Not available";
