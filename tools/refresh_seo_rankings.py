@@ -10,7 +10,8 @@ def post(body):
     try:
         with urllib.request.urlopen(req,timeout=120) as r: result=json.load(r)
     except urllib.error.HTTPError as e:
-        raise RuntimeError("SEO callback HTTP "+str(e.code)) from None
+        detail=json.loads(e.read()).get("error","unknown callback error")
+        raise RuntimeError("SEO callback HTTP "+str(e.code)+": "+str(detail)) from None
     if result.get("error"): raise RuntimeError(result["error"])
     return result
 def fetch(fields,start,end):
