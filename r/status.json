@@ -54,13 +54,13 @@
   "reason": ""
  },
  "restock": {
-  "at": "2026-10-10T14:09+11:00",
-  "code_sha": "89bfa0117b580c0b497d9e8419ecc98cb13acdd8",
+  "at": "2026-10-10T14:22+11:00",
+  "code_sha": "bae5677327a505935b352b1ed60dda927e85273a",
   "data_through": null,
-  "last_ok": "2026-10-10T12:42+11:00",
+  "last_ok": "2026-10-10T14:22+11:00",
   "manifest_version": "2026-10-08.schedule-panel.1",
-  "ok": false,
-  "reason": "Restock build failed: RuntimeError"
+  "ok": true,
+  "reason": ""
  },
  "stock": {
   "at": "2026-10-10T14:09+11:00",
