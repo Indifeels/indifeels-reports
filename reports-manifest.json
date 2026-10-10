@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-08.schedule-panel.1",
+  "manifest_version": "2026-10-11.seo-windsor.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -112,7 +112,7 @@
     },
     {
       "id": "call-tracking",
-      "title": "Call Tracking \u2014 Nimbata",
+      "title": "Call Tracking — Nimbata",
       "workflow": "call-tracking.yml",
       "refresh_times": [
         "schedule panel"
@@ -199,19 +199,22 @@
     },
     {
       "id": "footwear",
-      "title": "Footwear SEO",
-      "workflow": null,
+      "title": "SEO Rankings",
+      "workflow": "seo-rankings.yml",
       "refresh_times": [
         "schedule panel"
       ],
-      "required_env": [],
-      "builders": [],
-      "outputs": [
-        "r/footwear.bin",
-        "r/footwear.meta.bin"
+      "required_env": [
+        "WINDSOR_API_KEY",
+        "SYNC_READ_TOKEN"
       ],
-      "supabase_sync": true,
-      "schedule_control": "report_schedules"
+      "builders": [
+        "tools/refresh_seo_rankings.py"
+      ],
+      "outputs": [],
+      "supabase_sync": false,
+      "schedule_control": "report_schedules",
+      "delivery": "supabase_live"
     },
     {
       "id": "tech-availability",
