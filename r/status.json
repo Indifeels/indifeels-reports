@@ -1,9 +1,9 @@
 {
  "call-tracking": {
-  "at": "2026-10-11T20:00+11:00",
-  "code_sha": "8ec0e0419c877fe9f7c848ddba1b849c6ed975b0",
+  "at": "2026-10-12T06:00+11:00",
+  "code_sha": "cc81de0105e599a71fa1ede85ffb64b7f6ee6be9",
   "data_through": null,
-  "last_ok": "2026-10-11T20:00+11:00",
+  "last_ok": "2026-10-12T06:00+11:00",
   "manifest_version": "2026-10-11.seo-windsor.1",
   "ok": true,
   "reason": ""
