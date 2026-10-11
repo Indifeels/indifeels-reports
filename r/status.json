@@ -54,10 +54,10 @@
   "reason": ""
  },
  "restock": {
-  "at": "2026-10-11T23:56+11:00",
-  "code_sha": "4926b7ed48f556f6342ef1ebf66a319437331d47",
+  "at": "2026-10-12T07:01+11:00",
+  "code_sha": "742f1d9b1717956ddcc5f7a432d7d2c70f0c033f",
   "data_through": null,
-  "last_ok": "2026-10-11T23:56+11:00",
+  "last_ok": "2026-10-12T07:01+11:00",
   "manifest_version": "2026-10-11.seo-windsor.1",
   "ok": true,
   "reason": ""
