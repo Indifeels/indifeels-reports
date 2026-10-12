@@ -32,6 +32,11 @@ if d:
                      [cpmv(d.get("t_cpm")), "cost per message"], [f'{d["m_roas"]:.2f}x' if d["m_roas"] else "—", "ROAS, last 30 days"]],
                      signal=dict(code=SIG.get(d["sig"], "hold"), label=d["sig_label"], reason=d["reason"]),
                      warn=f'{d["unatt"]} orders need a source' if d.get("unatt") else "", spark=d.get("spark"))
+ft = load("facebook-tracked")
+if ft:
+    metas["facebook-tracked"] = dict(updated=ft["updated"], stats=[[money(ft["t_s"], 2), f'spent {ft.get("t_label", "today")}'], [money(ft["t_sales"]), f'tracked sales {ft.get("t_label", "today")}'],
+                     [f'{ft["m_roas"]:.2f}x' if ft["m_roas"] else "—", "ROAS, last 30 days"], [money(ft["m_profit"]), "net profit, last 30 days"]],
+                     signal=dict(code=SIG.get(ft["sig"], "hold"), label=ft["sig_label"], reason=ft["reason"]), spark=ft.get("spark"))
 m = load("monthly")
 if m:
     metas["monthly"] = dict(updated=m["updated"], stats=[[money(m["np"]), f'net profit, {m["month"]}'], [f'{m["roas"]:.2f}x', "ROAS this month"],

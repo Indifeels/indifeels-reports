@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-11.seo-windsor.1",
+  "manifest_version": "2026-10-13.facebook-tracked.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -11,6 +11,29 @@
     "schedule_authority": "Supabase report_refresh_control + report_schedules"
   },
   "reports": [
+    {
+      "id": "facebook-tracked",
+      "title": "Facebook Tracked",
+      "workflow": "facebook-tracked.yml",
+      "refresh_times": [
+        "schedule panel"
+      ],
+      "required_env": [
+        "WINDSOR_API_KEY",
+        "SYNC_READ_TOKEN"
+      ],
+      "builders": [
+        "tools/fetch_fb_tracked.py",
+        "tools/fb_tracked.py",
+        "tools/encrypt.py"
+      ],
+      "outputs": [
+        "r/facebook-tracked.bin",
+        "r/facebook-tracked.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "report_schedules"
+    },
     {
       "id": "daily",
       "title": "Daily Report",
@@ -112,7 +135,7 @@
     },
     {
       "id": "call-tracking",
-      "title": "Call Tracking — Nimbata",
+      "title": "Call Tracking \u2014 Nimbata",
       "workflow": "call-tracking.yml",
       "refresh_times": [
         "schedule panel"

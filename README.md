@@ -16,6 +16,7 @@ Installable web app for IndiFeels performance reports.
 
 - Daily and Monthly: 8:00 PM Australia/Melbourne current-day preview; 6:00 AM final for the previous completed day.
 - Google Tracked: 8:00 PM preview; 6:00 AM previous-day final.
+- Facebook Tracked: 6:00 AM, 2:00 PM and 8:00 PM via the schedule panel; same layout as Facebook Non-tracked, measured on tracked sales and ROAS (`tools/fb_tracked.py`).
 - Stock / attribution: event-driven after Shopify orders, with 7:00 AM, 3:00 PM and 8:00 PM checks.
 - Product Visibility: 7:00 AM, 3:00 PM and 8:00 PM.
 - Supabase outbox sync: every 30 minutes, but only for report files explicitly marked `supabase_sync: true` in the manifest.

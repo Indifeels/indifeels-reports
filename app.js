@@ -206,6 +206,7 @@
     "product-visibility": { c: "purple", icon: "eye", stat: ["eye", "tag", "alert"], line: ["purple", "teal", "rose"] },
     restock: { c: "orange", icon: "box", stat: ["box", "alert", "tag"], line: [] },
     footwear: { c: "rose", icon: "search", stat: ["search", "bars", "trend"], line: ["rose", "purple", "green"] },
+    "facebook-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
     "google-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
     "call-tracking": { c: "teal", icon: "chart", stat: ["msg", "tag", "alert"], line: ["teal", "green", "rose"] },
     "order-source": { c: "teal", icon: "bars", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
@@ -251,7 +252,7 @@
     {name:"SEO",color:"#927CA2",ids:["footwear"]},
     {name:"Admin Panel",color:"#838099",ids:["schedule-panel","tech-availability","project-board"]}
   ];
-  const HOME_TITLES = {daily:"Facebook Non-tracked",monthly:"Facebook Monthly Profitability",stock:"Stock Movement & Negative Stock",footwear:"SEO Rankings","google-tracked":"Google Tracked"};
+  const HOME_TITLES = {daily:"Facebook Non-tracked",monthly:"Facebook Monthly Profitability",stock:"Stock Movement & Negative Stock",footwear:"SEO Rankings","google-tracked":"Google Tracked","facebook-tracked":"Facebook Tracked"};
   const homeMeta = {}, homePeriods = {};
   function homePending(id) {
     if (id === "order-attribution" && homeMeta[id]) return oaPending().length;
@@ -281,6 +282,9 @@
     } else if(id==="google-tracked"){
       const total=Array.from(doc.querySelectorAll("tr.total")).find(el=>text(el.querySelector("th"))==="All tracked campaigns");
       if(total)for(const [key,cls,label] of [["y","t","Yesterday"],["d7","w","7 days"],["d15","x","15 days"],["d30","m","30 days"],["life","l","Lifetime"]]){const cells=total.querySelectorAll("td.c"+cls);if(cells.length===4)out[key]={label,stats:Array.from(cells).map((el,i)=>{const copy=el.cloneNode(true);copy.querySelectorAll(".ar,.chg").forEach(x=>x.remove());return [text(copy),["Spend","Revenue","ROAS","Profit"][i]];})};}
+    } else if(id==="facebook-tracked"){
+      const total=Array.from(doc.querySelectorAll("tr.total")).find(el=>text(el.querySelector("th"))==="All tracked campaigns");
+      if(total)for(const [key,cls,label] of [["y","t","Yesterday"],["d7","w","7 days"],["d15","x","15 days"],["d30","m","30 days"],["life","l","Lifetime"]]){const cells=total.querySelectorAll("td.c"+cls);if(cells.length===3)out[key]={label,stats:Array.from(cells).map((el,i)=>{const copy=el.cloneNode(true);copy.querySelectorAll(".ar,.chg").forEach(x=>x.remove());return [text(copy),["Spend","Tracked sales","ROAS"][i]];})};}
     } else if(id==="call-tracking"){
       for(const [key,pub,label] of [["y","yesterday","Yesterday"],["d7","last_7","7 days"],["d15","last_15","15 days"],["d30","last_30","30 days"],["life","lifetime","Lifetime"]]){const node=doc.querySelector(`[data-p="${pub}"] .kpis`);if(node){const cards=Array.from(node.querySelectorAll(".kpi"));const total=cards[0],google=cards.find(x=>text(x.querySelector(".l"))==="Google Ads Paid"),website=cards.find(x=>text(x.querySelector(".l"))==="Website");out[key]={label,stats:[[text(total?.querySelector(".v")),"Calls"],[text(google?.querySelector(".v")),"Google Ads"],[text(website?.querySelector(".v")),"Website"]]};}}
     } else {
@@ -304,7 +308,7 @@
     const st=(unavailable ? (meta?.stats || []).map(x=>["—",x[1]]) : period?.stats || meta?.stats || []).slice(0,4);
     const stats=st.map(x=>{const raw=String(x[0]),suffix=raw.match(/\s*(\([^)]*\))$/),value=suffix?raw.slice(0,suffix.index):raw;const numeric=Number(value.replace(/[^0-9.-]/g,""));const displayed=/\$/.test(value)&&Number.isFinite(numeric)?new Intl.NumberFormat("en-AU",{style:"currency",currency:"AUD",minimumFractionDigits:/cost/i.test(x[1])?2:0,maximumFractionDigits:/cost/i.test(x[1])?2:0,notation:"standard"}).format(/−/.test(value)?-numeric:numeric):value;return `<div class="report-kpi"><span title="${esc(x[1])}">${esc(compactKpiLabel(x[1]))}</span><strong title="${esc(value)}">${esc(displayed)}</strong>${suffix?`<small>${esc(suffix[1])}</small>`:""}</div>`;}).join("");
     const periodLabel=st.some(x=>/yesterday/i.test(x[1])) ? "Yesterday" : st.some(x=>/today/i.test(x[1])) ? "Today so far" : r.id === "monthly" ? "This month" : "Summary";
-    const timeReport=["order-source","google-tracked","daily","monthly","call-tracking","order-attribution"].includes(r.id);
+    const timeReport=["order-source","google-tracked","facebook-tracked","daily","monthly","call-tracking","order-attribution"].includes(r.id);
     const options=timeReport ? [["summary","Summary"],["y","Yesterday"],["d7","7 days"],["d15","15 days"],["d30","30 days"],["life","Lifetime"]] : [["summary","Summary"]];
     const choices=options.map(([key,label])=>`<option value="${key}" ${selected===key?"selected":""}>${key==="summary"?"Summary":label}</option>`).join("");
     return `<article class="report-card" data-id="${esc(r.id)}" style="--report-accent:var(--category-accent,var(--${L.c}))"><div class="report-heading"><span class="report-icon">${svg(L.icon)}</span><h3>${esc(HOME_TITLES[r.id] || r.title)}</h3></div><p class="report-updated">Last updated · ${esc(homeUpdated(r.id,meta))}</p><div class="report-kpis">${stats || '<span class="report-unavailable">Summary not available yet</span>'}</div><div class="report-bottom"><span class="report-status ${tone}" title="${esc(hl?.text || meta?.warn || label)}">${homeWarning(r.id)?svg("alert"):"<i></i>"}${esc(label)}</span><select class="report-period" aria-label="Summary period for ${esc(r.title)}">${choices}</select><button type="button" class="report-open" data-open="${esc(r.id)}">Open Report <span aria-hidden="true">›</span></button></div>${unavailable?`<p class="report-issue">This period is not available in the published data yet.</p>`:hl?`<p class="report-issue">${esc(hl.text)}</p>`:""}</article>`;
@@ -363,7 +367,7 @@
     box.innerHTML=HOME_GROUPS.map((g,i)=>{
       const rows=g.ids.map(id=>reports.find(r=>r.id===id)).filter(Boolean).concat(i===5?extras:[]);
       if(!rows.length)return "";
-      const upcoming=i===1?[{title:"Facebook Tracked"}]:i===2?[{title:"Google Non-tracked"}]:[];
+      const upcoming=i===2?[{title:"Google Non-tracked"}]:[];
       let expanded=false;try{expanded=localStorage.getItem("ir-category-"+i)==="open";}catch(_){}
       return `<details class="report-category" data-group="${i}" data-ids='${JSON.stringify(rows.map(r=>r.id))}' style="--category-accent:${g.color}" ${expanded?"open":""}><summary><h3>${i+1}. ${esc(g.name)}</h3><div class="category-counts"><span>Reports<strong>${rows.length+upcoming.length}</strong></span><span>Actions pending<strong data-count="actions">—</strong></span><span>Warnings<strong data-count="warnings">0</strong></span></div><span class="category-chevron" aria-hidden="true">⌄</span></summary><div class="category-reports">${rows.map(r=>tileHTML(r,homeMeta[r.id])).join("")}${upcoming.map(r=>`<article class="report-upcoming"><strong>${r.title}</strong><span>Upcoming</span></article>`).join("")}</div></details>`;
     }).join("");
@@ -396,7 +400,7 @@
           if(r.id==="order-attribution"){
             meta.periods={};const today=new Date().toLocaleDateString("en-CA",{timeZone:"Australia/Melbourne"});
             for(const [key,days,label] of [["y",1,"Yesterday"],["d7",7,"7 days"],["d15",15,"15 days"],["d30",30,"30 days"]]){const end=new Date(today+"T00:00:00Z"),start=new Date(end.getTime()-days*86400000).toISOString().slice(0,10);const rows=OA.rows.filter(x=>{const date=new Date(x.created_at).toLocaleDateString("en-CA",{timeZone:"Australia/Melbourne"});return date>=start && date<today;}),pending=rows.filter(x=>x.attribution_auto || !x.order_source || x.sync_status!=="synced");meta.periods[key]={label,stats:[[String(rows.length),"Orders"],[String(rows.length-pending.length),"Confirmed"],[String(pending.length),"Review"]]};}
-          } else if(keys[r.id] && ["order-source","google-tracked","daily","monthly","call-tracking"].includes(r.id)){
+          } else if(keys[r.id] && ["order-source","google-tracked","facebook-tracked","daily","monthly","call-tracking"].includes(r.id)){
             try{meta.periods={...publishedPeriods(r.id,await decryptFile(`r/${r.id}.bin`,keys[r.id])),...meta.periods};}catch(_){}
           }
           homeMeta[r.id]=meta;
