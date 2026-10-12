@@ -95,13 +95,25 @@ jobs:
         if: steps.gate.outputs.go == '1'
         env:
           SUMMARY_DIR: .refresh/sum
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
         run: |
           python3 - <<'PYCODE'
           import json,os,subprocess
           event=json.load(open(os.environ['GITHUB_EVENT_PATH']))
           ids=event.get('client_payload',{}).get('report_ids',['daily','monthly'])
           for rid,script in [('daily','build.py'),('monthly','monthly.py')]:
-              if rid in ids: subprocess.run(['python3','tools/'+script,'.refresh/data','.refresh/hub/'+rid+'.html'],check=True)
+              if rid not in ids: continue
+              if rid=='monthly':
+                  subprocess.run(['python3','tools/monthly.py','.refresh/data','.refresh/hub/monthly-nt.html'],check=True)
+                  try:
+                      subprocess.run(['python3','tools/fetch_fb_tracked.py','.refresh/data-t'],check=True)
+                      subprocess.run(['python3','tools/monthly_tracked.py','.refresh/data-t','.refresh/hub/monthly-t.html'],check=True)
+                      subprocess.run(['python3','tools/monthly_switch.py','.refresh/hub/monthly-t.html','.refresh/hub/monthly-nt.html','.refresh/hub/monthly.html'],check=True)
+                  except subprocess.CalledProcessError:
+                      print('::warning::Tracked monthly failed; publishing non-tracked monthly only')
+                      import shutil; shutil.copy('.refresh/hub/monthly-nt.html','.refresh/hub/monthly.html')
+              else:
+                  subprocess.run(['python3','tools/'+script,'.refresh/data','.refresh/hub/'+rid+'.html'],check=True)
           PYCODE
 
       - name: Retrieve existing report keys and encrypt

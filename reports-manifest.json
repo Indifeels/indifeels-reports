@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-13.facebook-tracked.1",
+  "manifest_version": "2026-10-13.facebook-monthly-switch.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -75,6 +75,10 @@
         "tools/fetch_reports.py",
         "tools/reconcile_order_attribution.py",
         "tools/monthly.py",
+        "tools/fetch_fb_tracked.py",
+        "tools/monthly_tracked.py",
+        "tools/monthly_switch.py",
+        "tools/tile_periods.py",
         "tools/encrypt.py"
       ],
       "outputs": [
