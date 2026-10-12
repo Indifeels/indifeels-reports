@@ -17,6 +17,15 @@
   "ok": true,
   "reason": ""
  },
+ "facebook-tracked": {
+  "at": "2026-10-13T09:18+11:00",
+  "code_sha": "3506ad0cbf8dd91408d6a7e2090c4e258b1a4ea5",
+  "data_through": "2026-10-12T23:59:59+11:00",
+  "last_ok": "2026-10-13T09:18+11:00",
+  "manifest_version": "2026-10-13.facebook-tracked.1",
+  "ok": true,
+  "reason": ""
+ },
  "google-tracked": {
   "at": "2026-10-13T06:00+11:00",
   "code_sha": "cffaf7e50950c84ae50a7fc1ccdf7971fd9d804d",
