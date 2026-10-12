@@ -268,21 +268,21 @@ if _go:
     for k,i in enumerate(sorted(range(len(_go)),key=lambda i:-(0.7*_a[i]+0.3*_b[i])),1): _go[i]["rr"]["g"]=k; _go[i]["rr"]["gn"]=len(_go)
 
 from zoneinfo import ZoneInfo
-FBP="FB/IG PAGE MSGS MEL - SALE"; FBW="FB WHATSAPP MSGS MEL - SALE"
+FBP="FB/IG PAGE MSGS MEL - SALE"; FBW="FB WHATSAPP MSGS MEL - SALE"; FBC="FB CALLS MEL - SALE"
 ords=list(ordmap.values())
 def odt(n): return dt.datetime.fromisoformat(n["processedAt"].replace("Z","+00:00")).astimezone(TZ)
-sales={}  # date -> [pageN,page$,waN,wa$]
+sales={}  # date -> [pageN,page$,waN,wa$,callsN,calls$]
 tagged_first=None; unatt=[]
 for n in ords:
     if n["cancelledAt"]: continue
     t=odt(n); v=(n["m"] or {}).get("value"); a=float(n["t"]["shopMoney"]["amount"])
     if v and (tagged_first is None or t.date()<tagged_first): tagged_first=t.date()
-    if v in (FBP,FBW):
-        r=sales.setdefault(str(t.date()),[0,0.0,0,0.0]); i=0 if v==FBP else 2; r[i]+=1; r[i+1]+=a
+    if v in (FBP,FBW,FBC):
+        r=sales.setdefault(str(t.date()),[0,0.0,0,0.0,0,0.0]); i={FBP:0,FBW:2,FBC:4}[v]; r[i]+=1; r[i+1]+=a
     elif not v: unatt.append((t,n["name"],a,n["sourceName"]))
 def srng(a,b):
     v=[x for d,x in sales.items() if str(a)<=d<=str(b)]
-    return [sum(x[i] for x in v) for i in range(4)]
+    return [sum(x[i] for x in v) for i in range(6)]
 def sprng(a,b):
     v=[x for d,x in by.items() for dd,y in x.items() if str(a)<=dd<=str(b) for x in [y]]
     return sum(y[0] for y in v)
@@ -290,7 +290,7 @@ SP={k:(srng(a,b),srng(pa,pb)) for k,(a,b,pa,pb) in P.items()}
 SP["l"]=(srng("0000","9999"),None)
 TF=tagged_first
 spend_since_tf=sum(y[0] for x in by.values() for d,y in x.items() if d>=str(TF))
-sales_l=SP["l"][0][1]+SP["l"][0][3]
+sales_l=sum(SP["l"][0][i] for i in (1,3,5))
 roas_tf=sales_l/spend_since_tf if spend_since_tf else None
 unatt=[u for u in unatt if u[0]>=dt.datetime.combine(TF,dt.time(0),tzinfo=TZ)]
 u48=[u for u in unatt if NOW-u[0]<=dt.timedelta(hours=48)]
@@ -300,7 +300,7 @@ uold=[u for u in unatt if NOW-u[0]>dt.timedelta(days=7) and u[2]>0]
 spd={};msd={}
 for _c,_days in by.items():
     for _d,(_s,_m) in _days.items(): spd[_d]=spd.get(_d,0)+_s; msd[_d]=msd.get(_d,0)+_m
-rvd={d:x[1]+x[3] for d,x in sales.items()}; odd={d:x[0]+x[2] for d,x in sales.items()}
+rvd={d:sum(x[i] for i in (1,3,5)) for d,x in sales.items()}; odd={d:sum(x[i] for i in (0,2,4)) for d,x in sales.items()}
 TRACK_START=TF.replace(day=1)
 # ===== SIGNAL ENGINE (profit-maximisation) — BEGIN =====
 # Inputs expected in scope: spd, msd, rvd, odd  (dicts keyed "YYYY-MM-DD": spend, messages, FB revenue, FB orders)
@@ -657,9 +657,9 @@ trs+=('<tbody><tr class="total"><th scope="row">All non-tracked campaigns</th><t
 
 def kpi(k,label,rng,cur,prev,note,sp=None,extra=""):
     s,m=cur; c=cpm(s,m); ps,pm=prev if prev else (None,None)
-    cs,psl=sp if sp else ([0,0,0,0],None)
-    sv=cs[1]+cs[3]; so=cs[0]+cs[2]; r=sv/s if s else None
-    if psl: pv=psl[1]+psl[3]; po=psl[0]+psl[2]; pr=pv/ps if ps else None
+    cs,psl=sp if sp else ([0,0,0,0,0,0],None)
+    sv=sum(cs[i] for i in (1,3,5)); so=sum(cs[i] for i in (0,2,4)); r=sv/s if s else None
+    if psl: pv=sum(psl[i] for i in (1,3,5)); po=sum(psl[i] for i in (0,2,4)); pr=pv/ps if ps else None
     else: pv=po=pr=None
     srow=(f'<div class="kv sv"><div><b>{money(sv) if sv else "$0"}{arrow(sv,pv,True) if pv is not None else ""}</b><span>FB sales</span></div>'
           f'<div><b>{so}{arrow(so,po,True) if po is not None else ""}</b><span>orders</span></div>'
@@ -703,6 +703,8 @@ SECTION=SIGP+f'''<section class="two">
 <tr><th scope="row">FB/IG page messages, sales</th>{cells(1)}</tr>
 <tr><th scope="row">WhatsApp messages, orders</th>{cells(2)}</tr>
 <tr><th scope="row">WhatsApp messages, sales</th>{cells(3)}</tr>
+<tr><th scope="row">Facebook calls Melbourne, orders</th>{cells(4)}</tr>
+<tr><th scope="row">Facebook calls Melbourne, sales</th>{cells(5)}</tr>
 </tbody></table></div></div>
 <div class="box att"><h2>Orders to attribute</h2><p class="sub">Orders with an empty order source. Fill these in so the next report picks them up.</p>
 <h3>Last 48 hours</h3>{ulist(u48)}
@@ -978,9 +980,9 @@ def earr(now,prev,hg):
     return f' <span style="color:{col};font-size:11px">{"&#9650;" if up else "&#9660;"}</span>'
 def per(k):
     s,m=tot[k]; ps,pm=tot.get("p"+k,(None,None)) if k!="l" else (None,None)
-    cs,psl=SP[k]; sv=cs[1]+cs[3]; so=cs[0]+cs[2]; r=sv/s if s else None
+    cs,psl=SP[k]; sv=sum(cs[i] for i in (1,3,5)); so=sum(cs[i] for i in (0,2,4)); r=sv/s if s else None
     pv=po=pr=None
-    if psl: pv=psl[1]+psl[3]; po=psl[0]+psl[2]; pr=pv/ps if ps else None
+    if psl: pv=sum(psl[i] for i in (1,3,5)); po=sum(psl[i] for i in (0,2,4)); pr=pv/ps if ps else None
     return dict(s=s,m=m,ps=ps,pm=pm,sv=sv,so=so,r=r,pv=pv,po=po,pr=pr)
 PR={k:per(k) for k in "twml"}
 LAB={"t":(LBL_T,TODAY.strftime("%-d %b")),"w":("Last 7 days",W7.strftime("%-d %b")+" to "+TODAY.strftime("%-d %b")),"m":("Last 30 days",M30.strftime("%-d %b")+" to "+TODAY.strftime("%-d %b")),"l":("Lifetime","Since "+dt.date.fromisoformat(FIRST).strftime("%-d %b %Y"))}
@@ -1016,7 +1018,7 @@ email=f'''<div style="font-family:Arial,Helvetica,sans-serif;color:#101828;max-w
 <h2 style="margin:0 0 4px">Non-tracked campaigns, {TODAY.strftime("%a %-d %b %Y")}</h2>
 <p style="margin:0 0 14px;color:#5A6272">Meta messaging campaigns and FB-attributed Shopify sales. Updated {NOW.strftime("%-I:%M %p")} Sydney time.</p>
 {summary}
-<p style="font-size:12px;color:#5A6272;margin:6px 0 16px">Arrows compare with the previous period. Cost per message: green under $4.50, yellow $4.50 to $6, red over $6. FB sales are orders tagged FB/IG page messages or WhatsApp messages, including GST. Sales are only recorded from {TF.strftime("%-d %b %Y")}; ROAS since then is {roasf(roas_tf)}.</p>
+<p style="font-size:12px;color:#5A6272;margin:6px 0 16px">Arrows compare with the previous period. Cost per message: green under $4.50, yellow $4.50 to $6, red over $6. FB sales are orders tagged FB/IG page messages, WhatsApp messages, or Facebook calls Melbourne, including GST. Sales are only recorded from {TF.strftime("%-d %b %Y")}; ROAS since then is {roasf(roas_tf)}.</p>
 <div style="border-left:5px solid {({"scale":"#17694A","hold":"#B7791F","cut":"#A8231B"})[SIG[0]]};background:#F6F7F9;padding:10px 14px;margin:6px 0 14px">
 <b style="font-size:16px;color:{({"scale":"#17694A","hold":"#7A4E00","cut":"#A8231B"})[SIG[0]]}">Budget signal: {SIG[1]}</b><br>
 <span style="font-size:13px">{html.escape(SIG[2])} Last 14 days: cost per message {money(g_cpm) if g_cpm else "—"}, break-even {money(g_be)}, messages to orders {g_conv*100:.1f}%, average order {money(g_aov) if g_aov else "—"}, marginal return {MRV}.</span></div>
