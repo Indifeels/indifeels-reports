@@ -9,10 +9,10 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-10-13T00:07+11:00",
-  "code_sha": "9673d14cad809cac8540f24d91c46a32d97edd4b",
+  "at": "2026-10-13T06:05+11:00",
+  "code_sha": "cffaf7e50950c84ae50a7fc1ccdf7971fd9d804d",
   "data_through": "2026-10-12T23:59:59+11:00",
-  "last_ok": "2026-10-13T00:07+11:00",
+  "last_ok": "2026-10-13T06:05+11:00",
   "manifest_version": "2026-10-11.seo-windsor.1",
   "ok": true,
   "reason": ""
@@ -27,10 +27,10 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-10-13T00:07+11:00",
-  "code_sha": "9673d14cad809cac8540f24d91c46a32d97edd4b",
+  "at": "2026-10-13T06:05+11:00",
+  "code_sha": "cffaf7e50950c84ae50a7fc1ccdf7971fd9d804d",
   "data_through": "2026-10-12T23:59:59+11:00",
-  "last_ok": "2026-10-13T00:07+11:00",
+  "last_ok": "2026-10-13T06:05+11:00",
   "manifest_version": "2026-10-11.seo-windsor.1",
   "ok": true,
   "reason": ""
