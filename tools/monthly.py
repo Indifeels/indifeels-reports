@@ -273,7 +273,7 @@ def arr(v,pv,sense):
     return f'<i class="a {cls}" title="{"Up" if up else "Down"} on previous month">{"▲" if up else "▼"}</i>'
 DAYB={"np":(67,0)}
 SIGL={"up":"Scale Up","hold":"Hold","down":"Scale Down"}; SIGC={"up":"scale","hold":"hold","down":"cut"}
-def cells(d,prev,day=False):
+def cells(d,prev,day=False,npb=None):
     out=""
     for k,_,f,b,sense in COLS:
         if k=="sig":
@@ -286,7 +286,7 @@ def cells(d,prev,day=False):
             continue
         if k=="be" and day:
             out+='<td><span class="v none">—</span></td>'; continue
-        if day and k in DAYB: b=DAYB[k]
+        if day and k in DAYB: b=npb if npb else DAYB[k]
         if d[k] is None:
             out+='<td><span class="v none">'+("No msgs" if k in ("spm","rpm","mto","npm") and d["s"] else "—")+'</span><i class="a"></i></td>'; continue
         bd=band(d[k],b,COLS[[c[0] for c in COLS].index(k)][4] if k!="spm" else False)
@@ -305,11 +305,23 @@ for (name,d),k in zip(rows,months):
     d["_id"]=k
     trs+=(f'<tr class="mon"><th scope="row"><button type="button" class="ex" aria-expanded="false" aria-controls="g{k}" data-m="{k}">'
           f'<span class="chev" aria-hidden="true">▸</span>{name}</button></th>{cells(d,prev)}</tr>'+sigrow(d,k)); prev=d
-    first=dt.date.fromisoformat(k+"-01"); day=first
+    first=dt.date.fromisoformat(k+"-01"); day=first; wprev=None
     while day.month==first.month and day<=NOW.date():
-        ds=day.isoformat(); dd=calc(spd.get(ds,0),msd.get(ds,0),rvd.get(ds,0),odd.get(ds,0))
-        trs+=f'<tr class="day" data-m="{k}" hidden><th scope="row">{day.strftime("%a %-d %b")}</th>{cells(dd,dprev,True)}</tr>'
-        dprev=dd; day+=dt.timedelta(1)
+        # week = Monday to Sunday, clipped to the month (first/last week may be partial) and to today
+        wstart=day; wend=day
+        while wend.weekday()!=6 and (wend+dt.timedelta(1)).month==first.month and wend+dt.timedelta(1)<=NOW.date(): wend+=dt.timedelta(1)
+        wdays=[wstart+dt.timedelta(i) for i in range((wend-wstart).days+1)]
+        wk=[x.isoformat() for x in wdays]; wid=f"{k}-{wstart.isoformat()}"
+        wd=calc(sum(spd.get(x,0) for x in wk),sum(msd.get(x,0) for x in wk),sum(rvd.get(x,0) for x in wk),sum(odd.get(x,0) for x in wk))
+        wlab=wstart.strftime("%-d %b")+(" – "+wend.strftime("%-d %b") if wend!=wstart else "")
+        trs+=(f'<tr class="wk" data-m="{k}" hidden><th scope="row"><button type="button" class="ex" aria-expanded="false" data-w="{wid}">'
+              f'<span class="chev" aria-hidden="true">▸</span>{wlab}</button></th>{cells(wd,wprev,True,(DAYB["np"][0]*len(wdays),0))}</tr>')
+        wprev=wd
+        for x in wdays:
+            ds=x.isoformat(); dd=calc(spd.get(ds,0),msd.get(ds,0),rvd.get(ds,0),odd.get(ds,0))
+            trs+=f'<tr class="day" data-m="{k}" data-w="{wid}" hidden><th scope="row">{x.strftime("%a %-d %b")}</th>{cells(dd,dprev,True)}</tr>'
+            dprev=dd
+        day=wend+dt.timedelta(1)
 trs+=f'<tr class="tot"><th scope="row">Total</th>{cells(T,None)}</tr>'
 RS=rolling_signal(YDAY); c14=RS["cur"]
 G1=YDAY; G0=G1-dt.timedelta(13)
@@ -369,13 +381,16 @@ tr.sigd td{{background:var(--sub);text-align:left;white-space:normal;padding:10p
 .sdb{{max-width:900px;font-size:13.5px}}.sdb ul,.why ul{{margin:6px 0 0;padding-left:18px}}.sdb li,.why li{{margin:2px 0;color:var(--muted)}}
 .why summary{{cursor:pointer;font-weight:600;color:var(--ink)}}
 .sgc.scale{{background:var(--gb);color:var(--g)}}.sgc.hold{{background:var(--yb);color:var(--y)}}.sgc.cut{{background:var(--rb);color:var(--r)}}
-tr.mon .ex{{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-weight:700;border-radius:6px;padding:2px 4px;margin-left:-4px}}
-tr.mon .ex:focus-visible{{outline:2px solid var(--mari)}}
+tr.mon .ex,tr.wk .ex{{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-weight:700;border-radius:6px;padding:2px 4px;margin-left:-4px}}
+tr.mon .ex:focus-visible,tr.wk .ex:focus-visible{{outline:2px solid var(--mari)}}
+tr.wk th,tr.wk td{{background:var(--card);font-size:14px;padding-top:8px;padding-bottom:8px}}
+tr.wk th{{padding-left:26px}}tr.wk .ex{{font-weight:600}}
+tr.wk:hover th,tr.wk:hover td{{background:var(--sub)}}
 .chev{{display:inline-block;width:14px;color:var(--muted);transition:transform .15s}}
 .ex[aria-expanded="true"] .chev{{transform:rotate(90deg)}}
 tr.mon:hover th,tr.mon:hover td{{background:var(--sub)}}
 tr.day th,tr.day td{{background:var(--bg);font-size:13.5px;padding-top:6px;padding-bottom:6px}}
-tr.day th{{font-weight:500;color:var(--muted);padding-left:34px}}
+tr.day th{{font-weight:500;color:var(--muted);padding-left:52px}}
 tr.day .v{{font-weight:600}}
 .v.none{{color:var(--muted);font-weight:500}}
 .bar{{display:flex;gap:8px;margin:0 0 10px}}
@@ -395,7 +410,7 @@ tr.day .v{{font-weight:600}}
 <div class="box"><h2>How it's calculated</h2>
 <p><b style="color:var(--ink)">Revenue:</b> Shopify orders with order source FB/IG page messages or WhatsApp messages, including GST, after refunds, cancelled orders excluded.</p>
 <p><b style="color:var(--ink)">Net profit:</b> revenue − GST (1/11 of revenue) − product cost (a quarter of revenue after GST) − ad spend. What's left at the end.</p>
-<p><b style="color:var(--ink)">Daily rows:</b> click a month to see each day. Arrows on day rows compare with the previous day. Daily net profit is green at $67 or more (a monthly $2,000 spread over 30 days), yellow from $0 to $67, red for a loss.</p>
+<p><b style="color:var(--ink)">Weekly and daily rows:</b> click a month to see its weeks (Monday to Sunday; the first and last week of a month can be shorter), then click a week to see each day. Week and month totals add up their days. Arrows on week rows compare with the previous week and on day rows with the previous day. Daily net profit is green at $67 or more (a monthly $2,000 spread over 30 days), yellow from $0 to $67, red for a loss; a week uses $67 times its number of days.</p>
 <p><b style="color:var(--ink)">Break-even per message:</b> revenue per message × 0.68 (what's left after GST and product cost). A safety guardrail, not the decision.</p>
 <p><b style="color:var(--ink)">Signal:</b> aims for the highest total net profit. It compares the last 14 full days with the 14 before (7-day and 28-day windows as checks) and asks whether extra ad spend is still adding profit. Scale Up when each extra $1 of spend returns $1.20 or more of contribution and profit is positive; Hold between $0.90 and $1.20, or when volume is too small (under 6 orders); Scale Down under $0.90, or whenever cost per message is above break-even and the period is making a loss. When spend barely changed (under 10%) or there's no earlier period to compare with, the extra-spend test can't be read, so the signal uses the current return instead: Scale Up if each $1 of ads returns $1.50 or more of contribution (cost per message at or under about two-thirds of break-even), otherwise Hold. Past months compare with the previous month per day; the current month uses the rolling 14-day signal. Click a signal to see why.</p>
 <p><b style="color:var(--ink)">Arrows:</b> change on the previous month. Green is better, red is worse, grey is spend.</p>
@@ -410,10 +425,13 @@ tr.day .v{{font-weight:600}}
 <tr><td>Net profit per message</td><td>$3 or more</td><td>$1 to $3</td><td>under $1</td></tr>
 </table></div></section>
 </main><script>
-(function(){{function set(b,o){{b.setAttribute('aria-expanded',o);document.querySelectorAll('tr.day[data-m="'+b.dataset.m+'"]').forEach(function(r){{r.hidden=!o}})}}
+(function(){{function setW(b,o){{b.setAttribute('aria-expanded',o);document.querySelectorAll('tr.day[data-w="'+b.dataset.w+'"]').forEach(function(r){{r.hidden=!o}})}}
+function set(b,o){{b.setAttribute('aria-expanded',o);document.querySelectorAll('tr.wk[data-m="'+b.dataset.m+'"]').forEach(function(r){{r.hidden=!o;if(!o){{var wb=r.querySelector('.ex');if(wb)setW(wb,false)}}}})}}
+function setAll(b,o){{set(b,o);if(o)document.querySelectorAll('tr.wk[data-m="'+b.dataset.m+'"] .ex').forEach(function(w){{setW(w,true)}})}}
 var bs=document.querySelectorAll('tr.mon .ex');bs.forEach(function(b){{b.addEventListener('click',function(){{set(b,b.getAttribute('aria-expanded')!=='true')}})}});
+document.querySelectorAll('tr.wk .ex').forEach(function(w){{w.addEventListener('click',function(){{setW(w,w.getAttribute('aria-expanded')!=='true')}})}});
 document.querySelectorAll('button.sgc').forEach(function(b){{b.addEventListener('click',function(){{var r=document.getElementById('sd'+b.dataset.sd);if(!r)return;var o=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',o);r.hidden=!o}})}});
-document.getElementById('all').onclick=function(){{bs.forEach(function(b){{set(b,true)}})}};document.getElementById('none').onclick=function(){{bs.forEach(function(b){{set(b,false)}})}};}})();
+document.getElementById('all').onclick=function(){{bs.forEach(function(b){{setAll(b,true)}})}};document.getElementById('none').onclick=function(){{bs.forEach(function(b){{set(b,false)}})}};}})();
 </script><script>
 (function(){{var r=document.documentElement,b=document.getElementById('tg');
 function cur(){{var t=r.getAttribute('data-theme');if(t)return t;return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}}
