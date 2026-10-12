@@ -72,7 +72,7 @@ FBAR = ('<div class="fbar" role="group" aria-label="Revenue source and compariso
         + ('<label class="fl" for="cp">Compare over</label><select id="cp"><option value="y">Yesterday</option><option value="7" selected>7 days</option><option value="15">15 days</option><option value="30">30 days</option><option value="0">Lifetime</option></select><span class="fl">Cards show the difference of Shopify against Meta</span>' if HAVE_SHOP else '')
         + '</div>' + ('<div class="cmp" id="cmp" aria-live="polite"></div>' if HAVE_SHOP else ''))
 CSSX = """
-.fbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:10px}
+.fbar{position:sticky;top:0;z-index:20;box-shadow:0 6px 12px -8px rgba(0,0,0,.35);display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:10px}
 .fl{font-size:12.5px;font-weight:600;color:var(--muted)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:99px;overflow:hidden}
 .seg button{font:600 13px Figtree,sans-serif;color:var(--ink);background:var(--card);border:0;padding:7px 14px;cursor:pointer}
