@@ -4,6 +4,7 @@ window.BoardPanel = (() => {
   const COLS = [
     { id: "backlog", name: "Backlog" },
     { id: "todo", name: "To Do" },
+    { id: "progress", name: "In Progress" },
     { id: "stuck", name: "Roadblocks" },
     { id: "done", name: "Done" }
   ];

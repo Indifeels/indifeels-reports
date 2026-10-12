@@ -13,7 +13,7 @@
 .bp-lane{min-width:0;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;min-height:220px;transition:background .15s}
 .bp-lane.over{background:rgba(255,255,255,.12)}
 .bp-lane h3{margin:2px 2px 14px;padding:2px 2px 10px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:22px;line-height:1;font-weight:850;text-transform:uppercase;letter-spacing:.1em;color:#fff;border-bottom:4px solid var(--accent);text-shadow:0 2px 4px rgba(0,0,0,.6)}
-.bp-lane[data-col="backlog"]{--accent:#4aa3b3}.bp-lane[data-col="todo"]{--accent:#5b86c9}.bp-lane[data-col="stuck"]{--accent:#c25a7a}.bp-lane[data-col="done"]{--accent:#4cb985}
+.bp-lane[data-col="backlog"]{--accent:#4aa3b3}.bp-lane[data-col="todo"]{--accent:#5b86c9}.bp-lane[data-col="progress"]{--accent:#d19a3e}.bp-lane[data-col="stuck"]{--accent:#c25a7a}.bp-lane[data-col="done"]{--accent:#4cb985}
 .bp-count{background:var(--accent);color:#fff;border-radius:999px;padding:2px 12px;font-size:15px;font-weight:700;letter-spacing:0;text-shadow:none;font-variant-numeric:tabular-nums}
 .bp-cards{min-height:34px}
 .bp-empty{color:#a5acb6;font-size:13px;padding:10px 4px 14px;border:2px dashed rgba(255,255,255,.12);border-radius:10px;text-align:center;margin-bottom:9px}
