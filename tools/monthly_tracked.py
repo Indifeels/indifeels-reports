@@ -23,6 +23,23 @@ for r in rows_in:
     msd[d] = msd.get(d, 0) + (r.get("clicks") or 0)
     rvd[d] = rvd.get(d, 0) + (r.get("action_values_purchase") or 0)
     odd[d] = odd.get(d, 0) + (r.get("actions_purchase") or 0)
+# Shopify cross-check: orders whose custom order-source field is "FB Online Orders - WEB"
+import glob
+SHOP_DIR = sys.argv[3] if len(sys.argv) > 3 else sys.argv[1]
+SRC_TAG = "FB Online Orders - WEB"
+shd = {}; HAVE_SHOP = False
+for _f in sorted(glob.glob(os.path.join(SHOP_DIR, "shopify*"))):
+    _x = json.load(open(_f))
+    if isinstance(_x, dict) and "result" in _x: _x = _x["result"]
+    if isinstance(_x, list) and _x and "text" in _x[0]: _x = json.loads(_x[0]["text"])
+    HAVE_SHOP = True
+    for _v in _x["data"].values():
+        for _n in _v["nodes"]:
+            if _n.get("cancelledAt") or (_n.get("m") or {}).get("value") != SRC_TAG: continue
+            _d = dt.datetime.fromisoformat(_n["processedAt"].replace("Z", "+00:00")).astimezone(TZ).date().isoformat()
+            shd[_d] = shd.get(_d, 0) + float(_n["t"]["shopMoney"]["amount"])
+shm = {}
+for _d, _a in shd.items(): shm[_d[:7]] = shm.get(_d[:7], 0) + _a
 sp, ms, rv, od = {}, {}, {}, {}
 for d in spd:
     k = d[:7]; sp[k] = sp.get(k, 0) + spd[d]; ms[k] = ms.get(k, 0) + msd[d]
@@ -52,19 +69,25 @@ def month_sig(k):
     pe_ = ms_ - dt.timedelta(1); ps_ = pe_.replace(day=1)
     return month_signal(ms_, me_, ps_, pe_)
 def dv(a, b): return a / b if b else None
-def calc(s, m, r, o):
+def att(a, b):
+    """Share of the money both sources agree on: smaller / larger, as a percent."""
+    if not HAVE_SHOP or (not a and not b): return None
+    return min(a, b) / max(a, b) * 100
+def calc(s, m, r, o, sh=0):
     p = r / 1.1 * 0.75 - s
-    return dict(s=s, r=r, roas=dv(r, s), spm=dv(s, m), rpm=dv(r, m), mto=dv(o * 100, m), np=p, npm=dv(p, m),
+    return dict(sh=sh if HAVE_SHOP else None, att=att(r, sh), s=s, r=r, roas=dv(r, s), spm=dv(s, m), rpm=dv(r, m), mto=dv(o * 100, m), np=p, npm=dv(p, m),
                 o=o, m=m, cpo=dv(s, o), be=dv(r * 0.75 / 1.1, m), sig=None)
-rows = [(dt.date.fromisoformat(k + "-01").strftime("%b %Y") + ("*" if k == NOW.strftime("%Y-%m") else ""), calc(sp[k], ms[k], rv.get(k, 0), od.get(k, 0))) for k in months]
+rows = [(dt.date.fromisoformat(k + "-01").strftime("%b %Y") + ("*" if k == NOW.strftime("%Y-%m") else ""), calc(sp[k], ms[k], rv.get(k, 0), od.get(k, 0), shm.get(k, 0))) for k in months]
 for (_n, _d), _k in zip(rows, months): _d["sig"] = month_sig(_k)
-T = calc(sum(sp[k] for k in months), sum(ms[k] for k in months), sum(rv.get(k, 0) for k in months), sum(od.get(k, 0) for k in months))
+T = calc(sum(sp[k] for k in months), sum(ms[k] for k in months), sum(rv.get(k, 0) for k in months), sum(od.get(k, 0) for k in months), sum(shm.get(k, 0) for k in months))
 def m0(v): return ("−" if v < 0 else "") + f"${abs(v):,.0f}"
 def m2(v): return ("−" if v < 0 else "") + f"${abs(v):,.2f}"
 COLS = [("s", "Spend", lambda v: f"${v:,.0f}", None, None),
         ("m", "Clicks", lambda v: f"{int(v):,}", None, True),
         ("spm", "Cost per click", lambda v: f"${v:.2f}", (0.40, 0.60), False),
-        ("r", "Tracked sales", lambda v: f"${v:,.0f}", None, True),
+        ("r", "Meta tracked sales", lambda v: f"${v:,.0f}", None, True),
+        ("sh", "Shopify FB web sales", lambda v: f"${v:,.0f}", None, True),
+        ("att", "Attribution %", lambda v: f"{v:.0f}%", (90, 70), True),
         ("rpm", "Sales per click", lambda v: f"${v:.2f}", (1.20, 0.80), True),
         ("roas", "ROAS", lambda v: f"{v:.2f}x", (2.0, 1.4727), True),
         ("mto", "Clicks to orders", lambda v: f"{v:.1f}%", (2.0, 1.0), True),
@@ -123,13 +146,13 @@ for (name, d), k in zip(rows, months):
         while wend.weekday() != 6 and (wend + dt.timedelta(1)).month == first.month and wend + dt.timedelta(1) <= NOW.date(): wend += dt.timedelta(1)
         wdays = [wstart + dt.timedelta(i) for i in range((wend - wstart).days + 1)]
         wk = [x.isoformat() for x in wdays]; wid = f"{k}-{wstart.isoformat()}"
-        wd = calc(sum(spd.get(x, 0) for x in wk), sum(msd.get(x, 0) for x in wk), sum(rvd.get(x, 0) for x in wk), sum(odd.get(x, 0) for x in wk))
+        wd = calc(sum(spd.get(x, 0) for x in wk), sum(msd.get(x, 0) for x in wk), sum(rvd.get(x, 0) for x in wk), sum(odd.get(x, 0) for x in wk), sum(shd.get(x, 0) for x in wk))
         wlab = wstart.strftime("%-d %b") + (" – " + wend.strftime("%-d %b") if wend != wstart else "")
         trs += (f'<tr class="wk" data-m="{k}" hidden><th scope="row"><button type="button" class="ex" aria-expanded="false" data-w="{wid}">'
                 f'<span class="chev" aria-hidden="true">▸</span>{wlab}</button></th>{cells(wd, wprev, True, (DAYB["np"][0] * len(wdays), 0))}</tr>')
         wprev = wd
         for x in wdays:
-            ds = x.isoformat(); dd = calc(spd.get(ds, 0), msd.get(ds, 0), rvd.get(ds, 0), odd.get(ds, 0))
+            ds = x.isoformat(); dd = calc(spd.get(ds, 0), msd.get(ds, 0), rvd.get(ds, 0), odd.get(ds, 0), shd.get(ds, 0))
             trs += f'<tr class="day" data-m="{k}" data-w="{wid}" hidden><th scope="row">{x.strftime("%a %-d %b")}</th>{cells(dd, dprev, True)}</tr>'
             dprev = dd
         day = wend + dt.timedelta(1)
@@ -165,19 +188,21 @@ page = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name
 <div class="wrap"><table><thead><tr><th>Month</th>{hdr}</tr></thead><tbody>{trs}</tbody></table></div>
 <section class="notes">
 <div class="box"><h2>How it's calculated</h2>
-<p><b style="color:var(--ink)">Tracked sales:</b> purchase value Meta records against campaigns with "Tracked" in the name (Non Tracked campaigns are excluded), including GST.</p>
+<p><b style="color:var(--ink)">Shopify FB web sales and Attribution %:</b> a cross-check on Meta's number. Shopify FB web sales is the order total of Shopify orders whose order source field is "FB Online Orders - WEB" (cancelled orders excluded), by the day the order was processed. Attribution % is how much of the money both sources agree on: the smaller of the two figures divided by the larger. Green at 90% or more, yellow 70% to 90%, red under 70%. Profit, ROAS and the signal still use Meta's number.</p>
+<p><b style="color:var(--ink)">Meta tracked sales:</b> purchase value Meta records against campaigns with "Tracked" in the name (Non Tracked campaigns are excluded), including GST.</p>
 <p><b style="color:var(--ink)">Net profit:</b> tracked sales − GST (1/11 of sales) − product cost (a quarter of sales after GST) − ad spend.</p>
 <p><b style="color:var(--ink)">Weekly and daily rows:</b> click a month to see its weeks (Monday to Sunday), then a week to see each day. Daily net profit is green at $33 or more (a monthly $1,000 spread over 30 days), yellow from $0 to $33, red for a loss.</p>
 <p><b style="color:var(--ink)">Break-even per click:</b> sales per click × 0.68 (what's left after GST and product cost). A guardrail, not the decision.</p>
 <p><b style="color:var(--ink)">Signal:</b> same rules as the non-tracked report, with clicks in place of messages. It compares the last 14 full days with the 14 before (7-day and 28-day windows as checks) and asks whether extra ad spend is still adding profit. Scale Up when each extra $1 returns $1.20 or more of contribution and profit is positive; Hold between $0.90 and $1.20 or when there are under 6 tracked orders; Scale Down under $0.90, or when cost per click is above break-even and the period is making a loss. Click a signal to see why.</p>
 <p><b style="color:var(--ink)">Arrows:</b> change on the previous month. Green is better, red is worse, grey is spend.</p>
-<p>Starts March 2026. * Month to date. Meta's own purchase tracking can differ from Shopify orders.</p></div>
+<p>Starts March 2026. * Month to date. Meta's own purchase tracking can differ from Shopify orders; see Attribution %.</p></div>
 <div class="box"><h2>Colour bands</h2><table>
 <tr><th></th><th><span class="v g"><span class="d"></span>Green</span></th><th><span class="v y"><span class="d"></span>Yellow</span></th><th><span class="v r"><span class="d"></span>Red</span></th></tr>
 <tr><td>ROAS</td><td>2.0x or more</td><td>1.47x to 2.0x</td><td>under 1.47x (loss)</td></tr>
 <tr><td>Cost per click</td><td>under $0.40</td><td>$0.40 to $0.60</td><td>over $0.60</td></tr>
 <tr><td>Sales per click</td><td>$1.20 or more</td><td>$0.80 to $1.20</td><td>under $0.80</td></tr>
 <tr><td>Clicks to orders</td><td>2% or more</td><td>1% to 2%</td><td>under 1%</td></tr>
+<tr><td>Attribution %</td><td>90% or more</td><td>70% to 90%</td><td>under 70%</td></tr>
 <tr><td>Net profit</td><td>$1,000 or more</td><td>$0 to $1,000</td><td>loss</td></tr>
 <tr><td>Net profit per click</td><td>$0.30 or more</td><td>$0 to $0.30</td><td>loss</td></tr>
 </table></div></section>

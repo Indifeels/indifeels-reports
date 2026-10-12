@@ -107,7 +107,7 @@ jobs:
                   subprocess.run(['python3','tools/monthly.py','.refresh/data','.refresh/hub/monthly-nt.html'],check=True)
                   try:
                       subprocess.run(['python3','tools/fetch_fb_tracked.py','.refresh/data-t'],check=True)
-                      subprocess.run(['python3','tools/monthly_tracked.py','.refresh/data-t','.refresh/hub/monthly-t.html'],check=True)
+                      subprocess.run(['python3','tools/monthly_tracked.py','.refresh/data-t','.refresh/hub/monthly-t.html','.refresh/data'],check=True)
                       subprocess.run(['python3','tools/monthly_switch.py','.refresh/hub/monthly-t.html','.refresh/hub/monthly-nt.html','.refresh/hub/monthly.html'],check=True)
                   except subprocess.CalledProcessError:
                       print('::warning::Tracked monthly failed; publishing non-tracked monthly only')
