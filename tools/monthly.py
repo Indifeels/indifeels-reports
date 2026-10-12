@@ -439,6 +439,9 @@ function lab(){{b.textContent=cur()==='dark'?'Light mode':'Dark mode'}}
 try{{var s=localStorage.getItem('ntr-theme');if(s)r.setAttribute('data-theme',s)}}catch(e){{}}
 lab();b.addEventListener('click',function(){{var n=cur()==='dark'?'light':'dark';r.setAttribute('data-theme',n);try{{localStorage.setItem('ntr-theme',n)}}catch(e){{}}lab()}});}})();
 </script></body></html>'''
+sys.path.insert(0,os.path.dirname(os.path.abspath(sys.argv[0])))
+import tile_periods as _tp
+page=page.replace("</body>",_tp.tag(_tp.periods(NOW.date(),spd,rvd))+"</body>",1)
 open(sys.argv[2],"w").write(page)
 if os.environ.get("SUMMARY_DIR"):
     _cm=rows[-1][1]

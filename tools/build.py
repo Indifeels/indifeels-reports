@@ -961,6 +961,9 @@ function tt(){{tb.classList.toggle('on',window.scrollY>400||wrap.scrollTop>120)}
 tb.addEventListener('click',function(){{wrap.scrollTop=0;window.scrollTo({{top:0,behavior:'smooth'}})}});
 window.addEventListener('scroll',tt,{{passive:true}});wrap.addEventListener('scroll',tt,{{passive:true}});tt();}})();
 </script>{PRODS_TAG}{ADLK_JS}</body></html>'''
+sys.path.insert(0,os.path.dirname(os.path.abspath(sys.argv[0])))
+import tile_periods as _tp
+page=page.replace("</body>",_tp.tag(_tp.periods(TODAY,spd,rvd,msd))+"</body>",1)
 open(OUT,"w").write(page)
 for k,v in tot.items(): print(k,round(v[0],2),v[1])
 

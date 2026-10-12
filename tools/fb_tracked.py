@@ -548,6 +548,12 @@ page = f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
 {trs}</table></div></div>
 </main>
 {JS}</body></html>'''
+sys.path.insert(0, HERE)
+import tile_periods as _tp
+_sp, _rv = {}, {}
+for _c, _days in by.items():
+    for _d, _v in _days.items(): _sp[_d] = _sp.get(_d, 0) + _v[0]; _rv[_d] = _rv.get(_d, 0) + _v[6]
+page = page.replace("</body>", _tp.tag(_tp.periods(TODAY, _sp, _rv)) + "</body>", 1)
 open(OUT, "w", encoding="utf-8").write(page)
 for k in ("t", "w", "m", "l"):
     v = tot[k]; print(k, "spend", round(v[0], 2), "sales", round(v[6], 2), "orders", int(v[5]), "roas", roasf(roas(v)))

@@ -273,6 +273,8 @@
     return names[clean] || clean.replace(/^./,x=>x.toUpperCase());
   }
   function publishedPeriods(id,html) {
+    const tp=html.match(/<script type="application\/json" id="tile-periods">([\s\S]*?)<\/script>/);
+    if(tp){try{return JSON.parse(tp[1].replace(/<\\\//g,"</"));}catch(_){}}
     const doc=new DOMParser().parseFromString(html,"text/html"),out={};
     const text=el=>el?.textContent.replace(/\s+/g," ").trim() || "—";
     const fromKpis=nodes=>Array.from(nodes).slice(0,4).map(el=>{const v=el.querySelector("b,.v");return [text(v),text(el.querySelector(".l") || el.querySelector("span:not(.chg):not(.ar):not(.dl)"))];});
