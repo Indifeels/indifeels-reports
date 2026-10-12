@@ -9,10 +9,10 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-10-13T10:10+11:00",
-  "code_sha": "66add99510dd5f586d3fc775289ab6c5dd941b0f",
+  "at": "2026-10-13T10:22+11:00",
+  "code_sha": "1c80b1fa1ddafa8c1bf5fb4457010bac01b93063",
   "data_through": "2026-10-12T23:59:59+11:00",
-  "last_ok": "2026-10-13T10:10+11:00",
+  "last_ok": "2026-10-13T10:22+11:00",
   "manifest_version": "2026-10-13.facebook-monthly-switch.1",
   "ok": true,
   "reason": ""
@@ -36,10 +36,10 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-10-13T10:10+11:00",
-  "code_sha": "66add99510dd5f586d3fc775289ab6c5dd941b0f",
+  "at": "2026-10-13T10:22+11:00",
+  "code_sha": "1c80b1fa1ddafa8c1bf5fb4457010bac01b93063",
   "data_through": "2026-10-12T23:59:59+11:00",
-  "last_ok": "2026-10-13T10:10+11:00",
+  "last_ok": "2026-10-13T10:22+11:00",
   "manifest_version": "2026-10-13.facebook-monthly-switch.1",
   "ok": true,
   "reason": ""
