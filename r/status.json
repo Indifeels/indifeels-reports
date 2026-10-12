@@ -45,10 +45,10 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-10-12T20:01+11:00",
-  "code_sha": "deaf299fbca6f11f86f33e111a275ef0000d66d7",
+  "at": "2026-10-13T07:00+11:00",
+  "code_sha": "f1bbd270de938cfb7e9f7d8d65d6e35f4edb4d6d",
   "data_through": null,
-  "last_ok": "2026-10-12T20:01+11:00",
+  "last_ok": "2026-10-13T07:00+11:00",
   "manifest_version": "2026-10-11.seo-windsor.1",
   "ok": true,
   "reason": ""
