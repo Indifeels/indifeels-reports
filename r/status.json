@@ -9,10 +9,10 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-10-12T21:36+11:00",
-  "code_sha": "482066cb70c5f7e53027bf4099d629b01c7f8252",
-  "data_through": "2026-10-12T21:30:13.516629+11:00",
-  "last_ok": "2026-10-12T21:36+11:00",
+  "at": "2026-10-13T00:07+11:00",
+  "code_sha": "9673d14cad809cac8540f24d91c46a32d97edd4b",
+  "data_through": "2026-10-12T23:59:59+11:00",
+  "last_ok": "2026-10-13T00:07+11:00",
   "manifest_version": "2026-10-11.seo-windsor.1",
   "ok": true,
   "reason": ""
@@ -27,10 +27,10 @@
   "reason": "Google tracked refresh failed; check GitHub Actions"
  },
  "monthly": {
-  "at": "2026-10-12T21:36+11:00",
-  "code_sha": "482066cb70c5f7e53027bf4099d629b01c7f8252",
-  "data_through": "2026-10-12T21:30:13.516629+11:00",
-  "last_ok": "2026-10-12T21:36+11:00",
+  "at": "2026-10-13T00:07+11:00",
+  "code_sha": "9673d14cad809cac8540f24d91c46a32d97edd4b",
+  "data_through": "2026-10-12T23:59:59+11:00",
+  "last_ok": "2026-10-13T00:07+11:00",
   "manifest_version": "2026-10-11.seo-windsor.1",
   "ok": true,
   "reason": ""
