@@ -79,7 +79,8 @@
         "tools/monthly_tracked.py",
         "tools/monthly_switch.py",
         "tools/tile_periods.py",
-        "tools/encrypt.py"
+        "tools/encrypt.py",
+        "tools/monthly_tracked_view.py"
       ],
       "outputs": [
         "r/monthly.bin",
