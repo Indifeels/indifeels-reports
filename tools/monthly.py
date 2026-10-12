@@ -9,7 +9,7 @@ for c,days in by.items():
 spd={};msd={}
 for c,days in by.items():
     for d,(s_,m_) in days.items(): spd[d]=spd.get(d,0)+s_; msd[d]=msd.get(d,0)+m_
-FB={"FB/IG PAGE MSGS MEL - SALE","FB WHATSAPP MSGS MEL - SALE"}
+FB={"FB/IG PAGE MSGS MEL - SALE","FB WHATSAPP MSGS MEL - SALE","FB CALLS MEL - SALE"}
 rv={};od={};rvd={};odd={}
 for n in ordmap.values():
     if n["cancelledAt"] or (n["m"] or {}).get("value") not in FB: continue
