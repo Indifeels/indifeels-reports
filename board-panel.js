@@ -5,8 +5,8 @@ window.BoardPanel = (() => {
     { id: "backlog", name: "Backlog" },
     { id: "todo", name: "To Do" },
     { id: "progress", name: "In Progress" },
-    { id: "stuck", name: "Roadblocks" },
-    { id: "done", name: "Done" }
+    { id: "done", name: "Done" },
+    { id: "stuck", name: "Roadblocks" }
   ];
   const PRI = {
     risk: "Most risky",
