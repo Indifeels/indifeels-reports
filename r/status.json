@@ -63,10 +63,10 @@
   "reason": ""
  },
  "stock": {
-  "at": "2026-10-12T14:48+11:00",
-  "code_sha": "89554750985c7ff5bed9f801b758249e99117d83",
+  "at": "2026-10-12T15:01+11:00",
+  "code_sha": "8fa9fdbf4c4ec2465767b8d08dbf968e2d0b2d43",
   "data_through": null,
-  "last_ok": "2026-10-12T14:48+11:00",
+  "last_ok": "2026-10-12T15:01+11:00",
   "manifest_version": "2026-10-11.seo-windsor.1",
   "ok": true,
   "reason": ""
