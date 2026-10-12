@@ -32,7 +32,7 @@
 
   // ---------- views ----------
   const VIEWS = ["login", "reset", "shell"];
-  const PAGES = ["home", "report", "stock", "attribution", "password", "admin", "schedule"];
+  const PAGES = ["home", "report", "stock", "attribution", "password", "admin", "schedule", "board"];
   function view(v) { VIEWS.forEach((x) => ($("#v-" + x).hidden = x !== v)); }
   function page(p, title) {
     PAGES.forEach((x) => ($("#v-" + x).hidden = x !== p));
@@ -210,6 +210,7 @@
     "call-tracking": { c: "teal", icon: "chart", stat: ["msg", "tag", "alert"], line: ["teal", "green", "rose"] },
     "order-source": { c: "teal", icon: "bars", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
     "tech-availability": { c: "teal", icon: "alert", stat: ["bars", "alert", "alert"], line: ["teal", "orange", "rose"] },
+    "project-board": { c: "purple", icon: "bars", stat: ["tag", "alert", "alert"], line: [] },
   };
   const SPARE = ["purple", "teal", "rose"];
   function look(id) {
@@ -248,7 +249,7 @@
     {name:"Google",color:"#AD915A",ids:["google-tracked","google-non-tracked"]},
     {name:"Stock Management",color:"#708C74",ids:["stock","product-visibility","restock"]},
     {name:"SEO",color:"#927CA2",ids:["footwear"]},
-    {name:"Admin Panel",color:"#838099",ids:["schedule-panel","tech-availability"]}
+    {name:"Admin Panel",color:"#838099",ids:["schedule-panel","tech-availability","project-board"]}
   ];
   const HOME_TITLES = {daily:"Facebook Non-tracked",monthly:"Facebook Monthly Profitability",stock:"Stock Movement & Negative Stock",footwear:"SEO Rankings","google-tracked":"Google Tracked"};
   const homeMeta = {}, homePeriods = {};
@@ -387,6 +388,7 @@
         if(r.id==="order-attribution"){await loadAttribution();meta=attributionStats();}
         else if(r.id==="footwear")meta=seoMeta(await loadSeoRankingsData());
         else if(r.id==="tech-availability")meta=techMeta(await loadTechAvailability());
+        else if(r.id==="project-board")meta={stats:await window.BoardPanel.stats(sb)};
         else if(r.id==="report-access"){const data=await adminCall({action:"list"});meta={stats:[[String(data.users?.length || 0),"People"],[String(data.users?.filter(x=>x.is_admin && !x.disabled).length || 0),"Admins"],[String(data.reports?.length || 0),"Reports"]]};}
         else if(r.id==="schedule-panel")meta={stats:[[String(Object.keys(scheduleControl).length),"Reports managed"],[String(Object.values(scheduleControl).filter(x=>x.enabled).length),"Enabled"],[String(Object.values(scheduleStatus).filter(x=>x.status==="failed").length),"Failed"]]};
         else if(keys[r.id]){meta=JSON.parse(await decryptFile(`r/${r.id}.meta.bin`,keys[r.id]));if(r.id==="stock"){await loadMoves();Object.assign(meta,stockStats());}}
@@ -1373,6 +1375,7 @@
     if (id === "order-attribution") return openAttribution(r);
     if (id === "footwear") return openSeoRankings(r);
     if (id === "tech-availability") return openTechAvailability(r);
+    if (id === "project-board") return openBoard(r);
     page("report", r.title);
     const st = $("#rep-status"), fr = $("#rep-frame");
     st.hidden = false; st.textContent = "Opening report…"; fr.hidden = true;
@@ -1661,6 +1664,11 @@
     busy(btn, false);
   });
 
+  async function openBoard(r) {
+    page("board", r.title);
+    if (location.hash !== "#project-board") history.pushState(null, "", "#project-board");
+    await window.BoardPanel.open(sb, $("#v-board"));
+  }
   async function openSchedulePanel() {
     page("schedule", "Schedule Panel");
     if (location.hash !== "#schedule-panel") history.pushState(null,"","#schedule-panel");
