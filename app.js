@@ -210,7 +210,7 @@
     "call-tracking": { c: "teal", icon: "chart", stat: ["msg", "tag", "alert"], line: ["teal", "green", "rose"] },
     "order-source": { c: "teal", icon: "bars", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
     "tech-availability": { c: "teal", icon: "alert", stat: ["bars", "alert", "alert"], line: ["teal", "orange", "rose"] },
-    "project-board": { c: "purple", icon: "bars", stat: ["tag", "alert", "alert"], line: [] },
+    "project-board": { c: "purple", icon: "bars", stat: ["tag", "alert", "clock", "alert"], line: [] },
   };
   const SPARE = ["purple", "teal", "rose"];
   function look(id) {
@@ -388,7 +388,7 @@
         if(r.id==="order-attribution"){await loadAttribution();meta=attributionStats();}
         else if(r.id==="footwear")meta=seoMeta(await loadSeoRankingsData());
         else if(r.id==="tech-availability")meta=techMeta(await loadTechAvailability());
-        else if(r.id==="project-board")meta={stats:await window.BoardPanel.stats(sb)};
+        else if(r.id==="project-board")meta=await window.BoardPanel.stats(sb);
         else if(r.id==="report-access"){const data=await adminCall({action:"list"});meta={stats:[[String(data.users?.length || 0),"People"],[String(data.users?.filter(x=>x.is_admin && !x.disabled).length || 0),"Admins"],[String(data.reports?.length || 0),"Reports"]]};}
         else if(r.id==="schedule-panel")meta={stats:[[String(Object.keys(scheduleControl).length),"Reports managed"],[String(Object.values(scheduleControl).filter(x=>x.enabled).length),"Enabled"],[String(Object.values(scheduleStatus).filter(x=>x.status==="failed").length),"Failed"]]};
         else if(keys[r.id]){meta=JSON.parse(await decryptFile(`r/${r.id}.meta.bin`,keys[r.id]));if(r.id==="stock"){await loadMoves();Object.assign(meta,stockStats());}}
@@ -1667,7 +1667,7 @@
   async function openBoard(r) {
     page("board", r.title);
     if (location.hash !== "#project-board") history.pushState(null, "", "#project-board");
-    await window.BoardPanel.open(sb, $("#v-board"));
+    await window.BoardPanel.open(sb, $("#v-board"), me);
   }
   async function openSchedulePanel() {
     page("schedule", "Schedule Panel");
