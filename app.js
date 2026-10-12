@@ -1453,7 +1453,7 @@
           return;
         }
         reply({ type: "restock-confirm-result", req: d.req, ok: true, sheet: !!data.sheet,
-          message: (data.sheet ? "Added to the supplier sheet: " : "Confirmed (sheet transfer pending): ") + data.count + " item" + (data.count === 1 ? "" : "s") + " · " + data.units + " units" });
+          message: (data.sheet ? "Added to the supplier sheet: " : "Saved, but NOT added to the sheet (" + (data.sheet_error || "unknown error") + "). It will retry on the next confirm: ") + data.count + " item" + (data.count === 1 ? "" : "s") + " · " + data.units + " units" });
         toast("Confirmed");
       } catch (err) {
         reply({ type: "restock-confirm-result", req: d.req, ok: false, error: err?.message || "Couldn't confirm." });

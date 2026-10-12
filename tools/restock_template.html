@@ -84,6 +84,10 @@ main{max-width:980px;margin:0 auto;padding:12px 16px 32px}
 .ctl button{width:40px;height:40px;border-radius:10px;border:0;font-size:20px;font-weight:700;line-height:1;display:grid;place-items:center}
 .minus{background:var(--yb);color:var(--y)}.plus{background:var(--gb);color:var(--g)}.del{background:var(--rb);color:var(--r);font-size:15px!important;margin-left:6px}
 .q{min-width:28px;text-align:center;font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
+.rw2{display:flex;justify-content:flex-end;align-items:center;gap:8px}
+.dl{height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--r);background:var(--rb);color:var(--r);font-weight:700;font-size:12.5px;letter-spacing:.02em;display:inline-flex;align-items:center;gap:5px}
+.dl:active{transform:scale(.96)}
+[hidden]{display:none!important}
 .cf{align-self:flex-end;height:30px;padding:0 14px 0 11px;border-radius:999px;border:1px solid var(--navy);background:transparent;color:var(--navy);font-weight:700;font-size:12.5px;letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;transition:background .15s,color .15s}
 .cf svg{width:13px;height:13px;stroke:var(--gold);stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .cf:hover,.cf:focus-visible{background:var(--navy);color:#fff}
@@ -177,7 +181,7 @@ function render(){
     <img class="pic" loading="lazy" referrerpolicy="no-referrer" src="${esc(x.img)}" alt="" data-n="${esc(x.p)}">
     <div><div class="nm">${esc(x.p)}</div><span class="vr">${esc(x.v)}</span><div class="ls">Last sold ${x.last?fmt(x.last):"—"}</div></div>
     <div class="n ${s}">${x.stock}<small>${lbl[s]}</small></div>
-    <div class="act"><div class="ctl"><button class="minus" data-a="m" aria-label="Decrease">−</button><span class="q">${qtyOf(x)}</span><button class="plus" data-a="p" aria-label="Increase">+</button><button class="del" data-a="d" aria-label="Delete row">🗑</button></div><button class="cf" data-a="c"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>Confirm</button></div>
+    <div class="act"><div class="ctl"><button class="minus" data-a="m" aria-label="Decrease">−</button><span class="q">${qtyOf(x)}</span><button class="plus" data-a="p" aria-label="Increase">+</button></div><div class="rw2"><button class="dl" data-a="d" aria-label="Delete row">🗑 Delete</button><button class="cf" data-a="c"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>Confirm</button></div></div>
   </div>`}).join(""):'<div class="empty">Nothing here</div>';
   totals();
 }

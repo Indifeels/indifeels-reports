@@ -67,24 +67,53 @@ Deno.serve(async (req: Request) => {
   // Remember these variants as handled before anything is sent, so a failure here changes nothing.
   try { await mark(clean, "confirmed"); } catch { return json({ error: "Could not record the confirmation. Nothing was changed." }, 500); }
 
-  // Optional: forward to a Google Apps Script web app that appends to the supplier sheet.
+  // Append to the supplier sheet through the Google Apps Script web app. Any earlier confirmations that never reached
+  // the sheet are sent in the same call, so the sheet catches up the moment the connection works again.
+  const melb = (iso: string) => {
+    const p: Record<string, string> = {};
+    new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Melbourne", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .formatToParts(new Date(iso)).forEach((x) => { p[x.type] = x.value; });
+    return `${p.day} ${p.month} ${p.year}, ${p.hour}:${p.minute}`;
+  };
+  const { data: backlog } = await svc.from("restock_confirmations")
+    .select("id,product,variant,image,url,stock,qty,status,confirmed_at")
+    .eq("sheet_synced", false).gte("confirmed_at", new Date(Date.now() - 30 * 864e5).toISOString())
+    .order("id", { ascending: true }).limit(200);
+  const nowAt = melb(new Date().toISOString());
   const hook = Deno.env.get("RESTOCK_SHEET_WEBHOOK");
   let sheet = false;
-  if (hook) {
+  let sheetErr = "";
+  if (!hook) {
+    sheetErr = "RESTOCK_SHEET_WEBHOOK is not set in Supabase secrets";
+  } else {
     try {
+      const outgoing = [
+        ...(backlog || []).map((r: any) => ({ product: r.product, variant: r.variant, image: r.image, url: r.url, stock: r.stock, qty: r.qty, status: r.status, at: melb(r.confirmed_at) })),
+        ...clean.map(({ vid: _v, ...r }: any) => ({ ...r, at: nowAt })),
+      ];
       const r = await fetch(hook, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ token: Deno.env.get("RESTOCK_SHEET_TOKEN") || "", items: clean.map(({ vid: _v, ...r }: any) => r) }),
+        body: JSON.stringify({ token: Deno.env.get("RESTOCK_SHEET_TOKEN") || "", items: outgoing }),
         redirect: "follow",
+        signal: AbortSignal.timeout(20000),
       });
-      sheet = r.ok && (await r.text()).includes("ok");
-    } catch (e) { console.error("sheet webhook failed", String(e)); }
+      const txt = await r.text();
+      sheet = r.ok && txt.trim().toLowerCase() === "ok";
+      if (!sheet) {
+        const plain = txt.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+        sheetErr = `Sheet script replied HTTP ${r.status}: ${plain || "(empty)"}`;
+      }
+    } catch (e) { sheetErr = "Sheet script unreachable: " + String(e).slice(0, 160); }
+    if (sheetErr) console.error("sheet webhook failed:", sheetErr);
+  }
+  if (sheet && backlog?.length) {
+    await svc.from("restock_confirmations").update({ sheet_synced: true, sheet_error: null }).in("id", backlog.map((r: any) => r.id));
   }
 
   const { error } = await svc.from("restock_confirmations").insert(
-    clean.map(({ vid: _v, ...i }: any) => ({ ...i, confirmed_by: who.user.id, sheet_synced: sheet })),
+    clean.map(({ vid: _v, ...i }: any) => ({ ...i, confirmed_by: who.user.id, sheet_synced: sheet, sheet_error: sheet ? null : sheetErr })),
   );
   if (error) { console.error(error.message); return json({ error: "Could not record the confirmation" }, 500); }
-  return json({ ok: true, count: clean.length, units: clean.reduce((a: number, i: any) => a + i.qty, 0), sheet });
+  return json({ ok: true, count: clean.length, units: clean.reduce((a: number, i: any) => a + i.qty, 0), sheet, sheet_error: sheet ? "" : sheetErr, caught_up: sheet ? (backlog?.length || 0) : 0 });
 });
