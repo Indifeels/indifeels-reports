@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-13.cash-report.1",
+  "manifest_version": "2026-10-14.color-game.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -289,6 +289,22 @@
       "outputs": [
         "r/cash-report.bin",
         "r/cash-report.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "none"
+    },
+    {
+      "id": "color-game",
+      "title": "Colour Tagging Game",
+      "workflow": null,
+      "refresh_times": [
+        "manual (demo data)"
+      ],
+      "required_env": [],
+      "builders": [],
+      "outputs": [
+        "r/color-game.bin",
+        "r/color-game.meta.bin"
       ],
       "supabase_sync": false,
       "schedule_control": "none"

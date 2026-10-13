@@ -211,6 +211,7 @@
     "call-tracking": { c: "teal", icon: "chart", stat: ["msg", "tag", "alert"], line: ["teal", "green", "rose"] },
     "order-source": { c: "teal", icon: "bars", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
     "tech-availability": { c: "teal", icon: "alert", stat: ["bars", "alert", "alert"], line: ["teal", "orange", "rose"] },
+    "color-game": { c: "orange", icon: "tag", stat: ["box", "tag"], line: [] },
     "project-board": { c: "purple", icon: "bars", stat: ["tag", "alert", "clock", "alert"], line: [] },
   };
   const SPARE = ["purple", "teal", "rose"];
