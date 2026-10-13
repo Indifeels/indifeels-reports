@@ -63,11 +63,11 @@
   "reason": ""
  },
  "restock": {
-  "at": "2026-10-13T07:01+11:00",
-  "code_sha": "3175a0347075dd2a482779a25ed83920f58446c3",
+  "at": "2026-10-13T11:46+11:00",
+  "code_sha": "750ebc5a370b8b128946a5a9cdde63d2cad462ea",
   "data_through": null,
-  "last_ok": "2026-10-13T07:01+11:00",
-  "manifest_version": "2026-10-11.seo-windsor.1",
+  "last_ok": "2026-10-13T11:46+11:00",
+  "manifest_version": "2026-10-13.facebook-monthly-switch.1",
   "ok": true,
   "reason": ""
  },
