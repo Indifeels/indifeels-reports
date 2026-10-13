@@ -122,3 +122,8 @@ a.bpd-name{text-decoration:underline;text-underline-offset:2px}
  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 3px 8px rgba(0,0,0,.35)}
 .bp-count{min-width:32px;height:32px;padding:0 9px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
  background:rgba(8,9,11,.55);border:2px solid var(--accent);color:#fff;font-size:15px;font-weight:800;box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+
+/* Column headers v3: black banner, colour only on the edge and count */
+.bp-lane h3{background:linear-gradient(180deg,#14151a 0%,#050506 100%);border-bottom:3px solid var(--accent);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 4px 10px rgba(0,0,0,.55)}
+.bp-count{background:var(--accent);border:0;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.5)}
