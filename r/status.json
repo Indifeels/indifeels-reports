@@ -45,11 +45,11 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-10-13T06:01+11:00",
-  "code_sha": "cffaf7e50950c84ae50a7fc1ccdf7971fd9d804d",
+  "at": "2026-10-13T14:00+11:00",
+  "code_sha": "da9bf1fef632acb73a66dca06f1fe3a647a5ae4c",
   "data_through": null,
-  "last_ok": "2026-10-13T06:01+11:00",
-  "manifest_version": "2026-10-11.seo-windsor.1",
+  "last_ok": "2026-10-13T14:00+11:00",
+  "manifest_version": "2026-10-13.facebook-monthly-switch.1",
   "ok": true,
   "reason": ""
  },
