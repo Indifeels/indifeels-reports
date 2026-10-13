@@ -25,7 +25,7 @@ window.BoardPanel = (() => {
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation"
   ];
-  const SELECT = "id,title,col,pri,prev,pos,source,created_at,due_date,board_comments(count),board_attachments(count)";
+  const SELECT = "id,title,col,pri,prev,pos,source,created_at,due_date,due_time,mute_reminders,board_comments(count),board_attachments(count)";
   const REFRESH_MS = 60 * 60 * 1000;
 
   let sb, me, root, tasks = [], dragging = false, pending = false, timer, lastLoad = 0, lanes = {}, dlg = null, justDragged = 0;
@@ -51,15 +51,41 @@ window.BoardPanel = (() => {
     const sameYear = String(y) === todayMel().slice(0, 4);
     return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-AU", { timeZone: "UTC", day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
   };
-  const isOverdue = (t) => !!t.due_date && t.col !== "done" && daysUntil(t.due_date) < 0;
+  /* Due time is a Melbourne wall-clock time ("17:00"); the real instant is worked out here and in the database trigger. */
+  const hhmm = (t) => (t ? String(t).slice(0, 5) : "");
+  const tzOffsetMs = (ms) => {
+    const p = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(ms));
+    const g = (k) => Number(p.find((x) => x.type === k).value);
+    return Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute")) - Math.floor(ms / 60000) * 60000;
+  };
+  const melToMs = (date, time) => {
+    const [y, m, d] = date.split("-").map(Number), [hh, mm] = hhmm(time).split(":").map(Number);
+    const wall = Date.UTC(y, m - 1, d, hh, mm);
+    let g = wall - tzOffsetMs(wall);
+    g = wall - tzOffsetMs(g);
+    return g;
+  };
+  const fmtTime = (time) => { const [h, m] = hhmm(time).split(":").map(Number); return ((h % 12) || 12) + ":" + String(m).padStart(2, "0") + " " + (h < 12 ? "am" : "pm"); };
+  const dueMs = (t) => (t.due_date && t.due_time ? melToMs(t.due_date, t.due_time) : null);
+  const isOverdue = (t, now = Date.now()) => {
+    if (!t.due_date || t.col === "done") return false;
+    const ms = dueMs(t);
+    return ms != null ? ms < now : daysUntil(t.due_date) < 0;
+  };
   function dueChip(t) {
     if (!t.due_date) return null;
-    if (t.col === "done") return { text: "Due " + fmtDate(t.due_date), cls: "muted" };
+    const tm = t.due_time ? " " + fmtTime(t.due_time) : "";
+    if (t.col === "done") return { text: "Due " + fmtDate(t.due_date) + tm, cls: "muted" };
+    const ms = dueMs(t);
+    if (ms != null && ms < Date.now()) {
+      const mins = Math.floor((Date.now() - ms) / 60000);
+      return { text: "Overdue " + (mins < 60 ? Math.max(mins, 1) + "m" : mins < 1440 ? Math.floor(mins / 60) + "h" : Math.floor(mins / 1440) + "d"), cls: "late" };
+    }
     const d = daysUntil(t.due_date);
-    if (d < 0) return { text: "Overdue " + (-d) + "d", cls: "late" };
-    if (d === 0) return { text: "Due today", cls: "today" };
-    if (d === 1) return { text: "Due tomorrow", cls: "soon" };
-    return { text: "Due " + fmtDate(t.due_date), cls: "" };
+    if (ms == null && d < 0) return { text: "Overdue " + (-d) + "d", cls: "late" };
+    if (d === 0) return { text: "Due today" + tm, cls: "today" };
+    if (d === 1) return { text: "Due tomorrow" + tm, cls: "soon" };
+    return { text: "Due " + fmtDate(t.due_date) + tm, cls: "" };
   }
 
   /* ---------- data ---------- */
@@ -322,7 +348,17 @@ window.BoardPanel = (() => {
     [["Today", () => todayMel()], ["Tomorrow", () => addDays(1)], ["Next week", () => addDays(7)], ["Clear", () => null]].forEach(([label, fn]) => {
       const b = el("button", "bpd-q", label); b.type = "button"; b.addEventListener("click", () => setDue(fn())); quick.append(b);
     });
-    fDue.append(dateRow, quick);
+    const timeRow = el("div", "bpd-timerow");
+    const time = el("input"); time.type = "time"; time.id = "bpd-time"; time.step = 300; time.setAttribute("aria-label", "Due time");
+    time.addEventListener("change", () => { setTime(time.value || null); });
+    const timeQuick = el("div", "bpd-quick");
+    [["9:00 am", "09:00"], ["12:00 pm", "12:00"], ["5:00 pm", "17:00"], ["No time", null]].forEach(([label, v]) => {
+      const b = el("button", "bpd-q", label); b.type = "button"; b.addEventListener("click", () => setTime(v)); timeQuick.append(b);
+    });
+    timeRow.append(time);
+    const mute = el("button", "bpd-q bpd-mute", "Reminders on"); mute.type = "button"; mute.setAttribute("aria-pressed", "true");
+    mute.addEventListener("click", () => { setMute(!dlg.t.mute_reminders); });
+    fDue.append(dateRow, quick, timeRow, timeQuick, mute);
     grid.append(fCol, fDue);
 
     const fPri = field("Priority");
@@ -368,7 +404,7 @@ window.BoardPanel = (() => {
     document.body.append(ov);
     document.body.style.overflow = "hidden";
 
-    dlg = { t, ov, box, title, sel, date, pills, cHead, cList, cText, cBtn, aHead, aList, file, msg, prevFocus, comments: [], files: [] };
+    dlg = { t, ov, box, title, sel, date, time, mute, pills, cHead, cList, cText, cBtn, aHead, aList, file, msg, prevFocus, comments: [], files: [] };
     ov.addEventListener("mousedown", (e) => { if (e.target === ov) closeDetail(); });
     box.addEventListener("keydown", trapKeys);
     cForm.addEventListener("submit", (e) => { e.preventDefault(); postComment(); });
@@ -387,14 +423,34 @@ window.BoardPanel = (() => {
     if (document.activeElement !== dlg.title) dlg.title.value = t.title || "";
     dlg.sel.value = t.col;
     if (document.activeElement !== dlg.date) dlg.date.value = t.due_date || "";
+    if (document.activeElement !== dlg.time) dlg.time.value = hhmm(t.due_time);
+    dlg.time.disabled = !t.due_date;
+    const muted = !!t.mute_reminders;
+    dlg.mute.textContent = muted ? "Reminders off for this task" : "Reminders on";
+    dlg.mute.classList.toggle("off", muted); dlg.mute.setAttribute("aria-pressed", String(!muted));
+    dlg.mute.hidden = !t.due_time;
     dlg.pills.querySelectorAll(".bpd-pill").forEach((b) => { const on = b.dataset.pri === t.pri; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
   }
 
   async function setDue(iso) {
     if (!dlg) return;
     const t = dlg.t;
-    await put(t.id, { due_date: iso });
+    await put(t.id, iso ? { due_date: iso } : { due_date: null, due_time: null });
     render(); paintMeta();
+  }
+  async function setTime(v) {
+    if (!dlg) return;
+    const t = dlg.t;
+    const patch = { due_time: v };
+    if (v && !t.due_date) patch.due_date = todayMel();
+    if (v) patch.mute_reminders = false;   // a new time starts fresh reminders
+    await put(t.id, patch);
+    render(); paintMeta();
+  }
+  async function setMute(on) {
+    if (!dlg) return;
+    await put(dlg.t.id, { mute_reminders: !!on });
+    paintMeta();
   }
 
   function closeDetail() {
@@ -536,10 +592,10 @@ window.BoardPanel = (() => {
 
   /* ---------- home tile ---------- */
   async function stats(client) {
-    const { data, error } = await client.from("board_tasks").select("col,pri,due_date");
+    const { data, error } = await client.from("board_tasks").select("col,pri,due_date,due_time");
     if (error) throw new Error(error.message);
     const rows = data || [], today = todayMel();
-    const overdue = rows.filter((x) => x.col !== "done" && x.due_date && x.due_date < today).length;
+    const overdue = rows.filter((x) => isOverdue(x)).length;
     return {
       warn: overdue > 0,
       stats: [
@@ -558,6 +614,14 @@ window.BoardPanel = (() => {
     build();
     pushHint();
     await load();
+    try {
+      const want = new URLSearchParams(location.search).get("board_task");
+      if (want) {
+        history.replaceState(null, "", location.pathname + location.hash);
+        const t = byId(want);
+        if (t) openDetail(t); else say("That task is no longer on the board.");
+      }
+    } catch (_) {}
     timer = setInterval(() => { if (!root.hidden && !dlg && Date.now() - lastLoad >= REFRESH_MS - 1000) load(); }, 60 * 1000);
   }
   return { open, stats };
