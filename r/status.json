@@ -54,11 +54,11 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-10-13T20:00+11:00",
-  "code_sha": "9533c0ec173947b177a612f6b2f05352ba2edf55",
+  "at": "2026-10-14T07:00+11:00",
+  "code_sha": "4ba32ddc98d4e0b998f4a4edf5efdfe7db559dc2",
   "data_through": null,
-  "last_ok": "2026-10-13T20:00+11:00",
-  "manifest_version": "2026-10-13.facebook-monthly-switch.1",
+  "last_ok": "2026-10-14T07:00+11:00",
+  "manifest_version": "2026-10-13.cash-report.1",
   "ok": true,
   "reason": ""
  },
