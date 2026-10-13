@@ -126,6 +126,43 @@ async function reminders(secret: string, dry: boolean) {
   return { ok: true, sent, pending: todo.length };
 }
 
+// ---------- "card moved" push: sent by a database trigger whenever a task changes column ----------
+const COL_NAMES: Record<string, string> = { backlog: 'To Do', todo: 'Planned', progress: 'In Progress', stuck: 'Roadblocks', done: 'Done' };
+const COL_EMOJI: Record<string, string> = { backlog: '📝', todo: '📅', progress: '🚧', stuck: '⛔', done: '✅' };
+
+async function moved(taskId: string, from: string, to: string) {
+  if (!COL_NAMES[from] || !COL_NAMES[to] || from === to) return { ok: true, skipped: 'bad-columns' };
+  const { data: t, error } = await svc.from('board_tasks').select('id,title').eq('id', taskId).maybeSingle();
+  if (error) throw new Error('task: ' + error.message);
+  if (!t) return { ok: true, skipped: 'task-gone' };
+  const { data: subs, error: se } = await svc.from('push_subscriptions')
+    .select('id,endpoint,p256dh,auth_key,origin,profiles!inner(is_admin,disabled)')
+    .eq('enabled', true).eq('profiles.is_admin', true).eq('profiles.disabled', false);
+  if (se) throw new Error('subs: ' + se.message);
+  if (!subs?.length) return { ok: true, skipped: 'no-admin-subscribers' };
+  const { data: cfg, error: ce } = await svc.from('push_config').select('public_key,private_key').eq('id', 1).single();
+  if (ce || !cfg) throw new Error('push is not configured');
+  webpush.setVapidDetails('mailto:notifications@indifeels.com', cfg.public_key, cfg.private_key);
+  let sent = 0;
+  for (const s of subs) {
+    const base = String(s.origin || '').replace(/\/$/, '');
+    const payload = {
+      title: `${COL_EMOJI[to]} Task moved to ${COL_NAMES[to]}`,
+      body: `${clip(t.title, 90)}\n${COL_NAMES[from]} → ${COL_NAMES[to]}`,
+      url: `${base}/?board_task=${t.id}#project-board`,
+      tag: 'indifeels-move-' + t.id
+    };
+    try {
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth_key } }, JSON.stringify(payload), { TTL: 60 * 60, urgency: 'normal' });
+      sent++;
+    } catch (e) {
+      const status = Number((e as { statusCode?: number })?.statusCode || 0);
+      if (status === 404 || status === 410) await svc.from('push_subscriptions').update({ enabled: false, updated_at: new Date().toISOString() }).eq('id', s.id);
+    }
+  }
+  return { ok: true, sent };
+}
+
 async function check(dry: boolean) {
   const now = melbourneNow();
   if (!dry) {
@@ -185,7 +222,7 @@ async function check(dry: boolean) {
 Deno.serve(async (req: Request) => {
   const u = new URL(req.url);
   const action = u.searchParams.get('action');
-  if (req.method !== 'POST' || (action !== 'check' && action !== 'mute')) return reply({ error: 'Not found' }, 404);
+  if (req.method !== 'POST' || (action !== 'check' && action !== 'mute' && action !== 'moved')) return reply({ error: 'Not found' }, 404);
   const { data: secret, error } = await svc.rpc('report_scheduler_secret');
   if (error || !secret) return reply({ error: 'Not authorized' }, 401);
 
@@ -199,6 +236,10 @@ Deno.serve(async (req: Request) => {
   }
 
   if (req.headers.get('x-schedule-token') !== secret) return reply({ error: 'Not authorized' }, 401);
+  if (action === 'moved') {
+    try { return reply(await moved(u.searchParams.get('task') || '', u.searchParams.get('from') || '', u.searchParams.get('to') || '')); }
+    catch (e) { return reply({ ok: false, error: String((e as Error).message || e) }, 500); }
+  }
   const dry = u.searchParams.get('dry') === '1';
   try {
     const rem = await reminders(String(secret), dry).catch((e) => ({ ok: false, error: String((e as Error).message || e) }));
