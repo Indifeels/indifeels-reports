@@ -27,11 +27,11 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-10-13T20:59+11:00",
-  "code_sha": "007529da734fe2c51904fed9868cb2f2f7857c06",
+  "at": "2026-10-14T06:00+11:00",
+  "code_sha": "bf9d9a40d338e63291f9e70c95e3303e39e9e38d",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-10-13T20:59+11:00",
-  "manifest_version": "2026-10-13.facebook-monthly-switch.1",
+  "last_ok": "2026-10-14T06:00+11:00",
+  "manifest_version": "2026-10-13.cash-report.1",
   "ok": true,
   "reason": ""
  },
