@@ -72,10 +72,10 @@
   "reason": ""
  },
  "stock": {
-  "at": "2026-10-14T09:11+11:00",
-  "code_sha": "189293be6099719292d371b0a6f5321a2e60f4f3",
+  "at": "2026-10-14T09:43+11:00",
+  "code_sha": "3e9022165626b9f6d26b468fd7d28dee3f1a7252",
   "data_through": null,
-  "last_ok": "2026-10-14T09:11+11:00",
+  "last_ok": "2026-10-14T09:43+11:00",
   "manifest_version": "2026-10-13.cash-report.1",
   "ok": true,
   "reason": ""
