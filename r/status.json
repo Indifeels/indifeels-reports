@@ -18,11 +18,11 @@
   "reason": ""
  },
  "facebook-tracked": {
-  "at": "2026-10-13T20:00+11:00",
-  "code_sha": "9533c0ec173947b177a612f6b2f05352ba2edf55",
-  "data_through": "2026-10-13T20:00:13.500387+11:00",
-  "last_ok": "2026-10-13T20:00+11:00",
-  "manifest_version": "2026-10-13.facebook-monthly-switch.1",
+  "at": "2026-10-14T06:00+11:00",
+  "code_sha": "bf9d9a40d338e63291f9e70c95e3303e39e9e38d",
+  "data_through": "2026-10-13T23:59:59+11:00",
+  "last_ok": "2026-10-14T06:00+11:00",
+  "manifest_version": "2026-10-13.cash-report.1",
   "ok": true,
   "reason": ""
  },
