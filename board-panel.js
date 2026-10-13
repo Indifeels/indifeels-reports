@@ -2,7 +2,7 @@
    Tables: board_tasks, board_comments, board_attachments (+ private storage bucket board-attachments). */
 window.BoardPanel = (() => {
   const COLS = [
-    { id: "backlog", name: "Backlog" },
+    { id: "backlog", name: "To Do" },
     { id: "todo", name: "Planned" },
     { id: "progress", name: "In Progress" },
     { id: "done", name: "Done" },
@@ -543,7 +543,7 @@ window.BoardPanel = (() => {
     return {
       warn: overdue > 0,
       stats: [
-        [String(rows.filter((x) => x.col === "backlog").length), "Backlog"],
+        [String(rows.filter((x) => x.col === "backlog").length), "To do"],
         [String(rows.filter((x) => x.col === "todo").length), "Planned"],
         [String(rows.filter((x) => x.col === "progress").length), "In progress"],
         [String(rows.filter((x) => x.col === "stuck").length), "Roadblocks"]
