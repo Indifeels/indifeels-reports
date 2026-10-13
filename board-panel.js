@@ -3,7 +3,7 @@
 window.BoardPanel = (() => {
   const COLS = [
     { id: "backlog", name: "Backlog" },
-    { id: "todo", name: "To Do" },
+    { id: "todo", name: "Planned" },
     { id: "progress", name: "In Progress" },
     { id: "done", name: "Done" },
     { id: "stuck", name: "Roadblocks" }
@@ -543,9 +543,9 @@ window.BoardPanel = (() => {
     return {
       warn: overdue > 0,
       stats: [
-        [String(rows.filter((x) => x.col === "todo").length), "To do"],
-        [String(rows.filter((x) => x.pri === "urgent" && x.col !== "done").length), "Urgent"],
-        [String(overdue), "Overdue"],
+        [String(rows.filter((x) => x.col === "backlog").length), "Backlog"],
+        [String(rows.filter((x) => x.col === "todo").length), "Planned"],
+        [String(rows.filter((x) => x.col === "progress").length), "In progress"],
         [String(rows.filter((x) => x.col === "stuck").length), "Roadblocks"]
       ]
     };
