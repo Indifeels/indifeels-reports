@@ -92,6 +92,7 @@ CMPJS = """<script>
 (function(){var D=%s,sm=document.getElementById('sm'),ss=document.getElementById('ss'),vm=document.getElementById('vm'),vs=document.getElementById('vs'),cp=document.getElementById('cp'),box=document.getElementById('cmp');
 function show(m){if(!ss)return;vm.hidden=!m;vs.hidden=m;sm.setAttribute('aria-pressed',m);ss.setAttribute('aria-pressed',!m);try{localStorage.setItem('fmt-src',m?'m':'s')}catch(e){}}
 if(sm&&ss){sm.onclick=function(){show(true)};ss.onclick=function(){show(false)};try{if(localStorage.getItem('fmt-src')==='s')show(false)}catch(e){}}
+var fb=document.querySelector('.fbar');function stk(){if(fb)document.documentElement.style.setProperty('--stk',(fb.offsetHeight+8)+'px')}stk();addEventListener('resize',stk);
 function $(v){return(v<0?'-':'')+'$'+Math.abs(Math.round(v)).toLocaleString('en-AU')}
 function pc(a,b){return b?(a-b)/Math.abs(b)*100:null}
 function pt(v){return v==null?'n/a':(v>=0?'+':'-')+Math.abs(v).toFixed(0)+'%%'}

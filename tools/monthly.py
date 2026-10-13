@@ -352,11 +352,12 @@ header{{display:flex;justify-content:space-between;gap:12px;align-items:flex-sta
 h1{{font:700 clamp(24px,4vw,34px)/1.1 "Bricolage Grotesque",Figtree,sans-serif;margin:0 0 4px}}
 .hd p{{margin:0;color:var(--muted)}}
 .tg{{flex:none;font:600 13px Figtree,sans-serif;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:7px 14px;cursor:pointer}}
-.wrap{{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow-x:auto}}
+.wrap{{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:auto;position:sticky;top:var(--stk,0px);max-height:calc(100vh - var(--stk,0px) - 12px);max-height:calc(100dvh - var(--stk,0px) - 12px)}}
 table{{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}}
 th,td{{white-space:nowrap}}
 thead th{{white-space:normal;vertical-align:bottom;min-width:84px;font-size:13px;font-weight:600;color:var(--muted);text-align:right;padding:12px 8px 10px;border-bottom:1px solid var(--line)}}
-thead th:first-child{{text-align:left}}
+thead th{{position:sticky;top:0;z-index:3;background:var(--card);box-shadow:0 1px 0 var(--line)}}
+thead th:first-child{{text-align:left;left:0;z-index:4}}
 tbody th{{text-align:left;font-weight:600;padding:11px 12px;position:sticky;left:0;background:var(--card);z-index:1}}
 td{{text-align:right;padding:10px 8px}}
 tbody tr+tr{{border-top:1px solid var(--line)}}
