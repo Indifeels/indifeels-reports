@@ -72,10 +72,10 @@
   "reason": ""
  },
  "stock": {
-  "at": "2026-10-13T12:09+11:00",
-  "code_sha": "6b8f8bad34479c3b948e2827d7e6174259a139b1",
+  "at": "2026-10-13T14:15+11:00",
+  "code_sha": "ec4ec76d3f1f607d9010d3447242f79a2fa80a7c",
   "data_through": null,
-  "last_ok": "2026-10-13T12:09+11:00",
+  "last_ok": "2026-10-13T14:15+11:00",
   "manifest_version": "2026-10-13.facebook-monthly-switch.1",
   "ok": true,
   "reason": ""
