@@ -63,11 +63,11 @@
   "reason": ""
  },
  "restock": {
-  "at": "2026-10-13T21:34+11:00",
-  "code_sha": "95156e2c406b31c5826da985251d86d1b2bfe0a4",
+  "at": "2026-10-13T21:53+11:00",
+  "code_sha": "ecf6fb713e40e7d5530d8676331a07acbb088f5e",
   "data_through": null,
-  "last_ok": "2026-10-13T21:34+11:00",
-  "manifest_version": "2026-10-13.facebook-monthly-switch.1",
+  "last_ok": "2026-10-13T21:53+11:00",
+  "manifest_version": "2026-10-13.cash-report.1",
   "ok": true,
   "reason": ""
  },
