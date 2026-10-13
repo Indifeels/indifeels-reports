@@ -131,7 +131,8 @@ const COL_NAMES: Record<string, string> = { backlog: 'To Do', todo: 'Planned', p
 const COL_EMOJI: Record<string, string> = { backlog: '📝', todo: '📅', progress: '🚧', stuck: '⛔', done: '✅' };
 
 async function moved(taskId: string, from: string, to: string) {
-  if (!COL_NAMES[from] || !COL_NAMES[to] || from === to) return { ok: true, skipped: 'bad-columns' };
+  const isNew = from === 'new';   // a task that was just added
+  if (!COL_NAMES[to] || (!isNew && (!COL_NAMES[from] || from === to))) return { ok: true, skipped: 'bad-columns' };
   const { data: t, error } = await svc.from('board_tasks').select('id,title').eq('id', taskId).maybeSingle();
   if (error) throw new Error('task: ' + error.message);
   if (!t) return { ok: true, skipped: 'task-gone' };
@@ -147,10 +148,10 @@ async function moved(taskId: string, from: string, to: string) {
   for (const s of subs) {
     const base = String(s.origin || '').replace(/\/$/, '');
     const payload = {
-      title: `${COL_EMOJI[to]} Task moved to ${COL_NAMES[to]}`,
-      body: `${clip(t.title, 90)}\n${COL_NAMES[from]} → ${COL_NAMES[to]}`,
+      title: isNew ? `🆕 New task added · ${COL_NAMES[to]}` : `${COL_EMOJI[to]} Task moved to ${COL_NAMES[to]}`,
+      body: isNew ? clip(t.title, 120) : `${clip(t.title, 90)}\n${COL_NAMES[from]} → ${COL_NAMES[to]}`,
       url: `${base}/?board_task=${t.id}#project-board`,
-      tag: 'indifeels-move-' + t.id
+      tag: (isNew ? 'indifeels-new-' : 'indifeels-move-') + t.id
     };
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth_key } }, JSON.stringify(payload), { TTL: 60 * 60, urgency: 'normal' });
