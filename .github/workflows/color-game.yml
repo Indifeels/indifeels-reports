@@ -1,0 +1,78 @@
+name: Colour game report
+
+# Live (ACTIVE, in-stock) products with their current Color values, for the Colour Tagging Game.
+run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - tools/color_game.py
+      - tools/color_game_template.html
+      - .github/workflows/color-game.yml
+  schedule:
+    - cron: "30 19 * * *"   # 6:30 AM Melbourne
+  repository_dispatch:
+    types: [report-schedule]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.event.action == 'report-schedule' && !(contains(github.event.client_payload.report_ids, 'color-game')) && format('ignored-{0}', github.event.client_payload.schedule_group) || 'indifeels-color-game' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.event.action != 'report-schedule' || (contains(github.event.client_payload.report_ids, 'color-game'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install report dependency
+        run: pip install cryptography
+
+      - name: Validate report contract
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          STOCK_KEY: ${{ secrets.STOCK_KEY }}
+        run: python3 tools/report_preflight.py --phase pre color-game
+
+      - name: Build colour game report
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
+          STOCK_KEY: ${{ secrets.STOCK_KEY }}
+        run: python3 tools/color_game.py
+
+      - name: Verify report files
+        run: |
+          test -s r/color-game.bin
+          test -s r/color-game.meta.bin
+          grep -q '"color-game"' r/status.json
+
+      - name: Publish report
+        if: always()
+        run: |
+          python3 tools/report_preflight.py --phase post color-game
+          git config user.name "Indifeels colour game bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add r/status.json
+          [ -f r/color-game.bin ] && git add r/color-game.bin || true
+          [ -f r/color-game.meta.bin ] && git add r/color-game.meta.bin || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh colour game report"
+          for i in 1 2 3; do
+            git pull --rebase -q origin main
+            git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1

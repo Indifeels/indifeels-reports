@@ -1493,6 +1493,43 @@
     }
   });
 
+  // ---------- colour tagging game ----------
+  window.addEventListener("message", async (event) => {
+    const fr = $("#rep-frame");
+    if (!fr || event.source !== fr.contentWindow) return;
+    const d = event.data || {};
+    if (d.type !== "color-game") return;
+    const reply = (o) => { try { fr.contentWindow?.postMessage(o, "*"); } catch (_) {} };
+    const PK = "ir-color-game-progress";
+    if (d.action === "ready") {
+      const tags = {}, newColors = []; let progress = null;
+      try {
+        for (let from = 0; from < 20000; from += 1000) {
+          const { data, error } = await sb.from("color_tags").select("product_id,colors").order("product_id").range(from, from + 999);
+          if (error) throw error;
+          (data || []).forEach((r) => { tags[r.product_id] = r.colors; });
+          if (!data || data.length < 1000) break;
+        }
+        const nc = await sb.from("color_new_colors").select("handle,label,hex").order("created_at");
+        (nc.data || []).forEach((c) => newColors.push(c));
+      } catch (_) {}
+      try { progress = JSON.parse(localStorage.getItem(PK) || "null"); } catch (_) {}
+      reply({ type: "color-game-state", tags, newColors, progress });
+    } else if (d.action === "progress") {
+      try { localStorage.setItem(PK, JSON.stringify(d.state || {})); } catch (_) {}
+    } else if (d.action === "save") {
+      const colors = Array.isArray(d.colors) ? d.colors.map(String).slice(0, 12) : [];
+      const pid = String(d.product_id || "");
+      if (!/^\d+$/.test(pid) || !colors.length) { reply({ type: "color-game-saved", product_id: pid, ok: false }); return; }
+      const { error } = await sb.from("color_tags").upsert({ product_id: pid, product_title: String(d.title || "").slice(0, 300), colors, updated_at: new Date().toISOString(), synced_at: null }, { onConflict: "product_id" });
+      reply({ type: "color-game-saved", product_id: pid, ok: !error });
+    } else if (d.action === "newcolor") {
+      const handle = String(d.handle || "").slice(0, 60), label = String(d.label || "").slice(0, 60);
+      if (!handle || !label) return;
+      await sb.from("color_new_colors").insert({ handle, label, hex: /^#[0-9a-fA-F]{6}$/.test(d.hex || "") ? d.hex : null });
+    }
+  });
+
   // ---------- report full screen ----------
   (function () {
     const set = (on) => {

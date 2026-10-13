@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-14.color-game.1",
+  "manifest_version": "2026-10-14.color-game.2",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -296,12 +296,18 @@
     {
       "id": "color-game",
       "title": "Colour Tagging Game",
-      "workflow": null,
+      "workflow": "color-game.yml",
       "refresh_times": [
-        "manual (demo data)"
+        "on code change, daily 6:30 AM"
       ],
-      "required_env": [],
-      "builders": [],
+      "required_env": [
+        "SHOPIFY_TOKEN",
+        "STOCK_KEY"
+      ],
+      "builders": [
+        "tools/color_game.py",
+        "tools/color_game_template.html"
+      ],
       "outputs": [
         "r/color-game.bin",
         "r/color-game.meta.bin"

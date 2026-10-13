@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Colour Tagging Game</title>
+<style>
+:root{--bg:#0f1220;--card:#181c30;--card2:#20253d;--line:#2c3252;--txt:#eef0ff;--mut:#9aa1c9;--acc:#7c5cff;--acc2:#ff5ca8;--ok:#27d98a;--warn:#ffb020}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -200px,#2a2160,var(--bg));color:var(--txt);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:860px;margin:0 auto;padding:16px 16px 40px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+h1{font-size:20px;margin:0;letter-spacing:.2px}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.pill{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;color:var(--mut)}
+.pill b{color:var(--txt)}
+.sync{display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.dot.busy{background:var(--warn);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+select{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px}
+.tabs{display:flex;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.tabs button{background:none;border:0;color:var(--mut);padding:9px 14px;cursor:pointer;font-size:14px}
+.tabs button.on{background:var(--acc);color:#fff}
+.progress{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:14px}
+.progress .row{display:flex;justify-content:space-between;font-size:13px;color:var(--mut);margin-bottom:8px}
+.progress .row b{color:var(--txt)}
+.bar{height:12px;background:var(--card2);border-radius:99px;overflow:hidden}
+.bar>div{height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:99px;transition:width .5s}
+.game{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.imgbox{background:#0a0c18;display:flex;justify-content:center;align-items:center;height:min(52vh,460px);position:relative}
+.imgbox img{max-width:100%;max-height:100%;object-fit:contain}
+.badge{position:absolute;top:10px;left:10px;background:#000a;border:1px solid var(--line);padding:4px 10px;border-radius:99px;font-size:12px}
+.badge.done{color:var(--ok)}
+.info{padding:12px 16px 0}
+.title{font-size:17px;font-weight:600}
+.meta{color:var(--mut);font-size:13px;margin-top:2px}
+.sec{padding:10px 16px 0}
+.sec h3{margin:0 0 8px;font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:flex;align-items:center;gap:8px;background:var(--card2);border:2px solid transparent;border-radius:12px;padding:7px 12px 7px 8px;cursor:pointer;color:var(--txt);font-size:14px;transition:transform .08s,border-color .15s;user-select:none}
+.chip:hover{transform:translateY(-1px)}
+.chip .sw{width:22px;height:22px;border-radius:50%;border:1px solid #fff3;flex:none}
+.chip.sug::after{content:"✨";font-size:12px}
+.chip.sel{border-color:var(--acc2);background:#2d2147}
+.chip.sel .sw{box-shadow:0 0 0 2px var(--acc2)}
+.chip.plus{border:2px dashed var(--line);color:var(--mut)}
+.chip.newc::before{content:"NEW";font-size:9px;background:var(--warn);color:#000;border-radius:4px;padding:1px 4px;font-weight:700}
+details{padding:10px 16px 0}
+summary{cursor:pointer;color:var(--mut);font-size:13px;margin-bottom:8px}
+.actions{display:flex;gap:10px;padding:16px;align-items:center}
+.btn{border:0;border-radius:12px;padding:12px 18px;font-size:15px;font-weight:600;cursor:pointer}
+.btn.go{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#fff;flex:1}
+.btn.go:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:var(--card2);color:var(--txt)}
+.sel-txt{padding:10px 16px 0;color:var(--mut);font-size:13px;min-height:28px}
+.sel-txt b{color:var(--txt)}
+.hint{color:var(--mut);font-size:12px;text-align:center;margin-top:10px}
+.empty{padding:60px 20px;text-align:center}
+.empty .big{font-size:48px}
+dialog{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(340px,92vw)}
+dialog::backdrop{background:#000a}
+dialog label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+dialog input[type=text]{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:10px;font-size:15px}
+dialog input[type=color]{width:100%;height:56px;border:0;background:none;padding:0;cursor:pointer}
+dialog .row{display:flex;gap:8px;margin-top:16px}
+.pop{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);font-size:34px;font-weight:800;pointer-events:none;animation:pop .9s forwards;z-index:9;text-shadow:0 4px 20px #000}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}100%{opacity:0;transform:translate(-50%,-110%) scale(1)}}
+
+.start,.result{padding:34px 20px;text-align:center}
+.start h2,.result h2{margin:6px 0}
+.big{font-size:54px}
+.lvl{display:flex;gap:10px;justify-content:center;margin:14px 0 20px;flex-wrap:wrap}
+.timer{height:8px;background:var(--card2)}
+.timer>div{height:100%;width:100%;background:linear-gradient(90deg,var(--ok),var(--warn),var(--acc2));transform-origin:left}
+.rhead{display:flex;justify-content:space-between;padding:10px 16px 0;font-size:13px;color:var(--mut)}
+.rhead b{color:var(--txt)}
+.stars{font-size:44px;letter-spacing:6px}
+.stars .off{opacity:.2;filter:grayscale(1)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px 16px}
+.tile{background:var(--card2);border-radius:12px;overflow:hidden;border:2px solid transparent}
+.tile.chg{border-color:var(--warn)}
+.tile img{width:100%;height:150px;object-fit:cover;background:#0a0c18;display:block}
+.tile .t{padding:6px 8px;font-size:12px;min-height:34px}
+.tile .cs{padding:0 8px 6px;display:flex;flex-wrap:wrap;gap:4px;min-height:24px}
+.tile .cs i{display:inline-flex;align-items:center;gap:4px;font-style:normal;font-size:11px;background:#0003;border-radius:8px;padding:2px 6px}
+.tile .cs i b{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid #fff4}
+.tile button{width:calc(100% - 16px);margin:0 8px 8px;padding:6px;border-radius:8px;border:0;background:var(--card);color:var(--txt);cursor:pointer}
+.tile .miss{color:var(--warn);font-size:12px;padding:0 8px 6px}
+#edlg{width:min(560px,94vw)}
+#edlg img{width:100%;max-height:260px;object-fit:contain;background:#0a0c18;border-radius:10px;margin:10px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎨 Colour Tagging Game</h1>
+    <div class="stats">
+      <span class="pill">⭐ Stars <b id="stars">0</b></span>
+      <span class="pill">🔥 Streak <b id="streak">0</b></span>
+      <span class="pill">XP <b id="xp">0</b></span>
+      <span class="pill sync"><span class="dot" id="dot"></span><span id="syncTxt">Synced</span></span>
+    </div>
+  </header>
+  <div class="controls">
+    <select id="cat"></select>
+    <div class="tabs" id="tabs">
+      <button data-s="play" class="on">Play (pending)</button>
+      <button data-s="done">Completed</button>
+    </div>
+  </div>
+  <div class="progress">
+    <div class="row"><span id="scope"></span><span id="count"></span></div>
+    <div class="bar"><div id="fill"></div></div>
+  </div>
+  <div class="game" id="game"></div>
+  <div class="hint">Enter = submit · S = skip · click colours to toggle</div>
+</div>
+
+<dialog id="dlg">
+  <b>Add a new colour</b>
+  <label>Name</label><input type="text" id="nName" placeholder="e.g. Mustard">
+  <label>Pick colour</label><input type="color" id="nHex" value="#c9a227">
+  <div class="row">
+    <button class="btn ghost" id="nCancel" style="flex:1">Cancel</button>
+    <button class="btn go" id="nAdd" style="flex:1">Add &amp; select</button>
+  </div>
+</dialog>
+
+<dialog id="edlg">
+  <b id="eTitle"></b>
+  <img id="eImg" alt="">
+  <div class="chips" id="eChips"></div>
+  <div class="row">
+    <button class="btn ghost" id="eCancel" style="flex:1">Cancel</button>
+    <button class="btn go" id="eSave" style="flex:1">Save change</button>
+  </div>
+</dialog>
+
+<script>
+/* ===== DATA (demo = real Shopify colour list + 12 real products). Live version loads these from Shopify/Supabase ===== */
+const LIVE=/*__DATA__*/{"colors":[],"products":[]};
+const COLORS=LIVE.colors.map(c=>({handle:c.handle,label:c.label,hex:c.hex||null,isNew:false}));
+
+/* words in a title -> defined colour handles to suggest (includes related shades) */
+const HINTS={
+ navy:["navy-blue","navy","blue-1"],blue:["blue-1","blue","navy-blue"],sky:["blue"],
+ coffee:["brown","beige"],brown:["brown"],mustard:["yellow","gold"],yellow:["yellow","gold"],
+ green:["green","mint"],teal:["teal","aqua"],peach:["peach","orange","pink-1"],maroon:["maroon","wine","red"],
+ red:["red","maroon"],pink:["pink-1","rani"],rani:["rani","pink-1"],wine:["wine","maroon"],
+ golden:["gold","yellow"],gold:["gold","yellow"],silver:["silver","gray"],oxidised:["silver","black","gray"],
+ black:["black"],white:["white","cream"],ivory:["cream","white"],cream:["cream","beige"],orange:["orange","peach"],
+ purple:["purple","lavender"],lavender:["lavender","purple"],grey:["grey","gray"],gray:["gray","grey"],
+ rose:["rose-gold","pink-1"],embroidery:[],floral:["floral"],peacock:["teal","green","blue-1"]
+};
+
+const PRODUCTS=LIVE.products;   // {id,title,cols,img,existing:[colour handles already on Shopify]}
+
+/* ===== STATE: held in memory; the hub saves tags to Supabase and replays them on open ===== */
+const inHub=window.parent&&window.parent!==window;
+const bridge=o=>{if(inHub){try{parent.postMessage(Object.assign({type:"color-game"},o),"*")}catch(_){}}};
+let S={tags:{},newColors:[],xp:0,streak:0,stars:0,queue:[],level:{n:5,time:30},round:0};
+PRODUCTS.forEach(p=>{if(p.existing&&p.existing.length)S.tags[p.id]=p.existing.slice()});
+const save=()=>bridge({action:"progress",state:{xp:S.xp,streak:S.streak,stars:S.stars,level:S.level,round:S.round}});
+const $=id=>document.getElementById(id);
+const done=p=>!!S.tags[p.id];
+const lab=h=>COLORS.find(c=>c.handle===h);
+
+let doneLimit=60,cat="All",tab="play",mode="start",R=null,sel=new Set(),eProd=null,eSel=new Set(),tick=null,paused=false,lastResult=null;
+
+function cats(){const s=new Set();PRODUCTS.forEach(p=>p.cols.forEach(c=>s.add(c)));return["All",...[...s].sort()]}
+const inScope=()=>PRODUCTS.filter(p=>cat==="All"||p.cols.includes(cat));
+const pending=()=>inScope().filter(p=>!done(p));
+
+function suggestions(p){
+  const out=[];p.title.toLowerCase().split(/[^a-z]+/).forEach(w=>(HINTS[w]||[]).forEach(h=>{if(lab(h)&&!out.includes(h))out.push(h)}));return out;
+}
+function sw(c){return c.hex?`background:${c.hex}`:`background:conic-gradient(red,orange,yellow,green,blue,purple,red)`}
+function chip(c,sug,set){return `<div class="chip ${sug?'sug':''} ${set.has(c.handle)?'sel':''} ${c.isNew?'newc':''}" data-h="${c.handle}"><span class="sw" style="${sw(c)}"></span>${c.label}</div>`}
+function dots(arr){return (arr||[]).map(h=>lab(h)).filter(Boolean).map(c=>`<i><b style="${sw(c)}"></b>${c.label}</i>`).join("")}
+function toast(t,c){const e=document.createElement("div");e.className="pop";e.style.color=c||"#fff";e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),900)}
+
+function renderTop(){
+  const l=inScope(),d=l.filter(done).length,pct=l.length?Math.round(d/l.length*100):0;
+  $("scope").innerHTML=cat==="All"?`<b>Full catalogue</b> · ${l.length} products`:`Collection: <b>${cat}</b> · ${l.length} products`;
+  $("count").innerHTML=`<b>${d}</b> / ${l.length} done · <b>${pct}%</b>`;
+  $("fill").style.width=pct+"%";
+  $("streak").textContent=S.streak;$("xp").textContent=S.xp;$("stars").textContent=S.stars;
+}
+function render(){
+  renderTop();
+  const g=$("game");
+  if(tab==="done")return renderCompleted(g);
+  if(mode==="start")return renderStart(g);
+  if(mode==="play")return renderPlay(g);
+  if(mode==="review")return renderReview(g);
+  if(mode==="result")return renderResult(g);
+}
+
+/* ---- START ---- */
+function renderStart(g){
+  const pool=pending();
+  if(!pool.length){g.innerHTML=`<div class="start"><div class="big">🏆</div><h2>All done here!</h2><p class="meta">Every product in this view has colours. Try another collection.</p></div>`;return}
+  const n=Math.min(S.level.n,pool.length);
+  g.innerHTML=`<div class="start"><div class="big">⏱️</div><h2>Round ${S.round+1}</h2>
+   <p class="meta">Tag <b style="color:#fff">${n} products</b> in <b style="color:#fff">${S.level.time} seconds</b>.<br>Then review &amp; fix – every change costs you points.</p>
+   <div class="lvl"><span class="pill">Products <b>${n}</b></span><span class="pill">Time <b>${S.level.time}s</b></span><span class="pill">${pool.length} pending</span></div>
+   <button class="btn go" id="startBtn" style="min-width:220px">Start round</button></div>`;
+}
+function startRound(){
+  const pool=pending().sort(()=>Math.random()-.5);
+  const n=Math.min(S.level.n,pool.length);
+  R={n,time:S.level.time,items:pool.slice(0,n),idx:0,orig:{},missed:[],changed:new Set(),left:S.level.time*1000};
+  sel=new Set();mode="play";paused=false;
+  clearInterval(tick);let last=Date.now();
+  tick=setInterval(()=>{
+    const now=Date.now();if(!paused)R.left-=now-last;last=now;
+    const b=$("tbar"),t=$("tleft");
+    if(b)b.style.transform=`scaleX(${Math.max(0,R.left/(R.time*1000))})`;
+    if(t)t.textContent=Math.max(0,Math.ceil(R.left/1000))+"s";
+    if(R.left<=0)endPlay();
+  },100);
+  render();
+}
+
+/* ---- PLAY ---- */
+function renderPlay(g){
+  const p=R.items[R.idx];
+  const sug=suggestions(p),ss=new Set(sug);
+  const sugC=sug.map(lab).map(c=>chip(c,true,sel)).join("");
+  const rest=COLORS.filter(c=>!ss.has(c.handle)).map(c=>chip(c,false,sel)).join("");
+  g.innerHTML=`
+  <div class="timer"><div id="tbar"></div></div>
+  <div class="rhead"><span>Product <b>${R.idx+1}</b> / ${R.n}</span><span>⏱ <b id="tleft">${Math.ceil(R.left/1000)}s</b></span></div>
+  <div class="imgbox"><img src="${p.img}" alt=""></div>
+  <div class="info"><div class="title">${p.title}</div><div class="meta">${p.cols.join(" · ")}</div></div>
+  <div class="sec"><h3>Suggested from title</h3><div class="chips">${sugC||'<span class="meta">No match – pick below or add new</span>'}<div class="chip plus" id="plus"><span style="font-size:18px">＋</span> Add colour</div></div></div>
+  <details ${sug.length?'':'open'}><summary>All defined colours (${COLORS.length})</summary><div class="chips">${rest}</div></details>
+  <div class="actions"><button class="btn ghost" id="skip">Skip</button><button class="btn go" id="submit" ${sel.size?'':'disabled'}>Submit &amp; Next →</button></div>`;
+  const b=$("tbar");if(b)b.style.transform=`scaleX(${Math.max(0,R.left/(R.time*1000))})`;
+}
+function qsync(id,colors){const p=PRODUCTS.find(x=>x.id===id);pendingSync++;showSync();bridge({action:"save",product_id:id,title:p?p.title:"",colors})}
+function submit(){
+  if(mode!=="play"||!sel.size)return;
+  const p=R.items[R.idx];
+  S.tags[p.id]=[...sel];R.orig[p.id]=[...sel];qsync(p.id,[...sel]);
+  advance();
+}
+function skip(){if(mode!=="play")return;R.missed.push(R.items[R.idx].id);advance()}
+function advance(){
+  R.idx++;sel=new Set();
+  if(R.idx>=R.n)endPlay();else render();
+}
+function endPlay(){
+  if(mode!=="play")return;
+  clearInterval(tick);
+  for(let i=R.idx;i<R.n;i++)R.missed.push(R.items[i].id);
+  R.missed=[...new Set(R.missed)];
+  mode="review";render();
+}
+
+/* ---- REVIEW ---- */
+function renderReview(g){
+  const tiles=R.items.map(p=>{
+    const tagged=done(p),chg=R.changed.has(p.id);
+    return `<div class="tile ${chg?'chg':''}"><img src="${p.img}" alt=""><div class="t">${p.title}</div>
+      ${tagged?`<div class="cs">${dots(S.tags[p.id])}</div>`:`<div class="miss">⏱ Not done in time</div>`}
+      <button data-edit="${p.id}">${tagged?'Edit':'Tag now'}</button></div>`}).join("");
+  const pen=R.changed.size+R.missed.length;
+  g.innerHTML=`<div class="rhead" style="padding-top:14px"><span><b>Review your round</b> – fix anything wrong</span><span>Penalties: <b style="color:var(--warn)">${pen}</b></span></div>
+   <div class="grid">${tiles}</div>
+   <div class="actions"><button class="btn go" id="finish">Finish review → get stars</button></div>`;
+}
+function openEdit(id){
+  eProd=PRODUCTS.find(p=>p.id===id);eSel=new Set(S.tags[id]||[]);
+  $("eTitle").textContent=eProd.title;$("eImg").src=eProd.img;drawEdit();$("edlg").showModal();
+}
+function drawEdit(){
+  const sug=new Set(suggestions(eProd));
+  $("eChips").innerHTML=[...COLORS].sort((a,b)=>sug.has(b.handle)-sug.has(a.handle)).map(c=>chip(c,sug.has(c.handle),eSel)).join("");
+}
+function saveEdit(){
+  const id=eProd.id,before=(S.tags[id]||[]).slice().sort().join(),after=[...eSel].sort().join();
+  if(!eSel.size)return;
+  if(before!==after){
+    S.tags[id]=[...eSel];
+    if(R&&R.orig[id]){ // only submitted-in-round products count as a "change" vs the original answer
+      if(after!==R.orig[id].slice().sort().join())R.changed.add(id);else R.changed.delete(id);
+    }
+    qsync(id,[...eSel]);
+  }
+  $("edlg").close();render();
+}
+
+/* ---- RESULT ---- */
+function finish(){
+  const changes=R.changed.size,missed=R.missed.filter(id=>!R.orig[id]).length;   // missed = products with no answer given in time
+  const pen=changes+missed,limit=Math.max(1,Math.floor(R.n*0.2));
+  const stars=pen===0?3:(pen<=limit?2:1);
+  const tagged=R.n-R.missed.length;
+  const xp=Math.max(0,tagged*10-changes*5-missed*5+stars*10);
+  S.xp+=xp;S.stars+=stars;S.round++;S.streak=stars>=2?S.streak+1:0;
+  const old={...S.level};
+  if(stars===3){if(S.level.n<10)S.level.n+=2;else S.level.time=Math.max(15,S.level.time-5)}
+  else if(stars===1){S.level.n=Math.max(3,S.level.n-2);S.level.time=Math.min(60,S.level.time+5)}
+  save();
+  lastResult={stars,changes,missed,tagged,xp,n:R.n,old,nw:{...S.level}};
+  mode="result";render();
+}
+function renderResult(g){
+  const r=lastResult,msg=r.stars===3?"Perfect round!":r.stars===2?"Nice work":"Slow down a little";
+  const lv=(r.nw.n>r.old.n)?`Harder next: <b>${r.nw.n} products</b> in ${r.nw.time}s`:(r.nw.time<r.old.time)?`Harder next: ${r.nw.n} products in <b>${r.nw.time}s</b>`:(r.nw.n<r.old.n)?`Easier next: <b>${r.nw.n} products</b> in <b>${r.nw.time}s</b>`:`Same level next: ${r.nw.n} products in ${r.nw.time}s`;
+  g.innerHTML=`<div class="result"><div class="stars">${[1,2,3].map(i=>`<span class="${i>r.stars?'off':''}">⭐</span>`).join("")}</div><h2>${msg}</h2>
+   <p class="meta">${r.tagged}/${r.n} tagged · <b style="color:var(--warn)">${r.changes}</b> changes · <b style="color:var(--warn)">${r.missed}</b> missed<br>XP earned: <b style="color:#fff">+${r.xp}</b></p>
+   <p class="meta">${lv}</p>
+   <button class="btn go" id="nextRound" style="min-width:220px">Next round →</button></div>`;
+  if(r.stars===3)toast("⭐⭐⭐","#ffd000");
+}
+
+/* ---- COMPLETED (free edit, not scored) ---- */
+function renderCompleted(g){
+  const all=inScope().filter(done),l=all.slice(0,doneLimit);
+  if(!all.length){g.innerHTML=`<div class="start"><div class="big">📭</div><h2>Nothing completed yet</h2></div>`;return}
+  g.innerHTML=`<div class="grid">${l.map(p=>`<div class="tile"><img loading="lazy" src="${p.img}" alt=""><div class="t">${p.title}</div><div class="cs">${dots(S.tags[p.id])}</div><button data-edit="${p.id}">Edit</button></div>`).join("")}</div>${all.length>l.length?`<div class="actions"><button class="btn ghost" id="more" style="flex:1">Show more (${all.length-l.length} left)</button></div>`:""}`;
+}
+
+/* ===== SYNC STATUS (hub confirms every save) ===== */
+let pendingSync=0,syncFail=0;
+function showSync(){
+  $("dot").classList.toggle("busy",pendingSync>0);
+  $("dot").style.background=syncFail?"#ff5c5c":"";
+  $("syncTxt").textContent=pendingSync>0?"Saving…":syncFail?"Save failed":"Saved";
+}
+function applyState(d){
+  (d.newColors||[]).forEach(c=>{if(!COLORS.find(x=>x.handle===c.handle)){const k={handle:c.handle,label:c.label,hex:c.hex,isNew:true};COLORS.push(k);S.newColors.push(k)}});
+  Object.entries(d.tags||{}).forEach(([id,cs])=>{if(cs&&cs.length)S.tags[id]=cs});
+  if(d.progress){["xp","streak","stars","round"].forEach(k=>{if(Number.isFinite(d.progress[k]))S[k]=d.progress[k]});if(d.progress.level)S.level=d.progress.level}
+  if(mode==="start"||tab==="done")render();else renderTop();
+}
+window.addEventListener("message",e=>{
+  const d=e.data||{};
+  if(d.type==="color-game-state")applyState(d);
+  else if(d.type==="color-game-saved"){pendingSync=Math.max(0,pendingSync-1);if(!d.ok)syncFail++;showSync();if(!d.ok)toast("Save failed","#ff5c5c")}
+});
+
+/* ===== EVENTS ===== */
+$("game").addEventListener("click",e=>{
+  const c=e.target.closest(".chip");
+  if(c&&c.dataset.h&&mode==="play"&&tab==="play"){const h=c.dataset.h;sel.has(h)?sel.delete(h):sel.add(h);renderPlay($("game"));return}
+  if(e.target.closest("#plus")){paused=true;$("nName").value="";$("dlg").showModal();$("nName").focus();return}
+  if(e.target.closest("#submit"))return submit();
+  if(e.target.closest("#skip"))return skip();
+  if(e.target.closest("#startBtn"))return startRound();
+  if(e.target.closest("#more")){doneLimit+=60;return renderCompleted($("game"))}
+  if(e.target.closest("#finish"))return finish();
+  if(e.target.closest("#nextRound")){mode="start";R=null;render();return}
+  const ed=e.target.closest("[data-edit]");if(ed)openEdit(ed.dataset.edit);
+});
+$("eChips").addEventListener("click",e=>{const c=e.target.closest(".chip");if(!c)return;const h=c.dataset.h;eSel.has(h)?eSel.delete(h):eSel.add(h);drawEdit()});
+$("eCancel").onclick=()=>$("edlg").close();
+$("eSave").onclick=saveEdit;
+$("dlg").addEventListener("close",()=>{paused=false});
+$("nCancel").onclick=()=>$("dlg").close();
+$("nAdd").onclick=()=>{
+  const name=$("nName").value.trim();if(!name)return;
+  const handle=name.toLowerCase().replace(/[^a-z0-9]+/g,"-");
+  if(!lab(handle)){const c={handle,label:name,hex:$("nHex").value,isNew:true};COLORS.push(c);S.newColors.push(c);bridge({action:"newcolor",handle:c.handle,label:c.label,hex:c.hex})}
+  sel.add(handle);$("dlg").close();if(mode==="play")renderPlay($("game"));
+};
+$("tabs").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b||(mode==="play"&&b.dataset.s==="done"))return;
+  [...$("tabs").children].forEach(x=>x.classList.toggle("on",x===b));
+  tab=b.dataset.s;render();
+});
+$("cat").onchange=e=>{if(mode==="play")return;cat=e.target.value;if(mode==="review"||mode==="result")mode="start";render()};
+document.addEventListener("keydown",e=>{
+  if($("dlg").open||$("edlg").open||/INPUT|SELECT/.test(e.target.tagName))return;
+  if(mode==="play"){if(e.key==="Enter")submit();if(e.key==="s"||e.key==="S")skip()}
+  else if(mode==="start"&&e.key==="Enter"&&tab==="play"&&pending().length)startRound();
+});
+
+/* ===== INIT ===== */
+$("cat").innerHTML=cats().map(c=>`<option value="${c.replace(/"/g,"&quot;")}">${c==="All"?"All categories":c} (${c==="All"?PRODUCTS.length:PRODUCTS.filter(p=>p.cols.includes(c)).length})</option>`).join("");
+render();bridge({action:"ready"});
+</script>
+</body>
+</html>
