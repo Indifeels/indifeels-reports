@@ -474,3 +474,6 @@ body.rep-full-on{overflow:hidden}
  .oa-website-links .wt-table .wt-detail{margin-left:12px;background:var(--sub)}.oa-website-links .wt-link-grid{grid-template-columns:1fr}
  .oa-website-links .wt-table .wt-no-data{grid-column:1/-1}.oa-website-links .wt-legend{line-height:1.7}
 }
+
+.brand-logo{flex:none;width:56px;height:56px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.brand-logo.sm{width:30px;height:30px;border-radius:8px;box-shadow:none;margin-right:2px}

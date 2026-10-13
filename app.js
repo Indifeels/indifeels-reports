@@ -983,7 +983,7 @@
     try {
       if ("serviceWorker" in navigator) {
         const reg = await navigator.serviceWorker.ready;
-        await reg.showNotification(`New order ${r.order_name}`, { body, icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: "order-" + r.legacy_id, data });
+        await reg.showNotification(`New order ${r.order_name}`, { body, icon: "icons/icon-192.png", badge: "icons/badge-96.png", tag: "order-" + r.legacy_id, data });
       } else new Notification(`New order ${r.order_name}`, { body });
     } catch (_) {}
   }

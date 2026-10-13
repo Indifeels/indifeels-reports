@@ -8,14 +8,17 @@
 <meta name="theme-color" content="#14213D">
 <meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon-192.png">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Indifeels">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=30-traffic-filters">
+<link rel="stylesheet" href="app.css?v=31-logo">
 <link rel="stylesheet" href="schedule-panel.css?v=4">
 <link rel="stylesheet" href="board-panel.css?v=9">
 </head>
@@ -24,7 +27,7 @@
   <!-- Login -->
   <section id="v-login" class="auth" hidden>
     <div class="auth-card">
-      <div class="brand"><span class="rail"></span><div><h1>Indifeels Reports</h1><p>Sign in with the username and password you were given.</p></div></div>
+      <div class="brand"><img class="brand-logo" src="icons/icon-192.png" alt="Indifeels" width="56" height="56"><div><h1>Indifeels Reports</h1><p>Sign in with the username and password you were given.</p></div></div>
       <form id="f-login" novalidate>
         <label for="l-user">Username</label>
         <input id="l-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
@@ -40,7 +43,7 @@
   <!-- Reset request -->
   <section id="v-reset" class="auth" hidden>
     <div class="auth-card">
-      <div class="brand"><span class="rail"></span><div><h1>Request password reset</h1><p>Your admin gets your request by email, sets a new password and shares it with you.</p></div></div>
+      <div class="brand"><img class="brand-logo" src="icons/icon-192.png" alt="Indifeels" width="56" height="56"><div><h1>Request password reset</h1><p>Your admin gets your request by email, sets a new password and shares it with you.</p></div></div>
       <form id="f-reset" novalidate>
         <label for="r-user">Username</label>
         <input id="r-user" autocomplete="username" autocapitalize="none" spellcheck="false" required>
@@ -58,7 +61,7 @@
   <section id="v-shell" hidden>
     <header class="bar">
       <button class="icon-btn" id="b-back" type="button" aria-label="Back to reports" hidden>&larr;</button>
-      <div class="bar-title"><span class="rail sm"></span><span id="bar-text">Indifeels Reports</span></div>
+      <div class="bar-title"><img class="brand-logo sm" src="icons/favicon-48.png" alt="" width="30" height="30"><span id="bar-text">Indifeels Reports</span></div>
       <button class="icon-btn dashboard-theme" id="dashboard-theme" type="button" aria-label="Toggle light and dark mode">☀</button>
       <div class="menu-wrap">
         <button class="icon-btn" id="b-menu" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Account menu"><span id="me-initial">S</span></button>
@@ -174,7 +177,7 @@
 <script src="config.js"></script>
 <script src="schedule-panel.js?v=4"></script>
 <script src="board-panel.js?v=7"></script>
-<script src="app.js?v=48-tile-periods"></script>
+<script src="app.js?v=49-logo"></script>
 </body>
 </html>
 
