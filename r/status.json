@@ -72,10 +72,10 @@
   "reason": "Restock build failed: RuntimeError"
  },
  "stock": {
-  "at": "2026-10-13T17:55+11:00",
-  "code_sha": "d4eff852cb2a05e8e4876249ccd44397415a0dd6",
+  "at": "2026-10-13T18:22+11:00",
+  "code_sha": "954cb079b22168a18a86d767c73e8a994fcfba0a",
   "data_through": null,
-  "last_ok": "2026-10-13T17:55+11:00",
+  "last_ok": "2026-10-13T18:22+11:00",
   "manifest_version": "2026-10-13.facebook-monthly-switch.1",
   "ok": true,
   "reason": ""
