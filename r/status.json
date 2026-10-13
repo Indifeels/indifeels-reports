@@ -63,10 +63,10 @@
   "reason": ""
  },
  "restock": {
-  "at": "2026-10-13T18:25+11:00",
-  "code_sha": "e7a58b94e3d2421fe08f0d69845b5251a9a48624",
+  "at": "2026-10-13T21:09+11:00",
+  "code_sha": "80cec4b01c7882e5bed96ce44acf34811fd54f6d",
   "data_through": null,
-  "last_ok": "2026-10-13T18:25+11:00",
+  "last_ok": "2026-10-13T21:09+11:00",
   "manifest_version": "2026-10-13.facebook-monthly-switch.1",
   "ok": true,
   "reason": ""
