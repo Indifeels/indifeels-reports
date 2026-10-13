@@ -23,6 +23,8 @@ Installable web app for IndiFeels performance reports.
 - Order Attribution: event-driven from Shopify and syncs the selected `custom.order_source` value back to Shopify.
 - Tech Availability: maintained in Supabase by its monitoring function.
 
+- Cash Report (Sales Analysis): manual snapshot of cash-paid orders from 18 Apr 2026, as at 13 Oct 2026. No automatic refresh yet; the Today, 7-day and 30-day tiles are relative to the as-at date.
+
 ## Security
 
 - Report files in `r/` are AES-256-GCM encrypted where applicable; report keys are released only to signed-in users with access.

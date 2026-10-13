@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-13.facebook-monthly-switch.1",
+  "manifest_version": "2026-10-13.cash-report.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -276,6 +276,22 @@
       "supabase_sync": false,
       "delivery": "supabase_live",
       "schedule_control": "report_schedules"
+    },
+    {
+      "id": "cash-report",
+      "title": "Cash Report",
+      "workflow": null,
+      "refresh_times": [
+        "manual snapshot, 13 Oct 2026"
+      ],
+      "required_env": [],
+      "builders": [],
+      "outputs": [
+        "r/cash-report.bin",
+        "r/cash-report.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "none"
     }
   ]
 }
