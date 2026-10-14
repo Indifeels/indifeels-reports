@@ -81,10 +81,10 @@
   "reason": ""
  },
  "stock": {
-  "at": "2026-10-15T06:52+11:00",
-  "code_sha": "b77feb351944f97865cece05097634d01f40b889",
+  "at": "2026-10-15T07:01+11:00",
+  "code_sha": "c4da96c5ebe54ebf0416da3e27280c60e604f773",
   "data_through": null,
-  "last_ok": "2026-10-15T06:52+11:00",
+  "last_ok": "2026-10-15T07:01+11:00",
   "manifest_version": "2026-10-14.color-game.2",
   "ok": true,
   "reason": ""
