@@ -72,13 +72,13 @@
   "reason": ""
  },
  "restock": {
-  "at": "2026-10-14T19:29+11:00",
-  "code_sha": "0b904187aac7c750d0dda5586b6243ac919d6f09",
+  "at": "2026-10-14T19:51+11:00",
+  "code_sha": "0813779971d0f070ac9f2f3b04ba7c421c3fe0f2",
   "data_through": null,
-  "last_ok": "2026-10-14T18:37+11:00",
+  "last_ok": "2026-10-14T19:51+11:00",
   "manifest_version": "2026-10-14.color-game.2",
-  "ok": false,
-  "reason": "Restock build failed: RuntimeError"
+  "ok": true,
+  "reason": ""
  },
  "stock": {
   "at": "2026-10-14T19:29+11:00",
