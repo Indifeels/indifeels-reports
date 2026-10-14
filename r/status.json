@@ -18,11 +18,11 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-10-14T06:05+11:00",
-  "code_sha": "bf9d9a40d338e63291f9e70c95e3303e39e9e38d",
-  "data_through": "2026-10-13T23:59:59+11:00",
-  "last_ok": "2026-10-14T06:05+11:00",
-  "manifest_version": "2026-10-13.cash-report.1",
+  "at": "2026-10-14T14:05+11:00",
+  "code_sha": "597c3599e48ebf1e34d94d9d40770711f3e028ec",
+  "data_through": "2026-10-14T14:00:27.014342+11:00",
+  "last_ok": "2026-10-14T14:05+11:00",
+  "manifest_version": "2026-10-14.color-game.2",
   "ok": true,
   "reason": ""
  },
@@ -45,11 +45,11 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-10-14T06:05+11:00",
-  "code_sha": "bf9d9a40d338e63291f9e70c95e3303e39e9e38d",
-  "data_through": "2026-10-13T23:59:59+11:00",
-  "last_ok": "2026-10-14T06:05+11:00",
-  "manifest_version": "2026-10-13.cash-report.1",
+  "at": "2026-10-14T14:05+11:00",
+  "code_sha": "597c3599e48ebf1e34d94d9d40770711f3e028ec",
+  "data_through": "2026-10-14T14:00:27.014342+11:00",
+  "last_ok": "2026-10-14T14:05+11:00",
+  "manifest_version": "2026-10-14.color-game.2",
   "ok": true,
   "reason": ""
  },
