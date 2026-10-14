@@ -54,10 +54,10 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-10-14T20:00+11:00",
-  "code_sha": "4ebb23a6ac398013aa668c47fdf5a683c4465d3b",
+  "at": "2026-10-15T06:00+11:00",
+  "code_sha": "6718bbb9ab3908e42c336aec228bbd240fabcf6f",
   "data_through": null,
-  "last_ok": "2026-10-14T20:00+11:00",
+  "last_ok": "2026-10-15T06:00+11:00",
   "manifest_version": "2026-10-14.color-game.2",
   "ok": true,
   "reason": ""
