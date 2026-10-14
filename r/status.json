@@ -18,10 +18,10 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-10-14T14:05+11:00",
-  "code_sha": "597c3599e48ebf1e34d94d9d40770711f3e028ec",
-  "data_through": "2026-10-14T14:00:27.014342+11:00",
-  "last_ok": "2026-10-14T14:05+11:00",
+  "at": "2026-10-14T21:37+11:00",
+  "code_sha": "8ee49d9edca42bb8deb89d7a975cfb5e6cbcdb3f",
+  "data_through": "2026-10-14T21:30:17.034513+11:00",
+  "last_ok": "2026-10-14T21:37+11:00",
   "manifest_version": "2026-10-14.color-game.2",
   "ok": true,
   "reason": ""
@@ -45,10 +45,10 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-10-14T14:05+11:00",
-  "code_sha": "597c3599e48ebf1e34d94d9d40770711f3e028ec",
-  "data_through": "2026-10-14T14:00:27.014342+11:00",
-  "last_ok": "2026-10-14T14:05+11:00",
+  "at": "2026-10-14T21:37+11:00",
+  "code_sha": "8ee49d9edca42bb8deb89d7a975cfb5e6cbcdb3f",
+  "data_through": "2026-10-14T21:30:17.034513+11:00",
+  "last_ok": "2026-10-14T21:37+11:00",
   "manifest_version": "2026-10-14.color-game.2",
   "ok": true,
   "reason": ""
