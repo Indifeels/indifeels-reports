@@ -81,10 +81,10 @@
   "reason": "Restock build failed: RuntimeError"
  },
  "stock": {
-  "at": "2026-10-14T18:37+11:00",
-  "code_sha": "55bec0042cccae425f692d01ce17c127d2e5f8a1",
+  "at": "2026-10-14T19:29+11:00",
+  "code_sha": "0b904187aac7c750d0dda5586b6243ac919d6f09",
   "data_through": null,
-  "last_ok": "2026-10-14T18:37+11:00",
+  "last_ok": "2026-10-14T19:29+11:00",
   "manifest_version": "2026-10-14.color-game.2",
   "ok": true,
   "reason": ""
