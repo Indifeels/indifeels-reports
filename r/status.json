@@ -72,10 +72,10 @@
   "reason": ""
  },
  "restock": {
-  "at": "2026-10-14T14:35+11:00",
-  "code_sha": "4b3b43c1533a99de05cf1edc285e64853c64102b",
+  "at": "2026-10-14T17:01+11:00",
+  "code_sha": "2ddbc3f9a8d8485efe5d660c72d3496ef8dac862",
   "data_through": null,
-  "last_ok": "2026-10-14T14:35+11:00",
+  "last_ok": "2026-10-14T17:01+11:00",
   "manifest_version": "2026-10-14.color-game.2",
   "ok": true,
   "reason": ""
