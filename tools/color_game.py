@@ -68,7 +68,7 @@ FALLBACK_COLORS = [
     ("59283177829", "blue", "Sky Blue", "#99C3FA"), ("59283276133", "white", "White", "#FFFFFF"),
     ("59283308901", "beige", "Beige", "#EAD8AB"), ("59283603813", "rani", "Hot Pink", "#D846AE"),
     ("59300839781", "red", "Red", "#F61F1F"), ("59304608101", "green", "Green", "#05AA3D"),
-    ("59305001317", "yellow", "Yellow", "#FFD000"), ("59305034085", "navy-blue", "Navy Blue", "#282099"),
+    ("59305001317", "yellow", "Yellow", "#FFD000"),
     ("59305132389", "lavender", "Lavender", "#C5A5DF"), ("59305427301", "black", "Black", "#000000"),
     ("59305460069", "maroon", "Maroon", "#AC2020"), ("59305558373", "purple", "Purple", "#A54DCF"),
     ("59305918821", "cream", "Ivory", "#FCFAD9"), ("59305951589", "orange", "Orange", "#FF8A00"),
@@ -127,6 +127,7 @@ def load_colors():
         for n in nodes:
             f = {x["key"]: x["value"] for x in n["fields"]}
             out.append({"handle": n["handle"], "label": f.get("label") or n["displayName"], "hex": f.get("color"), "gid": n["id"]})
+        out = [c for c in out if c["handle"] != "navy-blue"]  # merged into Blue
         if out:
             return out, True
     except Exception as exc:  # token may not have read_metaobjects
@@ -168,7 +169,7 @@ def build():
         cols = [c["title"] for c in p["collections"]["nodes"] if not any(w in c["title"].lower() for w in NOISE)]
         counts.update(set(cols))
         mf = (p.get("metafield") or {}).get("jsonValue") or []
-        existing = [gid_to_handle[g] for g in mf if g in gid_to_handle]
+        existing = list(dict.fromkeys(gid_to_handle[g] for g in mf if g in gid_to_handle))
         image = ((p.get("featuredMedia") or {}).get("preview") or {}).get("image") or {}
         products.append(
             {
