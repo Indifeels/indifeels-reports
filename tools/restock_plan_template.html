@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Restock Planner</title>
+<script>
+try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
+</script>
+<style>
+  :root{
+    --bg:#0d1117; --card:#161b22; --border:#30363d; --muted:#8b949e; --text:#e6edf3; --blue:#58a6ff;
+    --red:#ff7b72; --red-bg:#3d1214; --orange:#ffa657; --orange-bg:#3b2300;
+    --amber:#e3b341; --amber-bg:#392a00; --green:#3fb950; --green-bg:#0f2d1a;
+    --info:#79c0ff; --info-bg:#0c2d4d; --grey-bg:#21262d;
+  }
+  :root[data-theme="light"]{
+    --bg:#f6f8fa; --card:#fff; --border:#d0d7de; --muted:#656d76; --text:#1f2328; --blue:#0969da;
+    --red:#cf222e; --red-bg:#ffebe9; --orange:#bc4c00; --orange-bg:#fff1e5;
+    --amber:#9a6700; --amber-bg:#fff8c5; --green:#1a7f37; --green-bg:#dafbe1;
+    --info:#0550ae; --info-bg:#ddf4ff; --grey-bg:#eaeef2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:12.5px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 10px 40px}
+  header{padding:14px 0 2px;display:flex;align-items:center;gap:10px}
+  header .hd{flex:1}
+  h1{font-size:18px;margin:0 0 2px}
+  .sub{color:var(--muted);font-size:11.5px}
+  .controls{position:sticky;top:0;z-index:10;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin:8px 0;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+  .controls .slider{flex:1 1 260px;min-width:200px}
+  .controls label{font-weight:600}
+  .controls label.o{font-weight:400}
+  .controls input[type=range]{width:100%;accent-color:var(--blue);margin:2px 0}
+  .lvl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted)}
+  .pill{background:var(--grey-bg);border-radius:999px;padding:1px 8px;font-weight:600;font-size:11.5px}
+  button,select,.btn,input[type=text],input[type=email],input[type=password]{font:inherit;border:1px solid var(--border);background:var(--grey-bg);color:var(--text);border-radius:6px;padding:2px 9px}
+  button,select{cursor:pointer}
+  button:hover:not(:disabled){border-color:var(--muted)}
+  button:disabled{opacity:.45;cursor:default}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin-bottom:8px}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:5px 9px}
+  .stat b{display:block;font-size:16px;line-height:1.2}
+  .stat span{color:var(--muted);font-size:10.5px}
+  .legend{display:flex;flex-wrap:wrap;gap:3px 12px;font-size:10.5px;color:var(--muted);margin-bottom:6px}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;overflow:hidden}
+  .card-h{display:flex;gap:9px;align-items:center;padding:5px 9px;cursor:pointer;user-select:none}
+  .card-h:hover{background:var(--bg)}
+  .chev{width:12px;color:var(--muted);transition:transform .15s;flex:none;font-size:10px}
+  .card.open .chev{transform:rotate(90deg)}
+  .thumb{width:38px;height:38px;border-radius:6px;border:1px solid var(--border);background:var(--grey-bg);flex:none;overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:700;font-size:11px;position:relative}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .ttl{flex:1;min-width:0}
+  .ttl h2{font-size:12.5px;margin:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ttl .meta{color:var(--muted);font-size:10.5px}
+  .tiles{display:flex;gap:5px;flex:none}
+  .tile{border:1px solid var(--border);border-radius:6px;padding:0 7px;text-align:center;min-width:58px;background:var(--bg)}
+  .tile b{display:block;font-size:12.5px;line-height:1.35}
+  .tile span{font-size:9.5px;color:var(--muted);white-space:nowrap}
+  .tile.t-red{background:var(--red-bg);border-color:transparent}.tile.t-red b{color:var(--red)}
+  .tile.t-amber{background:var(--amber-bg);border-color:transparent}.tile.t-amber b{color:var(--amber)}
+  .tile.t-green{background:var(--green-bg);border-color:transparent}.tile.t-green b{color:var(--green)}
+  .tile.t-info{background:var(--info-bg);border-color:transparent}.tile.t-info b{color:var(--info)}
+  .banner{display:flex;align-items:center;gap:10px;padding:3px 10px 3px 30px;background:var(--amber-bg);color:var(--amber);border-top:1px solid var(--border);font-weight:600;font-size:11.5px}
+  .banner span.s{font-weight:400;color:var(--text);flex:1}
+  .banner button{background:var(--green);color:#fff;border-color:transparent;font-weight:600;padding:0 9px}
+  .body{display:none;border-top:1px solid var(--border)}
+  .card.open .body{display:block}
+  .scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:2px 9px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+  th:nth-child(2),td:nth-child(2){text-align:left}
+  th{font-size:10.5px;color:var(--muted);font-weight:600;background:var(--bg)}
+  tr:last-child td{border-bottom:0}
+  td.v{font-weight:600}
+  td.status,td.sup{text-align:center}
+  .badge{display:inline-block;border-radius:999px;padding:0 8px;font-size:10.5px;font-weight:600}
+  .c-red{background:var(--red-bg);color:var(--red)}
+  .c-orange{background:var(--orange-bg);color:var(--orange)}
+  .c-yellow,.c-amber{background:var(--amber-bg);color:var(--amber)}
+  .c-green{background:var(--green-bg);color:var(--green)}
+  .c-info{background:var(--info-bg);color:var(--info)}
+  .c-grey{background:var(--grey-bg);color:var(--muted)}
+  td.ord{white-space:nowrap}
+  .step{display:inline-flex;align-items:center;gap:3px;vertical-align:middle}
+  .step button{padding:0 6px;line-height:1.3;font-weight:700}
+  .step b{min-width:22px;text-align:center}
+  button.save{background:var(--blue);color:#fff;border-color:transparent;font-weight:600;padding:0 9px;margin-left:4px}
+  button.save.ok{background:var(--green-bg);color:var(--green)}
+  .more{display:block;margin:10px auto;padding:4px 18px}
+  .empty{padding:24px;text-align:center;color:var(--muted)}
+  details{margin-top:16px;color:var(--muted);font-size:11.5px}
+  code{background:var(--grey-bg);padding:1px 5px;border-radius:4px}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
+  .modal.show{display:flex}
+  .modal form{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;display:grid;gap:8px;width:280px}
+  @media (max-width:760px){.tiles .tile:nth-child(-n+2){display:none}}
+  .tabs{display:flex;gap:6px;margin:8px 0 0}
+  .tabs button{padding:3px 16px;font-weight:600}
+  .tabs button.on{background:var(--blue);color:#fff;border-color:transparent}
+  .controls .grow{flex:1}
+  .sc{display:flex;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px}
+  .sc img,.sc .ph{width:84px;height:84px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex:none;background:var(--grey-bg)}
+  .sc table{flex:1;border-collapse:collapse;align-self:flex-start}
+  .sc th{text-align:left}.sc td{text-align:left}
+  .sc td.q{font-weight:700;text-align:center;width:60px}
+  .sc td.a{text-align:right;width:130px}
+  #svShipped h3{font-size:12px;color:var(--muted);margin:16px 2px 6px;font-weight:600}
+  .ship{color:var(--green);font-weight:600}
+  button.recv{margin-left:6px;padding:0 8px}
+  #svAccounts{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px}
+  #svAccounts table{width:100%}#svAccounts td,#svAccounts th{text-align:left}
+  #svAccounts input{width:170px}
+  @media (max-width:760px){.sc{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="hd"><h1>Restock Planner</h1><div class="sub" id="sub"></div></div>
+    <button id="theme" title="Light / dark">◐</button>
+  </header>
+
+  <nav class="tabs"><button id="tabMine" class="on">My view</button><button id="tabSup">Supplier view</button></nav>
+<div id="viewMine">
+  <div class="controls">
+    <div class="slider">
+      <label for="len">Leniency <span class="pill" id="lenv"></span></label>
+      <input type="range" id="len" min="1" max="10" step="1" value="3">
+      <div class="lvl"><span>1 · minimum (lead time only)</span><span>10 · max buffer (5×)</span></div>
+    </div>
+    <label class="o">Variant order
+      <select id="order"><option value="priority">Priority</option><option value="size">Size</option></select></label>
+    <label class="o">Supplier <select id="supplier"><option value="">All</option></select></label>
+    <label class="o"><input type="checkbox" id="onlyNeed"> Only variants needing stock</label>
+    <label class="o"><input type="checkbox" id="onlyElig"> Only “Stock More Variants”</label>
+    <button id="expAll">Expand all</button>
+    <button id="colAll">Collapse all</button>
+    <button id="resetDone" title="Bring back dismissed recommendations">Reset dismissed</button>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div class="legend">
+    <span>🔴 Out of stock</span><span>🟠 &lt; 7 days to stockout</span><span>🟡 &lt; 14 days</span><span>🟢 OK</span><span>⚪ No sales</span>
+    <span>Cells: green = good · amber = watch · red = act · blue = info</span>
+  </div>
+  <div id="list"></div>
+
+  <details>
+    <summary>Logic</summary>
+    <p>Published date = <code>custom.published_date_old</code> metafield for migrated products (created before 18 Apr 2026 11pm UTC), otherwise created date. Sales = all-time line-item quantity (Variant ID for variants, Product ID for product level).
+    Days to Sell 1 Unit = days since published ÷ units sold. Days to stockout = current stock × variant days-to-sell.
+    Required stock = <code>CEILING(28 ÷ Days to Sell 1 Unit)</code> × leniency (1→1×, 2→1.2×, 3→1.4×, 4→1.6×, 5→1.8×, 6→2×, 7→2.5×, 8→3×, 9→4×, 10→5×), rounded up. To order = max(0, required − stock).
+    <b>Priority</b> view ranks every selling variant across all products by days to stockout (out-of-stock fast sellers first) and repeats a product header each time the ranking switches product. <b>Size</b> view groups by product, then colour, then size.
+    Save sends the quantity to the supplier (locked once the supplier adds it to the box). “Stock More Variants” = on market ≥ 3 months, product days-to-sell &lt; 50, ≥ 3 units sold.</p>
+  </details>
+</div>
+<div id="viewSup" hidden>
+  <div class="controls">
+    <label class="o">Supplier <select id="svSup"></select></label>
+    <span class="grow"></span><span class="sub" id="svCount"></span>
+    <button id="svRefresh">Refresh</button>
+    <button id="svAccts">Supplier accounts</button>
+  </div>
+  <div class="sub" style="margin:2px 2px 10px">This mirrors what the supplier sees: the product photo, the variant and the quantity to restock. When they press Add to box or Ship it shows here within a minute (and in My view).</div>
+  <div id="svAccounts" hidden></div>
+  <div id="svList"></div>
+  <div id="svShipped"></div>
+</div>
+</div>
+
+
+<script>
+/*DATA_START*/
+const DATA = __DATA__;
+/*DATA_END*/
+
+function notify(msg){ let b = document.getElementById('toast'); if (!b) { b = document.createElement('div'); b.id = 'toast'; b.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#8e2b25;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;z-index:99;max-width:90%'; document.body.appendChild(b); } b.textContent = msg; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 6000); }
+/* ---------------- hub bridge (the hub app talks to Supabase; this page never holds credentials) ---------------- */
+const pendingCalls = new Map(); let reqId = 0;
+function call(action, payload) {
+  return new Promise((res, rej) => {
+    const req = ++reqId, t = setTimeout(() => { pendingCalls.delete(req); rej(new Error('No answer from the hub')); }, 25000);
+    pendingCalls.set(req, { res, rej, t });
+    try { parent.postMessage(Object.assign({ type: 'restock-plan', action, req }, payload || {}), '*'); } catch (e) { clearTimeout(t); rej(e); }
+  });
+}
+window.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.type === 'restock-plan-state') { (d.state && d.state.done || []).forEach(k => { memDone[k] = true; }); render(); }
+  else if (d.type === 'restock-plan-theme') { document.documentElement.dataset.theme = d.theme === 'light' ? 'light' : 'dark'; }
+  else if (d.type === 'restock-plan-result') {
+    const p = pendingCalls.get(d.req); if (!p) return;
+    clearTimeout(p.t); pendingCalls.delete(d.req);
+    d.ok ? p.res(d.data) : p.rej(new Error(d.error || 'Failed'));
+  }
+});
+const Store = {
+  list: () => call('list'),
+  upsert: row => call('save', { row }),
+  received: ids => call('received', { ids }),
+  users: () => call('users'),
+  setUser: (user_id, supplier) => call('setuser', { user_id, supplier }),
+};
+
+/* ---------------- calculations ---------------- */
+const MULT = [null,1,1.2,1.4,1.6,1.8,2,2.5,3,4,5];
+const LEAD_DAYS = 28, MIN_MARKET_DAYS = 90, MAX_PRODUCT_DTS = 50, MIN_UNITS = 3, DAY = 86400000, PAGE = 120;
+let data = DATA, mode = 'priority', defaultOpen = true, limit = PAGE;
+const state = new Map(), draft = new Map(), infos = [];
+let orders = new Map();
+const memDone = {};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => (n === Infinity || n == null) ? '—' : (n >= 100 ? Math.round(n) : Math.round(n * 10) / 10);
+const keyOf = (pid, title) => pid + '|' + title;
+function getDone(id){ return !!memDone[id]; }
+function setDone(id,v){ memDone[id]=v; try{ parent.postMessage({ type: 'restock-plan', action: 'state', state: { done: Object.keys(memDone).filter(k => memDone[k]) } }, '*'); }catch(e){} }
+
+const LETTER = {XXS:1,XS:2,S:3,M:4,L:5,XL:6,XXL:7};
+function sizeKey(part){
+  const p = part.trim(), u = p.toUpperCase().replace(/\s/g,'');
+  let m = p.match(/-(\d+(?:\.\d+)?)$/); if (m) return +m[1];
+  if (/^\d+(\.\d+)?$/.test(p)) return +p;
+  if (LETTER[u] != null) return 1000 + LETTER[u];
+  m = u.match(/^(\d)XL$/); if (m) return 1000 + 5 + (+m[1]);
+  return null;
+}
+function variantSort(title){
+  const parts = title.split('/').map(s=>s.trim());
+  let idx = -1;
+  for (let i = parts.length-1; i >= 0; i--) if (sizeKey(parts[i]) != null){ idx = i; break; }
+  return { size: idx >= 0 ? sizeKey(parts[idx]) : Infinity, colour: parts.filter((_,i)=>i!==idx).join(' / ').toLowerCase() };
+}
+function bySize(a,b){
+  const x = variantSort(a.title), y = variantSort(b.title);
+  return x.colour.localeCompare(y.colour) || (x.size - y.size) || a.title.localeCompare(b.title,undefined,{numeric:true});
+}
+function parseDay(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d).getTime(); }
+
+function compute(){
+  const lvl = +$('len').value, mult = MULT[lvl], now = new Date(); now.setHours(0,0,0,0);
+  $('lenv').textContent = lvl + ' · ' + mult + '×';
+  const prods = data.products.filter(p => p.published).map(p => {
+    const days = Math.max(0, Math.round((now.getTime() - parseDay(p.published)) / DAY));
+    const total = p.sales != null ? p.sales : p.variants.reduce((a,v)=>a+v[2],0);
+    const pDTS = total > 0 ? days / total : Infinity;
+    const eligible = days >= MIN_MARKET_DAYS && pDTS < MAX_PRODUCT_DTS && total >= MIN_UNITS;
+    const maxSales = Math.max(0, ...p.variants.map(v=>v[2]));
+    const P = {p, days, total, pDTS, eligible, supplier: p.supplier || ''};
+    P.rows = p.variants.map(([title,stock,sales]) => {
+      const dts = sales > 0 ? days / sales : Infinity;
+      const required = sales > 0 ? Math.ceil(Math.ceil(LEAD_DAYS / dts) * mult - 1e-9) : 0;
+      const toOrder = Math.max(0, required - stock);
+      const left = sales > 0 ? Math.max(0, stock) * dts : Infinity;
+      let level = 'grey';
+      if (sales > 0) level = stock <= 0 ? 'red' : left < 7 ? 'orange' : left < 14 ? 'yellow' : 'green';
+      const share = maxSales ? sales / maxSales : 0;
+      return {P,title,stock,sales,dts,required,toOrder,left,level,
+        cSales: sales === 0 ? 'grey' : share >= .5 ? 'green' : share >= .2 ? 'amber' : 'red',
+        cDts: sales === 0 ? 'grey' : dts < 20 ? 'green' : dts < 50 ? 'amber' : 'red',
+        cStock: sales === 0 ? (stock > 0 ? 'info' : 'grey') : stock <= 0 ? 'red' : stock < required ? 'amber' : 'green',
+        cLeft: sales === 0 ? 'grey' : stock <= 0 ? 'red' : left < 7 ? 'orange' : left < 14 ? 'yellow' : 'green',
+        cReq: sales === 0 ? 'grey' : 'info',
+        cOrder: sales === 0 ? 'grey' : toOrder === 0 ? 'green' : stock <= 0 ? 'red' : 'amber'};
+    });
+    P.units = P.rows.reduce((a,r)=>a+r.toOrder,0);
+    return P;
+  });
+  const entries = [];
+  prods.forEach(P => P.rows.forEach(r => { if (r.sales > 0) entries.push(r); }));
+  entries.sort((a,b) => (a.left - b.left) || (a.dts - b.dts) || (b.sales - a.sales));   // global priority
+  entries.forEach((r,i) => r.rank = i + 1);
+  prods.forEach(P => { const f = entries.find(r=>r.P===P); P.urgency = f ? f.left : Infinity; P.worst = f ? f.level : 'grey'; });
+  prods.sort((a,b) => (a.urgency - b.urgency) || (b.total - a.total));
+  return {prods, entries};
+}
+
+const BADGE = {red:'🔴 Out of stock',orange:'🟠 Urgent',yellow:'🟡 Soon',green:'🟢 OK',grey:'⚪ No sales'};
+const initials = t => t.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const years = d => d >= 365 ? (Math.round(d/36.5)/10) + ' yrs' : d >= 60 ? Math.round(d/30) + ' mo' : d + ' d';
+
+/* ---------------- order cell (stepper / save) and supplier status ---------------- */
+function curQty(i){
+  const {r,key} = infos[i], row = orders.get(key);
+  return draft.has(key) ? draft.get(key) : row ? row.qty : r.toOrder;
+}
+function ordHtml(i){
+  const {r,key} = infos[i], row = orders.get(key), cur = curQty(i);
+  const locked = !!row && row.status !== 'saved';
+  const noSup = !r.P.supplier;
+  const dirty = !row ? cur > 0 : row.qty !== cur;
+  const btn = locked ? '' :
+    `<button class="save${!dirty && row ? ' ok' : ''}" data-save="1" ${(dirty && !noSup) ? '' : 'disabled'} title="${noSup ? 'No supplier on this product (custom.supplier_name)' : 'Send to supplier'}">${!dirty && row ? 'Saved ✓' : 'Save'}</button>`;
+  return `<span class="step"><button data-step="1" ${locked?'disabled':''}>+</button><b>${cur}</b><button data-step="-1" ${locked||cur<=0?'disabled':''}>−</button></span>${btn}`;
+}
+function supHtml(i){
+  const row = orders.get(infos[i].key);
+  if (!row) return '–';
+  if (row.status === 'saved') return '<span class="badge c-info">Saved</span>';
+  if (row.status === 'added') return '<span class="badge c-amber">📦 Added to box</span>';
+  const d = new Date(row.shipped_at), days = Math.floor((Date.now() - d.getTime()) / DAY);
+  const when = d.toLocaleDateString(undefined,{day:'numeric',month:'short'});
+  return `<span class="badge c-green">🚚 Shipped ${when} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days')}</span><button class="recv" data-recv="1" title="Stock arrived: clear this line">Received</button>`;
+}
+function paint(i){
+  const a = document.querySelector(`[data-ord="${i}"]`), b = document.querySelector(`[data-sup="${i}"]`);
+  if (a) a.innerHTML = ordHtml(i);
+  if (b) b.innerHTML = supHtml(i);
+}
+const repaintAll = () => infos.forEach((_,i) => paint(i));
+
+/* ---------------- render ---------------- */
+function rowHtml(r){
+  const i = infos.length; infos.push({r, key: keyOf(r.P.p.id, r.title)});
+  return `<tr><td class="c-${r.level}">${r.rank ?? '–'}</td><td class="v">${esc(r.title)}</td>
+    <td class="c-${r.cSales}">${r.sales}</td><td class="c-${r.cDts}">${fmt(r.dts)}</td>
+    <td class="c-${r.cStock}">${r.stock}</td><td class="c-${r.cLeft}">${r.sales===0?'—':r.stock<=0?0:fmt(r.left)}</td>
+    <td class="c-${r.cReq}">${r.required}</td>
+    <td class="ord c-${r.cOrder}" data-ord="${i}">${ordHtml(i)}</td>
+    <td class="sup" data-sup="${i}">${supHtml(i)}</td>
+    <td class="status c-${r.level}"><span class="badge">${BADGE[r.level]}</span></td></tr>`;
+}
+function cardHtml(g){
+  const P = g.P, isOpen = state.has(g.id) ? state.get(g.id) : defaultOpen;
+  const dtsCls = P.pDTS === Infinity ? 't-info' : P.pDTS < 20 ? 't-green' : P.pDTS < 50 ? 't-amber' : 't-red';
+  const ordCls = P.units === 0 ? 't-green' : P.worst === 'red' ? 't-red' : 't-amber';
+  const thumb = P.p.thumb || P.p.image;
+  const src = thumb ? esc(thumb) + (thumb.startsWith('data:') ? '' : (thumb.includes('?') ? '&' : '?') + 'width=120') : '';
+  return `<section class="card${isOpen?' open':''}" data-gid="${esc(g.id)}">
+    <div class="card-h" data-toggle="1"><span class="chev">▶</span>
+      <div class="thumb"><span>${esc(initials(P.p.title))}</span>${src ? `<img src="${src}" alt="" loading="lazy" referrerpolicy="no-referrer" style="position:absolute;inset:0;opacity:0" onload="this.style.opacity=1" onerror="this.remove()">` : ''}</div>
+      <div class="ttl"><h2>${esc(P.p.title)}</h2><div class="meta">${g.rows.length} variant${g.rows.length===1?'':'s'} shown · ${P.supplier ? esc(P.supplier) : 'no supplier'} · ${P.days} days on market</div></div>
+      <div class="tiles">
+        <div class="tile t-info"><b>${years(P.days)}</b><span>On market</span></div>
+        <div class="tile"><b>${P.total}</b><span>Total sold</span></div>
+        <div class="tile ${dtsCls}"><b>${fmt(P.pDTS)}</b><span>Days / 1 unit (product)</span></div>
+        <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
+      </div></div>
+    ${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}
+    <div class="body"><div class="scroll"><table>
+      <thead><tr><th>Priority</th><th>Variant</th><th>Total sales</th><th>Days to sell 1 (variant)</th><th>Current stock</th><th>Days to stockout</th><th>Required stock</th><th>To order</th><th>Supplier</th><th>Status</th></tr></thead>
+      <tbody>${g.rows.map(rowHtml).join('')}</tbody></table></div></div></section>`;
+}
+function queueTile(){
+  const c = {saved:0,added:0,shipped:0}; orders.forEach(o => c[o.status]++);
+  return `<div class="stat"><b>${c.saved} · ${c.added} · ${c.shipped}</b><span>Saved · in box · shipped</span></div>`;
+}
+function render(){
+  const {prods, entries} = compute();
+  const supSel = $('supplier').value, onlyNeed = $('onlyNeed').checked, onlyElig = $('onlyElig').checked;
+  const activeElig = prods.filter(r=>r.eligible && !getDone(r.p.id)).length;
+  $('stats').innerHTML = [
+    [prods.length,'Products'],
+    [entries.filter(v=>v.level==='red').length,'Out-of-stock selling variants'],
+    [entries.filter(v=>v.level==='orange').length,'Under 7 days left'],
+    [prods.reduce((a,r)=>a+r.units,0),'Units to order (all)'],[activeElig,'Stock More Variants']
+  ].map(([n,l])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join('') + queueTile();
+  $('sub').textContent = `${data.source || ''} · Generated ${new Date(data.generatedAt).toLocaleString()} · ${LEAD_DAYS}-day lead time`;
+
+  const pass = r => (!supSel || (r.P.supplier || '(none)') === supSel) &&
+    (!onlyNeed || r.toOrder > 0 || orders.has(keyOf(r.P.p.id, r.title))) &&
+    (!onlyElig || (r.P.eligible && !getDone(r.P.p.id)));
+  infos.length = 0;
+  const groups = [], bannered = new Set();
+  const mkBanner = P => { const s = P.eligible && !getDone(P.p.id) && !bannered.has(P); if (s) bannered.add(P); return s; };
+  if (mode === 'priority') {
+    for (const r of entries) {
+      if (!pass(r)) continue;
+      const last = groups[groups.length-1];
+      if (last && last.P === r.P) last.rows.push(r);
+      else groups.push({P: r.P, rows: [r], id: r.P.p.id + '#' + r.title});
+    }
+  } else {
+    for (const P of prods) {
+      const rows = P.rows.filter(pass).sort(bySize);
+      if (rows.length) groups.push({P, rows, id: P.p.id});
+    }
+  }
+  const shown = groups.slice(0, limit);
+  shown.forEach(g => { g.banner = mkBanner(g.P); });
+  let html = shown.map(cardHtml).join('');
+  if (groups.length > shown.length) html += `<button class="more" id="more">Show more (${groups.length - shown.length} more)</button>`;
+  $('list').innerHTML = html || '<div class="empty">Nothing to show with the current filters.</div>';
+}
+
+/* ---------------- events ---------------- */
+const reset = () => { limit = PAGE; render(); };
+$('len').addEventListener('input', reset);
+['onlyNeed','onlyElig','supplier'].forEach(id => $(id).addEventListener('change', reset));
+$('order').addEventListener('change', () => { mode = $('order').value; defaultOpen = mode === 'priority'; state.clear(); reset(); });
+$('list').addEventListener('click', async e => {
+  const t = e.target;
+  if (t.id === 'more') { limit += PAGE; render(); return; }
+  const done = t.closest('[data-done]');
+  if (done) { setDone(done.getAttribute('data-done'), true); render(); return; }
+  const rc = t.closest('[data-recv]');
+  if (rc) {
+    const i = +rc.closest('[data-sup]').getAttribute('data-sup'), key = infos[i].key;
+    rc.disabled = true;
+    try { await Store.received([key]); orders.delete(key); } catch (err) { notify('Could not clear: ' + err.message); }
+    paint(i); updateQueue(); return;
+  }
+  const cell = t.closest('[data-ord]');
+  if (cell) {
+    const i = +cell.getAttribute('data-ord'), key = infos[i].key;
+    if (t.closest('[data-step]')) {
+      draft.set(key, Math.max(0, curQty(i) + +t.closest('[data-step]').getAttribute('data-step')));
+      paint(i);
+    } else if (t.closest('[data-save]')) {
+      const {r} = infos[i], P = r.P, qty = curQty(i), btn = t.closest('[data-save]');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const row = await Store.upsert({ id: key, product_id: P.p.id, product_title: P.p.title, image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''),
+          variant_title: r.title, supplier: P.supplier, qty });
+        if (row && row.id) orders.set(key, row); else orders.delete(key);
+        draft.delete(key);
+      } catch (err) { notify('Save failed: ' + err.message); }
+      paint(i); updateQueue();
+    }
+    return;
+  }
+  const h = t.closest('[data-toggle]');
+  if (h) {
+    const card = h.closest('.card'), id = card.getAttribute('data-gid');
+    card.classList.toggle('open'); state.set(id, card.classList.contains('open'));
+  }
+});
+const setAll = v => { defaultOpen = v; state.clear(); document.querySelectorAll('.card').forEach(c => c.classList.toggle('open', v)); };
+$('expAll').addEventListener('click', () => setAll(true));
+$('colAll').addEventListener('click', () => setAll(false));
+$('resetDone').addEventListener('click', () => { data.products.forEach(p=>setDone(p.id,false)); render(); });
+$('theme').addEventListener('click', () => {
+  const n = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = n; try { parent.postMessage({ type: 'restock-plan', action: 'theme', theme: n }, '*'); } catch(e) {}
+});
+function buildSuppliers(){
+  const names = [...new Set(data.products.map(p => p.supplier || '(none)'))].sort();
+  $('supplier').innerHTML = '<option value="">All</option>' + names.map(n=>`<option>${esc(n)}</option>`).join('');
+}
+
+/* ---------------- supplier sync ---------------- */
+function updateQueue(){
+  const tiles = document.querySelectorAll('#stats .stat'), last = tiles[tiles.length-1];
+  if (last) last.outerHTML = queueTile();
+}
+async function refresh(){
+  try {
+    const rows = await Store.list();
+    orders = new Map(rows.map(r => [r.id, r]));
+    repaintAll(); updateQueue(); if (!$('viewSup').hidden) renderSv();
+  } catch (err) { $('sub').textContent = 'Could not load supplier status: ' + err.message; }
+}
+setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 60000);   // also moves the shipped day counters
+
+/* ---------------- supplier view (read-only mirror of the supplier portal) ---------------- */
+function svGroup(list){ const m = new Map(); list.forEach(r => { if (!m.has(r.product_id)) m.set(r.product_id, []); m.get(r.product_id).push(r); }); return [...m.values()]; }
+const svSort = (a, b) => bySize({title: a.variant_title}, {title: b.variant_title});
+function svImg(r){ const s = r.image ? esc(r.image) + (r.image.includes('?') ? '&' : '?') + 'width=200' : ''; return s ? `<img src="${s}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=ph></div>'">` : '<div class="ph"></div>'; }
+function renderSv(){
+  const all = [...orders.values()];
+  const names = [...new Set(all.map(r => r.supplier).filter(Boolean))].sort();
+  const sel = $('svSup'), cur = sel.value;
+  sel.innerHTML = names.map(n => `<option>${esc(n)}</option>`).join('') || '<option value="">—</option>';
+  if (names.includes(cur)) sel.value = cur;
+  const mine = all.filter(r => r.supplier === sel.value);
+  const pending = mine.filter(r => r.status !== 'shipped'), shipped = mine.filter(r => r.status === 'shipped');
+  const added = pending.filter(r => r.status === 'added');
+  $('svCount').textContent = pending.length ? `${added.length} of ${pending.length} in box` : '';
+  $('svList').innerHTML = pending.length ? svGroup(pending).map(g => `<div class="sc">${svImg(g[0])}
+    <table><thead><tr><th>Variant</th><th style="text-align:center">Qty</th><th></th></tr></thead><tbody>
+    ${g.sort(svSort).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td>
+      <td class="a">${r.status === 'added' ? '<span class="badge c-amber">📦 In box</span>' : '<span class="badge c-grey">To pack</span>'}</td></tr>`).join('')}
+    </tbody></table></div>`).join('') : `<div class="empty">${all.length ? 'Nothing to ship right now for this supplier.' : 'Nothing sent to a supplier yet. Press Save on a To order quantity in My view and it appears here.'}</div>`;
+  const byDay = new Map();
+  shipped.forEach(r => { const k = String(r.shipped_at).slice(0, 10); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(r); });
+  $('svShipped').innerHTML = [...byDay.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([k, list]) => {
+    const d = new Date(list[0].shipped_at), days = Math.floor((Date.now() - d.getTime()) / DAY);
+    return `<h3>Shipped ${d.toLocaleDateString(undefined, {day: 'numeric', month: 'short', year: 'numeric'})} · <span class="ship">${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days') + ' ago'}</span></h3>` +
+      svGroup(list).map(g => `<div class="sc">${svImg(g[0])}<table><tbody>${g.sort(svSort).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td></tr>`).join('')}</tbody></table></div>`).join('');
+  }).join('');
+}
+function showTab(sup){
+  $('viewMine').hidden = sup; $('viewSup').hidden = !sup;
+  $('tabMine').classList.toggle('on', !sup); $('tabSup').classList.toggle('on', sup);
+  if (sup) { renderSv(); refresh(); }
+}
+$('tabMine').addEventListener('click', () => showTab(false));
+$('tabSup').addEventListener('click', () => showTab(true));
+$('svSup').addEventListener('change', renderSv);
+$('svRefresh').addEventListener('click', () => refresh());
+async function loadAccounts(){
+  const box = $('svAccounts');
+  box.innerHTML = '<div class="sub">Loading…</div>';
+  try {
+    const users = await Store.users();
+    const sup = [...new Set(data.products.map(p => p.supplier).filter(Boolean))].sort();
+    box.innerHTML = `<b>Supplier accounts</b>
+      <div class="sub" style="margin:2px 0 8px">1) Create the login in Report Access and tick “Supplier Portal” for it. 2) Link it to the supplier name here (the name must match the product's supplier). A supplier only ever sees their own items.</div>
+      <datalist id="svNames">${sup.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      <table><thead><tr><th>Person</th><th>Supplier Portal access</th><th>Supplier name</th><th></th></tr></thead><tbody>
+      ${users.map(u => `<tr><td>${esc(u.display_name || u.username || u.email || '')}<div class="sub">${esc(u.email || '')}</div></td>
+        <td>${u.has_grant ? '<span class="badge c-green">Yes</span>' : '<span class="badge c-grey">Not yet</span>'}</td>
+        <td><input list="svNames" value="${esc(u.supplier || '')}" data-u="${esc(u.user_id)}" placeholder="e.g. Pankaj"></td>
+        <td><button data-setu="${esc(u.user_id)}">Save</button></td></tr>`).join('') || '<tr><td colspan="4" class="sub">No supplier accounts yet. Create one in Report Access.</td></tr>'}
+      </tbody></table>`;
+  } catch (err) { box.innerHTML = '<div class="sub">Could not load accounts: ' + esc(err.message) + '</div>'; }
+}
+$('svAccts').addEventListener('click', () => { const b = $('svAccounts'); b.hidden = !b.hidden; if (!b.hidden) loadAccounts(); });
+$('svAccounts').addEventListener('click', async e => {
+  const b = e.target.closest('[data-setu]'); if (!b) return;
+  const id = b.getAttribute('data-setu'), inp = [...document.querySelectorAll('#svAccounts input[data-u]')].find(x => x.getAttribute('data-u') === id);
+  b.disabled = true; b.textContent = 'Saving…';
+  try { await Store.setUser(id, inp ? inp.value : ''); b.textContent = 'Saved ✓'; } catch (err) { b.textContent = 'Save'; notify('Could not save: ' + err.message); }
+  b.disabled = false;
+});
+
+buildSuppliers();
+render();
+refresh();
+try { parent.postMessage({ type: 'restock-plan', action: 'ready' }, '*'); } catch (e) {}
+</script>
+</body>
+</html>

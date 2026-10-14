@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supplier Portal</title>
+<script>
+try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
+</script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--muted:#8b949e;--text:#e6edf3;--blue:#58a6ff;--green:#3fb950;--green-bg:#0f2d1a;--amber:#e3b341;--amber-bg:#392a00;--info:#79c0ff;--info-bg:#0c2d4d;--grey-bg:#21262d;--red:#ff7b72}
+  :root[data-theme="light"]{--bg:#f6f8fa;--card:#fff;--border:#d0d7de;--muted:#656d76;--text:#1f2328;--blue:#0969da;--green:#1a7f37;--green-bg:#dafbe1;--amber:#9a6700;--amber-bg:#fff8c5;--info:#0550ae;--info-bg:#ddf4ff;--grey-bg:#eaeef2;--red:#cf222e}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+  .wrap{max-width:720px;margin:0 auto;padding:0 10px 40px}
+  header{padding:14px 0 6px;display:flex;align-items:center;gap:10px}
+  header h1{flex:1;font-size:18px;margin:0}
+  button,select,input{font:inherit;border:1px solid var(--border);background:var(--grey-bg);color:var(--text);border-radius:6px;padding:3px 10px}
+  button{cursor:pointer}button:disabled{opacity:.45;cursor:default}
+  .bar{position:sticky;top:0;z-index:5;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin:6px 0 10px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+  .bar label{display:flex;gap:6px;align-items:center}
+  .bar .sp{flex:1}
+  .primary{background:var(--blue);color:#fff;border-color:transparent;font-weight:600}
+  .card{display:flex;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px}
+  .card img,.ph{width:84px;height:84px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex:none;background:var(--grey-bg)}
+  .card table{flex:1;border-collapse:collapse;align-self:flex-start}
+  th{font-size:11px;color:var(--muted);font-weight:600;text-align:left;padding:2px 6px;border-bottom:1px solid var(--border)}
+  td{padding:4px 6px;border-bottom:1px solid var(--border)}
+  tr:last-child td{border-bottom:0}
+  td.q{font-weight:700;text-align:center;width:60px}
+  td.a{text-align:right;width:130px}
+  .box{min-width:112px}
+  .box.on{background:var(--amber-bg);color:var(--amber);border-color:transparent;font-weight:600}
+  h3{font-size:12px;color:var(--muted);margin:16px 2px 6px;font-weight:600}
+  .ship{color:var(--green);font-weight:600}
+  .empty{padding:24px;text-align:center;color:var(--muted)}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
+  .modal.show{display:flex}
+  .modal form{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;display:grid;gap:8px;width:280px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Supplier Portal</h1>
+    <button id="theme" title="Light / dark">◐</button>
+  </header>
+  <div class="bar" id="bar" hidden>
+    <label>Supplier <select id="supplier"></select></label>
+    <label><input type="checkbox" id="all"> All added to box</label>
+    <span class="sp" id="count"></span>
+    <button class="primary" id="ship" disabled>Ship</button>
+  </div>
+  <div id="list"></div>
+  <div id="shipped"></div>
+</div>
+
+<script>
+function notify(msg){ let b = document.getElementById('toast'); if (!b) { b = document.createElement('div'); b.id = 'toast'; b.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#8e2b25;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;z-index:99;max-width:90%'; document.body.appendChild(b); } b.textContent = msg; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 6000); }
+const DAY = 86400000;
+const pendingCalls = new Map(); let reqId = 0;
+function call(action, payload) {
+  return new Promise((res, rej) => {
+    const req = ++reqId, t = setTimeout(() => { pendingCalls.delete(req); rej(new Error('No answer. Please reload the page.')); }, 25000);
+    pendingCalls.set(req, { res, rej, t });
+    try { parent.postMessage(Object.assign({ type: 'restock-supplier', action, req }, payload || {}), '*'); } catch (e) { clearTimeout(t); rej(e); }
+  });
+}
+window.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.type === 'restock-supplier-theme') document.documentElement.dataset.theme = d.theme === 'light' ? 'light' : 'dark';
+  else if (d.type === 'restock-supplier-result') {
+    const p = pendingCalls.get(d.req); if (!p) return;
+    clearTimeout(p.t); pendingCalls.delete(d.req);
+    d.ok ? p.res(d.data) : p.rej(new Error(d.error || 'Failed'));
+  }
+});
+const Store = {
+  list: () => call('list'),
+  act: (op, ids) => call('act', { op, ids }),
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let rows = [];
+
+function sizeKey(t){
+  const p = t.split('/').pop().trim(), u = p.toUpperCase().replace(/\s/g,'');
+  let m = p.match(/-(\d+(?:\.\d+)?)$/); if (m) return +m[1];
+  if (/^\d+(\.\d+)?$/.test(p)) return +p;
+  const L = {XXS:1,XS:2,S:3,M:4,L:5,XL:6,XXL:7}; if (L[u]) return 1000 + L[u];
+  m = u.match(/^(\d)XL$/); return m ? 1005 + +m[1] : Infinity;
+}
+const bySize = (a,b) => (a.variant_title.split('/').slice(0,-1).join('/').localeCompare(b.variant_title.split('/').slice(0,-1).join('/'))) || (sizeKey(a.variant_title) - sizeKey(b.variant_title));
+
+function group(list){
+  const m = new Map(); list.forEach(r => { if (!m.has(r.product_id)) m.set(r.product_id, []); m.get(r.product_id).push(r); });
+  return [...m.values()];
+}
+function img(r){ const s = r.image ? esc(r.image) + (r.image.includes('?') ? '&' : '?') + 'width=200' : ''; return s ? `<img src="${s}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=ph></div>'">` : '<div class="ph"></div>'; }
+
+function render(){
+  const sup = $('supplier').value;
+  const mine = rows.filter(r => r.supplier === sup);
+  const pending = mine.filter(r => r.status !== 'shipped'), shipped = mine.filter(r => r.status === 'shipped');
+  const added = pending.filter(r => r.status === 'added');
+  $('all').checked = pending.length > 0 && added.length === pending.length;
+  $('all').disabled = !pending.length;
+  $('count').textContent = pending.length ? `${added.length} of ${pending.length} in box` : '';
+  $('ship').disabled = !added.length; $('ship').textContent = added.length ? `Ship ${added.length} item${added.length>1?'s':''}` : 'Ship';
+
+  $('list').innerHTML = pending.length ? group(pending).map(g => `<div class="card">${img(g[0])}
+    <table><thead><tr><th>Variant</th><th style="text-align:center">Qty</th><th></th></tr></thead><tbody>
+    ${g.sort(bySize).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td>
+      <td class="a"><button class="box${r.status==='added'?' on':''}" data-id="${esc(r.id)}">${r.status==='added' ? '📦 In box' : 'Add to box'}</button></td></tr>`).join('')}
+    </tbody></table></div>`).join('') : `<div class="empty">Nothing to ship right now.</div>`;
+
+  const byDay = new Map();
+  shipped.forEach(r => { const k = r.shipped_at.slice(0,10); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(r); });
+  $('shipped').innerHTML = [...byDay.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([k, list]) => {
+    const d = new Date(list[0].shipped_at), days = Math.floor((Date.now() - d.getTime()) / DAY);
+    return `<h3>Shipped ${d.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})} · <span class="ship">${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days') + ' ago'}</span></h3>` +
+      group(list).map(g => `<div class="card">${img(g[0])}<table><tbody>${g.sort(bySize).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td></tr>`).join('')}</tbody></table></div>`).join('');
+  }).join('');
+}
+
+async function load(){
+  try {
+    rows = await Store.list();
+    const names = [...new Set(rows.map(r => r.supplier).filter(Boolean))].sort();
+    const cur = $('supplier').value;
+    $('supplier').innerHTML = names.map(n => `<option>${esc(n)}</option>`).join('') || '<option value="">—</option>';
+    if (names.includes(cur)) $('supplier').value = cur;
+    $('supplier').disabled = true;                                   // a supplier account only ever receives its own rows
+    $('bar').hidden = false; render();
+  } catch (e) { $('list').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; $('bar').hidden = true; }
+}
+async function act(fn){ try { await fn(); await load(); } catch (e) { notify('Failed: ' + e.message); } }
+
+$('supplier').addEventListener('change', render);
+$('list').addEventListener('click', e => {
+  const b = e.target.closest('.box');
+  if (b) { const r = rows.find(x => x.id === b.dataset.id); if (r) act(() => Store.act(r.status === 'added' ? 'unadd' : 'add', [r.id])); }
+});
+$('all').addEventListener('change', () => {
+  const sup = $('supplier').value, pend = rows.filter(r => r.supplier === sup && r.status !== 'shipped');
+  const on = $('all').checked;
+  act(() => Store.act(on ? 'add' : 'unadd', pend.map(r => r.id)));
+});
+$('ship').addEventListener('click', () => {
+  const ids = rows.filter(r => r.supplier === $('supplier').value && r.status === 'added').map(r => r.id);
+  if (!ids.length) return;
+  const b = $('ship');
+  if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = `Tap again to ship ${ids.length}`; setTimeout(() => { b.dataset.sure = ''; render(); }, 4000); return; }
+  b.dataset.sure = ''; act(() => Store.act('ship', ids));
+});
+$('theme').addEventListener('click', () => { const n = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = n; try { parent.postMessage({ type: 'restock-supplier', action: 'theme', theme: n }, '*'); } catch(e) {} });
+setInterval(() => { if (document.visibilityState === 'visible') load(); }, 60000);   // keeps "N days ago" and new items fresh
+load();
+try { parent.postMessage({ type: 'restock-supplier', action: 'ready' }, '*'); } catch (e) {}
+</script>
+</body>
+</html>

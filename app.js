@@ -205,6 +205,8 @@
     "order-attribution": { c: "teal", icon: "tag", stat: ["tag", "clock", "dollar"], line: ["teal", "purple", "green"] },
     "product-visibility": { c: "purple", icon: "eye", stat: ["eye", "tag", "alert"], line: ["purple", "teal", "rose"] },
     restock: { c: "orange", icon: "box", stat: ["box", "alert", "tag"], line: [] },
+    "restock-plan": { c: "orange", icon: "box", stat: ["box", "alert"], line: [] },
+    "restock-supplier": { c: "teal", icon: "box", stat: [], line: [] },
     footwear: { c: "rose", icon: "search", stat: ["search", "bars", "trend"], line: ["rose", "purple", "green"] },
     "facebook-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
     "google-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
@@ -249,7 +251,7 @@
     {name:"Sales Analysis",color:"#568F8C",ids:["order-source","order-attribution","call-tracking"]},
     {name:"Facebook",color:"#986D7E",ids:["facebook-tracked","daily","monthly"]},
     {name:"Google",color:"#AD915A",ids:["google-tracked","google-non-tracked"]},
-    {name:"Stock Management",color:"#708C74",ids:["stock","product-visibility","restock"]},
+    {name:"Stock Management",color:"#708C74",ids:["restock-plan","stock","product-visibility","restock"]},
     {name:"SEO",color:"#927CA2",ids:["footwear"]},
     {name:"Admin Panel",color:"#838099",ids:["schedule-panel","tech-availability","project-board"]}
   ];
@@ -1491,6 +1493,66 @@
     } catch (err) {
       reply({ ok: false, action: d.action, error: err?.message || "Couldn't save the link." });
     }
+  });
+
+  // ---------- restock planner (owner) and supplier portal ----------
+  // The report pages never hold credentials: every read/write goes through here, to RLS tables / security-definer functions.
+  const RP_DONE = "ir-restock-plan-done";
+  const rpText = (v, n) => String(v == null ? "" : v).slice(0, n);
+  function rpBridge(kind, handlers) {
+    window.addEventListener("message", async (event) => {
+      const fr = $("#rep-frame");
+      if (!fr || event.source !== fr.contentWindow) return;
+      const d = event.data || {};
+      if (d.type !== kind) return;
+      const reply = (o) => { try { fr.contentWindow?.postMessage(o, "*"); } catch (_) {} };
+      if (d.action === "theme") {
+        try { if (d.theme === "dark" || d.theme === "light") localStorage.setItem("ir-restock-theme", d.theme); } catch (_) {}
+        return;
+      }
+      if (d.action === "ready") {
+        let th = "dark"; try { th = localStorage.getItem("ir-restock-theme") === "light" ? "light" : "dark"; } catch (_) {}
+        reply({ type: kind + "-theme", theme: th });
+        if (kind === "restock-plan") { try { const done = JSON.parse(localStorage.getItem(RP_DONE) || "[]"); if (Array.isArray(done) && done.length) reply({ type: "restock-plan-state", state: { done: done.slice(0, 5000).map(String) } }); } catch (_) {} }
+        return;
+      }
+      if (d.action === "state" && kind === "restock-plan") {
+        try { localStorage.setItem(RP_DONE, JSON.stringify((Array.isArray(d.state?.done) ? d.state.done : []).slice(0, 5000).map(String))); } catch (_) {}
+        return;
+      }
+      const h = handlers[d.action];
+      if (!h) return;
+      try { reply({ type: kind + "-result", req: d.req, ok: true, data: await h(d) }); }
+      catch (err) { reply({ type: kind + "-result", req: d.req, ok: false, error: String(err?.message || err || "Failed").slice(0, 200) }); }
+    });
+  }
+  const rpOk = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
+  rpBridge("restock-plan", {
+    list: async () => {
+      const out = [];
+      for (let from = 0; from < 20000; from += 1000) {
+        const rows = rpOk(await sb.from("restock_orders").select("*").order("id").range(from, from + 999));
+        out.push(...(rows || []));
+        if (!rows || rows.length < 1000) break;
+      }
+      return out;
+    },
+    save: async (d) => {
+      const r = d.row || {}, qty = Math.floor(Number(r.qty) || 0);
+      const row = { id: rpText(r.id, 120), product_id: rpText(r.product_id, 30), product_title: rpText(r.product_title, 300), image: /^https:\/\/cdn\.shopify\.com\//.test(r.image || "") ? rpText(r.image, 500) : "", variant_title: rpText(r.variant_title, 120), supplier: rpText(r.supplier, 100), qty: Math.max(0, Math.min(100000, qty)) };
+      if (!row.id || !row.supplier) throw new Error("This product has no supplier set");
+      return rpOk(await sb.rpc("restock_owner_save", { p: row }));
+    },
+    received: async (d) => rpOk(await sb.rpc("restock_owner_received", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 120)) })),
+    users: async () => rpOk(await sb.rpc("restock_supplier_users_list")),
+    setuser: async (d) => { rpOk(await sb.rpc("restock_supplier_user_set", { p_user: rpText(d.user_id, 40), p_supplier: rpText(d.supplier, 100) })); return true; },
+  });
+  rpBridge("restock-supplier", {
+    list: async () => rpOk(await sb.rpc("restock_supplier_list")) || [],
+    act: async (d) => {
+      if (!["add", "unadd", "ship"].includes(d.op)) throw new Error("Bad action");
+      return rpOk(await sb.rpc("restock_supplier_act", { p_action: d.op, p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 120)) }));
+    },
   });
 
   // ---------- colour tagging game ----------

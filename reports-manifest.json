@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-14.color-game.2",
+  "manifest_version": "2026-10-15.restock-planner.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -140,7 +140,7 @@
     },
     {
       "id": "call-tracking",
-      "title": "Call Tracking \u2014 Nimbata",
+      "title": "Call Tracking — Nimbata",
       "workflow": "call-tracking.yml",
       "refresh_times": [
         "schedule panel"
@@ -204,6 +204,28 @@
       "schedule_control": "report_schedules"
     },
     {
+      "id": "restock-plan",
+      "title": "Restock Planner",
+      "workflow": "restock-plan.yml",
+      "refresh_times": [
+        "schedule panel"
+      ],
+      "required_env": [
+        "SHOPIFY_TOKEN",
+        "STOCK_KEY"
+      ],
+      "builders": [
+        "tools/restock_plan.py",
+        "tools/restock_plan_template.html"
+      ],
+      "outputs": [
+        "r/restock-plan.bin",
+        "r/restock-plan.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "report_schedules"
+    },
+    {
       "id": "restock",
       "title": "Restock",
       "workflow": "restock.yml",
@@ -224,6 +246,24 @@
       ],
       "supabase_sync": false,
       "schedule_control": "report_schedules"
+    },
+    {
+      "id": "restock-supplier",
+      "title": "Supplier Portal",
+      "workflow": null,
+      "refresh_times": [
+        "static page; live data comes from Supabase"
+      ],
+      "required_env": [],
+      "builders": [
+        "tools/restock_supplier_template.html"
+      ],
+      "outputs": [
+        "r/restock-supplier.bin",
+        "r/restock-supplier.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "none"
     },
     {
       "id": "footwear",
