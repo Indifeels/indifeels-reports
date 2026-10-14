@@ -9,10 +9,10 @@
   "reason": ""
  },
  "color-game": {
-  "at": "2026-10-14T10:19+11:00",
-  "code_sha": "b8f1a4ae9029ba2b35911d1c0e81c6fc2b902ed7",
+  "at": "2026-10-14T11:00+11:00",
+  "code_sha": "99132f2ad9c07ac38434fa2d1f718329e603ef06",
   "data_through": null,
-  "last_ok": "2026-10-14T10:19+11:00",
+  "last_ok": "2026-10-14T11:00+11:00",
   "manifest_version": "2026-10-14.color-game.2",
   "ok": true,
   "reason": ""
