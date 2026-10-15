@@ -492,7 +492,7 @@
   // ---------- order attribution ----------
   const ORDER_SOURCES = ["Google Online Orders - WEB","Google CALLS MEL - SALE","Google Direction MEL - Store Visit","FB Online Orders - WEB","FB CALLS MEL - SALE","FB/IG PAGE MSGS MEL - SALE","FB WHATSAPP MSGS MEL - SALE","Organic Orders","Repeat Customer","Word of Mouth","Marketplace MEL","Marketplace SYD","Marketplace BRN","AI","Direct order","Invalid","Unknown Online","Unknown Offline"];
   let OA = { rows: [], catalog: [], channel: null };
-  const oaPending = () => OA.rows.filter((r) => r.sync_status === "error" || r.sync_status === "pending" || r.sync_status === "submitting" || (!r.order_source || r.attribution_auto === true) && r.sync_status !== "syncing" && r.sync_status !== "synced");
+  const oaPending = () => OA.rows.filter((r) => r.sync_status === "error" || r.sync_status === "pending" || r.sync_status === "submitting" || (!r.order_source && r.sync_status !== "syncing") || (r.attribution_auto === true && r.sync_status !== "syncing"));
   const oaDone = () => OA.rows.filter((r) => r.order_source && r.sync_status === "synced" && r.attribution_auto !== true).slice(0, 40);
   const oaPaidPlatform = (source) => source === "Google Online Orders - WEB" ? "Google" : source === "FB Online Orders - WEB" ? "Facebook" : "";
   const oaMoney = (v, c = "AUD") => new Intl.NumberFormat("en-AU", { style: "currency", currency: c, maximumFractionDigits: 2 }).format(Number(v || 0));
