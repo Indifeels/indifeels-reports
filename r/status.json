@@ -27,11 +27,11 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-10-15T14:04+11:00",
-  "code_sha": "f930f1c4ea6e34e4aa25467611752d517136dbcf",
-  "data_through": "2026-10-15T14:00:26.431324+11:00",
-  "last_ok": "2026-10-15T14:04+11:00",
-  "manifest_version": "2026-10-15.restock-planner.1",
+  "at": "2026-10-15T21:36+11:00",
+  "code_sha": "21d31f7b9984a1ebba5f08c55b1745aec13b204c",
+  "data_through": "2026-10-15T21:30:30.515215+11:00",
+  "last_ok": "2026-10-15T21:36+11:00",
+  "manifest_version": "2026-10-15.cash-report.1",
   "ok": true,
   "reason": ""
  },
@@ -54,11 +54,11 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-10-15T14:04+11:00",
-  "code_sha": "f930f1c4ea6e34e4aa25467611752d517136dbcf",
-  "data_through": "2026-10-15T14:00:26.431324+11:00",
-  "last_ok": "2026-10-15T14:04+11:00",
-  "manifest_version": "2026-10-15.restock-planner.1",
+  "at": "2026-10-15T21:36+11:00",
+  "code_sha": "21d31f7b9984a1ebba5f08c55b1745aec13b204c",
+  "data_through": "2026-10-15T21:30:30.515215+11:00",
+  "last_ok": "2026-10-15T21:36+11:00",
+  "manifest_version": "2026-10-15.cash-report.1",
   "ok": true,
   "reason": ""
  },
