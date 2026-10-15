@@ -292,6 +292,8 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
     <label class="o">Discontinued <select id="discf"><option value="hide">Hide discontinued</option><option value="only">Only discontinued</option><option value="all">Show all</option></select></label>
     <label class="o">Variants <select id="vsel" title="Auto = only variants needing stock when sorted by Priority, all variants for other sorts"><option value="">Auto</option><option value="need">Only needing stock</option><option value="all">All variants</option></select></label>
     <label class="o"><input type="checkbox" id="onlyElig"> Only “Stock More Variants”</label>
+    <label class="o" title="Saves your quantity a few seconds after you stop tapping + / −"><input type="checkbox" id="autoSave"> Auto-save</label>
+    <button id="saveAll" title="Save every shown variant that has a quantity to order">Save all shown</button>
     <button id="expAll">Expand all</button>
     <button id="colAll">Collapse all</button>
     <button id="resetDone" title="Bring back dismissed recommendations">Reset dismissed</button>
@@ -656,6 +658,7 @@ function cardHtml(g){
     <div class="card-h" data-toggle="1"><span class="chev">▶</span>
       <div class="thumb">${plink(P) ? `<a class="tl" href="${plink(P)}" target="_blank" rel="noopener noreferrer" title="Open product page" style="position:absolute;inset:0;z-index:2"></a>` : ''}<span>${esc(initials(P.p.title))}</span>${src ? `<img src="${src}" alt="" loading="lazy" referrerpolicy="no-referrer" style="position:absolute;inset:0;opacity:0" onload="this.style.opacity=1" onerror="this.remove()">` : ''}</div>
       <div class="ttl"><h2>${plink(P) ? `<a class="pt" href="${plink(P)}" target="_blank" rel="noopener noreferrer" title="Open product page">${esc(P.p.title)} ↗</a>` : esc(P.p.title)}${tag}</h2><div class="meta">${g.rows.length} variant${g.rows.length===1?'':'s'} shown · ${P.supplier ? esc(P.supplier) : 'no supplier'} · ${P.days} days on market${P.cat !== 'other' ? ' · ' + esc(P.cat) : ''}${P.last ? ' · last sale ' + esc(ago(P.last).replace('sold ', '')) : ''}</div></div>
+      ${P.disc ? '' : `<button class="disc" data-psave="${esc(pid)}" title="Save every variant of this product that has a quantity to order">Save all</button>`}
       <button class="disc${arm?' arm':''}" data-disc="${esc(pid)}" data-to="${P.disc?0:1}" title="${P.disc ? 'Put this product back into restocking' : 'Stop restocking this product and mark it discontinued in Shopify'}">${P.disc ? 'Reinstate' : arm ? 'Confirm discontinue?' : 'Discontinue'}</button>
       <div class="tiles">
         <div class="tile t-info"><b>${years(P.days)}</b><span>On market</span></div>
@@ -762,6 +765,38 @@ async function receive(ids, label){
   } catch (err) { notify('Could not clear: ' + err.message); }
   render();
 }
+
+/* ---------------- saving: one line, a whole product, everything shown, or auto ---------------- */
+let autoOn = true; try { autoOn = localStorage.getItem('restockAutoSave') !== '0'; } catch (e) {}
+const autoT = new Map();
+async function saveItems(list){
+  let ok = 0, units = 0, fail = '';
+  for (const {r, key, qty} of list) {
+    const P = r.P; if (qty <= 0 || P.disc) continue;
+    try {
+      const row = await Store.order({ vkey: key, product_id: P.p.id, product_title: P.p.title, product_url: P.p.url || '', image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''),
+        variant_title: r.title, supplier: P.supplier || 'Unassigned', qty, stock_base: r.stock });
+      if (row && row.id) orders.set(row.id, row);
+      draft.delete(key); ok++; units += qty;
+    } catch (err) { fail = err.message; }
+  }
+  if (fail) notify('Save failed: ' + fail + (ok ? ' (' + ok + ' saved)' : ''));
+  else if (ok > 1) notify(ok + ' lines saved · ' + units + ' units', true);
+  render();
+  return ok;
+}
+const pending = pid => infos.filter(x => (pid == null || String(x.r.P.p.id) === String(pid)) && !x.r.P.disc && curQtyKey(x) > 0).map(x => ({r: x.r, key: x.key, qty: curQtyKey(x)}));
+const curQtyKey = x => draft.has(x.key) ? draft.get(x.key) : x.r.toOrder;
+function scheduleAuto(key){
+  clearTimeout(autoT.get(key));
+  if (!autoOn) return;
+  autoT.set(key, setTimeout(async () => {
+    autoT.delete(key);
+    const x = infos.find(z => z.key === key); if (!x) return;
+    const qty = curQtyKey(x); if (qty <= 0 || !draft.has(key)) return;
+    await saveItems([{r: x.r, key, qty}]);
+  }, 2500));
+}
 function onClick(e){
   const t = e.target;
   const rb = t.closest('[data-recvbox]');
@@ -782,6 +817,8 @@ $('wrong').addEventListener('click', async e => {
 $('list').addEventListener('click', async e => {
   const t = e.target;
   if (t.id === 'more') { limit += PAGE; render(); return; }
+  const ps = t.closest('[data-psave]');
+  if (ps) { e.stopPropagation(); const list = pending(ps.getAttribute('data-psave')); if (!list.length) { notify('Nothing to save for this product'); return; } ps.disabled = true; await saveItems(list); return; }
   const dc = t.closest('[data-disc]');
   if (dc) {
     e.stopPropagation();
@@ -806,18 +843,13 @@ $('list').addEventListener('click', async e => {
     const i = +cell.getAttribute('data-ord'), key = infos[i].key;
     if (t.closest('[data-step]')) {
       draft.set(key, Math.max(0, curQty(i) + +t.closest('[data-step]').getAttribute('data-step')));
-      paint(i);
+      paint(i); scheduleAuto(key);
     } else if (t.closest('[data-save]')) {
-      const {r} = infos[i], P = r.P, qty = curQty(i), btn = t.closest('[data-save]');
+      const {r} = infos[i], qty = curQty(i);
       if (qty <= 0) return;
-      btn.disabled = true; btn.textContent = 'Saving…';
-      try {
-        const row = await Store.order({ vkey: key, product_id: P.p.id, product_title: P.p.title, product_url: P.p.url || '', image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''),
-          variant_title: r.title, supplier: P.supplier || 'Unassigned', qty, stock_base: r.stock });
-        if (row && row.id) orders.set(row.id, row);
-        draft.delete(key);
-      } catch (err) { notify('Save failed: ' + err.message); }
-      render();
+      t.closest('[data-save]').disabled = true; t.closest('[data-save]').textContent = 'Saving…';
+      clearTimeout(autoT.get(key)); autoT.delete(key);
+      await saveItems([{r, key, qty}]);
     }
     return;
   }
@@ -829,6 +861,17 @@ $('list').addEventListener('click', async e => {
   }
 });
 const setAll = v => { defaultOpen = v; state.clear(); document.querySelectorAll('.card').forEach(c => c.classList.toggle('open', v)); };
+$('autoSave').checked = autoOn;
+$('autoSave').addEventListener('change', () => { autoOn = $('autoSave').checked; try { localStorage.setItem('restockAutoSave', autoOn ? '1' : '0'); } catch (e) {} });
+let armSave = false, armSaveT = null;
+$('saveAll').addEventListener('click', async () => {
+  const list = pending(null);
+  if (!list.length) { notify('Nothing to save: no shown variant has a quantity to order'); return; }
+  const units = list.reduce((a, x) => a + x.qty, 0);
+  if (!armSave) { armSave = true; $('saveAll').textContent = 'Tap again: save ' + list.length + ' lines · ' + units + ' units'; clearTimeout(armSaveT); armSaveT = setTimeout(() => { armSave = false; $('saveAll').textContent = 'Save all shown'; }, 6000); return; }
+  armSave = false; clearTimeout(armSaveT); $('saveAll').textContent = 'Save all shown'; $('saveAll').disabled = true;
+  await saveItems(list); $('saveAll').disabled = false;
+});
 $('expAll').addEventListener('click', () => setAll(true));
 $('colAll').addEventListener('click', () => setAll(false));
 $('resetDone').addEventListener('click', () => { data.products.forEach(p=>setDone(p.id,false)); render(); });

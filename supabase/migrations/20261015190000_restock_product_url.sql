@@ -11,7 +11,7 @@ begin
   values (vk || '#' || nextval('public.restock_batch_seq'), vk, left(coalesce(p->>'product_id',''), 30), left(coalesce(p->>'product_title',''), 300),
           coalesce(nullif(p->>'image',''), ''), left(coalesce(p->>'variant_title',''), 120),
           left(coalesce(p->>'supplier',''), 100), q, nullif(p->>'stock_base','')::integer, auth.uid(),
-          case when p->>'product_url' ~* '^https://[^ ]{3,500}$' then p->>'product_url' end)
+          case when length(p->>'product_url') <= 500 and p->>'product_url' ~* '^https://[^ ]+$' then p->>'product_url' end)
   returning * into r;
   insert into public.restock_events(order_id, label, supplier, actor_name, actor_role, action, qty_to)
     values (r.id, r.product_title || ' · ' || r.variant_title, r.supplier, me, 'owner', 'ordered', r.qty);
