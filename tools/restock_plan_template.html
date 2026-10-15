@@ -290,7 +290,7 @@ function curQty(i){
 function ordHtml(i){
   const {r,key} = infos[i], row = orders.get(key), cur = curQty(i);
   const locked = !!row && row.status !== 'saved';
-  const noSup = !r.P.supplier;
+  const noSup = false;   // products without a supplier tag go to "Unassigned" for now
   const dirty = !row ? cur > 0 : row.qty !== cur;
   const btn = locked ? '' :
     `<button class="save${!dirty && row ? ' ok' : ''}" data-save="1" ${(dirty && !noSup) ? '' : 'disabled'} title="${noSup ? 'No supplier on this product (custom.supplier_name)' : 'Send to supplier'}">${!dirty && row ? 'Saved ✓' : 'Save'}</button>`;
@@ -414,7 +414,7 @@ $('list').addEventListener('click', async e => {
       btn.disabled = true; btn.textContent = 'Saving…';
       try {
         const row = await Store.upsert({ id: key, product_id: P.p.id, product_title: P.p.title, image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''),
-          variant_title: r.title, supplier: P.supplier, qty });
+          variant_title: r.title, supplier: P.supplier || 'Unassigned', qty });
         if (row && row.id) orders.set(key, row); else orders.delete(key);
         draft.delete(key);
       } catch (err) { notify('Save failed: ' + err.message); }
@@ -498,7 +498,7 @@ async function loadAccounts(){
     const users = await Store.users();
     const sup = [...new Set(data.products.map(p => p.supplier).filter(Boolean))].sort();
     box.innerHTML = `<b>Supplier accounts</b>
-      <div class="sub" style="margin:2px 0 8px">1) Create the login in Report Access and tick “Supplier Portal” for it. 2) Link it to the supplier name here (the name must match the product's supplier). A supplier only ever sees their own items.</div>
+      <div class="sub" style="margin:2px 0 8px">1) Create the login in Report Access and tick “Supplier Portal” for it. 2) Optional, for later: link it to a supplier name here. Until a login is linked it sees all items; once linked it only sees that supplier's items.</div>
       <datalist id="svNames">${sup.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
       <table><thead><tr><th>Person</th><th>Supplier Portal access</th><th>Supplier name</th><th></th></tr></thead><tbody>
       ${users.map(u => `<tr><td>${esc(u.display_name || u.username || u.email || '')}<div class="sub">${esc(u.email || '')}</div></td>

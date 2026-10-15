@@ -101,7 +101,7 @@ function img(r){ const s = r.image ? esc(r.image) + (r.image.includes('?') ? '&'
 
 function render(){
   const sup = $('supplier').value;
-  const mine = rows.filter(r => r.supplier === sup);
+  const mine = rows.filter(r => !sup || r.supplier === sup);
   const pending = mine.filter(r => r.status !== 'shipped'), shipped = mine.filter(r => r.status === 'shipped');
   const added = pending.filter(r => r.status === 'added');
   $('all').checked = pending.length > 0 && added.length === pending.length;
@@ -129,9 +129,9 @@ async function load(){
     rows = await Store.list();
     const names = [...new Set(rows.map(r => r.supplier).filter(Boolean))].sort();
     const cur = $('supplier').value;
-    $('supplier').innerHTML = names.map(n => `<option>${esc(n)}</option>`).join('') || '<option value="">—</option>';
+    $('supplier').innerHTML = (names.length > 1 ? '<option value="">All</option>' : '') + names.map(n => `<option>${esc(n)}</option>`).join('') || '<option value="">—</option>';
     if (names.includes(cur)) $('supplier').value = cur;
-    $('supplier').disabled = true;                                   // a supplier account only ever receives its own rows
+    $('supplier').disabled = names.length <= 1;
     $('bar').hidden = false; render();
   } catch (e) { $('list').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; $('bar').hidden = true; }
 }
@@ -143,12 +143,12 @@ $('list').addEventListener('click', e => {
   if (b) { const r = rows.find(x => x.id === b.dataset.id); if (r) act(() => Store.act(r.status === 'added' ? 'unadd' : 'add', [r.id])); }
 });
 $('all').addEventListener('change', () => {
-  const sup = $('supplier').value, pend = rows.filter(r => r.supplier === sup && r.status !== 'shipped');
+  const sup = $('supplier').value, pend = rows.filter(r => (!sup || r.supplier === sup) && r.status !== 'shipped');
   const on = $('all').checked;
   act(() => Store.act(on ? 'add' : 'unadd', pend.map(r => r.id)));
 });
 $('ship').addEventListener('click', () => {
-  const ids = rows.filter(r => r.supplier === $('supplier').value && r.status === 'added').map(r => r.id);
+  const ids = rows.filter(r => (!$('supplier').value || r.supplier === $('supplier').value) && r.status === 'added').map(r => r.id);
   if (!ids.length) return;
   const b = $('ship');
   if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = `Tap again to ship ${ids.length}`; setTimeout(() => { b.dataset.sure = ''; render(); }, 4000); return; }
