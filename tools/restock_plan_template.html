@@ -111,6 +111,8 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   #svShipped h3{font-size:12px;color:var(--muted);margin:16px 2px 6px;font-weight:600}
   .ship{color:var(--green);font-weight:600}
   button.recv{margin-left:6px;padding:0 8px}
+  #svActivity{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px;overflow-x:auto}
+  #svActivity table{width:100%}#svActivity td,#svActivity th{text-align:left}
   #svAccounts{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px}
   #svAccounts table{width:100%}#svAccounts td,#svAccounts th{text-align:left}
   #svAccounts input{width:170px}
@@ -209,10 +211,12 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
     <label class="o">Supplier <select id="svSup"></select></label>
     <span class="grow"></span><span class="sub" id="svCount"></span>
     <button id="svRefresh">Refresh</button>
+    <button id="svLog">Activity log</button>
     <button id="svAccts">Supplier accounts</button>
   </div>
   <div class="sub" style="margin:2px 2px 10px">This mirrors what the supplier sees: the product photo, the variant and the quantity to restock. When they press Add to box or Ship it shows here within a minute (and in My view).</div>
   <div id="svAccounts" hidden></div>
+  <div id="svActivity" hidden></div>
   <div id="svList"></div>
   <div id="svShipped"></div>
 </div>
@@ -250,6 +254,7 @@ const Store = {
   received: ids => call('received', { ids }),
   users: () => call('users'),
   setUser: (user_id, supplier) => call('setuser', { user_id, supplier }),
+  events: () => call('events'),
 };
 
 /* ---------------- calculations ---------------- */
@@ -342,12 +347,12 @@ const shipDay = o => o.ship_date ? new Date(o.ship_date + 'T00:00:00') : new Dat
 const daysBetween = (a,b) => Math.max(0, Math.floor((b - a) / DAY));
 function timeline(o){
   const bits = ['Ordered ' + dShort(o.saved_at)];
-  if (o.added_at) bits.push('In box ' + dShort(o.added_at));
-  if (o.shipped_at) bits.push('Shipped ' + dShort(shipDay(o)) + (o.box_no ? ' (box ' + o.box_no + ')' : ''));
+  if (o.added_at) bits.push('In box ' + dShort(o.added_at) + (o.added_by_name ? ' by ' + o.added_by_name : ''));
+  if (o.shipped_at) bits.push('Shipped ' + dShort(shipDay(o)) + (o.box_no ? ' (box ' + o.box_no + ')' : '') + (o.shipped_by_name ? ' by ' + o.shipped_by_name : ''));
   if (o.received_at) bits.push('Restocked ' + dShort(o.received_at) + ' · took ' + daysBetween(shipDay(o), new Date(o.received_at)) + 'd from shipping');
   return bits.join(' → ');
 }
-const lowFlag = o => eff(o) < o.qty ? `<div class="flag" title="The supplier cannot ship the full amount">⚠ Supplier reported low stock: shipping ${eff(o)} of ${o.qty}</div>` : '';
+const lowFlag = o => eff(o) < o.qty ? `<div class="flag" title="The supplier cannot ship the full amount">⚠ Supplier reported low stock: shipping ${eff(o)} of ${o.qty}${o.qty_by_name ? ' · ' + esc(o.qty_by_name) : ''}</div>` : '';
 function ordHtml(i){
   const {r,key} = infos[i], row = orders.get(key), cur = curQty(i);
   const live = isLive(row);
@@ -584,6 +589,21 @@ async function loadAccounts(){
       </tbody></table>`;
   } catch (err) { box.innerHTML = '<div class="sub">Could not load accounts: ' + esc(err.message) + '</div>'; }
 }
+const ACT = {ordered:'ordered', unordered:'cancelled the order', boxed:'added to box', unboxed:'removed from box', qty:'changed the quantity', shipped:'shipped', received:'marked restocked'};
+async function loadActivity(){
+  const box = $('svActivity'); box.innerHTML = '<div class="sub">Loading…</div>';
+  try {
+    const ev = await Store.events();
+    box.innerHTML = `<b>Activity log</b> <span class="sub">who did what, newest first (last ${ev.length})</span>
+      <table><thead><tr><th>When</th><th>Who</th><th>Did</th><th>Item</th><th>Qty</th><th>Box</th></tr></thead><tbody>
+      ${ev.map(e => `<tr><td>${esc(new Date(e.at).toLocaleString(undefined,{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))}</td>
+        <td>${esc(e.actor_name)} <span class="badge ${e.actor_role === 'supplier' ? 'c-amber' : 'c-info'}">${esc(e.actor_role)}</span>${e.supplier ? '<div class="sub">' + esc(e.supplier) + '</div>' : ''}</td>
+        <td>${esc(ACT[e.action] || e.action)}</td><td>${esc(e.label)}</td>
+        <td>${e.action === 'qty' ? esc(e.qty_from + ' → ' + e.qty_to) : (e.qty_to == null ? '' : esc(e.qty_to))}</td><td>${esc(e.box_no || '')}</td></tr>`).join('') || '<tr><td colspan="6" class="sub">Nothing yet.</td></tr>'}
+      </tbody></table>`;
+  } catch (err) { box.innerHTML = '<div class="sub">Could not load the log: ' + esc(err.message) + '</div>'; }
+}
+$('svLog').addEventListener('click', () => { const b = $('svActivity'); b.hidden = !b.hidden; if (!b.hidden) loadActivity(); });
 $('svAccts').addEventListener('click', () => { const b = $('svAccounts'); b.hidden = !b.hidden; if (!b.hidden) loadAccounts(); });
 $('svAccounts').addEventListener('click', async e => {
   const b = e.target.closest('[data-setu]'); if (!b) return;
