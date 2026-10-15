@@ -1557,7 +1557,7 @@
   rpBridge("restock-supplier", {
     state: async () => rpOk(await sb.rpc("restock_supplier_state")),
     add: async (d) => rpOk(await sb.rpc("restock_supplier_pick", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)), p_box: d.box ? rpText(d.box, 40) : null, p_confirm: !!d.confirm })),
-    deletebox: async (d) => rpOk(await sb.rpc("restock_supplier_delete_box", { p_box: rpText(d.box, 40) })),
+    deletebox: async (d) => rpOk(await sb.rpc("restock_supplier_delete_box2", { p_box: rpText(d.box, 40), p_to: d.to ? rpText(d.to, 40) : null })),
     remove: async (d) => rpOk(await sb.rpc("restock_supplier_remove", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)) })),
     newbox: async () => rpOk(await sb.rpc("restock_supplier_new_box")),
     setqty: async (d) => rpOk(await sb.rpc("restock_supplier_set_qty", { p_id: rpText(d.id, 140), p_qty: Math.max(0, Math.min(100000, Math.floor(Number(d.qty) || 0))) })),

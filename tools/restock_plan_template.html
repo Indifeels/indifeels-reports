@@ -228,6 +228,8 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .low{display:inline-block;background:var(--amber-bg);color:var(--amber);border-radius:999px;padding:1px 10px;font-size:12.5px;font-weight:700;margin-left:6px}
 @media (max-width:700px){.bx-prod{flex-direction:column}.bx-right{margin-left:0}}
 /*BXCSS_END*/
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 </style>
 </head>
 <body>
@@ -366,6 +368,14 @@ const bxByVariant = (a, b) => String(a.variant_title).localeCompare(String(b.var
 function bxGroup(list) { const m = new Map(); list.forEach(r => { if (!m.has(r.product_id)) m.set(r.product_id, []); m.get(r.product_id).push(r); }); return [...m.values()]; }
 const bxToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
+/* Delete-box control: only the newest open box can be deleted; its items move to another open box or back to the master list. */
+function bxDel(b, n, others, o) {
+  if (o.lastOpen && o.lastOpen !== b.box_no) return `<span class="bx-note">To delete this box, delete ${bxEsc(o.lastOpen)} first.</span>`;
+  const armed = o.armDel === b.box_no, sel = o.delTo || (others.length ? others[0] : '__master');
+  const pick = (n && others.length) ? `<label class="bx-mvto">Move its ${n} item${n === 1 ? '' : 's'} to<select data-delto>${others.map(x => `<option value="${bxEsc(x)}"${sel === x ? ' selected' : ''}>${bxEsc(x)}</option>`).join('')}<option value="__master"${sel === '__master' ? ' selected' : ''}>↩ Master list</option></select></label>` : '';
+  return pick + `<button class="danger${armed ? ' arm' : ''}" data-delbox="${bxEsc(b.box_no)}">${armed ? 'Tap again to delete' : 'Delete box'}</button>`;
+}
+
 /* One box tile. b = box row, lines = its order lines, o = {ro, open, who, openBoxes}. */
 function bxTile(b, lines, o) {
   const shipped = b.status === 'shipped', units = lines.reduce((a, r) => a + bxEff(r), 0), n = lines.length;
@@ -387,7 +397,7 @@ function bxTile(b, lines, o) {
       <label>Tracking link (optional)<input type="text" class="bx-url u" placeholder="https://…" maxlength="500"></label>
       <label>Tracking number (optional)<input type="text" class="bx-no" maxlength="80"></label>
       <button class="primary" data-ship="${bxEsc(b.box_no)}" ${n ? '' : 'disabled'}>Ship this box</button>
-      <button class="danger${o.armDel === b.box_no ? ' arm' : ''}" data-delbox="${bxEsc(b.box_no)}" title="Delete this box; its items go back to the master list">${o.armDel === b.box_no ? 'Tap again to delete' : 'Delete box'}</button>
+      ${bxDel(b, n, others, o)}
       <span class="bx-note">When shipped, the next item you add starts the next box.</span></div>`;
   }
   if (shipped) {

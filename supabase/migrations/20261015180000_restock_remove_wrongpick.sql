@@ -159,3 +159,38 @@ revoke all on function public.restock_tag_mismatch(text, text), public.restock_s
 grant execute on function public.restock_tag_mismatch(text, text), public.restock_supplier_pick(text[], text, boolean), public.restock_supplier_delete_box(text),
   public.restock_owner_release(text), public.restock_owner_ack_wrong(text[]) to authenticated, service_role;
 revoke all on function public.restock_supplier_add(text[], text) from public, anon, authenticated;
+
+-- delete a box: only the LATEST open box can go; its lines move to another open box (p_to) or back to the master list
+create function public.restock_supplier_delete_box2(p_box text, p_to text default null) returns integer
+language plpgsql security definer set search_path = '' as $$
+declare idn text := public.restock_box_identity(); c text; n integer; me text := public.restock_actor(); lastno text;
+begin
+  if not public.can_view('restock-supplier') then raise exception 'Not allowed'; end if;
+  c := public.restock_my_code();
+  if not exists (select 1 from public.restock_boxes where box_no = p_box and code = c and status = 'open') then raise exception 'That box cannot be deleted'; end if;
+  select box_no into lastno from public.restock_boxes where code = c and status = 'open' order by seq desc limit 1;
+  if lastno <> p_box then raise exception 'Delete % first: boxes are removed from the newest one down', lastno; end if;
+  if p_to is not null and p_to <> '' and not exists (select 1 from public.restock_boxes where box_no = p_to and code = c and status = 'open' and box_no <> p_box) then
+    raise exception 'That destination box is not available';
+  end if;
+  if p_to is not null and p_to <> '' then
+    with u as (update public.restock_orders o set box_no = p_to, updated_at = now()
+               where o.box_no = p_box and o.status = 'added' and o.supplier = idn returning o.*),
+    e as (insert into public.restock_events(order_id, label, supplier, actor_name, actor_role, action, box_no)
+          select id, product_title || ' · ' || variant_title, idn, me, 'supplier', 'boxed', p_to from u returning 1),
+    g as (delete from public.restock_boxes where box_no = p_box and code = c and status = 'open' returning 1)
+    select count(*) into n from u;
+  else
+    with u as (update public.restock_orders o set status = 'saved', claimed = false, supplier = coalesce(o.orig_supplier, o.supplier), box_no = null,
+          added_at = null, ship_qty = null, qty_by_name = null, wrong_pick = false, wrong_ack = false, updated_at = now()
+        where o.box_no = p_box and o.status = 'added' and o.supplier = idn returning o.*),
+    e as (insert into public.restock_events(order_id, label, supplier, actor_name, actor_role, action, qty_to)
+          select id, product_title || ' · ' || variant_title, idn, me, 'supplier', 'unboxed', qty from u returning 1),
+    g as (delete from public.restock_boxes where box_no = p_box and code = c and status = 'open' returning 1)
+    select count(*) into n from u;
+  end if;
+  return n;
+end $$;
+revoke all on function public.restock_supplier_delete_box2(text, text) from public, anon, authenticated;
+grant execute on function public.restock_supplier_delete_box2(text, text) to authenticated, service_role;
+revoke all on function public.restock_supplier_delete_box(text) from public, anon, authenticated;
