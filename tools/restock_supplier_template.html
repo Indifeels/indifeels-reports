@@ -120,6 +120,18 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 .gbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:8px;padding:7px 14px;font-weight:700;font-size:15px;text-decoration:none}.gbtn:hover{border-color:var(--blue)}.gbtn[hidden]{display:none}
+@media (max-width:700px){
+  .wrap{padding:0 10px 50px}
+  .mc,.bx-prod{padding:10px;gap:10px}
+  .mc img,.mc .ph,.bx-prod img,.bx-prod .ph{width:72px;height:72px}
+  .mc .pc,.bx-prod .pc{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .mc th,.bx-prod th{padding:4px 5px;font-size:11px}
+  .mc td,.bx-prod td{padding:8px 5px;font-size:15px}
+  .mc td.q,.bx-prod td.q{font-size:17px}
+  .mc td.a button{white-space:normal;max-width:96px;font-size:13px;padding:7px 8px;line-height:1.2}
+  .mc .pc table,.bx-prod .pc table{min-width:0}
+  .bx-prod .pc table{min-width:430px}
+}
 </style>
 </head>
 <body>
