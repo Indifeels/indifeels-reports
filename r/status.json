@@ -1,10 +1,10 @@
 {
  "call-tracking": {
-  "at": "2026-10-15T06:00+11:00",
-  "code_sha": "6718bbb9ab3908e42c336aec228bbd240fabcf6f",
+  "at": "2026-10-15T20:00+11:00",
+  "code_sha": "b92cbc06213268e9254297920bd26a91f726be33",
   "data_through": null,
-  "last_ok": "2026-10-15T06:00+11:00",
-  "manifest_version": "2026-10-14.color-game.2",
+  "last_ok": "2026-10-15T20:00+11:00",
+  "manifest_version": "2026-10-15.cash-report.1",
   "ok": true,
   "reason": ""
  },
