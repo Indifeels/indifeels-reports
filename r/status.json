@@ -81,10 +81,10 @@
   "reason": ""
  },
  "restock-plan": {
-  "at": "2026-10-15T11:25+11:00",
-  "code_sha": "c2aa91436e9ff7616881a445e3d9156b094d4d14",
+  "at": "2026-10-15T11:39+11:00",
+  "code_sha": "4d69e151e544c01bc1e6fe4952567a710b98432e",
   "data_through": null,
-  "last_ok": "2026-10-15T11:25+11:00",
+  "last_ok": "2026-10-15T11:39+11:00",
   "manifest_version": "2026-10-15.restock-planner.1",
   "ok": true,
   "reason": ""
