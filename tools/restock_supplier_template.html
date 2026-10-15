@@ -87,6 +87,8 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 .gbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:8px;padding:7px 14px;font-weight:700;font-size:15px;text-decoration:none}.gbtn:hover{border-color:var(--blue)}.gbtn[hidden]{display:none}
 </style>
 </head>
@@ -203,6 +205,9 @@ const arm = (k, kind) => { if (kind === 'del') armDel = k; else armKey = k; clea
 const taggedOf = ids => ids.filter(id => (S.orders.find(r => r.id === id) || {}).tagged_other);
 const picked = new Set(), openState = new Map();
 let tgtBox = '';
+const sendQ = new Map(), sendOf = r => sendQ.has(r.id) ? Math.min(r.qty, Math.max(1, sendQ.get(r.id))) : r.qty;
+/* after adding: save any lowered quantities ("you send") on the new box lines */
+async function saveSend(ids) { for (const id of ids) { if (sendQ.has(id)) { const r = S.orders.find(x => x.id === id), n = sendQ.get(id); sendQ.delete(id); if (r && n < r.qty) await Store.setQty(id, n); } } }
 const mineRows = () => masterRows().filter(r => r.tagged_mine);
 const masterRows = () => S.orders.filter(r => r.status === 'saved' && !r.claimed);
 
@@ -224,8 +229,8 @@ function render(){
   $('msel').textContent = picked.size ? picked.size + ' selected' : 'Items you add go to ' + act;
   const tg = taggedOf([...picked]).length;
   $('addsel').disabled = !picked.size; $('addsel').classList.toggle('warn', armKey === '__sel'); $('addsel').textContent = armKey === '__sel' ? `${tg} tagged to another supplier — tap again to confirm they're yours` : picked.size ? `Add ${picked.size} to ${tgtBox === '__new' ? 'a new box' : (tgtBox || act)}` : 'Add selected to box';
-  $('master').innerHTML = m.length ? bxGroup(m).map(g => `<div class="mc">${bxImg(g[0])}<table><thead><tr><th style="width:34px"></th><th>Variant</th><th style="text-align:center">Qty wanted</th><th></th></tr></thead><tbody>
-      ${g.slice().sort(bxByVariant).map(r => `<tr class="mt"><td><input type="checkbox" data-pick="${bxEsc(r.id)}" ${picked.has(r.id) ? 'checked' : ''}></td><td>${bxEsc(r.variant_title)}${r.tagged_other ? '<span class="tg">⚠ Tagged to another supplier</span>' : ''}<span class="sub">Requested ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
+  $('master').innerHTML = m.length ? bxGroup(m).map(g => `<div class="mc">${bxImg(g[0])}<table><thead><tr><th style="width:34px"></th><th>Variant</th><th style="text-align:center">Qty wanted</th><th style="text-align:center">You send</th><th></th></tr></thead><tbody>
+      ${g.slice().sort(bxByVariant).map(r => `<tr class="mt"><td><input type="checkbox" data-pick="${bxEsc(r.id)}" ${picked.has(r.id) ? 'checked' : ''}></td><td>${bxEsc(r.variant_title)}${r.tagged_other ? '<span class="tg">⚠ Tagged to another supplier</span>' : ''}<span class="sub">Requested ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td><td class="q"><span class="stp"><button data-mq="-1" data-id="${bxEsc(r.id)}" ${sendOf(r) <= 1 ? 'disabled' : ''}>−</button><b>${sendOf(r)}</b><button data-mq="1" data-id="${bxEsc(r.id)}" ${sendOf(r) >= r.qty ? 'disabled' : ''}>+</button></span></td>
         <td class="a"><button data-add="${bxEsc(r.id)}" class="${armKey === r.id ? 'warn' : ''}">${armKey === r.id ? 'Not yours? Tap again to confirm' : 'Add to ' + bxEsc(act)}</button></td></tr>`).join('')}
       </tbody></table></div>`).join('') : '<div class="empty">Nothing waiting on the master list right now.</div>';
 
@@ -259,12 +264,14 @@ async function act(fn, okMsg){
 }
 
 $('master').addEventListener('click', e => {
+  const mq = e.target.closest('[data-mq]');
+  if (mq) { const r = S.orders.find(x => x.id === mq.getAttribute('data-id')); if (r) { sendQ.set(r.id, Math.max(1, Math.min(r.qty, sendOf(r) + (+mq.getAttribute('data-mq'))))); render(); } return; }
   const one = e.target.closest('[data-add]');
   if (one) {
     const id = one.getAttribute('data-add');
     if (taggedOf([id]).length && armKey !== id) { arm(id); return; }
     const conf = armKey === id; armKey = '';
-    act(() => Store.add([id], null, conf), b => 'Added to ' + b);
+    act(async () => { const b = await Store.add([id], null, conf); await saveSend([id]); return b; }, b => 'Added to ' + b);
   }
 });
 $('master').addEventListener('change', e => {
@@ -277,7 +284,7 @@ $('addsel').addEventListener('click', () => {
   const ids = [...picked];
   if (taggedOf(ids).length && armKey !== '__sel') { arm('__sel'); return; }
   const conf = armKey === '__sel'; armKey = ''; picked.clear();
-  act(async () => { let to = tgtBox || null; if (to === '__new') to = await Store.newBox(); tgtBox = ''; return Store.add(ids, to, conf); }, b => ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' added to ' + b);
+  act(async () => { let to = tgtBox || null; if (to === '__new') to = await Store.newBox(); tgtBox = ''; const b = await Store.add(ids, to, conf); await saveSend(ids); return b; }, b => ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' added to ' + b);
 });
 $('newbox').addEventListener('click', () => act(() => Store.newBox(), b => 'Ready: ' + b));
 $('refresh').addEventListener('click', load);
