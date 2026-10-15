@@ -8,70 +8,100 @@
 try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 </script>
 <style>
-  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--muted:#8b949e;--text:#e6edf3;--blue:#58a6ff;--green:#3fb950;--green-bg:#0f2d1a;--amber:#e3b341;--amber-bg:#392a00;--info:#79c0ff;--info-bg:#0c2d4d;--grey-bg:#21262d;--red:#ff7b72}
-  :root[data-theme="light"]{--bg:#f6f8fa;--card:#fff;--border:#d0d7de;--muted:#656d76;--text:#1f2328;--blue:#0969da;--green:#1a7f37;--green-bg:#dafbe1;--amber:#9a6700;--amber-bg:#fff8c5;--info:#0550ae;--info-bg:#ddf4ff;--grey-bg:#eaeef2;--red:#cf222e}
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--muted:#9aa4af;--text:#e6edf3;--blue:#58a6ff;--green:#3fb950;--green-bg:#0f2d1a;--amber:#e3b341;--amber-bg:#392a00;--info:#79c0ff;--info-bg:#0c2d4d;--grey-bg:#21262d;--red:#ff7b72}
+  :root[data-theme="light"]{--bg:#f6f8fa;--card:#fff;--border:#d0d7de;--muted:#59626d;--text:#1f2328;--blue:#0969da;--green:#1a7f37;--green-bg:#dafbe1;--amber:#8a5a00;--amber-bg:#fff1c2;--info:#0550ae;--info-bg:#ddf4ff;--grey-bg:#eaeef2;--red:#cf222e}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
-  .wrap{max-width:720px;margin:0 auto;padding:0 10px 40px}
-  header{padding:14px 0 6px;display:flex;align-items:center;gap:10px}
-  header h1{flex:1;font-size:18px;margin:0}
-  button,select,input{font:inherit;border:1px solid var(--border);background:var(--grey-bg);color:var(--text);border-radius:6px;padding:3px 10px}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+  .wrap{max-width:960px;margin:0 auto;padding:0 14px 60px}
+  header{padding:18px 0 8px;display:flex;align-items:center;gap:12px}
+  header h1{flex:1;font-size:26px;margin:0}
+  header .who{color:var(--muted);font-size:15px}
+  button,select,input{font:inherit;font-size:15px;border:1px solid var(--border);background:var(--grey-bg);color:var(--text);border-radius:8px;padding:6px 14px}
   button{cursor:pointer}button:disabled{opacity:.45;cursor:default}
-  .bar{position:sticky;top:0;z-index:5;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin:6px 0 10px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
-  .bar label{display:flex;gap:6px;align-items:center}
-  .bar .sp{flex:1}
-  .primary{background:var(--blue);color:#fff;border-color:transparent;font-weight:600}
-  .card{display:flex;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px}
-  .card img,.ph{width:84px;height:84px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex:none;background:var(--grey-bg)}
-  .card table{flex:1;border-collapse:collapse;align-self:flex-start}
-  th{font-size:11px;color:var(--muted);font-weight:600;text-align:left;padding:2px 6px;border-bottom:1px solid var(--border)}
-  td{padding:4px 6px;border-bottom:1px solid var(--border)}
-  tr:last-child td{border-bottom:0}
-  td.q{font-weight:700;text-align:center;width:60px}
-  td.a{text-align:right;width:130px}
-  .box{min-width:112px}
-  .box.on{background:var(--amber-bg);color:var(--amber);border-color:transparent;font-weight:600}
-  h3{font-size:12px;color:var(--muted);margin:16px 2px 6px;font-weight:600}
-  .ship{color:var(--green);font-weight:600}
-  .ord{font-size:12px;color:var(--muted);font-weight:400}
-  .shipbox{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:var(--card);border:2px solid var(--blue);border-radius:8px;padding:10px 12px;margin:0 0 10px}
-  .shipbox input{width:170px}
-  .stp{display:inline-flex;align-items:center;gap:4px}
-  .stp b{min-width:26px;text-align:center;font-size:16px}
-  .stp button{padding:0 9px;font-weight:700}
-  .low{display:inline-block;background:var(--amber-bg);color:var(--amber);border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;margin-left:6px}
-  .empty{padding:24px;text-align:center;color:var(--muted)}
-  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
-  .modal.show{display:flex}
-  .modal form{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;display:grid;gap:8px;width:280px}
+  button:hover:not(:disabled){border-color:var(--muted)}
+  .primary{background:var(--blue);color:#fff;border-color:transparent;font-weight:700}
+  h2.sec{font-size:20px;margin:26px 2px 10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  h2.sec .n{font-size:14px;font-weight:600;color:var(--muted)}
+  h2.sec .sp{flex:1}
+  .hint{color:var(--muted);font-size:15px;margin:0 2px 12px}
+  .mbar{position:sticky;top:0;z-index:5;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin:0 0 12px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:16px}
+  .mbar label{display:flex;gap:8px;align-items:center;font-weight:600}
+  .mbar input[type=checkbox],.mt input[type=checkbox]{width:19px;height:19px;accent-color:var(--blue)}
+  .mbar .sp{flex:1}
+  .mc{display:flex;gap:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
+  .mc img,.mc .ph{width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--border);flex:none;background:var(--grey-bg)}
+  .mc table{flex:1;border-collapse:collapse;align-self:flex-start;min-width:0}
+  .mc th{font-size:12.5px;color:var(--muted);font-weight:700;text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.03em}
+  .mc td{padding:9px 8px;border-bottom:1px solid var(--border);font-size:17px;vertical-align:middle}
+  .mc tr:last-child td{border-bottom:0}
+  .mc td.q{font-weight:800;text-align:center;font-size:19px}
+  .mc .sub{display:block;font-size:12.5px;color:var(--muted);font-weight:400}
+  .mc td.a{text-align:right}
+  .empty{padding:26px;text-align:center;color:var(--muted);font-size:16px;background:var(--card);border:1px dashed var(--border);border-radius:12px}
+  .nextbox{background:var(--card);border:1px dashed var(--border);border-radius:12px;padding:14px 18px;margin-bottom:14px;font-size:16px;color:var(--muted)}
+  .nextbox b{color:var(--text)}
+  @media (max-width:700px){.mc{flex-direction:column}}
+/*BXCSS_START*/
+.bx{border-radius:14px;margin:0 0 14px;overflow:hidden;border:1px solid #05070a;box-shadow:0 8px 18px rgba(0,0,0,.38),0 2px 0 rgba(0,0,0,.35)}
+.bx-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:15px 20px;cursor:pointer;user-select:none;color:#f4f5f7;
+  background:linear-gradient(180deg,#434950 0%,#272b31 48%,#0d0f12 100%);border-top:1px solid rgba(255,255,255,.28);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 -4px 8px rgba(0,0,0,.55)}
+.bx-h:hover{filter:brightness(1.12)}
+.bx.open .bx-h{background:linear-gradient(180deg,#6a727c 0%,#4a5059 50%,#2f343b 100%);border-bottom:3px solid #d5d9de}
+.bx-h .chev{width:16px;color:#c3c9d0;transition:transform .15s;flex:none;font-size:13px}
+.bx.open .bx-h .chev{transform:rotate(90deg)}
+.bx-title{font-size:21px;font-weight:800;letter-spacing:.02em}
+.bx-pill{border-radius:999px;padding:3px 13px;font-size:14px;font-weight:700}
+.bx-pill.op{background:#e3b341;color:#2b2100}.bx-pill.sh{background:#3fb950;color:#06240f}
+.bx-sum{font-size:16px;color:#d6dae0}
+.bx-right{margin-left:auto;font-size:15px;color:#e6e9ed;display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center}
+.bx-right a{color:#9ccfff;font-weight:600}
+.bx-body{display:none;padding:16px;background:linear-gradient(180deg,#eceef1,#dfe2e6);
+  --bg:#f1f3f5;--card:#fff;--border:#c4cad1;--muted:#59626d;--text:#1f2328;--grey-bg:#e4e7ea;--green:#1a7f37;--green-bg:#dafbe1;--amber:#8a5a00;--amber-bg:#fff1c2;--blue:#0969da;--info:#0550ae;--info-bg:#ddf4ff;--red:#cf222e;--red-bg:#ffebe9;color:var(--text)}
+.bx.open .bx-body{display:block}
+.bx-prod{display:flex;gap:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
+.bx-prod img,.bx-prod .ph{width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--border);flex:none;background:var(--grey-bg)}
+.bx-prod table{flex:1;border-collapse:collapse;align-self:flex-start;min-width:0}
+.bx-prod th{font-size:12.5px;color:var(--muted);font-weight:700;text-align:left;padding:4px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.03em}
+.bx-prod td{padding:8px;border-bottom:1px solid var(--border);font-size:16px;vertical-align:middle}
+.bx-prod tr:last-child td{border-bottom:0}
+.bx-prod td.q{font-weight:800;text-align:center;font-size:18px}
+.bx-prod .sub{display:block;font-size:12.5px;color:var(--muted);font-weight:400}
+.bx-ship,.bx-trk{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:6px}
+.bx-ship label,.bx-trk label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted);font-weight:600}
+.bx-ship input,.bx-trk input{font-size:15px;padding:6px 10px;min-width:150px}
+.bx-ship input.u,.bx-trk input.u{min-width:260px}
+.bx-note{font-size:14px;color:var(--muted)}
+.bx-empty{padding:14px;color:var(--muted);font-size:15px}
+.stp{display:inline-flex;align-items:center;gap:6px}.stp b{min-width:30px;text-align:center;font-size:18px}.stp button{padding:2px 12px;font-weight:700;font-size:17px}
+.low{display:inline-block;background:var(--amber-bg);color:var(--amber);border-radius:999px;padding:1px 10px;font-size:12.5px;font-weight:700;margin-left:6px}
+@media (max-width:700px){.bx-prod{flex-direction:column}.bx-right{margin-left:0}}
+/*BXCSS_END*/
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Supplier Portal</h1>
+    <h1>Supplier Portal</h1><span class="who" id="who"></span>
+    <button id="refresh">Refresh</button>
     <button id="theme" title="Light / dark">◐</button>
   </header>
-  <div class="bar" id="bar" hidden>
-    <label>Supplier <select id="supplier"></select></label>
-    <label><input type="checkbox" id="all"> All added to box</label>
-    <span class="sp" id="count"></span>
-    <button class="primary" id="ship" disabled>Ship</button>
+
+  <h2 class="sec">Master list <span class="n" id="mcount"></span></h2>
+  <p class="hint">Everything Indifeels has asked to restock. Tick what you can make and press <b>Add to box</b>. Once added, it is yours and other suppliers no longer see it.</p>
+  <div class="mbar" id="mbar" hidden>
+    <label><input type="checkbox" id="mall"> Select all</label>
+    <span class="sp" id="msel"></span>
+    <button class="primary" id="addsel" disabled>Add selected to box</button>
   </div>
-  <div class="shipbox" id="shipbox" hidden>
-    <b id="shipTitle">Ship</b>
-    <span>Box number <b id="boxNo" style="font-size:17px">…</b></span>
-    <label>Ship date <input id="shipDate" type="date"></label>
-    <button class="primary" id="shipDone">Done</button>
-    <button id="shipCancel">Cancel</button>
-  </div>
-  <div id="list"></div>
-  <div id="shipped"></div>
+  <div id="master"></div>
+
+  <h2 class="sec">My boxes <span class="sp"></span><button id="newbox" title="Start the next box (the current one is full)">＋ New box</button></h2>
+  <div id="boxes"></div>
 </div>
 
 <script>
-function notify(msg, ok){ let b = document.getElementById('toast'); if (!b) { b = document.createElement('div'); b.id = 'toast'; b.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;z-index:99;max-width:90%'; document.body.appendChild(b); } b.style.background = ok ? '#1a7f37' : '#8e2b25'; b.textContent = msg; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 6000); }
-const DAY = 86400000;
+function notify(msg, ok){ let b = document.getElementById('toast'); if (!b) { b = document.createElement('div'); b.id = 'toast'; b.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);color:#fff;padding:10px 18px;border-radius:10px;font-size:15px;z-index:99;max-width:90%'; document.body.appendChild(b); } b.style.background = ok ? '#1a7f37' : '#8e2b25'; b.textContent = msg; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 6000); }
 const pendingCalls = new Map(); let reqId = 0;
 function call(action, payload) {
   return new Promise((res, rej) => {
@@ -90,111 +120,156 @@ window.addEventListener('message', e => {
   }
 });
 const Store = {
-  list: () => call('list'),
-  act: (op, ids) => call('act', { op, ids }),
+  state: () => call('state'),
+  add: (ids, box) => call('add', { ids, box: box || null }),
+  remove: ids => call('remove', { ids }),
+  newBox: () => call('newbox'),
+  shipBox: (box, date, url, no) => call('shipbox', { box, date, url, no }),
+  tracking: (box, url, no) => call('tracking', { box, url, no }),
   setQty: (id, qty) => call('setqty', { id, qty }),
-  ship: (ids, date) => call('ship', { ids, date }),
-  nextBox: () => call('nextbox'),
 };
 
 const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let rows = [];
+/*BXJS_START*/
+const bxEsc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const bxEff = r => r.ship_qty == null ? r.qty : r.ship_qty;
+const bxFmt = d => d.toLocaleDateString(undefined, {day: 'numeric', month: 'short', year: 'numeric'});
+const bxShipDate = b => b.ship_date ? new Date(b.ship_date + 'T00:00:00') : b.shipped_at ? new Date(b.shipped_at) : null;
+const bxAgo = d => { const n = Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000)); return n === 0 ? 'today' : n + (n === 1 ? ' day' : ' days') + ' ago'; };
+const bxUrl = u => /^https?:\/\//i.test(u || '') ? u : '';
+const bxImg = r => { const s = r.image ? bxEsc(r.image) + (r.image.includes('?') ? '&' : '?') + 'width=200' : ''; return s ? `<img src="${s}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=ph></div>'">` : '<div class="ph"></div>'; };
+const bxByVariant = (a, b) => String(a.variant_title).localeCompare(String(b.variant_title), undefined, {numeric: true});
+function bxGroup(list) { const m = new Map(); list.forEach(r => { if (!m.has(r.product_id)) m.set(r.product_id, []); m.get(r.product_id).push(r); }); return [...m.values()]; }
+const bxToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
-function sizeKey(t){
-  const p = t.split('/').pop().trim(), u = p.toUpperCase().replace(/\s/g,'');
-  let m = p.match(/-(\d+(?:\.\d+)?)$/); if (m) return +m[1];
-  if (/^\d+(\.\d+)?$/.test(p)) return +p;
-  const L = {XXS:1,XS:2,S:3,M:4,L:5,XL:6,XXL:7}; if (L[u]) return 1000 + L[u];
-  m = u.match(/^(\d)XL$/); return m ? 1005 + +m[1] : Infinity;
+/* One box tile. b = box row, lines = its order lines, o = {ro, open, who, openBoxes}. */
+function bxTile(b, lines, o) {
+  const shipped = b.status === 'shipped', units = lines.reduce((a, r) => a + bxEff(r), 0), n = lines.length;
+  const d = shipped ? bxShipDate(b) : null, url = bxUrl(b.tracking_url);
+  const head = `<div class="bx-h" data-bxt="${bxEsc(b.box_no)}"><span class="chev">▶</span>
+    <span class="bx-title">${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
+    <span class="bx-pill ${shipped ? 'sh' : 'op'}">${shipped ? 'Shipped' : 'Open'}</span>
+    <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}</span>
+    <span class="bx-right">${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : ''}${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track</a>' : ''}</span></div>`;
+  const others = (o.openBoxes || []).filter(x => x !== b.box_no);
+  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
+    ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
+      <td class="q">${(!o.ro && !shipped) ? `<span class="stp"><button data-q="-1" data-id="${bxEsc(r.id)}" ${bxEff(r) <= 0 ? 'disabled' : ''}>−</button><b>${bxEff(r)}</b><button data-q="1" data-id="${bxEsc(r.id)}" ${bxEff(r) >= r.qty ? 'disabled' : ''}>+</button></span>` : bxEff(r)}${bxEff(r) < r.qty ? '<span class="low">short ' + (r.qty - bxEff(r)) + '</span>' : ''}</td>
+      <td>${(!o.ro && !shipped) ? `<select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}
+    </tbody></table></div>`;
+  let body = n ? bxGroup(lines).map(rows).join('') : `<div class="bx-empty">Nothing in this box yet. Pick items from the master list and press “Add to box”.</div>`;
+  if (!o.ro && !shipped) {
+    body += `<div class="bx-ship" data-shipbox="${bxEsc(b.box_no)}"><label>Ship date<input type="date" class="bx-date" value="${bxToday()}"></label>
+      <label>Tracking link (optional)<input type="text" class="bx-url u" placeholder="https://…" maxlength="500"></label>
+      <label>Tracking number (optional)<input type="text" class="bx-no" maxlength="80"></label>
+      <button class="primary" data-ship="${bxEsc(b.box_no)}" ${n ? '' : 'disabled'}>Ship this box</button>
+      <span class="bx-note">When shipped, the next item you add starts the next box.</span></div>`;
+  }
+  if (shipped) {
+    body += o.ro ? ((url || b.tracking_no) ? `<div class="bx-trk"><span><b>Tracking</b> ${b.tracking_no ? bxEsc(b.tracking_no) : ''} ${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">' + bxEsc(url.length > 60 ? url.slice(0, 57) + '…' : url) + '</a>' : ''}</span></div>` : '')
+      : `<div class="bx-trk" data-trkbox="${bxEsc(b.box_no)}"><label>Tracking link<input type="text" class="bx-url u" value="${bxEsc(b.tracking_url || '')}" placeholder="https://…" maxlength="500"></label>
+      <label>Tracking number<input type="text" class="bx-no" value="${bxEsc(b.tracking_no || '')}" maxlength="80"></label><button data-trk="${bxEsc(b.box_no)}">Save tracking</button></div>`;
+  }
+  return `<section class="bx${o.open ? ' open' : ''}" data-bx="${bxEsc(b.box_no)}">${head}<div class="bx-body">${body}</div></section>`;
 }
-const bySize = (a,b) => (a.variant_title.split('/').slice(0,-1).join('/').localeCompare(b.variant_title.split('/').slice(0,-1).join('/'))) || (sizeKey(a.variant_title) - sizeKey(b.variant_title));
+/*BXJS_END*/
+let S = {orders: [], boxes: [], active: '', identity: '', code: ''};
+const picked = new Set(), openState = new Map();
+const masterRows = () => S.orders.filter(r => r.status === 'saved' && !r.claimed);
 
-function group(list){
-  const m = new Map(); list.forEach(r => { if (!m.has(r.product_id)) m.set(r.product_id, []); m.get(r.product_id).push(r); });
-  return [...m.values()];
-}
-function img(r){ const s = r.image ? esc(r.image) + (r.image.includes('?') ? '&' : '?') + 'width=200' : ''; return s ? `<img src="${s}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=ph></div>'">` : '<div class="ph"></div>'; }
-
-const eff = r => r.ship_qty == null ? r.qty : r.ship_qty;
-const fmtD = d => d.toLocaleDateString(undefined, {day: 'numeric', month: 'short', year: 'numeric'});
-const todayIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-const inSup = r => !$('supplier').value || r.supplier === $('supplier').value;
 function render(){
-  const mine = rows.filter(inSup);
-  const pending = mine.filter(r => r.status === 'saved' || r.status === 'added'), shipped = mine.filter(r => r.status === 'shipped' || r.status === 'received');
-  const added = pending.filter(r => r.status === 'added');
-  $('all').checked = pending.length > 0 && added.length === pending.length;
-  $('all').disabled = !pending.length;
-  $('count').textContent = pending.length ? `${added.length} of ${pending.length} in box` : '';
-  $('ship').disabled = !added.length; $('ship').textContent = added.length ? `Ship ${added.length} item${added.length>1?'s':''}` : 'Ship';
-  if (!added.length) $('shipbox').hidden = true;
+  $('who').textContent = S.identity ? 'Signed in as ' + S.identity + (S.code ? ' · box code ' + S.code : '') : '';
+  const m = masterRows();
+  [...picked].forEach(id => { if (!m.some(r => r.id === id)) picked.delete(id); });
+  $('mcount').textContent = m.length ? m.length + ' item' + (m.length === 1 ? '' : 's') + ' waiting' : '';
+  $('mbar').hidden = !m.length;
+  $('mall').checked = m.length > 0 && picked.size === m.length;
+  const openBox = S.boxes.find(b => b.status === 'open');
+  const act = S.active;
+  $('msel').textContent = picked.size ? picked.size + ' selected → ' + act : 'Items you add go to ' + act;
+  $('addsel').disabled = !picked.size; $('addsel').textContent = picked.size ? `Add ${picked.size} to ${act}` : 'Add selected to box';
+  $('master').innerHTML = m.length ? bxGroup(m).map(g => `<div class="mc">${bxImg(g[0])}<table><thead><tr><th style="width:34px"></th><th>Variant</th><th style="text-align:center">Qty wanted</th><th></th></tr></thead><tbody>
+      ${g.slice().sort(bxByVariant).map(r => `<tr class="mt"><td><input type="checkbox" data-pick="${bxEsc(r.id)}" ${picked.has(r.id) ? 'checked' : ''}></td><td>${bxEsc(r.variant_title)}<span class="sub">Requested ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
+        <td class="a"><button data-add="${bxEsc(r.id)}">Add to ${bxEsc(act)}</button></td></tr>`).join('')}
+      </tbody></table></div>`).join('') : '<div class="empty">Nothing waiting on the master list right now.</div>';
 
-  $('list').innerHTML = pending.length ? group(pending).map(g => `<div class="card">${img(g[0])}
-    <table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">Shipping</th><th></th></tr></thead><tbody>
-    ${g.sort(bySize).map(r => `<tr><td>${esc(r.variant_title)}<div class="ord">Ordered ${r.saved_at ? new Date(r.saved_at).toLocaleDateString(undefined,{day:'numeric',month:'short'}) : ''}</div></td><td class="q">${r.qty}</td>
-      <td class="q"><span class="stp"><button data-q="-1" data-id="${esc(r.id)}" ${eff(r) <= 0 ? 'disabled' : ''}>−</button><b>${eff(r)}</b><button data-q="1" data-id="${esc(r.id)}" ${eff(r) >= r.qty ? 'disabled' : ''}>+</button></span>${eff(r) < r.qty ? '<span class="low">short ' + (r.qty - eff(r)) + '</span>' : ''}</td>
-      <td class="a"><button class="box${r.status==='added'?' on':''}" data-id="${esc(r.id)}">${r.status==='added' ? '📦 In box' : 'Add to box'}</button></td></tr>`).join('')}
-    </tbody></table></div>`).join('') : `<div class="empty">Nothing to ship right now.</div>`;
-
-  const byBox = new Map();
-  shipped.forEach(r => { const k = (r.ship_date || String(r.shipped_at).slice(0, 10)) + '|' + (r.box_no || ''); if (!byBox.has(k)) byBox.set(k, []); byBox.get(k).push(r); });
-  $('shipped').innerHTML = [...byBox.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([k, list]) => {
-    const f = list[0], d = f.ship_date ? new Date(f.ship_date + 'T00:00:00') : new Date(f.shipped_at), days = Math.max(0, Math.floor((Date.now() - d.getTime()) / DAY));
-    return `<h3>${f.box_no ? 'Box ' + esc(f.box_no) + ' · ' : ''}Shipped ${fmtD(d)} · <span class="ship">${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days') + ' ago'}</span></h3>` +
-      group(list).map(g => `<div class="card">${img(g[0])}<table><tbody>${g.sort(bySize).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${eff(r)}${eff(r) < r.qty ? '<span class="low">of ' + r.qty + '</span>' : ''}</td><td class="a">${r.status === 'received' ? '✅ Received' : ''}</td></tr>`).join('')}</tbody></table></div>`).join('');
+  const openNos = S.boxes.filter(b => b.status === 'open').map(b => b.box_no);
+  const order = S.boxes.slice().sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1) || b.seq - a.seq);
+  let html = '';
+  if (!openBox) html += `<div class="nextbox">Your next box is <b>${bxEsc(act)}</b>. It starts as soon as you add the first item from the master list.</div>`;
+  html += order.map(b => {
+    const lines = S.orders.filter(r => r.box_no === b.box_no && ['added', 'shipped', 'received'].includes(r.status));
+    const isOpen = openState.has(b.box_no) ? openState.get(b.box_no) : b.status === 'open';
+    return bxTile(b, lines, {ro: false, open: isOpen, openBoxes: openNos});
   }).join('');
+  // shipped lines from before boxes existed (no box row): show them as shipped tiles
+  const known = new Set(S.boxes.map(b => b.box_no)), legacy = new Map();
+  S.orders.filter(r => r.status !== 'saved' && !(r.box_no && known.has(r.box_no))).forEach(r => { const k = r.box_no || '(no box)'; if (!legacy.has(k)) legacy.set(k, []); legacy.get(k).push(r); });
+  legacy.forEach((lines, k) => { const f = lines[0]; html += bxTile({box_no: k, status: f.status === 'added' ? 'open' : 'shipped', ship_date: f.ship_date, shipped_at: f.shipped_at}, lines, {ro: true, open: !!openState.get(k)}); });
+  $('boxes').innerHTML = html || '<div class="empty">No boxes yet.</div>';
 }
 
+let busy = false;
 async function load(){
-  try {
-    rows = await Store.list();
-    const names = [...new Set(rows.map(r => r.supplier).filter(Boolean))].sort();
-    const cur = $('supplier').value;
-    $('supplier').innerHTML = (names.length > 1 ? '<option value="">All</option>' : '') + names.map(n => `<option>${esc(n)}</option>`).join('') || '<option value="">—</option>';
-    if (names.includes(cur)) $('supplier').value = cur;
-    $('supplier').disabled = names.length <= 1;
-    $('bar').hidden = false; render();
-  } catch (e) { $('list').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; $('bar').hidden = true; }
+  if (busy) return;
+  try { S = await Store.state(); render(); }
+  catch (e) { $('master').innerHTML = '<div class="empty">' + bxEsc(e.message) + '</div>'; $('mbar').hidden = true; $('boxes').innerHTML = ''; }
 }
-async function act(fn){ try { await fn(); await load(); } catch (e) { notify('Failed: ' + e.message); } }
+async function act(fn, okMsg){
+  busy = true;
+  try { const r = await fn(); if (okMsg) notify(typeof okMsg === 'function' ? okMsg(r) : okMsg, true); }
+  catch (e) { notify('Failed: ' + e.message); }
+  busy = false; await load();
+}
 
-$('supplier').addEventListener('change', render);
-$('list').addEventListener('click', e => {
-  const q = e.target.closest('[data-q]');
+$('master').addEventListener('click', e => {
+  const one = e.target.closest('[data-add]');
+  if (one) { act(() => Store.add([one.getAttribute('data-add')]), b => 'Added to ' + b); }
+});
+$('master').addEventListener('change', e => {
+  const p = e.target.closest('[data-pick]'); if (!p) return;
+  const id = p.getAttribute('data-pick'); p.checked ? picked.add(id) : picked.delete(id); render();
+});
+$('mall').addEventListener('change', () => { const m = masterRows(); picked.clear(); if ($('mall').checked) m.forEach(r => picked.add(r.id)); render(); });
+$('addsel').addEventListener('click', () => { const ids = [...picked]; picked.clear(); act(() => Store.add(ids), b => ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' added to ' + b); });
+$('newbox').addEventListener('click', () => act(() => Store.newBox(), b => 'Ready: ' + b));
+$('refresh').addEventListener('click', load);
+$('boxes').addEventListener('click', e => {
+  const t = e.target;
+  const q = t.closest('[data-q]');
   if (q) {
-    const r = rows.find(x => x.id === q.dataset.id); if (!r) return;
-    const n = Math.max(0, Math.min(r.qty, eff(r) + (+q.dataset.q)));
+    const r = S.orders.find(x => x.id === q.getAttribute('data-id')); if (!r) return;
+    const n = Math.max(0, Math.min(r.qty, bxEff(r) + (+q.getAttribute('data-q'))));
     r.ship_qty = n >= r.qty ? null : n; render();                       // instant feedback, then save
     act(() => Store.setQty(r.id, n)); return;
   }
-  const b = e.target.closest('.box');
-  if (b) { const r = rows.find(x => x.id === b.dataset.id); if (r) act(() => Store.act(r.status === 'added' ? 'unadd' : 'add', [r.id])); }
+  const sh = t.closest('[data-ship]');
+  if (sh) {
+    const box = sh.getAttribute('data-ship'), pn = sh.closest('[data-shipbox]');
+    const date = pn.querySelector('.bx-date').value, url = pn.querySelector('.bx-url').value.trim(), no = pn.querySelector('.bx-no').value.trim();
+    if (!date) { notify('Pick the ship date'); return; }
+    if (url && !/^https?:\/\//i.test(url)) { notify('The tracking link must start with https://'); return; }
+    act(() => Store.shipBox(box, date, url, no), n => box + ' shipped (' + n + ' item' + (n === 1 ? '' : 's') + ')'); return;
+  }
+  const tk = t.closest('[data-trk]');
+  if (tk) {
+    const box = tk.getAttribute('data-trk'), pn = tk.closest('[data-trkbox]');
+    const url = pn.querySelector('.bx-url').value.trim(), no = pn.querySelector('.bx-no').value.trim();
+    if (url && !/^https?:\/\//i.test(url)) { notify('The tracking link must start with https://'); return; }
+    act(() => Store.tracking(box, url, no), 'Tracking saved'); return;
+  }
+  if (t.closest('a, input, select, button, label')) return;
+  const h = t.closest('[data-bxt]');
+  if (h) { const s = h.closest('.bx'), id = h.getAttribute('data-bxt'); s.classList.toggle('open'); openState.set(id, s.classList.contains('open')); }
 });
-$('all').addEventListener('change', () => {
-  const pend = rows.filter(r => inSup(r) && (r.status === 'saved' || r.status === 'added'));
-  const on = $('all').checked;
-  act(() => Store.act(on ? 'add' : 'unadd', pend.map(r => r.id)));
-});
-$('ship').addEventListener('click', () => {
-  const n = rows.filter(r => inSup(r) && r.status === 'added').length; if (!n) return;
-  $('shipTitle').textContent = `Ship ${n} item${n > 1 ? 's' : ''}`;
-  if (!$('shipDate').value) $('shipDate').value = todayIso();
-  $('shipbox').hidden = false; $('boxNo').textContent = '…';
-  Store.nextBox().then(b => { $('boxNo').textContent = b || '—'; }).catch(() => { $('boxNo').textContent = 'assigned automatically'; });
-});
-$('shipCancel').addEventListener('click', () => { $('shipbox').hidden = true; });
-$('shipDone').addEventListener('click', async () => {
-  const ids = rows.filter(r => inSup(r) && r.status === 'added').map(r => r.id), date = $('shipDate').value;
-  if (!ids.length) return;
-  if (!date) { notify('Pick the ship date'); return; }
-  $('shipDone').disabled = true;
-  try { const box = await Store.ship(ids, date); notify('Shipped in ' + box, true);  $('shipDate').value = todayIso(); $('shipbox').hidden = true; await load(); }
-  catch (e) { notify('Could not ship: ' + e.message); }
-  $('shipDone').disabled = false;
+$('boxes').addEventListener('change', e => {
+  const mv = e.target.closest('[data-mv]'); if (!mv || !mv.value) return;
+  const id = mv.getAttribute('data-mv'), to = mv.value;
+  if (to === '__master') act(() => Store.remove([id]), 'Sent back to the master list');
+  else act(() => Store.add([id], to), b => 'Moved to ' + b);
 });
 $('theme').addEventListener('click', () => { const n = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = n; try { parent.postMessage({ type: 'restock-supplier', action: 'theme', theme: n }, '*'); } catch(e) {} });
-setInterval(() => { if (document.visibilityState === 'visible') load(); }, 60000);   // keeps "N days ago" and new items fresh
+setInterval(() => { if (document.visibilityState === 'visible' && !/^(INPUT|SELECT)$/.test((document.activeElement || {}).tagName || '')) load(); }, 60000);
 load();
 try { parent.postMessage({ type: 'restock-supplier', action: 'ready' }, '*'); } catch (e) {}
 </script>

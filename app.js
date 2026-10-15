@@ -1546,23 +1546,23 @@
     cancel: async (d) => rpOk(await sb.rpc("restock_owner_cancel", { p_id: rpText(d.id, 140) })),
     disc: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); rpOk(await sb.rpc("restock_owner_set_discontinued", { p_product: String(d.product), p_value: !!d.value })); return true; },
     disclist: async () => rpOk(await sb.from("restock_discontinued").select("product_id,discontinued,synced_at")) || [],
+    boxes: async () => rpOk(await sb.from("restock_boxes").select("box_no,supplier,status,seq,created_at,shipped_at,ship_date,tracking_url,tracking_no").order("created_at", { ascending: false }).limit(500)) || [],
     received: async (d) => rpOk(await sb.rpc("restock_owner_received", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)) })),
     users: async () => rpOk(await sb.rpc("restock_supplier_users_list")),
     events: async () => rpOk(await sb.from("restock_events").select("at,order_id,label,supplier,actor_name,actor_role,action,qty_from,qty_to,box_no").order("at", { ascending: false }).limit(300)) || [],
     setuser: async (d) => { rpOk(await sb.rpc("restock_supplier_user_set", { p_user: rpText(d.user_id, 40), p_supplier: rpText(d.supplier, 100) })); return true; },
   });
   rpBridge("restock-supplier", {
-    list: async () => rpOk(await sb.rpc("restock_supplier_list")) || [],
-    act: async (d) => {
-      if (!["add", "unadd"].includes(d.op)) throw new Error("Bad action");
-      return rpOk(await sb.rpc("restock_supplier_act", { p_action: d.op, p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)) }));
-    },
+    state: async () => rpOk(await sb.rpc("restock_supplier_state")),
+    add: async (d) => rpOk(await sb.rpc("restock_supplier_add", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)), p_box: d.box ? rpText(d.box, 40) : null })),
+    remove: async (d) => rpOk(await sb.rpc("restock_supplier_remove", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)) })),
+    newbox: async () => rpOk(await sb.rpc("restock_supplier_new_box")),
     setqty: async (d) => rpOk(await sb.rpc("restock_supplier_set_qty", { p_id: rpText(d.id, 140), p_qty: Math.max(0, Math.min(100000, Math.floor(Number(d.qty) || 0))) })),
-    nextbox: async () => rpOk(await sb.rpc("restock_next_box")),
-    ship: async (d) => {
+    shipbox: async (d) => {
       const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : "";
-      return rpOk(await sb.rpc("restock_supplier_ship", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)), p_date: date || null }));
+      return rpOk(await sb.rpc("restock_supplier_ship_box", { p_box: rpText(d.box, 40), p_date: date || null, p_url: rpText(d.url, 500) || null, p_no: rpText(d.no, 80) || null }));
     },
+    tracking: async (d) => { rpOk(await sb.rpc("restock_supplier_tracking", { p_box: rpText(d.box, 40), p_url: rpText(d.url, 500), p_no: rpText(d.no, 80) })); return true; },
   });
 
   // ---------- colour tagging game ----------
