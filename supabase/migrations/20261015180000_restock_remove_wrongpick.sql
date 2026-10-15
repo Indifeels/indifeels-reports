@@ -25,7 +25,8 @@ begin
   end if;
   select coalesce(jsonb_agg(to_jsonb(x) order by x.product_id, x.variant_title, x.saved_at), '[]'::jsonb) into orders from (
     select o.id, o.vkey, o.product_id, o.image, o.variant_title, o.qty, o.ship_qty, o.status, o.saved_at, o.added_at, o.shipped_at, o.box_no, o.ship_date, o.claimed,
-           (not o.claimed and public.restock_tag_mismatch(o.supplier, idn)) as tagged_other
+           (not o.claimed and public.restock_tag_mismatch(o.supplier, idn)) as tagged_other,
+           (not o.claimed and btrim(coalesce(o.supplier, '')) not in ('', 'Unassigned') and not public.restock_tag_mismatch(o.supplier, idn)) as tagged_mine
     from public.restock_orders o
     where (not o.claimed or o.supplier = idn) and (o.status in ('saved','added') or o.shipped_at > now() - interval '90 days')) x;
   select coalesce(jsonb_agg(to_jsonb(b) order by b.seq desc), '[]'::jsonb) into boxes from (

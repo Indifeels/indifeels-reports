@@ -85,6 +85,8 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 /*BXCSS_END*/
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 </style>
 </head>
 <body>
@@ -98,8 +100,9 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   <h2 class="sec">Master list <span class="n" id="mcount"></span></h2>
   <p class="hint">Tick the boxes to pick up what you can make, then press <b>Add to box</b>.</p>
   <div class="mbar" id="mbar" hidden>
-    <label><input type="checkbox" id="mall"> Select all</label>
+    <label title="Selects the items tagged to you. Tick any others yourself."><input type="checkbox" id="mall"> Select all mine</label>
     <span class="sp" id="msel"></span>
+    <select id="boxsel" title="Which box the selected items go into"></select>
     <button class="primary" id="addsel" disabled>Add selected to box</button>
   </div>
   <div id="master"></div>
@@ -196,6 +199,8 @@ let armKey = '', armDel = '', delTo = '', armT = null;
 const arm = (k, kind) => { if (kind === 'del') armDel = k; else armKey = k; clearTimeout(armT); armT = setTimeout(() => { armKey = ''; armDel = ''; render(); }, 6000); render(); };
 const taggedOf = ids => ids.filter(id => (S.orders.find(r => r.id === id) || {}).tagged_other);
 const picked = new Set(), openState = new Map();
+let tgtBox = '';
+const mineRows = () => masterRows().filter(r => r.tagged_mine);
 const masterRows = () => S.orders.filter(r => r.status === 'saved' && !r.claimed);
 
 function render(){
@@ -204,12 +209,18 @@ function render(){
   [...picked].forEach(id => { if (!m.some(r => r.id === id)) picked.delete(id); });
   $('mcount').textContent = m.length ? m.length + ' item' + (m.length === 1 ? '' : 's') + ' waiting' : '';
   $('mbar').hidden = !m.length;
-  $('mall').checked = m.length > 0 && picked.size === m.length;
+  const mine = mineRows();
+  $('mall').checked = mine.length > 0 && mine.every(r => picked.has(r.id));
+  $('mall').disabled = !mine.length;
   const openBox = S.boxes.find(b => b.status === 'open');
   const act = S.active;
-  $('msel').textContent = picked.size ? picked.size + ' selected → ' + act : 'Items you add go to ' + act;
+  const opts = S.boxes.filter(b => b.status === 'open').map(b => b.box_no);
+  if (!opts.includes(tgtBox) && tgtBox !== '__new') tgtBox = '';
+  const hasItems = S.orders.some(r => r.box_no === act && r.status === 'added');
+  $('boxsel').innerHTML = (opts.includes(act) ? '' : `<option value="">${bxEsc(act)} (next)</option>`) + opts.map(x => `<option value="${bxEsc(x)}"${(tgtBox || act) === x ? ' selected' : ''}>${bxEsc(x)}</option>`).join('') + (hasItems ? `<option value="__new"${tgtBox === '__new' ? ' selected' : ''}>＋ New box</option>` : '');
+  $('msel').textContent = picked.size ? picked.size + ' selected' : 'Items you add go to ' + act;
   const tg = taggedOf([...picked]).length;
-  $('addsel').disabled = !picked.size; $('addsel').classList.toggle('warn', armKey === '__sel'); $('addsel').textContent = armKey === '__sel' ? `${tg} tagged to another supplier — tap again to confirm they're yours` : picked.size ? `Add ${picked.size} to ${act}` : 'Add selected to box';
+  $('addsel').disabled = !picked.size; $('addsel').classList.toggle('warn', armKey === '__sel'); $('addsel').textContent = armKey === '__sel' ? `${tg} tagged to another supplier — tap again to confirm they're yours` : picked.size ? `Add ${picked.size} to ${tgtBox === '__new' ? 'a new box' : (tgtBox || act)}` : 'Add selected to box';
   $('master').innerHTML = m.length ? bxGroup(m).map(g => `<div class="mc">${bxImg(g[0])}<table><thead><tr><th style="width:34px"></th><th>Variant</th><th style="text-align:center">Qty wanted</th><th></th></tr></thead><tbody>
       ${g.slice().sort(bxByVariant).map(r => `<tr class="mt"><td><input type="checkbox" data-pick="${bxEsc(r.id)}" ${picked.has(r.id) ? 'checked' : ''}></td><td>${bxEsc(r.variant_title)}${r.tagged_other ? '<span class="tg">⚠ Tagged to another supplier</span>' : ''}<span class="sub">Requested ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
         <td class="a"><button data-add="${bxEsc(r.id)}" class="${armKey === r.id ? 'warn' : ''}">${armKey === r.id ? 'Not yours? Tap again to confirm' : 'Add to ' + bxEsc(act)}</button></td></tr>`).join('')}
@@ -257,12 +268,13 @@ $('master').addEventListener('change', e => {
   const p = e.target.closest('[data-pick]'); if (!p) return;
   const id = p.getAttribute('data-pick'); p.checked ? picked.add(id) : picked.delete(id); render();
 });
-$('mall').addEventListener('change', () => { const m = masterRows(); picked.clear(); if ($('mall').checked) m.forEach(r => picked.add(r.id)); render(); });
+$('mall').addEventListener('change', () => { const m = mineRows(); if ($('mall').checked) m.forEach(r => picked.add(r.id)); else m.forEach(r => picked.delete(r.id)); render(); });
+$('boxsel').addEventListener('change', () => { tgtBox = $('boxsel').value; render(); });
 $('addsel').addEventListener('click', () => {
   const ids = [...picked];
   if (taggedOf(ids).length && armKey !== '__sel') { arm('__sel'); return; }
   const conf = armKey === '__sel'; armKey = ''; picked.clear();
-  act(() => Store.add(ids, null, conf), b => ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' added to ' + b);
+  act(async () => { let to = tgtBox || null; if (to === '__new') to = await Store.newBox(); tgtBox = ''; return Store.add(ids, to, conf); }, b => ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' added to ' + b);
 });
 $('newbox').addEventListener('click', () => act(() => Store.newBox(), b => 'Ready: ' + b));
 $('refresh').addEventListener('click', load);

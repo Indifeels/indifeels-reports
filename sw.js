@@ -1,6 +1,6 @@
 // Caches the app shell so it opens fast; report files always come fresh from the network.
-const CACHE = "ir-shell-v63-delbox";
-const SHELL = ["./", "index.html", "app.css?v=31-logo", "app.js?v=55-delbox", "schedule-panel.css?v=4", "schedule-panel.js?v=4", "board-panel.css?v=9", "board-panel.js?v=7", "report-charcoal.css?v=1", "config.js", "vendor/supabase.js", "manifest.webmanifest", "icons/icon-192.png", "icons/favicon-48.png", "icons/badge-96.png", "favicon.ico"];
+const CACHE = "ir-shell-v64-selmine";
+const SHELL = ["./", "index.html", "app.css?v=31-logo", "app.js?v=56-selmine", "schedule-panel.css?v=4", "schedule-panel.js?v=4", "board-panel.css?v=9", "board-panel.js?v=7", "report-charcoal.css?v=1", "config.js", "vendor/supabase.js", "manifest.webmanifest", "icons/icon-192.png", "icons/favicon-48.png", "icons/badge-96.png", "favicon.ico"];
 self.addEventListener("install", (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("activate", (e) => e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener("fetch", (e) => {
