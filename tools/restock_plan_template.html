@@ -185,13 +185,17 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   button.recvbox{background:var(--green-bg);color:var(--green);border-color:transparent;font-weight:600}
   td.sub2{font-size:12px;color:var(--muted);font-weight:400}
   .why{cursor:help}
+  #wrong{background:var(--red-bg);border:2px solid var(--red);border-radius:12px;padding:10px 16px;margin-bottom:12px;color:var(--text)}
+  #wrong .wr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:7px 0;border-bottom:1px solid var(--border);font-size:15px}
+  #wrong .wr:last-child{border-bottom:0}
+  #wrong .wr span.t{flex:1;min-width:260px}
+  .wp{display:inline-block;background:var(--red);color:#fff;border-radius:999px;padding:1px 10px;font-size:12.5px;font-weight:700;margin-left:6px}
 /*BXCSS_START*/
 .bx{border-radius:14px;margin:0 0 14px;overflow:hidden;border:1px solid #05070a;box-shadow:0 8px 18px rgba(0,0,0,.38),0 2px 0 rgba(0,0,0,.35)}
 .bx-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:15px 20px;cursor:pointer;user-select:none;color:#f4f5f7;
   background:linear-gradient(180deg,#434950 0%,#272b31 48%,#0d0f12 100%);border-top:1px solid rgba(255,255,255,.28);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 -4px 8px rgba(0,0,0,.55)}
 .bx-h:hover{filter:brightness(1.12)}
-.bx.open .bx-h{background:linear-gradient(180deg,#6a727c 0%,#4a5059 50%,#2f343b 100%);border-bottom:3px solid #d5d9de}
 .bx-h .chev{width:16px;color:#c3c9d0;transition:transform .15s;flex:none;font-size:13px}
 .bx.open .bx-h .chev{transform:rotate(90deg)}
 .bx-title{font-size:21px;font-weight:800;letter-spacing:.02em}
@@ -200,8 +204,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx-sum{font-size:16px;color:#d6dae0}
 .bx-right{margin-left:auto;font-size:15px;color:#e6e9ed;display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center}
 .bx-right a{color:#9ccfff;font-weight:600}
-.bx-body{display:none;padding:16px;background:linear-gradient(180deg,#eceef1,#dfe2e6);
-  --bg:#f1f3f5;--card:#fff;--border:#c4cad1;--muted:#59626d;--text:#1f2328;--grey-bg:#e4e7ea;--green:#1a7f37;--green-bg:#dafbe1;--amber:#8a5a00;--amber-bg:#fff1c2;--blue:#0969da;--info:#0550ae;--info-bg:#ddf4ff;--red:#cf222e;--red-bg:#ffebe9;color:var(--text)}
+.bx-body{display:none;padding:16px;background:var(--bg)}
 .bx.open .bx-body{display:block}
 .bx-prod{display:flex;gap:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
 .bx-prod img,.bx-prod .ph{width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--border);flex:none;background:var(--grey-bg)}
@@ -215,6 +218,10 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx-ship label,.bx-trk label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted);font-weight:600}
 .bx-ship input,.bx-trk input{font-size:15px;padding:6px 10px;min-width:150px}
 .bx-ship input.u,.bx-trk input.u{min-width:260px}
+.bx button.x{padding:3px 10px;font-weight:800;font-size:16px;color:var(--red);flex:none}
+.bx button.danger{color:var(--red);border-color:var(--red)}
+.bx button.danger.arm{background:var(--red);color:#fff}
+.wp{display:inline-block;background:var(--red);color:#fff;border-radius:999px;padding:1px 10px;font-size:12.5px;font-weight:700;margin-left:6px}
 .bx-note{font-size:14px;color:var(--muted)}
 .bx-empty{padding:14px;color:var(--muted);font-size:15px}
 .stp{display:inline-flex;align-items:center;gap:6px}.stp b{min-width:30px;text-align:center;font-size:18px}.stp button{padding:2px 12px;font-weight:700;font-size:17px}
@@ -260,6 +267,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
     <span>🔴 Out of stock</span><span>🟠 &lt; 7 days to stockout</span><span>🟡 &lt; 14 days</span><span>🟢 OK</span><span>⚪ No sales</span>
     <span>Cells: green = good · amber = watch · red = act · blue = info</span>
   </div>
+  <div id="wrong" hidden></div>
   <div id="boxes" hidden></div>
   <div id="list"></div>
 
@@ -331,6 +339,8 @@ const Store = {
   setUser: (user_id, supplier) => call('setuser', { user_id, supplier }),
   events: () => call('events'),
   boxes: () => call('boxes'),
+  release: id => call('release', { id }),
+  ackWrong: ids => call('ackwrong', { ids }),
 };
 
 /* ---------------- calculations ---------------- */
@@ -367,9 +377,9 @@ function bxTile(b, lines, o) {
     <span class="bx-right">${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : ''}${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track</a>' : ''}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
   const rows = g => `<div class="bx-prod">${bxImg(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
-    ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
+    ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}${r.wrong_pick ? '<span class="wp" title="Tagged to another supplier">⚠ wrong pick</span>' : ''}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
       <td class="q">${(!o.ro && !shipped) ? `<span class="stp"><button data-q="-1" data-id="${bxEsc(r.id)}" ${bxEff(r) <= 0 ? 'disabled' : ''}>−</button><b>${bxEff(r)}</b><button data-q="1" data-id="${bxEsc(r.id)}" ${bxEff(r) >= r.qty ? 'disabled' : ''}>+</button></span>` : bxEff(r)}${bxEff(r) < r.qty ? '<span class="low">short ' + (r.qty - bxEff(r)) + '</span>' : ''}</td>
-      <td>${(!o.ro && !shipped) ? `<select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}
+      <td>${(!o.ro && !shipped) ? `<span style="display:inline-flex;gap:8px;align-items:center"><select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select><button class="x" data-rm="${bxEsc(r.id)}" title="Remove from this box (back to the master list)">✕</button></span>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}
     </tbody></table></div>`;
   let body = n ? bxGroup(lines).map(rows).join('') : `<div class="bx-empty">Nothing in this box yet. Pick items from the master list and press “Add to box”.</div>`;
   if (!o.ro && !shipped) {
@@ -377,6 +387,7 @@ function bxTile(b, lines, o) {
       <label>Tracking link (optional)<input type="text" class="bx-url u" placeholder="https://…" maxlength="500"></label>
       <label>Tracking number (optional)<input type="text" class="bx-no" maxlength="80"></label>
       <button class="primary" data-ship="${bxEsc(b.box_no)}" ${n ? '' : 'disabled'}>Ship this box</button>
+      <button class="danger${o.armDel === b.box_no ? ' arm' : ''}" data-delbox="${bxEsc(b.box_no)}" title="Delete this box; its items go back to the master list">${o.armDel === b.box_no ? 'Tap again to delete' : 'Delete box'}</button>
       <span class="bx-note">When shipped, the next item you add starts the next box.</span></div>`;
   }
   if (shipped) {
@@ -548,7 +559,7 @@ function ordHtml(i){
 function lineHtml(o){
   const tip = ' title="' + esc(timeline(o)) + '"';
   if (o.status === 'saved') return `<div class="ln"><span class="badge c-info"${tip}>On master list ${o.qty}</span><span class="sub">${dShort(o.saved_at)}</span><button class="x" data-cancel="${esc(o.id)}" title="Cancel this order line (only until the supplier boxes it)">×</button></div>`;
-  if (o.status === 'added') return `<div class="ln"><span class="badge c-amber"${tip}>📦 In box ${eff(o)}${o.box_no ? ' · ' + esc(o.box_no) : ''}${o.claimed && o.supplier ? ' · ' + esc(o.supplier) : ''}</span></div>${lowFlag(o)}`;
+  if (o.status === 'added') return `<div class="ln"><span class="badge c-amber"${tip}>📦 In box ${eff(o)}${o.box_no ? ' · ' + esc(o.box_no) : ''}${o.claimed && o.supplier ? ' · ' + esc(o.supplier) : ''}</span>${o.wrong_pick ? '<span class="wp" title="Picked by a supplier this product is not tagged to">⚠ wrong pick</span>' : ''}<button class="x" data-cancel="${esc(o.id)}" title="Remove this line (the supplier loses it)">×</button></div>${lowFlag(o)}`;
   const d = shipDay(o), days = daysBetween(d, Date.now());
   return `<div class="ln"><span class="badge c-green"${tip}>🚚 ${eff(o)} shipped ${dShort(d)}${o.box_no ? ' · ' + esc(o.box_no) : ''} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days')}</span><button class="recv" data-recv="${esc(o.id)}" title="This line arrived: stop its timer">Received</button></div>${lowFlag(o)}`;
 }
@@ -611,6 +622,19 @@ function queueTile(){
   return `<div class="stat" data-qt="1"><b>${c.saved} · ${c.added} · ${c.shipped}</b><span>Saved · in box · shipped</span></div>` +
          `<div class="stat" data-qt="1"><b>${incoming}</b><span>Units on the way${low ? ' · ⚠ ' + low + ' short' : ''}</span></div>`;
 }
+const wrongList = () => [...orders.values()].filter(o => o.wrong_pick && !o.wrong_ack && (o.status === 'added' || o.status === 'shipped'));
+let seenWrong = null;
+function renderWrong(){
+  const w = wrongList(), el = $('wrong');
+  el.hidden = !w.length;
+  if (!w.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<b>⚠ ${w.length} wrong pick${w.length === 1 ? '' : 's'}: a supplier picked something tagged to someone else</b>` + w.map(o =>
+    `<div class="wr"><span class="t"><b>${esc(o.supplier || '?')}</b> picked <b>${esc(o.product_title)} · ${esc(o.variant_title)}</b> × ${eff(o)} — tagged to <b>${esc(o.orig_supplier || '?')}</b>${o.box_no ? ' · ' + esc(o.box_no) : ''}</span>
+      <button data-ackw="${esc(o.id)}">Allow</button>${o.status === 'added' ? `<button class="x" data-release="${esc(o.id)}" title="Return it to the master list">Send back</button>` : '<span class="sub">already shipped</span>'}</div>`).join('');
+  const ids = new Set(w.map(o => o.id));
+  if (seenWrong) { const fresh = w.filter(o => !seenWrong.has(o.id)); if (fresh.length) notify('Wrong pick: ' + fresh[0].supplier + ' picked ' + fresh[0].product_title + ' · ' + fresh[0].variant_title + ' (tagged to ' + (fresh[0].orig_supplier || '?') + ')'); }
+  seenWrong = ids;
+}
 let boxGroups = [];
 const trk = box => { const x = boxesData.find(b => b.box_no === box); if (!x) return ''; const u = bxUrl(x.tracking_url); return (x.tracking_no ? ' <span class="sub">· tracking ' + esc(x.tracking_no) + '</span>' : '') + (u ? ' <a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">🔗 Track</a>' : ''); };
 function renderBoxes(){
@@ -640,7 +664,7 @@ function render(){
     [entries.filter(v=>!v.P.disc && v.level==='orange').length,'Under 7 days left'],
     [live.reduce((a,r)=>a+r.units,0),'Units still to order'],[activeElig,'Stock More Variants'],
     [prods.length - live.length,'Discontinued']
-  ].map(([n,l])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join('') + queueTile();
+  ].concat(wrongList().length ? [[wrongList().length,'⚠ Wrong picks']] : []).map(([n,l])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join('') + queueTile();
   $('sub').textContent = `${data.source || ''} · Generated ${new Date(data.generatedAt).toLocaleString()} · ${LEAD_DAYS}-day lead time`;
 
   const pass = r => (!supSel || (r.P.supplier || '(none)') === supSel) &&
@@ -670,7 +694,7 @@ function render(){
   let html = shown.map(cardHtml).join('');
   if (groups.length > shown.length) html += `<button class="more" id="more">Show more (${groups.length - shown.length} more)</button>`;
   $('list').innerHTML = html || '<div class="empty">Nothing to show with the current filters.</div>';
-  renderBoxes();
+  renderBoxes(); renderWrong();
 }
 
 /* ---------------- events ---------------- */
@@ -694,6 +718,15 @@ function onClick(e){
   if (rc) { const o = orders.get(rc.getAttribute('data-recv')); rc.disabled = true; receive([rc.getAttribute('data-recv')], (o ? eff(o) : '') + ' received' + (o && o.box_no ? ' · ' + o.box_no : '')); return; }
 }
 $('boxes').addEventListener('click', onClick);
+$('wrong').addEventListener('click', async e => {
+  const a = e.target.closest('[data-ackw]'), r = e.target.closest('[data-release]');
+  try {
+    if (a) { const id = a.getAttribute('data-ackw'); a.disabled = true; await Store.ackWrong([id]); const o = orders.get(id); if (o) o.wrong_ack = true; }
+    else if (r) { const id = r.getAttribute('data-release'); r.disabled = true; await Store.release(id); const o = orders.get(id); if (o) Object.assign(o, {status: 'saved', claimed: false, box_no: null, supplier: o.orig_supplier || o.supplier, wrong_pick: false}); }
+    else return;
+  } catch (err) { notify('Could not update: ' + err.message); }
+  render();
+});
 $('list').addEventListener('click', async e => {
   const t = e.target;
   if (t.id === 'more') { limit += PAGE; render(); return; }
@@ -788,7 +821,7 @@ async function refresh(){
     if (landed.length) {
       try { await Store.received(landed.map(o => o.id)); landed.forEach(o => { o.status = 'received'; o.received_at = new Date().toISOString(); }); } catch (e) { /* manual Received buttons still work */ }
     }
-    const sig = JSON.stringify([[...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty, o.box_no, o.supplier]), [...discMap.entries()], boxesData.map(x => [x.box_no, x.status, x.tracking_no, x.tracking_url])]);
+    const sig = JSON.stringify([[...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty, o.box_no, o.supplier, o.wrong_pick, o.wrong_ack]), [...discMap.entries()], boxesData.map(x => [x.box_no, x.status, x.tracking_no, x.tracking_url])]);
     if (sig !== lastSig) { lastSig = sig; render(); }
     updateQueue(); if (!$('viewSup').hidden) renderSv();
   } catch (err) { $('sub').textContent = 'Could not load supplier status: ' + err.message; }

@@ -21,9 +21,9 @@ function bxTile(b, lines, o) {
     <span class="bx-right">${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : ''}${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track</a>' : ''}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
   const rows = g => `<div class="bx-prod">${bxImg(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
-    ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
+    ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}${r.wrong_pick ? '<span class="wp" title="Tagged to another supplier">⚠ wrong pick</span>' : ''}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
       <td class="q">${(!o.ro && !shipped) ? `<span class="stp"><button data-q="-1" data-id="${bxEsc(r.id)}" ${bxEff(r) <= 0 ? 'disabled' : ''}>−</button><b>${bxEff(r)}</b><button data-q="1" data-id="${bxEsc(r.id)}" ${bxEff(r) >= r.qty ? 'disabled' : ''}>+</button></span>` : bxEff(r)}${bxEff(r) < r.qty ? '<span class="low">short ' + (r.qty - bxEff(r)) + '</span>' : ''}</td>
-      <td>${(!o.ro && !shipped) ? `<select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}
+      <td>${(!o.ro && !shipped) ? `<span style="display:inline-flex;gap:8px;align-items:center"><select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select><button class="x" data-rm="${bxEsc(r.id)}" title="Remove from this box (back to the master list)">✕</button></span>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}
     </tbody></table></div>`;
   let body = n ? bxGroup(lines).map(rows).join('') : `<div class="bx-empty">Nothing in this box yet. Pick items from the master list and press “Add to box”.</div>`;
   if (!o.ro && !shipped) {
@@ -31,6 +31,7 @@ function bxTile(b, lines, o) {
       <label>Tracking link (optional)<input type="text" class="bx-url u" placeholder="https://…" maxlength="500"></label>
       <label>Tracking number (optional)<input type="text" class="bx-no" maxlength="80"></label>
       <button class="primary" data-ship="${bxEsc(b.box_no)}" ${n ? '' : 'disabled'}>Ship this box</button>
+      <button class="danger${o.armDel === b.box_no ? ' arm' : ''}" data-delbox="${bxEsc(b.box_no)}" title="Delete this box; its items go back to the master list">${o.armDel === b.box_no ? 'Tap again to delete' : 'Delete box'}</button>
       <span class="bx-note">When shipped, the next item you add starts the next box.</span></div>`;
   }
   if (shipped) {

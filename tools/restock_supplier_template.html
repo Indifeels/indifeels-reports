@@ -14,8 +14,10 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
   .wrap{max-width:960px;margin:0 auto;padding:0 14px 60px}
   header{padding:18px 0 8px;display:flex;align-items:center;gap:12px}
-  header h1{flex:1;font-size:26px;margin:0}
-  header .who{color:var(--muted);font-size:15px}
+  header .hd{flex:1}
+  header h1{font-size:30px;margin:0;line-height:1.15}
+  header .portal{font-size:21px;font-weight:700;color:var(--muted);margin-top:2px}
+  header .who{color:var(--text);font-size:18px;margin-top:6px;font-weight:600}
   button,select,input{font:inherit;font-size:15px;border:1px solid var(--border);background:var(--grey-bg);color:var(--text);border-radius:8px;padding:6px 14px}
   button{cursor:pointer}button:disabled{opacity:.45;cursor:default}
   button:hover:not(:disabled){border-color:var(--muted)}
@@ -40,6 +42,8 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   .empty{padding:26px;text-align:center;color:var(--muted);font-size:16px;background:var(--card);border:1px dashed var(--border);border-radius:12px}
   .nextbox{background:var(--card);border:1px dashed var(--border);border-radius:12px;padding:14px 18px;margin-bottom:14px;font-size:16px;color:var(--muted)}
   .nextbox b{color:var(--text)}
+  .tg{display:inline-block;background:var(--amber-bg);color:var(--amber);border-radius:999px;padding:1px 10px;font-size:12.5px;font-weight:700;margin-left:8px}
+  button.warn{background:var(--amber-bg);color:var(--amber);border-color:var(--amber);font-weight:700}
   @media (max-width:700px){.mc{flex-direction:column}}
 /*BXCSS_START*/
 .bx{border-radius:14px;margin:0 0 14px;overflow:hidden;border:1px solid #05070a;box-shadow:0 8px 18px rgba(0,0,0,.38),0 2px 0 rgba(0,0,0,.35)}
@@ -47,7 +51,6 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   background:linear-gradient(180deg,#434950 0%,#272b31 48%,#0d0f12 100%);border-top:1px solid rgba(255,255,255,.28);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 -4px 8px rgba(0,0,0,.55)}
 .bx-h:hover{filter:brightness(1.12)}
-.bx.open .bx-h{background:linear-gradient(180deg,#6a727c 0%,#4a5059 50%,#2f343b 100%);border-bottom:3px solid #d5d9de}
 .bx-h .chev{width:16px;color:#c3c9d0;transition:transform .15s;flex:none;font-size:13px}
 .bx.open .bx-h .chev{transform:rotate(90deg)}
 .bx-title{font-size:21px;font-weight:800;letter-spacing:.02em}
@@ -56,8 +59,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx-sum{font-size:16px;color:#d6dae0}
 .bx-right{margin-left:auto;font-size:15px;color:#e6e9ed;display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center}
 .bx-right a{color:#9ccfff;font-weight:600}
-.bx-body{display:none;padding:16px;background:linear-gradient(180deg,#eceef1,#dfe2e6);
-  --bg:#f1f3f5;--card:#fff;--border:#c4cad1;--muted:#59626d;--text:#1f2328;--grey-bg:#e4e7ea;--green:#1a7f37;--green-bg:#dafbe1;--amber:#8a5a00;--amber-bg:#fff1c2;--blue:#0969da;--info:#0550ae;--info-bg:#ddf4ff;--red:#cf222e;--red-bg:#ffebe9;color:var(--text)}
+.bx-body{display:none;padding:16px;background:var(--bg)}
 .bx.open .bx-body{display:block}
 .bx-prod{display:flex;gap:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
 .bx-prod img,.bx-prod .ph{width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--border);flex:none;background:var(--grey-bg)}
@@ -71,6 +73,10 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx-ship label,.bx-trk label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted);font-weight:600}
 .bx-ship input,.bx-trk input{font-size:15px;padding:6px 10px;min-width:150px}
 .bx-ship input.u,.bx-trk input.u{min-width:260px}
+.bx button.x{padding:3px 10px;font-weight:800;font-size:16px;color:var(--red);flex:none}
+.bx button.danger{color:var(--red);border-color:var(--red)}
+.bx button.danger.arm{background:var(--red);color:#fff}
+.wp{display:inline-block;background:var(--red);color:#fff;border-radius:999px;padding:1px 10px;font-size:12.5px;font-weight:700;margin-left:6px}
 .bx-note{font-size:14px;color:var(--muted)}
 .bx-empty{padding:14px;color:var(--muted);font-size:15px}
 .stp{display:inline-flex;align-items:center;gap:6px}.stp b{min-width:30px;text-align:center;font-size:18px}.stp button{padding:2px 12px;font-weight:700;font-size:17px}
@@ -82,13 +88,13 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 <body>
 <div class="wrap">
   <header>
-    <h1>Supplier Portal</h1><span class="who" id="who"></span>
+    <div class="hd"><h1>Indifeels Restock</h1><div class="portal">Supplier Portal</div><div class="who" id="who"></div></div>
     <button id="refresh">Refresh</button>
     <button id="theme" title="Light / dark">◐</button>
   </header>
 
   <h2 class="sec">Master list <span class="n" id="mcount"></span></h2>
-  <p class="hint">Everything Indifeels has asked to restock. Tick what you can make and press <b>Add to box</b>. Once added, it is yours and other suppliers no longer see it.</p>
+  <p class="hint">Tick the boxes to pick up what you can make, then press <b>Add to box</b>.</p>
   <div class="mbar" id="mbar" hidden>
     <label><input type="checkbox" id="mall"> Select all</label>
     <span class="sp" id="msel"></span>
@@ -121,7 +127,8 @@ window.addEventListener('message', e => {
 });
 const Store = {
   state: () => call('state'),
-  add: (ids, box) => call('add', { ids, box: box || null }),
+  add: (ids, box, confirm) => call('add', { ids, box: box || null, confirm: !!confirm }),
+  deleteBox: box => call('deletebox', { box }),
   remove: ids => call('remove', { ids }),
   newBox: () => call('newbox'),
   shipBox: (box, date, url, no) => call('shipbox', { box, date, url, no }),
@@ -153,9 +160,9 @@ function bxTile(b, lines, o) {
     <span class="bx-right">${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : ''}${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track</a>' : ''}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
   const rows = g => `<div class="bx-prod">${bxImg(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
-    ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
+    ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}${r.wrong_pick ? '<span class="wp" title="Tagged to another supplier">⚠ wrong pick</span>' : ''}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
       <td class="q">${(!o.ro && !shipped) ? `<span class="stp"><button data-q="-1" data-id="${bxEsc(r.id)}" ${bxEff(r) <= 0 ? 'disabled' : ''}>−</button><b>${bxEff(r)}</b><button data-q="1" data-id="${bxEsc(r.id)}" ${bxEff(r) >= r.qty ? 'disabled' : ''}>+</button></span>` : bxEff(r)}${bxEff(r) < r.qty ? '<span class="low">short ' + (r.qty - bxEff(r)) + '</span>' : ''}</td>
-      <td>${(!o.ro && !shipped) ? `<select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}
+      <td>${(!o.ro && !shipped) ? `<span style="display:inline-flex;gap:8px;align-items:center"><select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select><button class="x" data-rm="${bxEsc(r.id)}" title="Remove from this box (back to the master list)">✕</button></span>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}
     </tbody></table></div>`;
   let body = n ? bxGroup(lines).map(rows).join('') : `<div class="bx-empty">Nothing in this box yet. Pick items from the master list and press “Add to box”.</div>`;
   if (!o.ro && !shipped) {
@@ -163,6 +170,7 @@ function bxTile(b, lines, o) {
       <label>Tracking link (optional)<input type="text" class="bx-url u" placeholder="https://…" maxlength="500"></label>
       <label>Tracking number (optional)<input type="text" class="bx-no" maxlength="80"></label>
       <button class="primary" data-ship="${bxEsc(b.box_no)}" ${n ? '' : 'disabled'}>Ship this box</button>
+      <button class="danger${o.armDel === b.box_no ? ' arm' : ''}" data-delbox="${bxEsc(b.box_no)}" title="Delete this box; its items go back to the master list">${o.armDel === b.box_no ? 'Tap again to delete' : 'Delete box'}</button>
       <span class="bx-note">When shipped, the next item you add starts the next box.</span></div>`;
   }
   if (shipped) {
@@ -174,6 +182,9 @@ function bxTile(b, lines, o) {
 }
 /*BXJS_END*/
 let S = {orders: [], boxes: [], active: '', identity: '', code: ''};
+let armKey = '', armDel = '', armT = null;
+const arm = (k, kind) => { if (kind === 'del') armDel = k; else armKey = k; clearTimeout(armT); armT = setTimeout(() => { armKey = ''; armDel = ''; render(); }, 6000); render(); };
+const taggedOf = ids => ids.filter(id => (S.orders.find(r => r.id === id) || {}).tagged_other);
 const picked = new Set(), openState = new Map();
 const masterRows = () => S.orders.filter(r => r.status === 'saved' && !r.claimed);
 
@@ -187,10 +198,11 @@ function render(){
   const openBox = S.boxes.find(b => b.status === 'open');
   const act = S.active;
   $('msel').textContent = picked.size ? picked.size + ' selected → ' + act : 'Items you add go to ' + act;
-  $('addsel').disabled = !picked.size; $('addsel').textContent = picked.size ? `Add ${picked.size} to ${act}` : 'Add selected to box';
+  const tg = taggedOf([...picked]).length;
+  $('addsel').disabled = !picked.size; $('addsel').classList.toggle('warn', armKey === '__sel'); $('addsel').textContent = armKey === '__sel' ? `${tg} tagged to another supplier — tap again to confirm they're yours` : picked.size ? `Add ${picked.size} to ${act}` : 'Add selected to box';
   $('master').innerHTML = m.length ? bxGroup(m).map(g => `<div class="mc">${bxImg(g[0])}<table><thead><tr><th style="width:34px"></th><th>Variant</th><th style="text-align:center">Qty wanted</th><th></th></tr></thead><tbody>
-      ${g.slice().sort(bxByVariant).map(r => `<tr class="mt"><td><input type="checkbox" data-pick="${bxEsc(r.id)}" ${picked.has(r.id) ? 'checked' : ''}></td><td>${bxEsc(r.variant_title)}<span class="sub">Requested ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
-        <td class="a"><button data-add="${bxEsc(r.id)}">Add to ${bxEsc(act)}</button></td></tr>`).join('')}
+      ${g.slice().sort(bxByVariant).map(r => `<tr class="mt"><td><input type="checkbox" data-pick="${bxEsc(r.id)}" ${picked.has(r.id) ? 'checked' : ''}></td><td>${bxEsc(r.variant_title)}${r.tagged_other ? '<span class="tg">⚠ Tagged to another supplier</span>' : ''}<span class="sub">Requested ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
+        <td class="a"><button data-add="${bxEsc(r.id)}" class="${armKey === r.id ? 'warn' : ''}">${armKey === r.id ? 'Not yours? Tap again to confirm' : 'Add to ' + bxEsc(act)}</button></td></tr>`).join('')}
       </tbody></table></div>`).join('') : '<div class="empty">Nothing waiting on the master list right now.</div>';
 
   const openNos = S.boxes.filter(b => b.status === 'open').map(b => b.box_no);
@@ -200,7 +212,7 @@ function render(){
   html += order.map(b => {
     const lines = S.orders.filter(r => r.box_no === b.box_no && ['added', 'shipped', 'received'].includes(r.status));
     const isOpen = openState.has(b.box_no) ? openState.get(b.box_no) : b.status === 'open';
-    return bxTile(b, lines, {ro: false, open: isOpen, openBoxes: openNos});
+    return bxTile(b, lines, {ro: false, open: isOpen, openBoxes: openNos, armDel});
   }).join('');
   // shipped lines from before boxes existed (no box row): show them as shipped tiles
   const known = new Set(S.boxes.map(b => b.box_no)), legacy = new Map();
@@ -224,14 +236,24 @@ async function act(fn, okMsg){
 
 $('master').addEventListener('click', e => {
   const one = e.target.closest('[data-add]');
-  if (one) { act(() => Store.add([one.getAttribute('data-add')]), b => 'Added to ' + b); }
+  if (one) {
+    const id = one.getAttribute('data-add');
+    if (taggedOf([id]).length && armKey !== id) { arm(id); return; }
+    const conf = armKey === id; armKey = '';
+    act(() => Store.add([id], null, conf), b => 'Added to ' + b);
+  }
 });
 $('master').addEventListener('change', e => {
   const p = e.target.closest('[data-pick]'); if (!p) return;
   const id = p.getAttribute('data-pick'); p.checked ? picked.add(id) : picked.delete(id); render();
 });
 $('mall').addEventListener('change', () => { const m = masterRows(); picked.clear(); if ($('mall').checked) m.forEach(r => picked.add(r.id)); render(); });
-$('addsel').addEventListener('click', () => { const ids = [...picked]; picked.clear(); act(() => Store.add(ids), b => ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' added to ' + b); });
+$('addsel').addEventListener('click', () => {
+  const ids = [...picked];
+  if (taggedOf(ids).length && armKey !== '__sel') { arm('__sel'); return; }
+  const conf = armKey === '__sel'; armKey = ''; picked.clear();
+  act(() => Store.add(ids, null, conf), b => ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' added to ' + b);
+});
 $('newbox').addEventListener('click', () => act(() => Store.newBox(), b => 'Ready: ' + b));
 $('refresh').addEventListener('click', load);
 $('boxes').addEventListener('click', e => {
@@ -242,6 +264,14 @@ $('boxes').addEventListener('click', e => {
     const n = Math.max(0, Math.min(r.qty, bxEff(r) + (+q.getAttribute('data-q'))));
     r.ship_qty = n >= r.qty ? null : n; render();                       // instant feedback, then save
     act(() => Store.setQty(r.id, n)); return;
+  }
+  const rm = t.closest('[data-rm]');
+  if (rm) { act(() => Store.remove([rm.getAttribute('data-rm')]), 'Removed from the box (back on the master list)'); return; }
+  const db = t.closest('[data-delbox]');
+  if (db) {
+    const box = db.getAttribute('data-delbox');
+    if (armDel !== box) { arm(box, 'del'); return; }
+    armDel = ''; act(() => Store.deleteBox(box), n => box + ' deleted' + (n ? ' · ' + n + ' item' + (n === 1 ? '' : 's') + ' back on the master list' : '')); return;
   }
   const sh = t.closest('[data-ship]');
   if (sh) {

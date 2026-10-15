@@ -1544,6 +1544,8 @@
       return rpOk(await sb.rpc("restock_owner_order", { p: row }));
     },
     cancel: async (d) => rpOk(await sb.rpc("restock_owner_cancel", { p_id: rpText(d.id, 140) })),
+    release: async (d) => rpOk(await sb.rpc("restock_owner_release", { p_id: rpText(d.id, 140) })),
+    ackwrong: async (d) => rpOk(await sb.rpc("restock_owner_ack_wrong", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 100).map((x) => rpText(x, 140)) })),
     disc: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); rpOk(await sb.rpc("restock_owner_set_discontinued", { p_product: String(d.product), p_value: !!d.value })); return true; },
     disclist: async () => rpOk(await sb.from("restock_discontinued").select("product_id,discontinued,synced_at")) || [],
     boxes: async () => rpOk(await sb.from("restock_boxes").select("box_no,supplier,status,seq,created_at,shipped_at,ship_date,tracking_url,tracking_no").order("created_at", { ascending: false }).limit(500)) || [],
@@ -1554,7 +1556,8 @@
   });
   rpBridge("restock-supplier", {
     state: async () => rpOk(await sb.rpc("restock_supplier_state")),
-    add: async (d) => rpOk(await sb.rpc("restock_supplier_add", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)), p_box: d.box ? rpText(d.box, 40) : null })),
+    add: async (d) => rpOk(await sb.rpc("restock_supplier_pick", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)), p_box: d.box ? rpText(d.box, 40) : null, p_confirm: !!d.confirm })),
+    deletebox: async (d) => rpOk(await sb.rpc("restock_supplier_delete_box", { p_box: rpText(d.box, 40) })),
     remove: async (d) => rpOk(await sb.rpc("restock_supplier_remove", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)) })),
     newbox: async () => rpOk(await sb.rpc("restock_supplier_new_box")),
     setqty: async (d) => rpOk(await sb.rpc("restock_supplier_set_qty", { p_id: rpText(d.id, 140), p_qty: Math.max(0, Math.min(100000, Math.floor(Number(d.qty) || 0))) })),
