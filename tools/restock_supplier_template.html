@@ -213,6 +213,14 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   .bx-prod tbody td:nth-child(3) .low{display:flex;justify-content:center;margin:6px auto 0}
   .mc tr.mt td:nth-child(2) .sub{margin-top:2px}
 }
+@media (max-width:700px){
+  .mbar{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;position:static;background:linear-gradient(180deg,var(--card),var(--bg));box-shadow:0 4px 14px rgba(0,0,0,.25)}
+  .mbar #mfilter{grid-column:1;grid-row:1;width:100%;min-width:0;flex:none;padding:10px 8px;font-size:14.5px;font-weight:600}
+  .mbar label{grid-column:2;grid-row:1;justify-content:center;background:var(--info-bg);color:var(--info);border:1px solid var(--info);border-radius:8px;padding:9px 6px;font-size:14.5px;white-space:nowrap}
+  .mbar #msel{grid-column:1/-1;grid-row:2;flex:none;font-size:13.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .mbar #boxsel{grid-column:1/-1;grid-row:3;width:100%;min-width:0;flex:none;padding:10px 12px;font-weight:700}
+  .mbar #addsel{grid-column:1/-1;grid-row:4;width:100%;flex:none}
+}
 </style>
 </head>
 <body>
@@ -228,7 +236,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   <h2 class="sec">Master list <span class="n" id="mcount"></span></h2>
   <p class="hint">Tick the boxes to pick up what you can make, then press <b>Add to box</b>.</p>
   <div class="mbar" id="mbar" hidden>
-    <select id="mfilter" title="Show only the products tagged to you, or everything waiting"><option value="mine">Show: my products</option><option value="all">Show: all products</option></select>
+    <select id="mfilter" title="Show only the products tagged to you, or everything waiting"><option value="mine">My products</option><option value="all">All products</option></select>
     <label title="Selects the items tagged to you. Tick any others yourself."><input type="checkbox" id="mall"> Select all mine</label>
     <span class="sp" id="msel"></span>
     <select id="boxsel" title="Which box the selected items go into"></select>
