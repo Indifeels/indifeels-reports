@@ -55,6 +55,7 @@ jobs:
           SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
           SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
           STOCK_KEY: ${{ secrets.STOCK_KEY }}
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
         run: python3 tools/restock_plan.py
 
       - name: Verify report files

@@ -11,7 +11,12 @@ The page does the maths (days to sell, required stock x leniency, days to stocko
 Needs the read_all_orders scope on SHOPIFY_TOKEN: without it Shopify silently returns only ~60 days of orders and
 every number would be wrong, so the build FAILS (and the last good report stays published).
 
-Env: SHOPIFY_TOKEN, SHOPIFY_SHOP, STOCK_KEY
+Also: variant/product last-sold day + units sold in the last 30 days (for the "by date" sort and the spike damping),
+collections (collection filter), custom.discountinued (yes/no), and the discontinued sync: changes made in the planner
+(Supabase restock_discontinued) are pushed to the Shopify metafield here, then marked done. A sync failure never fails the
+build (needs write_products on the token; the planner still honours the choice meanwhile).
+
+Env: SHOPIFY_TOKEN, SHOPIFY_SHOP, STOCK_KEY, SYNC_READ_TOKEN (optional: without it the discontinued sync is skipped)
 Writes: r/restock-plan.bin, r/restock-plan.meta.bin, r/status.json
 """
 import datetime as dt
@@ -35,8 +40,10 @@ PRODUCTS = """{ products(query:"status:active"){ edges{ node{
   id title createdAt featuredImage{ url }
   metafield(namespace:"custom", key:"published_date_old"){ value }
   supplier: metafield(namespace:"custom", key:"supplier_name"){ value }
+  disc: metafield(namespace:"custom", key:"discountinued"){ value }
+  collections{ edges{ node{ id title } } }
   variants{ edges{ node{ id title inventoryQuantity } } } } } } }"""
-ORDERS = """{ orders{ edges{ node{ id cancelledAt lineItems{ edges{ node{ id quantity variant{ id } product{ id } } } } } } } }"""
+ORDERS = """{ orders{ edges{ node{ id cancelledAt processedAt lineItems{ edges{ node{ id quantity variant{ id } product{ id } } } } } } } }"""
 SCOPES = "query { currentAppInstallation { accessScopes { handle } } }"
 START = "mutation($q:String!){ bulkOperationRunQuery(query:$q){ bulkOperation{ id status } userErrors{ field message } } }"
 POLL = "query($id:ID!){ node(id:$id){ ... on BulkOperation { status errorCode objectCount url } } }"
@@ -75,6 +82,62 @@ def bulk(inner, label, max_wait=1500):
             raise RuntimeError(f"{label} bulk operation timed out")
 
 
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://yrigvovwyfpaybibfjva.supabase.co")
+SUPABASE_ANON = os.environ.get("SUPABASE_ANON_KEY", "sb_publishable_8xv46B6mvnAN2McGDc4VEg_pNF0qHvD")  # public publishable key, same as the other builders
+SET_META = """mutation($m:[MetafieldsSetInput!]!){ metafieldsSet(metafields:$m){ metafields{ id } userErrors{ field message code } } }"""
+DEL_META = """mutation($m:[MetafieldIdentifierInput!]!){ metafieldsDelete(metafields:$m){ deletedMetafields{ key } userErrors{ field message } } }"""
+
+
+def sb_rpc(name, body):
+    req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/rpc/{name}", data=json.dumps(body).encode(),
+                                 headers={"Content-Type": "application/json", "apikey": SUPABASE_ANON}, method="POST")
+    return json.load(urllib.request.urlopen(req, timeout=60))
+
+
+def sync_discontinued():
+    """Push 'discontinued' choices made in the planner to Shopify (custom.discountinued yes/no + date). Never raises."""
+    token = os.environ.get("SYNC_READ_TOKEN")
+    if not token:
+        print("discontinued sync skipped: SYNC_READ_TOKEN not set")
+        return 0
+    try:
+        pending = sb_rpc("sync_get_restock_discontinued", {"p_token": token})
+    except Exception as exc:  # the migration may not be applied yet
+        print("discontinued sync skipped:", str(exc)[:120])
+        return 0
+    done = []
+    today = dt.datetime.now(MEL).strftime("%Y-%m-%d")
+    for r in pending:
+        pid = str(r["product_id"])
+        if not pid.isdigit():
+            continue
+        gid = f"gid://shopify/Product/{pid}"
+        try:
+            yes = bool(r["discontinued"])
+            m = [{"ownerId": gid, "namespace": "custom", "key": "discountinued", "type": "single_line_text_field", "value": "yes" if yes else "no"}]
+            if yes:
+                m.append({"ownerId": gid, "namespace": "custom", "key": "discountinued_date", "type": "date", "value": today})
+            res = pv.gql(SET_META, {"m": m})["data"]["metafieldsSet"]
+            if res["userErrors"]:
+                print("discontinued sync: Shopify refused", pid, json.dumps(res["userErrors"])[:160])
+                continue
+            if not yes:
+                try:
+                    pv.gql(DEL_META, {"m": [{"ownerId": gid, "namespace": "custom", "key": "discountinued_date"}]})
+                except Exception:
+                    pass
+            done.append(pid)
+        except Exception as exc:
+            print("discontinued sync: failed for", pid, str(exc)[:120])
+    if done:
+        try:
+            sb_rpc("sync_mark_restock_discontinued", {"p_token": token, "p_ids": done})
+        except Exception as exc:
+            print("discontinued sync: could not mark done:", str(exc)[:120])
+    print(f"discontinued sync: {len(done)} of {len(pending)} pushed to Shopify")
+    return len(done)
+
+
 def require_scopes():
     scopes = {x["handle"] for x in pv.gql(SCOPES, {})["data"]["currentAppInstallation"]["accessScopes"]}
     missing = {"read_products", "read_orders", "read_all_orders"} - scopes
@@ -89,22 +152,35 @@ def melbourne_day(iso):
 
 def build():
     require_scopes()
+    sync_discontinued()          # before reading products, so this build already carries the new value
     prod_lines = bulk(PRODUCTS, "products")
     order_lines = bulk(ORDERS, "orders")
 
     # orders: bulk output is one JSON object per line; line items point at their order by __parentId
     cancelled = {l["id"] for l in order_lines if "/Order/" in l.get("id", "") and l.get("cancelledAt")}
+    placed = {l["id"]: melbourne_day(l["processedAt"]) for l in order_lines if "/Order/" in l.get("id", "") and l.get("processedAt")}
+    since30 = (dt.datetime.now(MEL) - dt.timedelta(days=30)).strftime("%Y-%m-%d")
     variant_sold, product_sold, lines = {}, {}, 0
+    variant_last, product_last, variant_30, product_30 = {}, {}, {}, {}
     for l in order_lines:
         if "/LineItem/" not in l.get("id", "") or l.get("__parentId") in cancelled:
             continue
         lines += 1
         q = int(l.get("quantity") or 0)
         vid, pid = num((l.get("variant") or {}).get("id")), num((l.get("product") or {}).get("id"))
+        day = placed.get(l.get("__parentId"), "")
         if vid:
             variant_sold[vid] = variant_sold.get(vid, 0) + q
+            if day > variant_last.get(vid, ""):
+                variant_last[vid] = day
+            if day >= since30:
+                variant_30[vid] = variant_30.get(vid, 0) + q
         if pid:
             product_sold[pid] = product_sold.get(pid, 0) + q
+            if day > product_last.get(pid, ""):
+                product_last[pid] = day
+            if day >= since30:
+                product_30[pid] = product_30.get(pid, 0) + q
     if lines < 50:
         raise RuntimeError(f"Only {lines} order lines came back: refusing to publish incomplete sales history")
 
@@ -120,16 +196,24 @@ def build():
                 "image": ((l.get("featuredImage") or {}).get("url")) or "",
                 "published": meta[:10] if from_meta else melbourne_day(l["createdAt"]),
                 "supplier": re.sub(r"^\s*\d+\s*:\s*", "", ((l.get("supplier") or {}).get("value") or "")).strip(),  # "52908 : Pankaj" -> "Pankaj"
-                "fromMeta": from_meta, "migrated": migrated, "variants": {},
+                "disc": ((l.get("disc") or {}).get("value") or "").strip().lower() in ("yes", "true", "1"),
+                "cols": [], "fromMeta": from_meta, "migrated": migrated, "variants": {},
             }
             order.append(l["id"])
     for l in prod_lines:
+        if "/Collection/" in l.get("id", "") and l.get("__parentId") in products:
+            t = (l.get("title") or "").strip()
+            if t and t not in products[l["__parentId"]]["cols"]:
+                products[l["__parentId"]]["cols"].append(t)
         if "/ProductVariant/" in l.get("id", "") and l.get("__parentId") in products:
             p = products[l["__parentId"]]
             key = l["title"].strip().lower()
-            cur = p["variants"].setdefault(key, [l["title"], 0, 0])
+            cur = p["variants"].setdefault(key, [l["title"], 0, 0, "", 0])   # title, stock, sold, last sold day, sold in last 30 days
+            vid = num(l["id"])
             cur[1] += int(l.get("inventoryQuantity") or 0)
-            cur[2] += variant_sold.get(num(l["id"]), 0)
+            cur[2] += variant_sold.get(vid, 0)
+            cur[3] = max(cur[3], variant_last.get(vid, ""))
+            cur[4] += variant_30.get(vid, 0)
 
     out = []
     for gid in order:
@@ -138,7 +222,8 @@ def build():
         if sales <= 0:
             continue      # nothing ever sold: no days-to-sell, nothing to restock
         out.append({"id": p["id"], "title": p["title"], "image": p["image"], "published": p["published"],
-                    "supplier": p["supplier"], "sales": sales, "variants": list(p["variants"].values())})
+                    "supplier": p["supplier"], "sales": sales, "last": product_last.get(p["id"], ""), "sold30": product_30.get(p["id"], 0),
+                    "disc": p["disc"], "cols": sorted(p["cols"]), "variants": list(p["variants"].values())})
     no_meta = sum(1 for p in products.values() if p["migrated"] and not p["fromMeta"])
 
     now = dt.datetime.now(SYD)
@@ -150,7 +235,7 @@ def build():
     assert page.count("__DATA__") == 1
     page = page.replace("__DATA__", json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/"))
 
-    oos = sum(1 for p in out for v in p["variants"] if v[1] <= 0 and v[2] > 0)
+    oos = sum(1 for p in out for v in p["variants"] if v[1] <= 0 and v[2] > 0 and not p["disc"])
     meta = {"updated": updated, "stats": [[str(len(out)), "products selling"], [str(oos), "sold-out variants"]],
             "warn": f"{no_meta} migrated products have no published_date_old" if no_meta > 25 else ""}
     key = os.environ["STOCK_KEY"]

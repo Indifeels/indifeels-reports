@@ -1537,13 +1537,16 @@
       }
       return out;
     },
-    save: async (d) => {
+    order: async (d) => {
       const r = d.row || {}, qty = Math.floor(Number(r.qty) || 0);
-      const row = { id: rpText(r.id, 120), product_id: rpText(r.product_id, 30), product_title: rpText(r.product_title, 300), image: /^https:\/\/cdn\.shopify\.com\//.test(r.image || "") ? rpText(r.image, 500) : "", variant_title: rpText(r.variant_title, 120), supplier: rpText(r.supplier, 100), qty: Math.max(0, Math.min(100000, qty)), stock_base: Number.isFinite(Number(r.stock_base)) ? Math.max(0, Math.min(1000000, Math.floor(Number(r.stock_base)))) : null };
-      if (!row.id || !row.supplier) throw new Error("This product has no supplier set");
-      return rpOk(await sb.rpc("restock_owner_save", { p: row }));
+      const row = { vkey: rpText(r.vkey, 100), product_id: rpText(r.product_id, 30), product_title: rpText(r.product_title, 300), image: /^https:\/\/cdn\.shopify\.com\//.test(r.image || "") ? rpText(r.image, 500) : "", variant_title: rpText(r.variant_title, 120), supplier: rpText(r.supplier, 100), qty: Math.max(0, Math.min(100000, qty)), stock_base: Number.isFinite(Number(r.stock_base)) ? Math.max(0, Math.min(1000000, Math.floor(Number(r.stock_base)))) : null };
+      if (!row.vkey || !row.supplier) throw new Error("This product has no supplier set");
+      return rpOk(await sb.rpc("restock_owner_order", { p: row }));
     },
-    received: async (d) => rpOk(await sb.rpc("restock_owner_received", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 120)) })),
+    cancel: async (d) => rpOk(await sb.rpc("restock_owner_cancel", { p_id: rpText(d.id, 140) })),
+    disc: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); rpOk(await sb.rpc("restock_owner_set_discontinued", { p_product: String(d.product), p_value: !!d.value })); return true; },
+    disclist: async () => rpOk(await sb.from("restock_discontinued").select("product_id,discontinued,synced_at")) || [],
+    received: async (d) => rpOk(await sb.rpc("restock_owner_received", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)) })),
     users: async () => rpOk(await sb.rpc("restock_supplier_users_list")),
     events: async () => rpOk(await sb.from("restock_events").select("at,order_id,label,supplier,actor_name,actor_role,action,qty_from,qty_to,box_no").order("at", { ascending: false }).limit(300)) || [],
     setuser: async (d) => { rpOk(await sb.rpc("restock_supplier_user_set", { p_user: rpText(d.user_id, 40), p_supplier: rpText(d.supplier, 100) })); return true; },
@@ -1552,12 +1555,13 @@
     list: async () => rpOk(await sb.rpc("restock_supplier_list")) || [],
     act: async (d) => {
       if (!["add", "unadd"].includes(d.op)) throw new Error("Bad action");
-      return rpOk(await sb.rpc("restock_supplier_act", { p_action: d.op, p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 120)) }));
+      return rpOk(await sb.rpc("restock_supplier_act", { p_action: d.op, p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)) }));
     },
-    setqty: async (d) => rpOk(await sb.rpc("restock_supplier_set_qty", { p_id: rpText(d.id, 120), p_qty: Math.max(0, Math.min(100000, Math.floor(Number(d.qty) || 0))) })),
+    setqty: async (d) => rpOk(await sb.rpc("restock_supplier_set_qty", { p_id: rpText(d.id, 140), p_qty: Math.max(0, Math.min(100000, Math.floor(Number(d.qty) || 0))) })),
+    nextbox: async () => rpOk(await sb.rpc("restock_next_box")),
     ship: async (d) => {
       const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : "";
-      return rpOk(await sb.rpc("restock_supplier_ship", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 120)), p_box: rpText(d.box, 40), p_date: date || null }));
+      return rpOk(await sb.rpc("restock_supplier_ship", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)), p_date: date || null }));
     },
   });
 

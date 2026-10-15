@@ -163,6 +163,26 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   #svShipped h3{font-size:14px}
   details{font-size:13.5px}
   @media (max-width:900px){.tiles .tile:nth-child(-n+2){display:none}.card-h{flex-wrap:wrap}}
+  /* closed vs open product header */
+  :root{--hc:#1c2128;--ho:#17406e;--hob:#58a6ff}
+  :root[data-theme="light"]{--hc:#eef1f4;--ho:#d6e8ff;--hob:#0969da}
+  .card-h{background:var(--hc);border-left:5px solid transparent}
+  .card.open .card-h{background:var(--ho);border-left-color:var(--hob)}
+  .card-h:hover{filter:brightness(1.12)}
+  .tag{display:inline-block;border-radius:999px;padding:1px 10px;font-size:12.5px;font-weight:700;margin-left:8px;vertical-align:middle}
+  .tag.el{background:var(--green-bg);color:var(--green)}.tag.ne{background:var(--red-bg);color:var(--red)}.tag.dc{background:var(--grey-bg);color:var(--muted)}
+  button.disc{font-size:12.5px;padding:3px 10px;flex:none}
+  button.disc.arm{background:var(--red-bg);color:var(--red);border-color:var(--red)}
+  .pipe{font-size:12.5px;color:var(--muted);margin-top:4px;white-space:normal;max-width:230px;text-align:left}
+  .ln{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin:2px 0;white-space:normal;text-align:left}
+  button.x{padding:0 7px;line-height:1.3;font-weight:700}
+  #boxes{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:12px}
+  #boxes .bx{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:6px 0;border-bottom:1px solid var(--border)}
+  #boxes .bx:last-child{border-bottom:0}
+  #boxes details{margin:0;flex-basis:100%}
+  button.recvbox{background:var(--green-bg);color:var(--green);border-color:transparent;font-weight:600}
+  td.sub2{font-size:12px;color:var(--muted);font-weight:400}
+  .why{cursor:help}
 </style>
 </head>
 <body>
@@ -180,9 +200,16 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
       <input type="range" id="len" min="1" max="10" step="1" value="3">
       <div class="lvl"><span>1 · minimum (lead time only)</span><span>10 · max buffer (5×)</span></div>
     </div>
-    <label class="o">Variant order
-      <select id="order"><option value="priority">Priority</option><option value="size">Size</option></select></label>
+    <label class="o">Sort by
+      <select id="order">
+        <option value="priority">Priority</option><option value="date">By date (latest sale first)</option><option value="size">Size</option>
+        <option value="sales">Total sales (product)</option><option value="supplier">Supplier</option>
+        <option value="pdts">Days to sell 1 unit (product)</option><option value="vdts">Days to sell 1 unit (variant)</option>
+      </select></label>
     <label class="o">Supplier <select id="supplier"><option value="">All</option></select></label>
+    <label class="o">Collection <select id="collection"><option value="">All</option></select></label>
+    <label class="o">Eligibility <select id="elig"><option value="">All</option><option value="y">Eligible only</option><option value="n">Not eligible only</option></select></label>
+    <label class="o">Discontinued <select id="discf"><option value="hide">Hide discontinued</option><option value="only">Only discontinued</option><option value="all">Show all</option></select></label>
     <label class="o"><input type="checkbox" id="onlyNeed"> Only variants needing stock</label>
     <label class="o"><input type="checkbox" id="onlyElig"> Only “Stock More Variants”</label>
     <button id="expAll">Expand all</button>
@@ -195,6 +222,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
     <span>🔴 Out of stock</span><span>🟠 &lt; 7 days to stockout</span><span>🟡 &lt; 14 days</span><span>🟢 OK</span><span>⚪ No sales</span>
     <span>Cells: green = good · amber = watch · red = act · blue = info</span>
   </div>
+  <div id="boxes" hidden></div>
   <div id="list"></div>
 
   <details>
@@ -202,8 +230,14 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
     <p>Published date = <code>custom.published_date_old</code> metafield for migrated products (created before 18 Apr 2026 11pm UTC), otherwise created date. Sales = all-time line-item quantity (Variant ID for variants, Product ID for product level).
     Days to Sell 1 Unit = days since published ÷ units sold. Days to stockout = current stock × variant days-to-sell.
     Required stock = <code>CEILING(28 ÷ Days to Sell 1 Unit)</code> × leniency (1→1×, 2→1.2×, 3→1.4×, 4→1.6×, 5→1.8×, 6→2×, 7→2.5×, 8→3×, 9→4×, 10→5×), rounded up. To order = max(0, required − stock).
-    <b>Priority</b> view ranks every selling variant across all products by days to stockout (out-of-stock fast sellers first) and repeats a product header each time the ranking switches product. <b>Size</b> view groups by product, then colour, then size.
-    Save sends the quantity to the supplier (locked once the supplier adds it to the box). “Stock More Variants” = on market ≥ 3 months, product days-to-sell &lt; 50, ≥ 3 units sold.</p>
+    <b>Eligible</b> (green) = the product sells 1 unit in under 50 days; <b>Not eligible</b> (red) = 50 days or more. Eligible products always come first, whatever the sort; you can still restock a not-eligible one by hand.
+    <b>Priority</b> ranks every selling variant across all products (a product header repeats each time the ranking switches product) by the units it is short over the 28-day lead time, adjusted so noise does not dominate:
+    ×confidence (a product needs ~10 sales and ~60 days before its sell rate is trusted, so brand-new products rank lower), ×category weight (categories with a small share of total sales, e.g. footwear, rank lower; share ≥ 25% = full weight),
+    ×spike damping (if the last 30 days sell much faster than the lifetime rate, the extra is discounted, more strongly for seasonal kids/boys lines). Hover a rank to see its score. Ties fall back to days of stock left.
+    <b>By date</b> lists variants by most recent sale. <b>Size</b> groups by product, then colour, then size. The other sorts group by product.
+    <b>Order / top-ups:</b> “To order” = required − stock − units already on order or on the way. Save creates a new order line for the supplier (several can exist for the same variant); × cancels one the supplier has not boxed yet.
+    <b>Received</b> clears one shipment line; <b>whole box received</b> (Boxes on the way) clears every line in that box. <b>Discontinued</b> is saved here and written to the Shopify field <code>custom.discountinued</code> on the next refresh; discontinued products are hidden and no longer counted for restocking.
+    “Stock More Variants” = on market ≥ 3 months, product days-to-sell &lt; 50, ≥ 3 units sold.</p>
   </details>
 </div>
 <div id="viewSup" hidden>
@@ -228,7 +262,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 const DATA = __DATA__;
 /*DATA_END*/
 
-function notify(msg){ let b = document.getElementById('toast'); if (!b) { b = document.createElement('div'); b.id = 'toast'; b.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#8e2b25;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;z-index:99;max-width:90%'; document.body.appendChild(b); } b.textContent = msg; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 6000); }
+function notify(msg, ok){ let b = document.getElementById('toast'); if (!b) { b = document.createElement('div'); b.id = 'toast'; b.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;z-index:99;max-width:90%'; document.body.appendChild(b); } b.style.background = ok ? '#1a7f37' : '#8e2b25'; b.textContent = msg; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 6000); }
 /* ---------------- hub bridge (the hub app talks to Supabase; this page never holds credentials) ---------------- */
 const pendingCalls = new Map(); let reqId = 0;
 function call(action, payload) {
@@ -250,8 +284,11 @@ window.addEventListener('message', e => {
 });
 const Store = {
   list: () => call('list'),
-  upsert: row => call('save', { row }),
+  order: row => call('order', { row }),
+  cancel: id => call('cancel', { id }),
   received: ids => call('received', { ids }),
+  disc: (product, value) => call('disc', { product, value }),
+  discList: () => call('disclist'),
   users: () => call('users'),
   setUser: (user_id, supplier) => call('setuser', { user_id, supplier }),
   events: () => call('events'),
@@ -261,6 +298,8 @@ const Store = {
 const MULT = [null,1,1.2,1.4,1.6,1.8,2,2.5,3,4,5];
 const LEAD_DAYS = 28, MIN_MARKET_DAYS = 90, MAX_PRODUCT_DTS = 50, MIN_UNITS = 3, DAY = 86400000, PAGE = 120;
 let data = DATA, mode = 'priority', defaultOpen = true, limit = PAGE;
+let discMap = new Map();            // product id -> true/false chosen in the planner (wins over the Shopify value until the next build)
+const armed = new Set();
 const state = new Map(), draft = new Map(), infos = [];
 let orders = new Map();
 const memDone = {};
@@ -293,54 +332,115 @@ function bySize(a,b){
 }
 function parseDay(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d).getTime(); }
 
+const CAT_RULES = [
+  ['footwear', /footwear|shoe|juti|mojari|sandal|slipper|kolhapuri/],
+  ['kids', /\b(kids?|boys?|girls?|toddler|infant|baby|junior)\b/],
+  ['kurta pajama', /kurta\s*(and\s*|&\s*)?(pyjama|pajama)|men'?s kurta|\bmens?\b/],
+  ['suits', /suit|salwar|anarkali|sharara|palazzo|co-?ord/],
+  ['kurtis', /kurti|tunic/],
+];
+const SEASONAL = new Set(['kids']);
+function catOf(p){
+  const t = (p.title + ' ' + (p.cols || []).join(' ')).toLowerCase();
+  for (const [name, re] of CAT_RULES) if (re.test(t)) return name;
+  return 'other';
+}
+const ago = day => { if (!day) return ''; const n = Math.max(0, Math.round((Date.now() - parseDay(day)) / DAY)); return n === 0 ? 'sold today' : n === 1 ? 'sold yesterday' : 'sold ' + n + ' d ago'; };
+
+/* orders index: every order line belongs to a variant (vkey); a variant can have several lines (top-ups) */
+let byV = new Map();
+function indexOrders(){
+  byV = new Map();
+  orders.forEach(o => { const k = o.vkey || o.id; if (!byV.has(k)) byV.set(k, []); byV.get(k).push(o); });
+  byV.forEach(a => a.sort((x, y) => String(x.saved_at).localeCompare(String(y.saved_at))));
+}
+const eff = o => o.ship_qty == null ? o.qty : o.ship_qty;
+const isLive = o => o && o.status !== 'received';          // a restocked line is history
+function pipeline(vk){
+  const all = byV.get(vk) || [], live = all.filter(isLive);
+  let saved = 0, box = 0, way = 0;
+  live.forEach(o => { if (o.status === 'saved') saved += o.qty; else if (o.status === 'added') box += eff(o); else way += eff(o); });
+  return {saved, box, way, total: saved + box + way, live, all};
+}
+
 function compute(){
   const lvl = +$('len').value, mult = MULT[lvl], now = new Date(); now.setHours(0,0,0,0);
   $('lenv').textContent = lvl + ' · ' + mult + '×';
+  const discOf = p => discMap.has(String(p.id)) ? discMap.get(String(p.id)) : !!p.disc;
+  // category share of all sales (for the priority weight)
+  const catUnits = {}; let allUnits = 0;
+  data.products.forEach(p => { const n = p.sales != null ? p.sales : p.variants.reduce((a,v)=>a+v[2],0); const c = catOf(p); catUnits[c] = (catUnits[c] || 0) + n; allUnits += n; });
   const prods = data.products.filter(p => p.published).map(p => {
     const days = Math.max(0, Math.round((now.getTime() - parseDay(p.published)) / DAY));
     const total = p.sales != null ? p.sales : p.variants.reduce((a,v)=>a+v[2],0);
     const pDTS = total > 0 ? days / total : Infinity;
-    const eligible = days >= MIN_MARKET_DAYS && pDTS < MAX_PRODUCT_DTS && total >= MIN_UNITS;
+    const cat = catOf(p), share = allUnits ? (catUnits[cat] || 0) / allUnits : 0, catW = 0.6 + 0.4 * Math.min(1, share / 0.25);
+    const disc = discOf(p);
+    const P = {p, days, total, pDTS, elig: pDTS < MAX_PRODUCT_DTS, eligible: !disc && days >= MIN_MARKET_DAYS && pDTS < MAX_PRODUCT_DTS && total >= MIN_UNITS, disc, cat, catW, supplier: p.supplier || ''};
     const maxSales = Math.max(0, ...p.variants.map(v=>v[2]));
-    const P = {p, days, total, pDTS, eligible, supplier: p.supplier || ''};
-    P.rows = p.variants.map(([title,stock,sales]) => {
+    P.rows = p.variants.map(([title,stock,sales,last,s30]) => {
+      last = last || ''; s30 = s30 || 0;
       const dts = sales > 0 ? days / sales : Infinity;
-      const required = sales > 0 ? Math.ceil(Math.ceil(LEAD_DAYS / dts) * mult - 1e-9) : 0;
-      const toOrder = Math.max(0, required - stock);
+      const required = sales > 0 && !disc ? Math.ceil(Math.ceil(LEAD_DAYS / dts) * mult - 1e-9) : 0;
+      const pp = pipeline(keyOf(p.id, title));
+      const toOrder = Math.max(0, required - stock - pp.total);          // net-new: what is still not covered by stock or by orders in progress
       const left = sales > 0 ? Math.max(0, stock) * dts : Infinity;
       let level = 'grey';
       if (sales > 0) level = stock <= 0 ? 'red' : left < 7 ? 'orange' : left < 14 ? 'yellow' : 'green';
       const share = maxSales ? sales / maxSales : 0;
-      return {P,title,stock,sales,dts,required,toOrder,left,level,
+      // priority score = units short over the lead time x confidence x category weight x spike damping
+      let score = 0, conf = 1, damp = 1;
+      if (sales > 0 && !disc) {
+        const short = Math.max(0, Math.ceil(LEAD_DAYS / dts - 1e-9) - Math.max(stock, 0));
+        conf = Math.min(1, sales / 8) * Math.min(1, days / 60);
+        const life = sales / Math.max(days, 1), recent = s30 / 30, ratio = life > 0 ? recent / life : 1;
+        if (s30 >= 5 && ratio > 2) damp = Math.max(0.35, 1 / (1 + (ratio - 2) * (SEASONAL.has(cat) ? 0.5 : 0.2)));
+        score = Math.round(short * conf * catW * damp * 10) / 10;
+      }
+      return {P,title,stock,sales,last,s30,dts,required,toOrder,left,level,score,conf,damp,
         cSales: sales === 0 ? 'grey' : share >= .5 ? 'green' : share >= .2 ? 'amber' : 'red',
         cDts: sales === 0 ? 'grey' : dts < 20 ? 'green' : dts < 50 ? 'amber' : 'red',
         cStock: sales === 0 ? (stock > 0 ? 'info' : 'grey') : stock <= 0 ? 'red' : stock < required ? 'amber' : 'green',
         cLeft: sales === 0 ? 'grey' : stock <= 0 ? 'red' : left < 7 ? 'orange' : left < 14 ? 'yellow' : 'green',
         cReq: sales === 0 ? 'grey' : 'info',
-        cOrder: sales === 0 ? 'grey' : toOrder === 0 ? 'green' : stock <= 0 ? 'red' : 'amber'};
+        cOrder: sales === 0 || disc ? 'grey' : toOrder === 0 ? 'green' : stock <= 0 ? 'red' : 'amber'};
     });
     P.units = P.rows.reduce((a,r)=>a+r.toOrder,0);
+    P.last = P.rows.reduce((a,r)=> r.last > a ? r.last : a, p.last || '');
     return P;
   });
+  const EP = P => P.elig ? 0 : 1, E = r => EP(r.P);           // eligible products always first
+  const byPrio = (a,b) => (E(a) - E(b)) || (b.score - a.score) || (a.left - b.left) || (a.dts - b.dts) || (b.sales - a.sales);
   const entries = [];
   prods.forEach(P => P.rows.forEach(r => { if (r.sales > 0) entries.push(r); }));
-  entries.sort((a,b) => (a.left - b.left) || (a.dts - b.dts) || (b.sales - a.sales));   // global priority
-  entries.forEach((r,i) => r.rank = i + 1);
-  prods.forEach(P => { const f = entries.find(r=>r.P===P); P.urgency = f ? f.left : Infinity; P.worst = f ? f.level : 'grey'; });
-  prods.sort((a,b) => (a.urgency - b.urgency) || (b.total - a.total));
+  entries.sort(byPrio);
+  let n = 0; entries.forEach(r => { r.rank = r.P.disc ? null : ++n; });
+  const flat = {
+    priority: byPrio,
+    date: (a,b) => (E(a) - E(b)) || (b.last > a.last ? 1 : b.last < a.last ? -1 : 0) || byPrio(a,b),
+    vdts: (a,b) => (E(a) - E(b)) || (a.dts - b.dts) || byPrio(a,b),
+  };
+  prods.forEach(P => { const f = entries.find(r=>r.P===P); P.best = f ? f.score : 0; P.urgency = f ? f.left : Infinity; P.worst = f ? f.level : 'grey'; });
+  const grp = {
+    size: (a,b) => (EP(a) - EP(b)) || (b.best - a.best) || (a.urgency - b.urgency) || (b.total - a.total),
+    sales: (a,b) => (EP(a) - EP(b)) || (b.total - a.total),
+    supplier: (a,b) => (EP(a) - EP(b)) || (a.supplier || '￿').localeCompare(b.supplier || '￿') || (b.best - a.best),
+    pdts: (a,b) => (EP(a) - EP(b)) || (a.pDTS - b.pDTS) || (b.total - a.total),
+  };
+  if (flat[mode]) entries.sort(flat[mode]);
+  prods.sort(grp[mode] || grp.size);
   return {prods, entries};
 }
 
 const BADGE = {red:'🔴 Out of stock',orange:'🟠 Urgent',yellow:'🟡 Soon',green:'🟢 OK',grey:'⚪ No sales'};
 const initials = t => t.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
 const years = d => d >= 365 ? (Math.round(d/36.5)/10) + ' yrs' : d >= 60 ? Math.round(d/30) + ' mo' : d + ' d';
+const FLAT = new Set(['priority','date','vdts']);
 
 /* ---------------- order cell (stepper / save) and supplier status ---------------- */
-const eff = o => o.ship_qty == null ? o.qty : o.ship_qty;
-const isLive = o => o && o.status !== 'received';          // a restocked line is history: ordering again starts a fresh one
 function curQty(i){
-  const {r,key} = infos[i], row = orders.get(key);
-  return draft.has(key) ? draft.get(key) : isLive(row) ? row.qty : r.toOrder;
+  const {r,key} = infos[i];
+  return draft.has(key) ? draft.get(key) : r.toOrder;
 }
 const dShort = d => new Date(d).toLocaleDateString(undefined,{day:'numeric',month:'short'});
 const shipDay = o => o.ship_date ? new Date(o.ship_date + 'T00:00:00') : new Date(o.shipped_at);
@@ -354,24 +454,30 @@ function timeline(o){
 }
 const lowFlag = o => eff(o) < o.qty ? `<div class="flag" title="The supplier cannot ship the full amount">⚠ Supplier reported low stock: shipping ${eff(o)} of ${o.qty}${o.qty_by_name ? ' · ' + esc(o.qty_by_name) : ''}</div>` : '';
 function ordHtml(i){
-  const {r,key} = infos[i], row = orders.get(key), cur = curQty(i);
-  const live = isLive(row);
-  const locked = live && !!row && row.status !== 'saved';
-  const noSup = false;   // products without a supplier tag go to "Unassigned" for now
-  const dirty = !live ? cur > 0 : row.qty !== cur;
-  const btn = locked ? '' :
-    `<button class="save${!dirty && live ? ' ok' : ''}" data-save="1" ${(dirty && !noSup) ? '' : 'disabled'} title="Send to supplier">${!dirty && live ? 'Saved ✓' : 'Save'}</button>`;
-  return `<span class="step"><button data-step="1" ${locked?'disabled':''}>+</button><b>${cur}</b><button data-step="-1" ${locked||cur<=0?'disabled':''}>−</button></span>${btn}`;
+  const {r,key} = infos[i];
+  if (r.P.disc) return '<span class="sub">Discontinued</span>';
+  const cur = curQty(i), pp = pipeline(key);
+  const parts = []; if (pp.saved) parts.push(pp.saved + ' saved'); if (pp.box) parts.push(pp.box + ' in box'); if (pp.way) parts.push(pp.way + ' on the way');
+  const label = cur > 0 && pp.total > 0 ? 'Save +' + cur : 'Save';
+  return `<span class="step"><button data-step="1">+</button><b>${cur}</b><button data-step="-1" ${cur<=0?'disabled':''}>−</button></span>` +
+    `<button class="save" data-save="1" ${cur > 0 ? '' : 'disabled'} title="Send this quantity to the supplier as a new order line">${label}</button>` +
+    (parts.length ? `<div class="pipe">Already: ${parts.join(' · ')}</div>` : '');
+}
+function lineHtml(o){
+  const tip = ' title="' + esc(timeline(o)) + '"';
+  if (o.status === 'saved') return `<div class="ln"><span class="badge c-info"${tip}>Saved ${o.qty}</span><span class="sub">${dShort(o.saved_at)}</span><button class="x" data-cancel="${esc(o.id)}" title="Cancel this order line (only until the supplier boxes it)">×</button></div>`;
+  if (o.status === 'added') return `<div class="ln"><span class="badge c-amber"${tip}>📦 In box ${eff(o)}</span></div>${lowFlag(o)}`;
+  const d = shipDay(o), days = daysBetween(d, Date.now());
+  return `<div class="ln"><span class="badge c-green"${tip}>🚚 ${eff(o)} shipped ${dShort(d)}${o.box_no ? ' · ' + esc(o.box_no) : ''} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days')}</span><button class="recv" data-recv="${esc(o.id)}" title="This line arrived: stop its timer">Received</button></div>${lowFlag(o)}`;
 }
 function supHtml(i){
-  const row = orders.get(infos[i].key);
-  if (!row) return '–';
-  const tip = ' title="' + esc(timeline(row)) + '"';
-  if (row.status === 'saved') return `<span class="badge c-info"${tip}>Saved</span>${lowFlag(row)}`;
-  if (row.status === 'added') return `<span class="badge c-amber"${tip}>📦 In box</span>${lowFlag(row)}`;
-  const d = shipDay(row), days = daysBetween(d, Date.now());
-  if (row.status === 'received') return `<span class="badge c-green"${tip}>✅ Restocked ${dShort(row.received_at)} · took ${daysBetween(d, new Date(row.received_at))} days</span>${lowFlag(row)}`;
-  return `<span class="badge c-green"${tip}>🚚 ${eff(row)} shipped ${dShort(d)}${row.box_no ? ' · box ' + esc(row.box_no) : ''} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days')}</span>${lowFlag(row)}<button class="recv" data-recv="1" title="Stock arrived: stop the timer">Received</button>`;
+  const pp = pipeline(infos[i].key);
+  if (!pp.live.length) {
+    const lr = pp.all.filter(o => o.status === 'received').pop();
+    if (!lr) return '–';
+    return `<span class="badge c-green" title="${esc(timeline(lr))}">✅ Restocked ${dShort(lr.received_at)} · took ${daysBetween(shipDay(lr), new Date(lr.received_at))} days</span>`;
+  }
+  return pp.live.map(lineHtml).join('');
 }
 function paint(i){
   const a = document.querySelector(`[data-ord="${i}"]`), b = document.querySelector(`[data-sup="${i}"]`);
@@ -383,8 +489,9 @@ const repaintAll = () => infos.forEach((_,i) => paint(i));
 /* ---------------- render ---------------- */
 function rowHtml(r){
   const i = infos.length; infos.push({r, key: keyOf(r.P.p.id, r.title)});
-  return `<tr><td class="c-${r.level}">${r.rank ?? '–'}</td><td class="v">${esc(r.title)}</td>
-    <td class="c-${r.cSales}">${r.sales}</td><td class="c-${r.cDts}">${fmt(r.dts)}</td>
+  const why = r.rank == null ? '' : ` title="Priority score ${r.score} (short over lead time × confidence ${Math.round(r.conf*100)}% × category ${Math.round(r.P.catW*100)}% × spike ${Math.round(r.damp*100)}%)"`;
+  return `<tr><td class="c-${r.level} why"${why}>${r.rank ?? '–'}</td><td class="v">${esc(r.title)}</td>
+    <td class="c-${r.cSales}">${r.sales}<div class="sub2">${ago(r.last)}</div></td><td class="c-${r.cDts}">${fmt(r.dts)}</td>
     <td class="c-${r.cLeft}">${r.sales===0?'—':r.stock<=0?0:fmt(r.left)}</td>
     <td class="stk g1 c-${r.cStock}">${r.stock}</td>
     <td class="g2 c-${r.cReq}">${r.required}</td>
@@ -393,15 +500,18 @@ function rowHtml(r){
     <td class="status c-${r.level}"><span class="badge">${BADGE[r.level]}</span></td></tr>`;
 }
 function cardHtml(g){
-  const P = g.P, isOpen = state.has(g.id) ? state.get(g.id) : defaultOpen;
+  const P = g.P, isOpen = state.has(g.id) ? state.get(g.id) : defaultOpen, pid = String(P.p.id);
   const dtsCls = P.pDTS === Infinity ? 't-info' : P.pDTS < 20 ? 't-green' : P.pDTS < 50 ? 't-amber' : 't-red';
   const ordCls = P.units === 0 ? 't-green' : P.worst === 'red' ? 't-red' : 't-amber';
   const thumb = P.p.thumb || P.p.image;
   const src = thumb ? esc(thumb) + (thumb.startsWith('data:') ? '' : (thumb.includes('?') ? '&' : '?') + 'width=120') : '';
+  const tag = (P.disc ? '<span class="tag dc">Discontinued</span>' : '') + (P.elig ? '<span class="tag el">Eligible</span>' : '<span class="tag ne">Not eligible</span>');
+  const arm = armed.has(pid);
   return `<section class="card${isOpen?' open':''}" data-gid="${esc(g.id)}">
     <div class="card-h" data-toggle="1"><span class="chev">▶</span>
       <div class="thumb"><span>${esc(initials(P.p.title))}</span>${src ? `<img src="${src}" alt="" loading="lazy" referrerpolicy="no-referrer" style="position:absolute;inset:0;opacity:0" onload="this.style.opacity=1" onerror="this.remove()">` : ''}</div>
-      <div class="ttl"><h2>${esc(P.p.title)}</h2><div class="meta">${g.rows.length} variant${g.rows.length===1?'':'s'} shown · ${P.supplier ? esc(P.supplier) : 'no supplier'} · ${P.days} days on market</div></div>
+      <div class="ttl"><h2>${esc(P.p.title)}${tag}</h2><div class="meta">${g.rows.length} variant${g.rows.length===1?'':'s'} shown · ${P.supplier ? esc(P.supplier) : 'no supplier'} · ${P.days} days on market${P.cat !== 'other' ? ' · ' + esc(P.cat) : ''}${P.last ? ' · last sale ' + esc(ago(P.last).replace('sold ', '')) : ''}</div></div>
+      <button class="disc${arm?' arm':''}" data-disc="${esc(pid)}" data-to="${P.disc?0:1}" title="${P.disc ? 'Put this product back into restocking' : 'Stop restocking this product and mark it discontinued in Shopify'}">${P.disc ? 'Reinstate' : arm ? 'Confirm discontinue?' : 'Discontinue'}</button>
       <div class="tiles">
         <div class="tile t-info"><b>${years(P.days)}</b><span>On market</span></div>
         <div class="tile"><b>${P.total}</b><span>Total sold</span></div>
@@ -419,25 +529,47 @@ function queueTile(){
   return `<div class="stat" data-qt="1"><b>${c.saved} · ${c.added} · ${c.shipped}</b><span>Saved · in box · shipped</span></div>` +
          `<div class="stat" data-qt="1"><b>${incoming}</b><span>Units on the way${low ? ' · ⚠ ' + low + ' short' : ''}</span></div>`;
 }
+let boxGroups = [];
+function renderBoxes(){
+  const m = new Map();
+  orders.forEach(o => { if (o.status !== 'shipped') return; const k = o.box_no || '(no box number)'; if (!m.has(k)) m.set(k, []); m.get(k).push(o); });
+  boxGroups = [...m.entries()].sort((a, b) => String(shipDay(b[1][0])).localeCompare(String(shipDay(a[1][0]))));
+  const el = $('boxes');
+  el.hidden = !boxGroups.length;
+  if (!boxGroups.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<b>Boxes on the way</b>' + boxGroups.map(([box, list], bi) => {
+    const f = list[0], d = shipDay(f), days = daysBetween(d, Date.now()), units = list.reduce((a, o) => a + eff(o), 0);
+    return `<div class="bx"><b>${esc(box)}</b><span>${esc(f.supplier || '')}</span><span class="sub">shipped ${dShort(d)} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days') + ' ago'} · ${list.length} line${list.length === 1 ? '' : 's'} · ${units} unit${units === 1 ? '' : 's'}</span>
+      <button class="recvbox" data-recvbox="${bi}" title="Everything in this box arrived">Whole box received</button>
+      <details><summary>Lines in this box</summary>${list.map(o => `<div class="ln">${esc(o.product_title)} · ${esc(o.variant_title)} × ${eff(o)} <button class="recv" data-recv="${esc(o.id)}">Received</button></div>`).join('')}</details></div>`;
+  }).join('');
+}
 function render(){
+  indexOrders();
   const {prods, entries} = compute();
-  const supSel = $('supplier').value, onlyNeed = $('onlyNeed').checked, onlyElig = $('onlyElig').checked;
-  const activeElig = prods.filter(r=>r.eligible && !getDone(r.p.id)).length;
+  const supSel = $('supplier').value, colSel = $('collection').value, eligSel = $('elig').value, dSel = $('discf').value;
+  const onlyNeed = $('onlyNeed').checked, onlyElig = $('onlyElig').checked;
+  const live = prods.filter(r => !r.disc);
+  const activeElig = live.filter(r=>r.eligible && !getDone(r.p.id)).length;
   $('stats').innerHTML = [
-    [prods.length,'Products'],
-    [entries.filter(v=>v.level==='red').length,'Out-of-stock selling variants'],
-    [entries.filter(v=>v.level==='orange').length,'Under 7 days left'],
-    [prods.reduce((a,r)=>a+r.units,0),'Units to order (all)'],[activeElig,'Stock More Variants']
+    [live.length,'Products'],
+    [entries.filter(v=>!v.P.disc && v.level==='red').length,'Out-of-stock selling variants'],
+    [entries.filter(v=>!v.P.disc && v.level==='orange').length,'Under 7 days left'],
+    [live.reduce((a,r)=>a+r.units,0),'Units still to order'],[activeElig,'Stock More Variants'],
+    [prods.length - live.length,'Discontinued']
   ].map(([n,l])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join('') + queueTile();
   $('sub').textContent = `${data.source || ''} · Generated ${new Date(data.generatedAt).toLocaleString()} · ${LEAD_DAYS}-day lead time`;
 
   const pass = r => (!supSel || (r.P.supplier || '(none)') === supSel) &&
-    (!onlyNeed || r.toOrder > 0 || orders.has(keyOf(r.P.p.id, r.title))) &&
+    (!colSel || (r.P.p.cols || []).includes(colSel)) &&
+    (!eligSel || (eligSel === 'y' ? r.P.elig : !r.P.elig)) &&
+    (dSel === 'all' || (dSel === 'only' ? r.P.disc : !r.P.disc)) &&
+    (!onlyNeed || r.toOrder > 0 || pipeline(keyOf(r.P.p.id, r.title)).live.length) &&
     (!onlyElig || (r.P.eligible && !getDone(r.P.p.id)));
   infos.length = 0;
   const groups = [], bannered = new Set();
   const mkBanner = P => { const s = P.eligible && !getDone(P.p.id) && !bannered.has(P); if (s) bannered.add(P); return s; };
-  if (mode === 'priority') {
+  if (FLAT.has(mode)) {
     for (const r of entries) {
       if (!pass(r)) continue;
       const last = groups[groups.length-1];
@@ -455,25 +587,52 @@ function render(){
   let html = shown.map(cardHtml).join('');
   if (groups.length > shown.length) html += `<button class="more" id="more">Show more (${groups.length - shown.length} more)</button>`;
   $('list').innerHTML = html || '<div class="empty">Nothing to show with the current filters.</div>';
+  renderBoxes();
 }
 
 /* ---------------- events ---------------- */
 const reset = () => { limit = PAGE; render(); };
 $('len').addEventListener('input', reset);
-['onlyNeed','onlyElig','supplier'].forEach(id => $(id).addEventListener('change', reset));
-$('order').addEventListener('change', () => { mode = $('order').value; defaultOpen = mode === 'priority'; state.clear(); reset(); });
+['onlyNeed','onlyElig','supplier','collection','elig','discf'].forEach(id => $(id).addEventListener('change', reset));
+$('order').addEventListener('change', () => { mode = $('order').value; defaultOpen = FLAT.has(mode); state.clear(); reset(); });
+async function receive(ids, label){
+  try {
+    await Store.received(ids);
+    ids.forEach(id => { const o = orders.get(id); if (o) { o.status = 'received'; o.received_at = new Date().toISOString(); } });
+    notify(label, true);
+  } catch (err) { notify('Could not clear: ' + err.message); }
+  render();
+}
+function onClick(e){
+  const t = e.target;
+  const rb = t.closest('[data-recvbox]');
+  if (rb) { const g = boxGroups[+rb.getAttribute('data-recvbox')]; if (g) { rb.disabled = true; const n = g[1].reduce((a, o) => a + eff(o), 0); receive(g[1].map(o => o.id), n + ' received · ' + g[0]); } return; }
+  const rc = t.closest('[data-recv]');
+  if (rc) { const o = orders.get(rc.getAttribute('data-recv')); rc.disabled = true; receive([rc.getAttribute('data-recv')], (o ? eff(o) : '') + ' received' + (o && o.box_no ? ' · ' + o.box_no : '')); return; }
+}
+$('boxes').addEventListener('click', onClick);
 $('list').addEventListener('click', async e => {
   const t = e.target;
   if (t.id === 'more') { limit += PAGE; render(); return; }
+  const dc = t.closest('[data-disc]');
+  if (dc) {
+    e.stopPropagation();
+    const pid = dc.getAttribute('data-disc'), to = dc.getAttribute('data-to') === '1';
+    if (to && !armed.has(pid)) { armed.add(pid); render(); setTimeout(() => { if (armed.delete(pid)) render(); }, 5000); return; }
+    armed.delete(pid); dc.disabled = true;
+    try { await Store.disc(pid, to); discMap.set(pid, to); notify(to ? 'Marked discontinued. Shopify is updated on the next refresh (after the next order, or at midnight).' : 'Reinstated. Shopify is updated on the next refresh.', true); }
+    catch (err) { notify('Could not update: ' + err.message); }
+    render(); return;
+  }
   const done = t.closest('[data-done]');
   if (done) { setDone(done.getAttribute('data-done'), true); render(); return; }
-  const rc = t.closest('[data-recv]');
-  if (rc) {
-    const i = +rc.closest('[data-sup]').getAttribute('data-sup'), key = infos[i].key;
-    rc.disabled = true;
-    try { await Store.received([key]); const o = orders.get(key); if (o) { o.status = 'received'; o.received_at = new Date().toISOString(); } } catch (err) { notify('Could not clear: ' + err.message); }
-    paint(i); updateQueue(); return;
+  const cx = t.closest('[data-cancel]');
+  if (cx) {
+    const id = cx.getAttribute('data-cancel'); cx.disabled = true;
+    try { await Store.cancel(id); orders.delete(id); } catch (err) { notify('Could not cancel: ' + err.message); }
+    render(); return;
   }
+  if (t.closest('[data-recv]')) { onClick(e); return; }
   const cell = t.closest('[data-ord]');
   if (cell) {
     const i = +cell.getAttribute('data-ord'), key = infos[i].key;
@@ -482,14 +641,15 @@ $('list').addEventListener('click', async e => {
       paint(i);
     } else if (t.closest('[data-save]')) {
       const {r} = infos[i], P = r.P, qty = curQty(i), btn = t.closest('[data-save]');
+      if (qty <= 0) return;
       btn.disabled = true; btn.textContent = 'Saving…';
       try {
-        const row = await Store.upsert({ id: key, product_id: P.p.id, product_title: P.p.title, image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''),
+        const row = await Store.order({ vkey: key, product_id: P.p.id, product_title: P.p.title, image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''),
           variant_title: r.title, supplier: P.supplier || 'Unassigned', qty, stock_base: r.stock });
-        if (row && row.id) orders.set(key, row); else orders.delete(key);
+        if (row && row.id) orders.set(row.id, row);
         draft.delete(key);
       } catch (err) { notify('Save failed: ' + err.message); }
-      paint(i); updateQueue();
+      render();
     }
     return;
   }
@@ -510,6 +670,8 @@ $('theme').addEventListener('click', () => {
 function buildSuppliers(){
   const names = [...new Set(data.products.map(p => p.supplier || '(none)'))].sort();
   $('supplier').innerHTML = '<option value="">All</option>' + names.map(n=>`<option>${esc(n)}</option>`).join('');
+  const cnt = new Map(); data.products.forEach(p => (p.cols || []).forEach(c => cnt.set(c, (cnt.get(c) || 0) + 1)));
+  $('collection').innerHTML = '<option value="">All</option>' + [...cnt.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([c,n])=>`<option value="${esc(c)}">${esc(c)} (${n})</option>`).join('');
 }
 
 /* ---------------- supplier sync ---------------- */
@@ -522,18 +684,32 @@ function liveStock(o){
   const v = p.variants.find(x => String(x[0]).trim().toLowerCase() === String(o.variant_title).trim().toLowerCase());
   return v ? +v[1] : null;
 }
+let lastSig = '';
 async function refresh(){
   try {
-    const rows = await Store.list();
+    const [rows, disc] = await Promise.all([Store.list(), Store.discList().catch(() => null)]);
     orders = new Map(rows.map(r => [r.id, r]));
-    // stock on the website has risen by what was shipped: the restock has landed, stop the timer
-    const landed = rows.filter(o => o.status === 'shipped' && o.stock_base != null && eff(o) > 0 && (liveStock(o) ?? -1) >= o.stock_base + eff(o));
+    if (disc) disc.forEach(d => discMap.set(String(d.product_id), !!d.discontinued));
+    indexOrders();
+    // stock on the website has risen by what was shipped: the restock has landed, stop the timer.
+    // Several shipments of one variant are matched in shipping order (cumulative), so a later top-up is not marked early.
+    const landed = [];
+    byV.forEach(arr => {
+      const sh = arr.filter(o => o.status === 'shipped' && o.stock_base != null && eff(o) > 0).sort((x, y) => String(x.shipped_at).localeCompare(String(y.shipped_at)));
+      if (!sh.length) return;
+      const st = liveStock(sh[0]); if (st == null) return;
+      const base = Math.min(...sh.map(o => o.stock_base)); let cum = 0;
+      sh.forEach(o => { cum += eff(o); if (st >= base + cum) landed.push(o); });
+    });
     if (landed.length) {
-      try { await Store.received(landed.map(o => o.id)); landed.forEach(o => { o.status = 'received'; o.received_at = new Date().toISOString(); }); } catch (e) { /* manual Received button still works */ }
+      try { await Store.received(landed.map(o => o.id)); landed.forEach(o => { o.status = 'received'; o.received_at = new Date().toISOString(); }); } catch (e) { /* manual Received buttons still work */ }
     }
-    repaintAll(); updateQueue(); if (!$('viewSup').hidden) renderSv();
+    const sig = JSON.stringify([[...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty]), [...discMap.entries()]]);
+    if (sig !== lastSig) { lastSig = sig; render(); }
+    updateQueue(); if (!$('viewSup').hidden) renderSv();
   } catch (err) { $('sub').textContent = 'Could not load supplier status: ' + err.message; }
 }
+setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 60000);
 /* ---------------- supplier view (read-only mirror of the supplier portal) ---------------- */
 function svGroup(list){ const m = new Map(); list.forEach(r => { if (!m.has(r.product_id)) m.set(r.product_id, []); m.get(r.product_id).push(r); }); return [...m.values()]; }
 const svSort = (a, b) => bySize({title: a.variant_title}, {title: b.variant_title});
