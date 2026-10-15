@@ -1,0 +1,117 @@
+name: Cash Report
+
+# Cash-paid Shopify orders since 18 Apr 2026 (month > week > day > order, rounded to $5).
+# Runs from the Schedule Panel: after every new order and daily at 12:00 am (Melbourne), which resets the Today tile.
+run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
+
+on:
+  repository_dispatch:
+    types: [report-schedule]
+  workflow_dispatch:
+
+concurrency:
+  # Per-workflow lock: prevents duplicate runs of this workflow from cancelling unrelated report refreshes.
+  group: ${{ github.event.action == 'report-schedule' && !(contains(github.event.client_payload.report_ids, 'cash-report')) && format('ignored-{0}', github.event.client_payload.schedule_group) || 'indifeels-cash-report' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: (github.event.action != 'report-schedule' || (contains(github.event.client_payload.report_ids, 'cash-report')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Schedule Panel dispatch gate
+        id: gate
+        run: |
+          echo "go=1" >> "$GITHUB_OUTPUT"
+
+      - name: Let a new order settle in Shopify
+        if: steps.gate.outputs.go == '1' && github.event.action == 'report-schedule'
+        run: sleep 30
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.go == '1'
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.go == '1'
+        with:
+          python-version: "3.12"
+
+      - name: Install report dependency
+        if: steps.gate.outputs.go == '1'
+        run: pip install cryptography
+
+      - name: Load Cash Report encryption key
+        if: steps.gate.outputs.go == '1'
+        env:
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import base64, json, os, re, urllib.request
+
+          cfg = open("config.js", encoding="utf-8").read()
+          url = re.search(r'url:\s*"([^"]+)"', cfg).group(1)
+          anon = re.search(r'key:\s*"([^"]+)"', cfg).group(1)
+          req = urllib.request.Request(
+              url + "/rest/v1/rpc/sync_get_report_keys",
+              method="POST",
+              data=json.dumps({
+                  "p_token": os.environ["SYNC_READ_TOKEN"],
+                  "p_report_ids": ["cash-report"],
+              }).encode(),
+              headers={"apikey": anon, "Content-Type": "application/json"},
+          )
+          rows = json.load(urllib.request.urlopen(req, timeout=60))
+          if not rows or not rows[0].get("key_b64"):
+              raise SystemExit("Cash Report encryption key is unavailable in Supabase")
+          key = rows[0]["key_b64"].strip()
+          if len(base64.b64decode(key)) != 32:
+              raise SystemExit("Cash Report encryption key is invalid")
+          print("::add-mask::" + key)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+              env.write("CASH_REPORT_KEY=" + key + "\n")
+          print("Cash Report encryption key loaded")
+          PY
+
+      - name: Validate report contract
+        if: steps.gate.outputs.go == '1'
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+        run: python3 tools/report_preflight.py --phase pre cash-report
+
+      - name: Build Cash Report
+        if: steps.gate.outputs.go == '1'
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
+        run: python3 tools/cash_report.py
+
+      - name: Verify report files
+        if: steps.gate.outputs.go == '1'
+        run: |
+          test -s r/cash-report.bin
+          test -s r/cash-report.meta.bin
+          grep -q '"cash-report"' r/status.json
+
+      - name: Publish report
+        if: always() && steps.gate.outputs.go == '1'
+        run: |
+          python3 tools/report_preflight.py --phase post cash-report
+          git config user.name "Indifeels cash report bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add r/status.json
+          [ -f r/cash-report.bin ] && git add r/cash-report.bin || true
+          [ -f r/cash-report.meta.bin ] && git add r/cash-report.meta.bin || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh Cash Report (${{ github.event.client_payload.order || github.event_name }})"
+          for i in 1 2 3; do
+            git pull --rebase -q origin main
+            git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1

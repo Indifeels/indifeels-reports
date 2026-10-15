@@ -1,0 +1,251 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style><title>Cash Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Figtree:wght@400;500;700&display=swap">
+<style>
+/* Layout: gradient-lit page; four colour tiles, then one fixed-column table (month > week > day > order) with RAG pills on Cash and a change column. */
+:root{
+  --bg:#f5f2ff; --surface:#ffffff; --fg:#1a1640; --muted:#655f8f; --line:#e2dcfa; --row:#efeaff;
+  --c1:#ff4d8d; --c5:#15aabf; --c6:#4c6ef5; --c7:#9c4dff;
+  --green:#1fa968; --amber:#c98200; --red:#e5484d; --ink:#0b1020;
+  --glow1:rgba(255,77,141,.20); --glow2:rgba(76,110,245,.20); --glow3:rgba(18,184,134,.18);
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111214; --surface:#1c1d20; --fg:#f5f5f6; --muted:#bec0c5; --line:#3c3d40; --row:#26272a;
+    --c1:#ff6fa5; --c5:#35d0e6; --c6:#7a93ff; --c7:#b87dff;
+    --green:#3ddc84; --amber:#ffc53d; --red:#ff7b7f;
+    --glow1:rgba(255,111,165,.26); --glow2:rgba(122,147,255,.26); --glow3:rgba(47,224,168,.18);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111214; --surface:#1c1d20; --fg:#f5f5f6; --muted:#bec0c5; --line:#3c3d40; --row:#26272a;
+  --c1:#ff6fa5; --c5:#35d0e6; --c6:#7a93ff; --c7:#b87dff;
+  --green:#3ddc84; --amber:#ffc53d; --red:#ff7b7f;
+  --glow1:rgba(255,111,165,.26); --glow2:rgba(122,147,255,.26); --glow3:rgba(47,224,168,.18);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(60rem 38rem at 8% -8%, var(--glow1), transparent 62%),
+    radial-gradient(52rem 38rem at 100% 6%, var(--glow2), transparent 62%),
+    radial-gradient(56rem 40rem at 45% 108%, var(--glow3), transparent 62%);
+  background-attachment:fixed;
+  color:var(--fg); font-family:var(--body); font-size:15px; line-height:1.4;
+  padding-inline:16px; padding-block:28px 48px;
+}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 20px}
+.head h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(2.2rem,7vw,3.6rem);line-height:1;letter-spacing:-.02em;
+  background:linear-gradient(90deg,var(--c1),#ff9d5c 45%,#ffd23f);-webkit-background-clip:text;background-clip:text;color:transparent}
+.head p{margin:6px 0 0;color:var(--muted)}
+.snap{font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);background:var(--surface);padding:6px 12px;border-radius:999px}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.tile{border-radius:22px;padding:16px 18px;color:#f5f5f6;min-width:0;display:flex;flex-direction:column;gap:4px;border:0;background:linear-gradient(145deg,#424347 0%,#2a2b2e 40%,#161719 100%);box-shadow:14px 16px 20px -8px rgba(0,0,0,.75),5px 6px 8px -4px rgba(0,0,0,.5),inset 10px 10px 18px -12px rgba(255,255,255,.16),inset -12px -12px 20px -12px rgba(0,0,0,.6)}
+.tile .k{font-size:.74rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#bec0c5}
+.tile .v{font-family:var(--display);font-weight:800;font-size:clamp(1.35rem,5.2vw,1.95rem);line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tile .s{font-size:.82rem;color:#bec0c5}
+
+.box{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:14px;min-width:0}
+.ptitle{margin:2px 4px 14px;font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;align-items:center}
+.ctl{font:inherit;font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:none;color:var(--fg);background:transparent;border:1.5px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer}
+.ctl:focus-visible,.rowbtn:focus-visible{outline:3px solid var(--c5);outline-offset:2px}
+.note{margin:12px 4px 2px;font-size:.76rem;color:var(--muted)}
+
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:18px;background:var(--bg)}
+table{width:100%;table-layout:fixed;border-collapse:collapse;font-variant-numeric:tabular-nums}
+col.cp{width:56%}col.cc{width:44%}
+th,td{vertical-align:middle;text-align:right;padding:12px 6px}
+th:first-child,td:first-child{text-align:left;padding-left:10px}
+th:last-child,td:last-child{padding-right:10px}
+thead th{font-size:.74rem;font-weight:700;color:var(--muted);padding-block:13px;border-bottom:2px solid var(--line);white-space:nowrap}
+tbody td,tfoot td{border-bottom:1px solid var(--line);font-size:.88rem;white-space:nowrap}
+td:first-child{white-space:normal}
+tr.has-kids{cursor:pointer}
+tr.has-kids:hover td{background:var(--row)}
+tr.l1 td:first-child{font-family:var(--display);font-weight:800;font-size:1rem}
+tr.l2{background:color-mix(in srgb,var(--row) 45%,transparent)}
+tr.l2 td:first-child{padding-left:22px;font-weight:700}
+tr.l3{background:color-mix(in srgb,var(--row) 80%,transparent)}
+tr.l3 td:first-child{padding-left:34px;font-weight:600;color:var(--muted)}
+tr.l4 td{padding-block:8px;font-size:.84rem;color:var(--muted);background:color-mix(in srgb,var(--row) 80%,transparent)}
+tr.l4 td:first-child{padding-left:50px}
+tr.l4 td:nth-child(2){color:var(--fg);font-weight:600}
+.rowbtn{all:unset;display:inline-flex;align-items:flex-start;cursor:pointer;border-radius:6px;line-height:1.3}
+.caret{flex:none;width:0;height:0;border-left:6px solid var(--muted);border-top:5px solid transparent;border-bottom:5px solid transparent;margin:.4em 8px 0 0;transition:transform .15s}
+tr.open .caret{transform:rotate(90deg)}
+.num{display:inline-block;min-width:2ch;text-align:right}
+.slot{display:inline-block;width:14px;text-align:center;font-size:.6rem;vertical-align:middle}
+.slot.up,.chg.up{color:var(--green)}.slot.down,.chg.down{color:var(--red)}
+.chg{font-weight:700;font-size:.8rem}
+.chg.flat{color:var(--muted)}
+.pill{display:inline-flex;align-items:center;justify-content:space-between;gap:5px;width:min(100%,108px);border-radius:9px;padding:3px 6px;font-weight:700;font-size:.84rem;border:1px solid transparent;color:var(--fg)}
+.pill::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill span{color:var(--fg)}
+.pill.green{color:var(--green);background:color-mix(in srgb,var(--green) 16%,var(--surface));border-color:color-mix(in srgb,var(--green) 38%,transparent)}
+.pill.amber{color:var(--amber);background:color-mix(in srgb,var(--amber) 16%,var(--surface));border-color:color-mix(in srgb,var(--amber) 38%,transparent)}
+.pill.red{color:var(--red);background:color-mix(in srgb,var(--red) 16%,var(--surface));border-color:color-mix(in srgb,var(--red) 38%,transparent)}
+.pill.none{color:var(--muted);background:transparent;border:1px dashed var(--muted)}
+tfoot td{background:var(--surface);border-bottom:0;border-top:2px solid var(--line);font-weight:800}
+tfoot td:nth-child(2){font-family:var(--display);font-size:1rem}
+@media (min-width:640px){
+  th,td{padding-inline:12px}
+  td:first-child,th:first-child{padding-left:16px}
+  tr.l2 td:first-child{padding-left:32px}tr.l3 td:first-child{padding-left:52px}tr.l4 td:first-child{padding-left:74px}
+  tbody td,tfoot td{font-size:.95rem}.box{padding:18px}
+}
+@media (prefers-reduced-motion:reduce){.caret{transition:none}}
+.pill{width:auto;justify-content:flex-end;padding:4px 12px;font-size:.98rem;border-radius:10px}.pill::before{display:none}
+tbody td,tfoot td{font-size:1rem}tr.l4 td{font-size:.9rem}tfoot td:nth-child(2){font-size:1.1rem}
+</style></head><body>
+
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1>Cash Report</h1>
+      <p>Indifeels Australia · AUD · Melbourne time · as at __UPDATED__</p>
+    </div>
+    
+  </header>
+
+  <section class="tiles" id="tiles" aria-label="Headline numbers"></section>
+
+  <section class="box">
+    <h2 class="ptitle"><span>Monthly cash</span><button class="ctl" id="all" type="button">Expand all</button></h2>
+    <div class="tw"><table>
+      <colgroup><col class="cp"><col class="cc"></colgroup>
+      <thead><tr><th>Period</th><th>Cash</th></tr></thead>
+      <tbody id="body"></tbody>
+      <tfoot id="foot"></tfoot>
+    </table></div>
+    <p class="note" id="note"></p>
+  </section>
+</div>
+
+<script>
+const ROWS=__ROWS__;
+const TODAY='__TODAY__', START='2026-04-18';
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WD=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const round=n=>Math.round(n*100)/100;
+const r5=n=>(Math.ceil(n/5-0.5)*5)||0; // nearest $5, exact halves round down (372.5 -> 370, 373.4 -> 375)
+const fmt=n=>'$'+r5(n).toLocaleString('en-AU');
+const fmt0=fmt;
+const D=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(Date.UTC(y,m-1,d))};
+const iso=dt=>dt.toISOString().slice(0,10);
+const addDays=(s,n)=>{const dt=D(s);dt.setUTCDate(dt.getUTCDate()+n);return iso(dt)};
+const dow=s=>(D(s).getUTCDay()+6)%7;
+const wk=s=>addDays(s,-dow(s));
+const dshort=s=>{const dt=D(s);return dt.getUTCDate()+' '+MON[dt.getUTCMonth()]};
+const wdshort=s=>WD[dow(s)]+' '+dshort(s);
+const monthFirst=k=>k+'-01';
+const monthLast=k=>{const [y,m]=k.split('-').map(Number);return iso(new Date(Date.UTC(y,m,0)))};
+const maxS=(a,b)=>a>b?a:b, minS=(a,b)=>a<b?a:b;
+
+function group(list,keyFn){
+  const m=new Map();
+  for(const r of list){const k=keyFn(r.d);if(!m.has(k))m.set(k,{key:k,orders:[],total:0});const g=m.get(k);g.orders.push(r);g.total+=r.c}
+  const a=[...m.values()].sort((x,y)=>x.key<y.key?-1:1);
+  a.forEach(g=>g.total=round(g.total));
+  return a;
+}
+// change vs previous full period, and RAG of cash vs the average full period in the same view
+function chg(arr,isPartial){
+  arr.forEach(g=>g.partial=isPartial(g.key));
+  const full=arr.filter(g=>!g.partial);
+  arr.avg=full.length?full.reduce((s,g)=>s+g.total,0)/full.length:0;
+  arr.forEach((g,i)=>{
+    const p=arr[i-1];
+    if(g.partial)return;
+    g.rag=g.total>=arr.avg?'green':(g.total>=arr.avg*0.7?'amber':'red');
+    if(!p||p.partial||!p.total)return;
+    g.prev=p;
+    g.c=Math.round((g.total-p.total)/p.total*100);
+  });
+}
+function buildModel(){
+  const months=group(ROWS,d=>d.slice(0,7)), weeks=group(ROWS,wk), days=group(ROWS,d=>d);
+  chg(months,k=>k==='2026-04'||k===TODAY.slice(0,7));
+  chg(weeks,k=>k===wk(START)||addDays(k,6)>=TODAY);
+  chg(days,k=>k===TODAY);
+  const wkMap=new Map(weeks.map(g=>[g.key,g])), dayMap=new Map(days.map(g=>[g.key,g]));
+  months.forEach(m=>{
+    const mf=monthFirst(m.key), ml=monthLast(m.key);
+    m.weeks=group(m.orders,wk).map(s=>{
+      const we=addDays(s.key,6), gw=wkMap.get(s.key), full=s.key>=mf&&we<=ml;
+      s.partial=!(full&&!gw.partial);
+      if(!s.partial){s.rag=gw.rag;if(gw.prev){s.prev=gw.prev;s.c=gw.c}}
+      s.label=dshort(maxS(maxS(s.key,mf),START))+' – '+dshort(minS(we,ml));
+      s.days=group(s.orders,d=>d).map(x=>dayMap.get(x.key));
+      return s;
+    });
+  });
+  const total=round(ROWS.reduce((s,r)=>s+r.c,0));
+  return {months,weeks,days,total,n:ROWS.length,avg:total/ROWS.length};
+}
+const M=buildModel();
+/*DOM*/
+const $=id=>document.getElementById(id);
+const dir=(a,b)=>a>b?'up':(a<b?'down':'');
+const sgn=c=>c>0?'+'+c:(c<0?'−'+Math.abs(c):'0');
+const slot=(cur,prev)=>{const d=prev===undefined?'':dir(cur,prev);return `<span class="slot ${d}">${d==='up'?'▲':d==='down'?'▼':''}</span>`};
+
+let uid=0;
+function node(level,label,g){
+  const n=g.orders.length, p=g.prev;
+  return {id:'r'+(uid++),level,label:label+(g.partial?'*':''),n,avg:g.total/n,total:g.total,rag:g.rag,c:g.c,
+    on:slot(n,p&&p.orders.length),kids:[]};
+}
+const tree=[...M.months].reverse().map(m=>{
+  const [y,mo]=m.key.split('-').map(Number);
+  const mn=node(1,MON[mo-1]+' '+y,m);
+  mn.kids=[...m.weeks].reverse().map(w=>{
+    const wn=node(2,w.label,w);
+    wn.kids=[...w.days].reverse().map(d=>{
+      const dn=node(3,wdshort(d.key),d);
+      dn.kids=d.orders.map(o=>({id:'r'+(uid++),level:4,label:o.o,total:o.c,kids:[]}));
+      return dn;
+    });
+    return wn;
+  });
+  return mn;
+});
+const open=new Set();
+function rowHtml(r){
+  if(r.level===4) return `<tr class="l4"><td>${r.label}</td><td>${fmt(r.total)}</td></tr>`;
+  const isOpen=open.has(r.id);
+  return `<tr class="l${r.level} has-kids${isOpen?' open':''}" data-id="${r.id}">
+    <td><button class="rowbtn" type="button" aria-expanded="${isOpen}"><span class="caret"></span><span>${r.label}</span></button></td>
+    <td><span class="pill ${r.rag||'none'}"><span>${fmt(r.total)}</span></span></td></tr>`;
+}
+function flat(list,out){for(const r of list){out.push(rowHtml(r));if(r.kids.length&&open.has(r.id))flat(r.kids,out)}return out}
+function draw(){$('body').innerHTML=flat(tree,[]).join('');$('all').textContent=open.size?'Collapse all':'Expand all'}
+function allIds(list,out){for(const r of list){if(r.kids.length){out.push(r.id);allIds(r.kids,out)}}return out}
+$('body').addEventListener('click',e=>{
+  const tr=e.target.closest('tr[data-id]');if(!tr)return;
+  const id=tr.dataset.id;open.has(id)?open.delete(id):open.add(id);draw();
+  if(e.detail===0){const b=document.querySelector(`tr[data-id="${id}"] .rowbtn`);if(b)b.focus()}
+});
+$('all').addEventListener('click',()=>{if(open.size)open.clear();else allIds(tree,[]).forEach(i=>open.add(i));draw()});
+draw();
+$('foot').innerHTML=`<tr><td>Total</td><td>${fmt(M.total)}</td></tr>`;
+$('note').textContent=`Highlight: green at or above the average full period in that view (month, week or day), amber from 70% to 99% of it, red below 70%. * Part period, shown grey: April starts on the 18th, __MONTHNAME__ is month to date, and a week that crosses a month end is split between the two months. Amounts are rounded to the nearest $5, so rows can differ slightly from their total. Cash portion only: for part-cash orders, just the cash amount counts.`;
+
+// tiles: relative to the data's as-at date (AS_OF), not the viewer's clock
+const AS_OF=TODAY;
+const win=(from,to)=>{const r=ROWS.filter(x=>x.d>=from&&x.d<=to);return {total:round(r.reduce((s,x)=>s+x.c,0)),n:r.length}};
+const ord=n=>n+' order'+(n===1?'':'s');
+const mtd=win(AS_OF.slice(0,7)+'-01',AS_OF), tod=win(AS_OF,AS_OF), d7=win(addDays(AS_OF,-6),AS_OF), d30=win(addDays(AS_OF,-29),AS_OF);
+$('tiles').innerHTML=`
+  <div class="tile t1"><span class="k">Month to date</span><span class="v">${fmt(mtd.total)}</span><span class="s">1 – ${dshort(AS_OF)} · ${ord(mtd.n)}</span></div>
+  <div class="tile t2"><span class="k">Today</span><span class="v">${fmt(tod.total)}</span><span class="s">${wdshort(AS_OF)} · ${tod.n?ord(tod.n):'no cash orders yet'}</span></div>
+  <div class="tile t3"><span class="k">Last 7 days</span><span class="v">${fmt(d7.total)}</span><span class="s">${dshort(addDays(AS_OF,-6))} – ${dshort(AS_OF)} · ${ord(d7.n)}</span></div>
+  <div class="tile t4"><span class="k">Last 30 days</span><span class="v">${fmt(d30.total)}</span><span class="s">${dshort(addDays(AS_OF,-29))} – ${dshort(AS_OF)} · ${ord(d30.n)}</span></div>`;
+</script>
+</body></html>

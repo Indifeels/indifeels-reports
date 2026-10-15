@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-15.restock-planner.1",
+  "manifest_version": "2026-10-15.cash-report.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -320,18 +320,24 @@
     {
       "id": "cash-report",
       "title": "Cash Report",
-      "workflow": null,
+      "workflow": "cash-report.yml",
       "refresh_times": [
-        "manual snapshot, 13 Oct 2026"
+        "schedule panel"
       ],
-      "required_env": [],
-      "builders": [],
+      "required_env": [
+        "SHOPIFY_TOKEN",
+        "CASH_REPORT_KEY"
+      ],
+      "builders": [
+        "tools/cash_report.py",
+        "tools/cash_report_template.html"
+      ],
       "outputs": [
         "r/cash-report.bin",
         "r/cash-report.meta.bin"
       ],
       "supabase_sync": false,
-      "schedule_control": "none"
+      "schedule_control": "report_schedules"
     },
     {
       "id": "color-game",
