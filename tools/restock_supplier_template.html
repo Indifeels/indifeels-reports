@@ -132,6 +132,43 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   .mc .pc table,.bx-prod .pc table{min-width:0}
   .bx-prod .pc table{min-width:430px}
 }
+@media (max-width:700px){
+  header{flex-wrap:wrap;gap:8px;padding:14px 14px 12px;margin:0 -10px;border-radius:0 0 18px 18px;background:linear-gradient(135deg,#0b3a6e 0%,#1f6feb 60%,#2ea8ff 100%);box-shadow:0 6px 18px rgba(31,111,235,.28)}
+  header .hd{flex:1 1 100%}
+  header h1{font-size:23px;color:#fff}
+  header .portal{font-size:14px;color:#cfe6ff;margin-top:0;text-transform:uppercase;letter-spacing:.08em}
+  header .who{font-size:14px;color:#fff;margin-top:6px;background:rgba(255,255,255,.18);display:inline-block;padding:3px 12px;border-radius:999px}
+  header .gbtn,header button{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.35);color:#fff;font-size:13.5px;padding:6px 12px}
+  header .gbtn{flex:1 1 auto;justify-content:center}
+  h2.sec{margin:18px 2px 8px;font-size:19px}
+  h2.sec .n{background:var(--info-bg);color:var(--info);border-radius:999px;padding:2px 10px;font-size:12.5px}
+  .hint{font-size:14px;margin-bottom:10px}
+  .mbar{padding:10px 12px;gap:8px 10px;border-left:4px solid var(--blue)}
+  .mbar select{flex:1 1 140px;min-width:0}
+  #addsel{flex:1 1 100%;padding:11px;font-size:15.5px;background:var(--blue);color:#fff;border-color:transparent;font-weight:800}
+  #addsel:disabled{background:var(--grey-bg);color:var(--muted)}
+  .mc{display:grid;grid-template-columns:62px 1fr;gap:6px 12px;align-items:center;padding:12px;border-left:4px solid var(--blue);background:linear-gradient(180deg,var(--card),var(--bg));box-shadow:0 4px 14px rgba(0,0,0,.25)}
+  .mc>.pc{display:contents}
+  .mc img,.mc .ph{width:62px;height:62px}
+  .mc .pn{font-size:15.5px;margin:0;line-height:1.25}
+  .mc table,.mc tbody{display:block;grid-column:1/-1;width:100%}
+  .mc thead{display:none}
+  .mc tr.mt{display:grid;grid-template-columns:28px 1fr auto;grid-template-areas:"ck var want" "ck snd add";gap:8px 10px;align-items:center;padding:10px;margin-top:8px;background:var(--grey-bg);border-radius:12px;border:1px solid var(--border)}
+  .mc tr.mt td{display:block;padding:0;border:0}
+  .mc tr.mt td:nth-child(1){grid-area:ck;align-self:start;padding-top:2px}
+  .mc tr.mt td:nth-child(2){grid-area:var;font-weight:800;font-size:17px}
+  .mc tr.mt td:nth-child(3){grid-area:want;text-align:right;justify-self:end;min-width:64px}
+  .mc tr.mt td:nth-child(3)::before{content:"WANTED";display:block;font-size:10px;letter-spacing:.06em;color:var(--muted);font-weight:700}
+  .mc tr.mt td:nth-child(3){background:var(--amber-bg);color:var(--amber);border-radius:10px;padding:3px 12px;font-size:20px}
+  .mc tr.mt td:nth-child(3)::before{color:var(--amber)}
+  .mc tr.mt td:nth-child(4){grid-area:snd;text-align:left}
+  .mc tr.mt td:nth-child(4)::before{content:"YOU SEND";display:block;font-size:10px;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:2px}
+  .mc tr.mt td:nth-child(5){grid-area:add;align-self:end}
+  .mc td.a button{max-width:none;white-space:nowrap;background:var(--green-bg);color:var(--green);border-color:var(--green);font-weight:800;font-size:14px;padding:9px 14px}
+  .mc td.a button.warn{white-space:normal;background:var(--amber-bg);color:var(--amber);border-color:var(--amber)}
+  .mc .sub{font-size:12px}
+  .mc .tg{margin:4px 0 0;display:block;width:fit-content}
+}
 </style>
 </head>
 <body>
