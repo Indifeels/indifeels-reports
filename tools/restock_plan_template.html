@@ -157,6 +157,45 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   :root[data-theme="dark"] td.stk.c-green{color:#7ee787}:root[data-theme="dark"] td.stk.c-red{color:#ff9a94}:root[data-theme="dark"] td.stk.c-amber,:root[data-theme="dark"] td.stk.c-orange{color:#ffc66d}:root[data-theme="dark"] td.stk.c-yellow{color:#ffe566}
   :root[data-theme="dark"] .step b{color:#fff}
   #saveAll{background:var(--blue);color:#06101c;border-color:var(--blue);font-weight:800}
+
+  /* ---- phones only (desktop is unchanged): compact bar, filters tucked away, tidy product cards ---- */
+  .phonebar{display:none}
+  @media (max-width:700px){
+    .phonebar{display:flex;gap:8px;position:sticky;top:0;z-index:12;background:var(--bg);padding:6px 0;margin-top:4px}
+    .phonebar button{flex:1;padding:9px 10px;font-size:15px;font-weight:700;border-radius:10px}
+    #saveAll2{background:var(--blue);color:#06101c;border-color:var(--blue)}
+    #viewMine .controls{position:static;display:none;padding:10px 12px;gap:8px 10px;font-size:14px;margin:0 0 8px}
+    #viewMine .controls.open{display:flex}
+    #viewMine .controls .slider{width:100%}
+    #viewMine .controls label.o{flex:1 1 46%;display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--muted)}
+    #viewMine .controls label.o select{width:100%;font-size:15px;padding:6px 8px}
+    #viewMine .controls label.o:has(input[type=checkbox]){flex-direction:row;align-items:center;gap:8px;color:var(--text);font-size:14px}
+    #viewMine .controls button{flex:1 1 30%;padding:8px 6px;font-size:14px}
+    #saveAll{flex:1 1 100%!important}
+    .stats{grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}
+    .stat{padding:6px 8px;border-radius:8px}.stat b{font-size:19px}.stat span{font-size:11px;line-height:1.2;display:block}
+    .legend{font-size:11px;gap:2px 10px}
+    .card-h .tiles .tile{font-size:11px;line-height:1.25}
+    .tabs button{padding:8px 14px;font-size:14px}
+    /* product card header: title row, buttons row, tiles row */
+    .card-h{display:flex;flex-wrap:wrap;gap:8px 10px;padding:10px 12px}
+    .card-h .thumb{width:46px;height:46px}
+    .card-h .ttl{flex:1 1 calc(100% - 96px);min-width:0}
+    .card-h .ttl h2{font-size:15.5px;line-height:1.25}
+    .card-h .ttl .meta{font-size:12px}
+    .card-h button.disc{flex:1 1 40%;font-size:13px;padding:7px 8px}
+    .card-h .tiles{flex:1 1 100%;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+    .card-h .tiles .tile{display:block!important;min-width:0;padding:4px 4px;border-radius:8px}
+    .banner{flex-wrap:wrap;padding:8px 12px;font-size:13px}
+    .banner span.s{flex:1 1 100%;order:3}
+    .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .scroll table{min-width:760px}
+    th,td{padding:7px 7px;font-size:13px}
+    td.v{position:sticky;left:0;z-index:2;background:var(--card);font-weight:800}
+    td.stk{font-size:22px!important}
+    .step button{padding:3px 12px;font-size:18px}
+    button.save{padding:6px 12px}
+  }
   th.g1,td.g1{border-left:3px solid var(--border)}
   th.g3,td.g3{border-right:3px solid var(--border)}
   td.g2{font-size:16px}
@@ -284,6 +323,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 
   <nav class="tabs"><button id="tabMine" class="on">My view</button><button id="tabSup">Supplier view</button></nav>
 <div id="viewMine">
+  <div class="phonebar"><button id="ctlToggle">☰ Filters</button><button id="saveAll2">Save all</button></div>
   <div class="controls">
     <div class="slider">
       <label for="len">Leniency <span class="pill" id="lenv"></span></label>
@@ -876,10 +916,13 @@ const setAll = v => { defaultOpen = v; state.clear(); document.querySelectorAll(
 $('autoSave').checked = autoOn;
 $('autoSave').addEventListener('change', () => { autoOn = $('autoSave').checked; try { localStorage.setItem('restockAutoSave', autoOn ? '1' : '0'); } catch (e) {} });
 let armSave = false, armSaveT = null, saveLabelT = 0;
+$('ctlToggle').addEventListener('click', () => { const c = document.querySelector('#viewMine .controls'), on = c.classList.toggle('open'); $('ctlToggle').textContent = on ? '✕ Close filters' : '☰ Filters'; });
+$('saveAll2').addEventListener('click', () => $('saveAll').click());
 const saveLabel = () => { cancelAnimationFrame(saveLabelT); saveLabelT = requestAnimationFrame(() => {
   const b = $('saveAll'); if (!b || armSave) return;
   const list = pending(null), units = list.reduce((a, x) => a + x.qty, 0);
   b.textContent = list.length ? 'Save all shown (' + list.length + ' · ' + units + ' units)' : 'Save all shown';
+  const b2 = $('saveAll2'); if (b2) b2.textContent = list.length ? 'Save all (' + list.length + ')' : 'Save all';
   const c = document.querySelector('#viewMine .controls'); if (c) document.documentElement.style.setProperty('--ctlh', (c.offsetHeight + 8) + 'px');
 }); };
 $('saveAll').addEventListener('click', async () => {
