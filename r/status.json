@@ -36,11 +36,11 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-10-15T06:01+11:00",
-  "code_sha": "6718bbb9ab3908e42c336aec228bbd240fabcf6f",
+  "at": "2026-10-15T14:00+11:00",
+  "code_sha": "f930f1c4ea6e34e4aa25467611752d517136dbcf",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-10-15T06:01+11:00",
-  "manifest_version": "2026-10-14.color-game.2",
+  "last_ok": "2026-10-15T14:00+11:00",
+  "manifest_version": "2026-10-15.restock-planner.1",
   "ok": true,
   "reason": ""
  },
