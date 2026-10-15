@@ -492,7 +492,7 @@
   // ---------- order attribution ----------
   const ORDER_SOURCES = ["Google Online Orders - WEB","Google CALLS MEL - SALE","Google Direction MEL - Store Visit","FB Online Orders - WEB","FB CALLS MEL - SALE","FB/IG PAGE MSGS MEL - SALE","FB WHATSAPP MSGS MEL - SALE","Organic Orders","Repeat Customer","Word of Mouth","Marketplace MEL","Marketplace SYD","Marketplace BRN","AI","Direct order","Invalid","Unknown Online","Unknown Offline"];
   let OA = { rows: [], catalog: [], channel: null };
-  const oaPending = () => OA.rows.filter((r) => r.attribution_auto === true || !r.order_source || r.sync_status !== "synced");
+  const oaPending = () => OA.rows.filter((r) => r.sync_status === "error" || r.sync_status === "pending" || r.sync_status === "submitting" || (!r.order_source || r.attribution_auto === true) && r.sync_status !== "syncing" && r.sync_status !== "synced");
   const oaDone = () => OA.rows.filter((r) => r.order_source && r.sync_status === "synced" && r.attribution_auto !== true).slice(0, 40);
   const oaPaidPlatform = (source) => source === "Google Online Orders - WEB" ? "Google" : source === "FB Online Orders - WEB" ? "Facebook" : "";
   const oaMoney = (v, c = "AUD") => new Intl.NumberFormat("en-AU", { style: "currency", currency: c, maximumFractionDigits: 2 }).format(Number(v || 0));
@@ -817,9 +817,11 @@
     }
   }
 
+  const oaSavingOrders = new Set();
   async function syncAttribution(orderId, source, email = "", phone = "", campaign = null, adset = null) {
     const row = OA.rows.find((r) => r.order_id === orderId);
-    if (!row || !source) return;
+    if (!row || !source || oaSavingOrders.has(orderId)) return;
+    oaSavingOrders.add(orderId);
     row.order_source = source;
     if (email) row.contact_email = email;
     if (phone) row.contact_phone = phone;
@@ -828,7 +830,7 @@
     row.campaign_name = campaign?.campaign_name || null;
     row.adset_id = adset?.adset_id || null;
     row.adset_name = adset?.adset_name || null;
-    row.sync_status = "syncing"; row.sync_error = null; renderAttribution();
+    row.sync_status = "submitting"; row.sync_error = null; renderAttribution();
     try {
       const { data, error } = await sb.functions.invoke("order-attribution", { body: {
         action: "update",
@@ -848,10 +850,11 @@
         throw new Error(msg);
       }
       if (data?.error) throw new Error(data.error);
-      toast(`${row.order_name} syncing to Shopify`);
+      row.sync_status = "syncing"; renderAttribution();
+      toast(`${row.order_name} saved — Shopify syncing in background`);
     } catch (e) {
       row.sync_status = "error"; row.sync_error = e.message; renderAttribution(); toast(e.message);
-    }
+    } finally { oaSavingOrders.delete(orderId); }
   }
   function websiteTrafficPeriod(data, period) {
     const end = period === 'today' ? data.today : data.completed.slice(0,10);
@@ -953,6 +956,7 @@
         : "Website traffic could not be loaded. Reopen the report to try again.";
     }
   }
+  let oaWatchTimer = null;
   async function openAttribution(r) {
     page("attribution", r.title);
     const websiteTraffic = loadAttributionWebsiteTraffic();
@@ -961,6 +965,11 @@
     try {
       await loadAttribution();
       renderAttribution();
+      if (oaWatchTimer) clearInterval(oaWatchTimer);
+      oaWatchTimer = setInterval(async () => {
+        if ($("#v-attribution").hidden || oaSavingOrders.size) return;
+        try { await loadAttribution(); if (!$("#v-attribution").hidden) renderAttribution(); } catch (e) { console.warn("Attribution background refresh failed",e); }
+      }, 15000);
       if (!OA.catalog.length) toast("Campaign list is refreshing; source attribution still works.");
     } catch (e) { st.textContent = "The order queue couldn't be loaded. Pull down to refresh."; }
     updateOrderNotifyButton();
