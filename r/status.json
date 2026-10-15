@@ -63,11 +63,11 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-10-15T14:00+11:00",
-  "code_sha": "f930f1c4ea6e34e4aa25467611752d517136dbcf",
+  "at": "2026-10-15T20:00+11:00",
+  "code_sha": "b92cbc06213268e9254297920bd26a91f726be33",
   "data_through": null,
-  "last_ok": "2026-10-15T14:00+11:00",
-  "manifest_version": "2026-10-15.restock-planner.1",
+  "last_ok": "2026-10-15T20:00+11:00",
+  "manifest_version": "2026-10-15.cash-report.1",
   "ok": true,
   "reason": ""
  },
