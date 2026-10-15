@@ -40,3 +40,9 @@ begin
     from public.restock_boxes where code = c and (status = 'open' or shipped_at > now() - interval '90 days')) b;
   return jsonb_build_object('identity', idn, 'code', c, 'active', act, 'orders', orders, 'boxes', boxes);
 end $$;
+
+-- supplier identity is case-insensitive in effect: 'pankaj' and 'Pankaj' are the same login (was producing codes P1 and P2)
+create or replace function public.restock_box_identity() returns text
+language sql stable security definer set search_path = '' as $$
+  select initcap(btrim(coalesce((select u.supplier from public.restock_supplier_users u where u.user_id = auth.uid()), public.restock_actor(), 'X')))
+$$;

@@ -92,6 +92,16 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
 .bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
 
+.bx .pnrow{display:flex;gap:10px 14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}.bx .pnrow .pn{margin:0}
+.bx .pmv{display:inline-flex;gap:10px;align-items:center}.bx .pmv .ck{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;color:var(--muted);font-weight:600}
+.bx .bx-mvbox{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 
 .bx .pl{display:block;flex:none;line-height:0}
@@ -202,7 +212,9 @@ function bxTile(b, lines, o) {
     <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}</span>
     <span class="bx-right">${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : ''}${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track</a>' : ''}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
-  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
+  const mvSel = (key, label) => `<select data-mvg="${bxEsc(key)}"><option value="">${label}</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select>`;
+  const selN = o.selP ? [...o.selP].filter(k => k.startsWith(b.box_no + '|')).length : 0;
+  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${(!o.ro && !shipped) ? `<div class="pnrow">${bxName(g[0]) || '<div class="pn"></div>'}<span class="pmv"><label class="ck"><input type="checkbox" data-selp="${bxEsc(b.box_no + '|' + g[0].product_id)}" ${(o.selP && o.selP.has(b.box_no + '|' + g[0].product_id)) ? 'checked' : ''}> Select</label>${others.length ? mvSel('p:' + b.box_no + '|' + g[0].product_id, 'Move product to…') : ''}</span></div>` : bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
     ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}${r.wrong_pick ? '<span class="wp" title="Tagged to another supplier">⚠ wrong pick</span>' : ''}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
       <td class="q">${(!o.ro && !shipped) ? `<span class="stp"><button data-q="-1" data-id="${bxEsc(r.id)}" ${bxEff(r) <= 0 ? 'disabled' : ''}>−</button><b>${bxEff(r)}</b><button data-q="1" data-id="${bxEsc(r.id)}" ${bxEff(r) >= r.qty ? 'disabled' : ''}>+</button></span>` : bxEff(r)}${bxEff(r) < r.qty ? '<span class="low">short ' + (r.qty - bxEff(r)) + '</span>' : ''}</td>
       <td>${(!o.ro && !shipped) ? `<span style="display:inline-flex;gap:8px;align-items:center"><select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select><button class="x" data-rm="${bxEsc(r.id)}" title="Remove from this box (back to the master list)">✕</button></span>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}
@@ -213,6 +225,7 @@ function bxTile(b, lines, o) {
       <label>Tracking link (optional)<input type="text" class="bx-url u" placeholder="https://…" maxlength="500"></label>
       <label>Tracking number (optional)<input type="text" class="bx-no" maxlength="80"></label>
       <button class="primary" data-ship="${bxEsc(b.box_no)}" ${n ? '' : 'disabled'}>Ship this box</button>
+      ${n && others.length ? `<span class="bx-mvbox">${mvSel('a:' + b.box_no, 'Move all to…')}${selN ? mvSel('s:' + b.box_no, 'Move selected (' + selN + ') to…') : ''}</span>` : ''}
       ${bxDel(b, n, others, o)}
       <span class="bx-note">When shipped, the next item you add starts the next box.</span></div>`;
   }
@@ -230,6 +243,7 @@ const arm = (k, kind) => { if (kind === 'del') armDel = k; else armKey = k; clea
 const taggedOf = ids => ids.filter(id => (S.orders.find(r => r.id === id) || {}).tagged_other);
 const picked = new Set(), openState = new Map();
 let tgtBox = '';
+const selP = new Set();       // ticked products in open boxes ("<box>|<productId>")
 const sendQ = new Map(), sendOf = r => sendQ.has(r.id) ? Math.min(r.qty, Math.max(1, sendQ.get(r.id))) : r.qty;
 /* after adding: save any lowered quantities ("you send") on the new box lines */
 async function saveSend(ids) { for (const id of ids) { if (sendQ.has(id)) { const r = S.orders.find(x => x.id === id), n = sendQ.get(id); sendQ.delete(id); if (r && n < r.qty) await Store.setQty(id, n); } } }
@@ -266,7 +280,7 @@ function render(){
   html += order.map(b => {
     const lines = S.orders.filter(r => r.box_no === b.box_no && ['added', 'shipped', 'received'].includes(r.status));
     const isOpen = openState.has(b.box_no) ? openState.get(b.box_no) : b.status === 'open';
-    return bxTile(b, lines, {ro: false, open: isOpen, openBoxes: openNos, armDel, delTo, lastOpen: openNos[0]});
+    return bxTile(b, lines, {ro: false, open: isOpen, openBoxes: openNos, armDel, delTo, selP, lastOpen: openNos[0]});
   }).join('');
   // shipped lines from before boxes existed (no box row): show them as shipped tiles
   const known = new Set(S.boxes.map(b => b.box_no)), legacy = new Map();
@@ -353,6 +367,22 @@ $('boxes').addEventListener('click', e => {
 });
 $('boxes').addEventListener('change', e => {
   if (e.target.closest('[data-delto]')) { delTo = e.target.value; return; }
+  const sp = e.target.closest('[data-selp]');
+  if (sp) { const k = sp.getAttribute('data-selp'); sp.checked ? selP.add(k) : selP.delete(k); render(); return; }
+  const mg = e.target.closest('[data-mvg]');
+  if (mg) {
+    if (!mg.value) return;
+    const key = mg.getAttribute('data-mvg'), kind = key[0], rest = key.slice(2), to = mg.value;
+    const inBox = box => S.orders.filter(r => r.box_no === box && r.status === 'added');
+    let ids = [], label = '';
+    if (kind === 'p') { const [box, pid] = rest.split('|'); ids = inBox(box).filter(r => String(r.product_id) === pid).map(r => r.id); label = 'Product'; }
+    else if (kind === 'a') { ids = inBox(rest).map(r => r.id); label = 'Whole box'; }
+    else if (kind === 's') { const keys = [...selP].filter(k => k.startsWith(rest + '|')); ids = inBox(rest).filter(r => keys.includes(rest + '|' + r.product_id)).map(r => r.id); keys.forEach(k => selP.delete(k)); label = 'Selected products'; }
+    if (!ids.length) { render(); return; }
+    const n = ids.length, msg = () => label + ' (' + n + ' item' + (n === 1 ? '' : 's') + ') ' + (to === '__master' ? 'sent back to the master list' : 'moved to ' + to);
+    if (to === '__master') act(() => Store.remove(ids), msg); else act(() => Store.add(ids, to), msg);
+    return;
+  }
   const mv = e.target.closest('[data-mv]'); if (!mv || !mv.value) return;
   const id = mv.getAttribute('data-mv'), to = mv.value;
   if (to === '__master') act(() => Store.remove([id]), 'Sent back to the master list');
