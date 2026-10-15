@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-15.cash-report.1",
+  "manifest_version": "2026-10-16.seo-report.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -338,6 +338,28 @@
       ],
       "supabase_sync": false,
       "schedule_control": "report_schedules"
+    },
+    {
+      "id": "seo-report",
+      "title": "SEO Report",
+      "workflow": "claude-scheduled-task",
+      "refresh_times": [
+        "Mon and Thu 6:00 am"
+      ],
+      "required_env": [
+        "SEO_REPORT_KEY"
+      ],
+      "builders": [
+        "tools/seo_report.py",
+        "tools/seo_report_template.html",
+        "tools/seo_report_REFRESH.md"
+      ],
+      "outputs": [
+        "r/seo-report.bin",
+        "r/seo-report.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "none"
     },
     {
       "id": "color-game",

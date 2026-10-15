@@ -1,0 +1,386 @@
+<title>Indifeels SEO Report</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Design plan: calm studio-ledger feel. Charcoal tiles sit on a quiet mineral ground.
+   Status colours: sage = good, sand = watch, soft coral = fix. Display face Bricolage, text Figtree. */
+:root{
+  --bg:#E9ECE8; --fg:#232826; --muted:#6A726E; --line:#D3D8D3;
+  --surface:#F7F8F5; --surface2:#EDF0EB;
+  --tile-a:#3A403E; --tile-b:#262B29; --tile-fg:#F1F3EF; --tile-muted:#A3ABA6; --tile-edge:#555C59; --tile-track:#4A514E;
+  --good:#2FCB9A; --warn:#FF9A3D; --bad:#FF6275; --none:#7C8480;
+  --good-ink:#0B7A57; --warn-ink:#B25800; --bad-ink:#C42E42;
+  --a1:#2FCB9A; --a2:#4DA3FF; --a3:#A98BFF; --a4:#FF9A3D;
+  --shadow:rgba(30,36,33,.28);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#171B1A; --fg:#E7EAE6; --muted:#98A19C; --line:#2F3633;
+  --surface:#202624; --surface2:#2A312E;
+  --tile-a:#3B4240; --tile-b:#2A302E; --tile-edge:#59615E;
+  --good-ink:#52E0B5; --warn-ink:#FFB066; --bad-ink:#FF8A98; --shadow:rgba(0,0,0,.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#171B1A; --fg:#E7EAE6; --muted:#98A19C; --line:#2F3633;
+  --surface:#202624; --surface2:#2A312E;
+  --tile-a:#3B4240; --tile-b:#2A302E; --tile-edge:#59615E;
+  --good-ink:#52E0B5; --warn-ink:#FFB066; --bad-ink:#FF8A98; --shadow:rgba(0,0,0,.5); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:Figtree,system-ui,sans-serif;font-size:15px;line-height:1.45;
+  padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3,.num{font-family:"Bricolage Grotesque",Figtree,sans-serif;font-weight:700;letter-spacing:-.01em}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 12px;font-weight:600;font-family:Figtree,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+
+/* hero */
+.hero{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+.hero .big{position:relative;width:132px;height:132px;flex:none}
+.hero .big .v{position:absolute;inset:0;display:grid;place-items:center;font-size:40px}
+.hero .t{flex:1;min-width:200px}
+.hero h1{font-size:30px;margin:0 0 4px;text-wrap:balance}
+.hero p{margin:0;color:var(--muted)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line);font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--none);display:inline-block;flex:none}
+.dot.good{background:var(--good)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+
+/* fixes */
+.fixes{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.fix{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px;border-top:4px solid var(--bad)}
+.fix[data-imp="Medium"]{border-top-color:var(--warn)}
+.fix .n{font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+.fix b{font-family:"Bricolage Grotesque",sans-serif;font-size:16px;line-height:1.2;font-weight:700}
+.fix span.b{font-size:13px;color:var(--muted)}
+.fix:hover{background:var(--surface2)}
+
+/* tiles */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+@media (max-width:520px){.grid{grid-template-columns:1fr 1fr;gap:12px}.hero .big{width:108px;height:108px}.hero .big .v{font-size:32px}}
+.tile{position:relative;text-align:left;border:0;border-radius:20px;padding:14px 14px 12px;color:var(--tile-fg);
+  background:linear-gradient(155deg,var(--tile-a),var(--tile-b));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -2px 0 rgba(0,0,0,.35),0 1px 0 var(--tile-edge),0 10px 0 -3px rgba(0,0,0,.28),0 16px 24px -8px var(--shadow);
+  transition:transform .15s ease,box-shadow .15s ease;display:flex;flex-direction:column;gap:8px;min-height:216px;min-width:0}
+.tile:hover{transform:translateY(-3px)}
+.tile:active{transform:translateY(2px)}
+.tile:focus-visible,.fix:focus-visible,.x:focus-visible{outline:3px solid var(--a2);outline-offset:3px}
+.tile .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.tile .rk{font-size:12px;color:var(--tile-muted);letter-spacing:.06em}
+.tile .ring{position:relative;width:62px;height:62px;flex:none}
+.tile .ring .v{position:absolute;inset:0;display:grid;place-items:center;font-size:20px}
+.tile h3{margin:0;font-size:16px;line-height:1.15;text-wrap:balance;font-weight:700}
+.tile .key{font-size:24px;line-height:1;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.tile .kl{font-size:12px;color:var(--tile-muted);margin-top:-2px}
+.tile .sub{font-size:12px;color:var(--tile-muted)}
+.tile .viz{margin-top:auto;height:34px;display:flex;align-items:flex-end}
+.tile .viz svg{width:100%;height:34px;display:block;overflow:visible}
+.tr{font-size:13px;font-family:Figtree,sans-serif;font-weight:600;display:inline-flex;gap:2px;align-items:center}
+.tr.g{color:var(--good)}.tr.b{color:var(--bad)}
+.partial{font-size:11px;color:var(--tile-muted);border:1px dashed var(--tile-track);border-radius:99px;padding:1px 7px;align-self:flex-start}
+.stack{display:flex;height:12px;border-radius:99px;overflow:hidden;gap:2px;width:100%}
+.stack i{display:block;height:100%}
+
+/* detail */
+.veil{position:fixed;inset:0;background:rgba(14,18,16,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);color:var(--fg);width:min(760px,100%);max-height:92vh;overflow:auto;border-radius:24px 24px 0 0;
+  padding:20px max(18px,env(safe-area-inset-right,0px)) calc(28px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:18px}
+@media (min-width:800px){.veil{align-items:center}.sheet{border-radius:24px;max-height:86vh}}
+.sh{display:flex;gap:14px;align-items:center}
+.sh .ring{position:relative;width:76px;height:76px;flex:none}
+.sh .ring .v{position:absolute;inset:0;display:grid;place-items:center;font-size:26px}
+.sh h3{margin:0;font-size:22px;line-height:1.1;flex:1;min-width:0}
+.sh small{display:block;color:var(--muted);font-family:Figtree;font-weight:500;font-size:13px;margin-bottom:2px}
+.x{border:1px solid var(--line);background:var(--surface2);border-radius:99px;width:40px;height:40px;font-size:18px;flex:none}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{background:var(--surface2);border-radius:14px;padding:12px;min-width:0}
+.stat .l{font-size:12px;color:var(--muted)}
+.stat .v{font-size:24px;line-height:1.1;margin-top:2px}
+.stat .p{font-size:12px;color:var(--muted)}
+.blk{display:flex;flex-direction:column;gap:8px;min-width:0}
+.blk h4{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
+.row{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,2fr) auto;gap:10px;align-items:center;font-size:13px}
+.row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .tr2{height:10px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.row .tr2 i{display:block;height:100%;border-radius:99px;background:var(--a2)}
+.row .val{font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;min-width:44px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font-weight:600;color:var(--muted);text-align:right;padding:6px 8px;font-size:12px;white-space:nowrap}
+td{padding:7px 8px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal;min-width:150px}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px}
+.pill.good{background:color-mix(in srgb,var(--good) 28%,transparent);color:var(--good-ink)}
+.pill.warn{background:color-mix(in srgb,var(--warn) 30%,transparent);color:var(--warn-ink)}
+.pill.bad{background:color-mix(in srgb,var(--bad) 28%,transparent);color:var(--bad-ink)}
+.how{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+.note{font-size:13px;color:var(--muted);background:var(--surface2);border-radius:12px;padding:10px 12px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.chart svg{width:100%;height:auto;display:block;overflow:visible}
+.foot{font-size:12px;color:var(--muted)}
+.fl{background:var(--surface2);border-radius:12px;padding:10px 12px}
+.fl summary{cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.fl p{margin:8px 0 4px;font-size:13px;color:var(--muted)}
+.fl .fx{margin:10px 0 4px;padding:8px 10px;border-left:3px solid var(--good);background:var(--surface);border-radius:0 8px 8px 0;color:var(--fg);font-size:13px}
+.fl .fi{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column}
+.fl .fi li{display:flex;flex-direction:column;gap:1px;padding:8px 0;border-top:1px solid var(--line);font-size:13px;overflow-wrap:anywhere}
+.fl .nm2{font-weight:600}
+.fl .to{color:var(--muted);font-size:12px}
+.fl .to b{color:var(--bad-ink);font-weight:600}
+.fl code{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted)}
+.tile *{min-width:0}
+.tile{min-height:0;gap:10px}
+.tile .viz{min-height:34px;padding-top:8px}
+.tile .cv{display:inline-block;transition:transform .2s}
+.tile[aria-expanded="true"] .cv{transform:rotate(180deg)}
+.tile[aria-expanded="true"]{transform:translateY(2px);outline:2px solid var(--a2);outline-offset:2px}
+.panel{grid-column:1/-1;display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease}
+.panel.on{grid-template-rows:1fr}
+.panel>.inner{overflow:hidden;min-height:0}
+.panel .pad{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:18px;margin-block:2px 6px}
+.rf{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:13px;color:var(--muted);margin-top:8px}
+.rf b{color:var(--fg);font-weight:600}
+.empty{display:grid;place-items:center;text-align:center;gap:6px;padding:24px;background:var(--surface2);border-radius:14px}
+</style>
+
+<div class="wrap">
+  <section class="hero" id="hero"></section>
+  <section><h2>Ranked by importance</h2><div class="grid" id="grid"></div></section>
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+const DATA=/*__DATA__*/null;
+const F=DATA.facts||{};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=n=>Math.round(n).toLocaleString('en-AU');
+const col=st=>({good:'var(--good)',warn:'var(--warn)',bad:'var(--bad)',none:'var(--none)'}[st]||st);
+const acc=a=>`var(--${a})`;
+
+function ring(score,st,size,track){
+  const r=size/2-5,c=2*Math.PI*r,p=score==null?0:score/100;
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true">
+  <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${track}" stroke-width="6"/>
+  <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col(st)}" stroke-width="6" stroke-linecap="round"
+   stroke-dasharray="${c*p} ${c}" transform="rotate(-90 ${size/2} ${size/2})"/></svg>`;
+}
+function spark(v,color,kind){
+  if(!v||!v.length)return'';
+  const w=100,h=32,mx=Math.max(...v),mn=Math.min(...v,0);
+  const rng=(mx-mn)||1;
+  if(kind==='bars'){
+    const bw=w/v.length;
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${v.map((x,i)=>`<rect x="${i*bw+1}" y="${h-Math.max(1.5,(x-mn)/rng*h)}" width="${bw-2}" height="${Math.max(1.5,(x-mn)/rng*h)}" rx="1.5" fill="${color}" opacity=".85"/>`).join('')}</svg>`;
+  }
+  const mn2=Math.min(...v),rg=(mx-mn2)||1;
+  const pts=v.map((x,i)=>[i/(v.length-1)*w,h-3-(x-mn2)/rg*(h-6)]);
+  const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d} L${w} ${h} L0 ${h} Z" fill="${color}" opacity=".16"/><path d="${d}" fill="none" stroke="${color}" stroke-width="1.8" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`;
+}
+function hbars(rows,color,unit){
+  const mx=Math.max(...rows.map(r=>r[1]),1);
+  return rows.map(r=>`<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:3px;font-size:12px">
+  <div style="display:flex;justify-content:space-between;gap:8px;color:var(--tile-muted)"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r[0])}</span><span>${fmt(r[1])}${unit||''}</span></div>
+  <div class="stack" style="height:6px"><i style="width:${Math.max(3,r[1]/mx*100)}%;background:${color}"></i></div></div>`).join('');
+}
+function trendHtml(t){
+  if(!t)return'';
+  return `<span class="tr ${t.good?'g':'b'}">${t.dir==='up'?'▲':'▼'} ${t.text}</span>`;
+}
+function tileViz(t){
+  const c=acc(t.accent);
+  if(t.spark)return spark(t.spark,c,t.spark_kind);
+  if(t.seg){const tot=t.seg.reduce((a,s)=>a+s[1],0);return `<div style="width:100%;display:grid;gap:6px"><div class="stack">${t.seg.map(s=>`<i style="width:${s[1]/tot*100}%;background:${s[2].startsWith('a')?acc(s[2]):col(s[2])}"></i>`).join('')}</div><div class="sub" style="display:flex;justify-content:space-between"><span>${fmt(t.seg[0][1])} clean</span><span>${fmt(t.seg[3][1])} flagged</span></div></div>`}
+  if(t.split){const tot=t.split[0]+t.split[1];return `<div style="width:100%;display:grid;gap:6px"><div class="stack"><i style="width:${t.split[0]/tot*100}%;background:var(--a1)"></i><i style="width:${t.split[1]/tot*100}%;background:var(--a2)"></i></div><div class="sub" style="display:flex;justify-content:space-between"><span>Maps ${Math.round(t.split[0]/tot*100)}%</span><span>Search ${Math.round(t.split[1]/tot*100)}%</span></div></div>`}
+  if(t.split2){const tot=t.split2[0][1]+t.split2[1][1];return `<div style="width:100%;display:grid;gap:6px"><div class="stack"><i style="width:${t.split2[0][1]/tot*100}%;background:var(--a2)"></i><i style="width:${t.split2[1][1]/tot*100}%;background:var(--a3)"></i></div><div class="sub" style="display:flex;justify-content:space-between"><span>Follow ${fmt(t.split2[0][1])}</span><span>Nofollow ${fmt(t.split2[1][1])}</span></div></div>`}
+  if(t.dots)return `<div style="display:flex;gap:5px;flex-wrap:wrap">${t.dots.map(d=>`<span class="dot ${d==='live'?'good':d}" style="width:14px;height:14px"></span>`).join('')}</div>`;
+  if(t.bars)return `<div style="width:100%;display:grid;gap:5px">${hbars(t.bars.slice(0,3),c,t.bars_unit)}</div>`;
+  if(t.bars2)return `<div style="width:100%;display:grid;gap:5px">${hbars(t.bars2,c)}</div>`;
+  if(t.vs)return `<div style="width:100%;display:grid;gap:5px">${hbars(t.vs,c)}</div>`;
+  if(t.ring!=null){return `<div class="stack" style="height:10px"><i style="width:${Math.min(100,t.ring/5*100)}%;background:${c}"></i><i style="flex:1;background:var(--tile-track)"></i></div>`}
+  return `<div class="sub">Connect PageSpeed in Windsor to unlock</div>`;
+}
+
+function tileViz2(t){
+  const c=acc(t.accent);
+  if(t.spark)return spark(t.spark,c,t.spark_kind);
+  const colr=s=>s.startsWith('a')?acc(s):col(s);
+  const bar=p=>`<div class="stack" style="height:10px">${p.map(x=>`<i style="width:${x[0]}%;background:${x[1]}"></i>`).join('')}</div>`;
+  if(t.seg){const tot=t.seg.reduce((a,s)=>a+s[1],0);return bar(t.seg.map(s=>[s[1]/tot*100,colr(s[2])]))}
+  if(t.split){const tot=t.split[0]+t.split[1];return bar([[t.split[0]/tot*100,'var(--a1)'],[t.split[1]/tot*100,'var(--a2)']])}
+  if(t.split2){const tot=t.split2[0][1]+t.split2[1][1];return bar([[t.split2[0][1]/tot*100,'var(--a2)'],[t.split2[1][1]/tot*100,'var(--a3)']])}
+  if(t.dots)return `<div style="display:flex;gap:5px;flex-wrap:wrap">${t.dots.map(d=>`<span class="dot ${d==='live'?'good':d}" style="width:12px;height:12px"></span>`).join('')}</div>`;
+  const rows=t.bars||t.bars2||t.vs;
+  if(rows){const mx=Math.max(...rows.map(r=>r[1]),1);return `<div style="width:100%;display:grid;gap:5px">${rows.slice(0,3).map(r=>`<div class="stack" style="height:6px;background:var(--tile-track)"><i style="width:${Math.max(4,r[1]/mx*100)}%;background:${c}"></i></div>`).join('')}</div>`}
+  if(t.ring!=null)return bar([[Math.min(100,t.ring/5*100),c],[100-Math.min(100,t.ring/5*100),'var(--tile-track)']]);
+  return '';
+}
+/* hero + tiles */
+(function(){
+  const o=DATA.overall,st=o>=75?'good':o>=50?'warn':'bad';
+  $('#hero').innerHTML=`<div class="big">${ring(o,st,132,'var(--line)')}<div class="v num">${o}</div></div>
+  <div class="t"><h1>Indifeels SEO</h1><p>Overall score from ${DATA.scoredCount} of ${DATA.total} areas</p><div class="rf"><span>Last refreshed <b>${esc(F.refreshed)}</b></span><span>Next refresh <b>${esc(F.next_refresh)}</b></span></div>
+  <div class="chips"><span class="chip"><i class="dot good"></i>${DATA.counts.good} healthy</span><span class="chip"><i class="dot warn"></i>${DATA.counts.warn} to watch</span><span class="chip"><i class="dot bad"></i>${DATA.counts.bad} to fix</span><span class="chip"><i class="dot"></i>1 no data</span></div></div>`;
+  $('#grid').innerHTML=DATA.tiles.map(t=>`<button class="tile" data-open="${t.id}" aria-expanded="false" aria-label="${esc(t.title)}, score ${t.score==null?'none':t.score}">
+  <div class="top"><div><div class="rk">#${t.rank} <span class="cv">⌄</span></div></div>
+  <div class="ring">${ring(t.score,t.status,62,'var(--tile-track)')}<div class="v num">${t.score==null?'–':t.score}</div></div></div>
+  <h3>${esc(t.title)}</h3>
+  <div><div class="key num">${esc(t.key)} ${trendHtml(t.trend)}</div><div class="kl">${esc(t.keyLabel)}</div></div>
+  <div class="viz">${tileViz2(t)}</div></button>`).join('');
+  $('#foot').textContent='Scores follow a simple rule set out under each tile and are meant as a guide, not an official rating. Google Business Profile figures lag by about 5 days, so they end on '+F.gbp_end+'.';
+})();
+
+/* to-fix lists */
+const human=s=>{s=s.replace(/^\/+|\/+$/g,'').split('/').pop().replace(/\?.*$/,'').replace(/-/g,' ');return s.charAt(0).toUpperCase()+s.slice(1)};
+function itemHtml(i){
+  if(!i.startsWith('/'))return `<li><span class="nm2">${esc(i)}</span></li>`;
+  const parts=i.split('  →  ');
+  if(parts.length===2)return `<li><span class="nm2">${esc(human(parts[0]))}</span><span class="to">links to <b>${esc(human(parts[1]))}</b></span><code>${esc(parts[0])}</code></li>`;
+  return `<li><span class="nm2">${esc(human(i))}</span><code>${esc(i)}</code></li>`;
+}
+function fixHtml(key){
+  const g=(DATA.fixlists||{})[key];if(!g)return'';
+  return `<div class="blk"><h4>What to fix</h4>`+g.map(x=>`<details class="fl"><summary><span class="pill ${x.sev}">${x.count}</span> <b>${esc(x.title)}</b></summary>
+  <p class="fx"><b>Fix:</b> ${esc(x.fix)}</p><ul class="fi">${x.items.map(itemHtml).join('')}</ul></details>`).join('')+`</div>`;
+}
+/* detail views */
+const pill=(s,t)=>`<span class="pill ${s}">${t}</span>`;
+const stat=(l,v,p)=>`<div class="stat"><div class="l">${l}</div><div class="v num">${v}</div>${p?`<div class="p">${p}</div>`:''}</div>`;
+const chg=(c,p)=>p?`${c>=p?'▲':'▼'} ${Math.abs((c-p)/p*100).toFixed(0)}% vs ${fmt(p)}`:`was ${fmt(p)}`;
+function rowsHtml(rows,color,unit){
+  const mx=Math.max(...rows.map(r=>r[1]),1);
+  return rows.map(r=>`<div class="row"><span class="nm" title="${esc(r[0])}">${esc(r[0])}</span><span class="tr2"><i style="width:${Math.max(2,r[1]/mx*100)}%;background:${color||'var(--a2)'}"></i></span><span class="val">${unit==='$'?'$':''}${fmt(r[1])}${unit==='%'?'%':''}</span></div>`).join('');
+}
+function lineChart(vals,color,labels,h){
+  const w=320,ht=h||110,pad=22,mx=Math.max(...vals)*1.1,mn=0;
+  const pts=vals.map((v,i)=>[pad+i/(vals.length-1)*(w-pad-4),ht-18-(v-mn)/(mx-mn)*(ht-30)]);
+  const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 ${w} ${ht}"><line x1="${pad}" x2="${w}" y1="${ht-18}" y2="${ht-18}" stroke="var(--line)"/>
+  <path d="${d} L${pts[pts.length-1][0]} ${ht-18} L${pad} ${ht-18}Z" fill="${color}" opacity=".18"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linejoin="round"/>
+  ${pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2.6" fill="${color}"/>`).join('')}
+  <text x="${pad}" y="${ht-4}" font-size="9" fill="var(--muted)">${labels[0]}</text><text x="${w-4}" y="${ht-4}" font-size="9" text-anchor="end" fill="var(--muted)">${labels[labels.length-1]}</text>
+  <text x="${pad-4}" y="12" font-size="9" text-anchor="end" fill="var(--muted)">${fmt(Math.max(...vals))}</text></svg>`;
+}
+const R={
+gbp(d){
+  const L=d.loc;
+  const loc=n=>{const l=L[n];return `<div class="blk"><h4>${n}</h4><div class="stats">${stat('Call taps',l.calls,chg(l.calls,l.calls_prev))}${stat('Directions',l.dirs,chg(l.dirs,l.dirs_prev))}${stat('Site clicks',l.web,chg(l.web,l.web_prev))}</div></div>`};
+  const imp=(n,a)=>{const tot=a.reduce((x,y)=>x+y,0);return `<div class="blk"><h4>${n} views · 23 days</h4><div class="stack" style="height:14px">
+  <i style="width:${a[1]/tot*100}%;background:var(--a1)"></i><i style="width:${a[3]/tot*100}%;background:#6f9a6d"></i><i style="width:${a[0]/tot*100}%;background:var(--a2)"></i><i style="width:${a[2]/tot*100}%;background:#6f93ad"></i></div>
+  <div class="foot">${fmt(tot)} views · ${Math.round((a[1]+a[3])/tot*100)}% on Maps · ${Math.round((a[0]+a[1])/tot*100)}% on phones</div></div>`};
+  return `<div class="stats">${stat('Rating',d.rating+' ★',F.reviews_text)}${stat('Profile actions',fmt(d.act_c),chg(d.act_c,d.act_p))}${stat('New reviews',F.new_total,F.new_text)}</div>
+  ${loc('Melbourne')}${loc('Sydney')}
+  <div class="two">${imp('Melbourne',d.imp_M)}${imp('Sydney',d.imp_S)}</div>
+  <div class="blk chart"><h4>Weekly profile actions</h4>${lineChart(d.weekly,'var(--a1)',[F.gbp_start,F.gbp_end])}</div>
+  <div class="note">People often search “Indya”, a brand you stock, and land on your listing: about ${F.indya_mel} searches a month in Melbourne and ${F.indya_syd} in Sydney.</div>`;
+},
+revenue(d){
+  return `<div class="stats">${stat('Revenue','$'+fmt(d.r_c),chg(d.r_c,d.r_p).replace(/ vs (\d)/,' vs $$$1'))}${stat('Orders',d.o_c,'previous '+d.o_p)}${stat('Sessions',fmt(d.s_c),chg(d.s_c,d.s_p))}</div>
+  <div class="blk"><h4>Revenue by channel · 28 days</h4>${rowsHtml(d.channels.map(c=>[c[0],c[2]]),'var(--a4)','$')}</div>
+  <div class="blk"><h4>Organic revenue by landing page</h4>${rowsHtml(d.landing.map(c=>[c[0],c[3]]),'var(--a1)','$')}</div>
+  <div class="blk"><h4>Busy pages with no organic sale (sessions)</h4>${rowsHtml(d.no_sale,'var(--a3)')}</div>
+  <div class="note">Only ${d.o_c} organic orders in the last 28 days (${d.o_p} before), so revenue swings with a few sales.</div>`;
+},
+keywords(d){
+  const rows=d.queries.map(q=>`<tr><td>${esc(q.q)}${q.brand?' '+pill('good','brand'):''}</td><td>${q.clicks}</td><td>${fmt(q.imp)}</td><td>${(q.ctr*100).toFixed(1)}%</td><td>${q.pos.toFixed(1)}</td></tr>`).join('');
+  return `<div class="stats">${stat('Clicks',fmt(d.gc_c),chg(d.gc_c,d.gc_p))}${stat('Impressions',fmt(d.gi_c),chg(d.gi_c,d.gi_p))}${stat('Avg position',d.gp_c.toFixed(1),'was '+d.gp_p.toFixed(1))}${stat('Brand share',Math.round(d.brand_share*100)+'%','of named-query clicks')}</div>
+  <div class="blk"><h4>Top queries · 28 days</h4><div class="scroll"><table><thead><tr><th>Query</th><th>Clicks</th><th>Impr.</th><th>CTR</th><th>Pos.</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+  <div class="note">${F.kw_note}</div>`;
+},
+local(d){
+  const s=(n,a)=>{const tot=a.reduce((x,y)=>x+y,0);return rowsHtml([['Maps on phones',a[1]],['Search on phones',a[0]],['Search on desktop',a[2]],['Maps on desktop',a[3]]],'var(--a1)')};
+  return `<div class="stats">${stat('Local Pack keywords',fmt(F.local_kw),'of '+fmt(F.total_kw)+' ranking')}${stat('AI Overview keywords',fmt(F.aio_kw),'show an AI answer')}</div>
+  <div class="blk"><h4>Melbourne · where people see you (23 days)</h4>${s('M',d.imp_M)}</div>
+  <div class="blk"><h4>Sydney · where people see you (23 days)</h4>${s('S',d.imp_S)}</div>
+  <div class="note">Rank-by-rank local tracking is not set up in Semrush yet, so this tile shows reach, not map position.</div>`;
+},
+health(d){
+  const tot=d.pages;
+  return `<div class="stats">${stat('Errors',d.errors,'<span class="pill bad">fix first</span>')}${stat('Warnings',fmt(d.warnings),'<span class="pill warn">watch</span>')}${stat('Notices',fmt(d.notices),'info only')}${stat('Pages crawled',fmt(tot),'audit run '+F.audit_date)}</div>
+  <div class="blk"><h4>Page status</h4><div class="stack" style="height:16px"><i style="width:${d.p_clean/tot*100}%;background:var(--good)"></i><i style="width:${d.p_redir/tot*100}%;background:var(--a2)"></i><i style="width:${d.p_broken/tot*100}%;background:var(--bad)"></i><i style="flex:1;background:var(--warn)"></i></div>
+  <div class="foot">Clean ${fmt(d.p_clean)} · Redirected ${fmt(d.p_redir)} · Broken ${fmt(d.p_broken)} · Other issues ${fmt(d.p_flag)}</div></div>
+  <div class="blk"><h4>Errors by type</h4>${rowsHtml(d.err_types,'var(--bad)')}</div>${fixHtml('health')}`;
+},
+quick(d){
+  const rows=d.quick.map(q=>`<tr><td>${esc(q.q)}</td><td>${fmt(q.imp)}</td><td>${(q.ctr*100).toFixed(1)}%</td><td>${q.pos.toFixed(1)}</td><td>+${q.gain}</td></tr>`).join('');
+  const pr=d.pages.map(p=>`<tr><td>${esc(p.page)}</td><td>${p.clicks}</td><td>${fmt(p.imp)}</td><td>${(p.ctr*100).toFixed(2)}%</td><td>${p.pos.toFixed(1)}</td></tr>`).join('');
+  return `<div class="stats">${stat('Possible gain','+'+fmt(d.total),'clicks per 4 weeks')}</div>
+  <div class="blk"><h4>Queries with many views and few clicks</h4><div class="scroll"><table><thead><tr><th>Query</th><th>Impr.</th><th>CTR</th><th>Pos.</th><th>Gain</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+  <div class="blk"><h4>Pages worth a new title</h4><div class="scroll"><table><thead><tr><th>Page</th><th>Clicks</th><th>Impr.</th><th>CTR</th><th>Pos.</th></tr></thead><tbody>${pr}</tbody></table></div></div>
+  <div class="note">Gain is a rough guess: views times (9% minus today's click rate).</div>`;
+},
+traffic(d){
+  return `<div class="stats">${stat('Organic sessions',fmt(d.s_c),chg(d.s_c,d.s_p))}${stat('Google clicks',fmt(d.gc_c),chg(d.gc_c,d.gc_p))}</div>
+  <div class="blk chart"><h4>Semrush est. monthly organic visits</h4>${lineChart(d.sem_traffic,'var(--a2)',[d.sem_months[0],d.sem_months[11]],120)}</div>
+  <div class="blk chart"><h4>Keywords in Google's top 3</h4>${lineChart(d.sem_top3,'var(--a1)',[d.sem_months[0],d.sem_months[11]],110)}</div>
+  <div class="blk"><h4>Top pages by Google clicks</h4>${rowsHtml(d.top_pages,'var(--a2)')}</div>`;
+},
+competitors(d){
+  const rows=d.comp.map(c=>`<tr><td>${c[0]}</td><td>${c[1]}</td><td>${fmt(c[3])}</td></tr>`).join('');
+  return `<div class="stats">${stat('You','~'+fmt(d.indi_traffic),'visits a month')}${stat('Typical rival','~'+fmt(d.median),'median of six')}</div>
+  <div class="blk"><h4>Est. monthly organic visits</h4>${rowsHtml([['Indifeels',d.indi_traffic]].concat(d.comp.map(c=>[c[0],c[3]])).sort((a,b)=>b[1]-a[1]),'var(--a3)')}</div>
+  <div class="blk"><h4>Shared keywords</h4><div class="scroll"><table><thead><tr><th>Site</th><th>Shared</th><th>Visits</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+},
+indexing(d){
+  const rows=d.sitemaps.map(s=>`<tr><td>${esc(s[0])}</td><td>${fmt(s[1])}</td><td>${s[5]==='live'?pill('good','healthy'):s[2]>0?pill('bad',s[2]+' error'):pill('warn','old')}</td><td>${s[4]}</td></tr>`).join('');
+  return `<div class="stats">${stat('Live sitemaps',F.live_n,F.live_text)}${stat('Old sitemaps',F.old_n,'from the WordPress site')}${stat('In sitemap only',d.orphan,'no internal links')}</div>
+  <div class="scroll"><table><thead><tr><th>Sitemap</th><th>URLs</th><th>Status</th><th>Last read</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="note">Removing the old ones in Search Console clears the errors; sitemap.xml stays.</div>`;
+},
+cwv(){return `<div class="empty"><div class="num" style="font-size:28px">No data yet</div><div>Core Web Vitals (load speed, layout shift, responsiveness) need a PageSpeed connection in Windsor.</div></div>`},
+shopify(d){
+  const p=d.pages;
+  return `<div class="stats">${stat('Deep pages',fmt(d.deep),Math.round(d.deep/p*100)+'% of pages')}${stat('One internal link',fmt(d.one_link),Math.round(d.one_link/p*100)+'%')}${stat('Redirected',fmt(d.redirected),Math.round(d.redirected/p*100)+'%')}</div>
+  <div class="blk"><h4>Structure</h4>${rowsHtml([['More than 3 clicks deep',d.deep],['Only one internal link',d.one_link],['Redirected URLs',d.redirected],['In sitemap, not linked',d.orphan]],'var(--a3)')}</div>
+  <div class="note">The crawler found no structured data on any page. Shopify themes usually add Product data themselves, so check one product in Google's Rich Results Test.</div>`;
+},
+onpage(d){
+  const rows=d.onp.map(o=>`<tr><td>${o[0]}</td><td>${fmt(o[1])}</td><td>${o[2].toFixed(1)}%</td></tr>`).join('');
+  return `<div class="stats">${stat('Pages checked',fmt(d.pages),'')}${stat('No meta description',fmt(d.no_meta),d.no_meta_pct+'% of pages')}${stat('No H1',fmt(d.no_h1),d.no_h1_pct+'%')}</div>
+  <div class="blk"><h4>Share of pages affected</h4>${rowsHtml(d.onp.map(o=>[o[0],Math.round(o[2])]),'var(--a4)','%')}</div>
+  <div class="scroll"><table><thead><tr><th>Issue</th><th>Pages</th><th>Share</th></tr></thead><tbody>${rows}</tbody></table></div>
+  ${fixHtml('onpage')}<div class="note">The pages with no H1 are all collection pages, so one template change fixes them.</div>`;
+},
+backlinks(d){
+  return `<div class="stats">${stat('Referring domains',fmt(d.domains),'')}${stat('Backlinks',fmt(d.links),'')}${stat('Authority Score',d.authority,d.authority<20?'low':'')}</div>
+  <div class="blk"><h4>Link type</h4><div class="stack" style="height:16px"><i style="width:${d.follow/(d.follow+d.nofollow)*100}%;background:var(--a2)"></i><i style="flex:1;background:var(--a3)"></i></div><div class="foot">Follow ${fmt(d.follow)} · Nofollow ${fmt(d.nofollow)}</div></div>
+  <div class="note">Gained and lost links over time need more Semrush credits, so they are not shown.</div>`;
+},
+paid(d){
+  const rows=d.ads.map(a=>`<tr><td>${esc(a[0])}</td><td>${a[1]}</td><td>$${a[2].toFixed(2)}</td><td>${a[3]}</td><td>${a[4]}</td><td>${a[5]}</td></tr>`).join('');
+  return `<div class="stats">${stat('Paid brand clicks',d.ads_clicks,'$'+d.ads_cost.toFixed(2))}${stat('Conversions',d.ads_conv,'')}${stat('Organic clicks, same terms',d.org,'')}</div>
+  <div class="scroll"><table><thead><tr><th>Search term</th><th>Paid clicks</th><th>Cost</th><th>Conv.</th><th>Org. pos.</th><th>Org. clicks</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="note">You already rank first or second for these. Brand ads also keep rivals out of the top slot, so try pausing in one city and compare orders.</div>`;
+},
+ai(d){
+  return `<div class="stats">${stat('AI assistant visits',d.sessions,'28 days')}${stat('Share of organic',(d.share*100).toFixed(1)+'%','')}${stat('Orders',F.ai_orders,'from these visits')}</div>
+  <div class="note">Semrush shows ${fmt(F.aio_kw)} keywords where Google shows an AI Overview. Clear FAQ text and product detail on collection pages helps both.</div>`;
+}
+};
+
+let openId=null;
+const cols=()=>getComputedStyle($('#grid')).gridTemplateColumns.split(' ').length;
+function closePanel(){
+  document.querySelectorAll('.panel').forEach(p=>p.remove());
+  document.querySelectorAll('.tile[aria-expanded="true"]').forEach(t=>t.setAttribute('aria-expanded','false'));
+  openId=null;
+}
+function open(id){
+  const was=openId;closePanel();if(was===id)return;
+  const t=DATA.tiles.find(x=>x.id===id);if(!t)return;
+  const tiles=[...document.querySelectorAll('.tile')];
+  const i=tiles.findIndex(x=>x.dataset.open===id),c=cols();
+  const last=Math.min(tiles.length-1,(Math.floor(i/c)+1)*c-1);
+  const p=document.createElement('div');p.className='panel';
+  p.innerHTML=`<div class="inner"><div class="pad"><div class="sh"><div class="ring">${ring(t.score,t.status,76,'var(--line)')}<div class="v num">${t.score==null?'–':t.score}</div></div>
+  <h3><small>#${t.rank} of ${DATA.total}${t.partial?' · partial data':''}</small>${esc(t.title)}</h3><button class="x" aria-label="Close" data-close>✕</button></div>
+  ${R[id](t.d)}<div class="how"><b>How the score works.</b> ${esc(t.how)}</div></div></div>`;
+  tiles[last].after(p);tiles[i].setAttribute('aria-expanded','true');openId=id;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>p.classList.add('on')));
+  setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),120);
+}
+document.addEventListener('click',e=>{
+  if(e.target.closest('[data-close]')){const id=openId;closePanel();const t=document.querySelector(`.tile[data-open="${id}"]`);if(t)t.focus();return}
+  const b=e.target.closest('.tile[data-open]');if(b)open(b.dataset.open);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
+let lastW=innerWidth;addEventListener('resize',()=>{if(innerWidth!==lastW){lastW=innerWidth;closePanel()}});
+</script>

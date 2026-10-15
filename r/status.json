@@ -98,6 +98,15 @@
   "ok": true,
   "reason": ""
  },
+ "seo-report": {
+  "at": "2026-10-16T07:57+11:00",
+  "code_sha": "60bf45471fc9b6edd2ad03441bcd29de8d3583bf",
+  "data_through": null,
+  "last_ok": "2026-10-16T07:57+11:00",
+  "manifest_version": "2026-10-16.seo-report.1",
+  "ok": true,
+  "reason": ""
+ },
  "stock": {
   "at": "2026-10-16T07:02+11:00",
   "code_sha": "790db6ac8bd1676462b0b482af376068e3aeb97c",
