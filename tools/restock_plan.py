@@ -37,7 +37,7 @@ SYD = ZoneInfo("Australia/Sydney")
 MIGRATION_CUTOFF = dt.datetime(2026, 4, 18, 23, 0, tzinfo=dt.timezone.utc)
 
 PRODUCTS = """{ products(query:"status:active"){ edges{ node{
-  id title createdAt featuredImage{ url }
+  id title createdAt onlineStoreUrl featuredImage{ url }
   metafield(namespace:"custom", key:"published_date_old"){ value }
   supplier: metafield(namespace:"custom", key:"supplier_name"){ value }
   disc: metafield(namespace:"custom", key:"discountinued"){ value }
@@ -193,7 +193,7 @@ def build():
             from_meta = bool(migrated and re.match(r"^\d{4}-\d{2}-\d{2}", meta))
             products[l["id"]] = {
                 "id": num(l["id"]), "title": l["title"],
-                "image": ((l.get("featuredImage") or {}).get("url")) or "",
+                "image": ((l.get("featuredImage") or {}).get("url")) or "", "url": l.get("onlineStoreUrl") or "",
                 "published": meta[:10] if from_meta else melbourne_day(l["createdAt"]),
                 "supplier": re.sub(r"^\s*\d+\s*:\s*", "", ((l.get("supplier") or {}).get("value") or "")).strip(),  # "52908 : Pankaj" -> "Pankaj"
                 "disc": ((l.get("disc") or {}).get("value") or "").strip().lower() in ("yes", "true", "1"),
@@ -221,7 +221,7 @@ def build():
         sales = product_sold.get(p["id"], 0)
         if sales <= 0:
             continue      # nothing ever sold: no days-to-sell, nothing to restock
-        out.append({"id": p["id"], "title": p["title"], "image": p["image"], "published": p["published"],
+        out.append({"id": p["id"], "title": p["title"], "image": p["image"], "url": p["url"], "published": p["published"],
                     "supplier": p["supplier"], "sales": sales, "last": product_last.get(p["id"], ""), "sold30": product_30.get(p["id"], 0),
                     "disc": p["disc"], "cols": sorted(p["cols"]), "variants": list(p["variants"].values())})
     no_meta = sum(1 for p in products.values() if p["migrated"] and not p["fromMeta"])

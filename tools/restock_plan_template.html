@@ -52,6 +52,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   .thumb{width:38px;height:38px;border-radius:6px;border:1px solid var(--border);background:var(--grey-bg);flex:none;overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:700;font-size:11px;position:relative}
   .thumb img{width:100%;height:100%;object-fit:cover;display:block}
   .ttl{flex:1;min-width:0}
+  .ttl h2 a.pt{color:inherit;text-decoration:none}.ttl h2 a.pt:hover{color:var(--blue);text-decoration:underline}
   .ttl h2{font-size:12.5px;margin:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ttl .meta{color:var(--muted);font-size:10.5px}
   .tiles{display:flex;gap:5px;flex:none}
@@ -231,6 +232,24 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
@@ -261,7 +280,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
     <label class="o">Collection <select id="collection"><option value="">All</option></select></label>
     <label class="o">Eligibility <select id="elig"><option value="">All</option><option value="y">Eligible only</option><option value="n">Not eligible only</option></select></label>
     <label class="o">Discontinued <select id="discf"><option value="hide">Hide discontinued</option><option value="only">Only discontinued</option><option value="all">Show all</option></select></label>
-    <label class="o"><input type="checkbox" id="onlyNeed"> Only variants needing stock</label>
+    <label class="o">Variants <select id="vsel" title="Auto = only variants needing stock when sorted by Priority, all variants for other sorts"><option value="">Auto</option><option value="need">Only needing stock</option><option value="all">All variants</option></select></label>
     <label class="o"><input type="checkbox" id="onlyElig"> Only “Stock More Variants”</label>
     <button id="expAll">Expand all</button>
     <button id="colAll">Collapse all</button>
@@ -367,7 +386,12 @@ const bxFmt = d => d.toLocaleDateString(undefined, {day: 'numeric', month: 'shor
 const bxShipDate = b => b.ship_date ? new Date(b.ship_date + 'T00:00:00') : b.shipped_at ? new Date(b.shipped_at) : null;
 const bxAgo = d => { const n = Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000)); return n === 0 ? 'today' : n + (n === 1 ? ' day' : ' days') + ' ago'; };
 const bxUrl = u => /^https?:\/\//i.test(u || '') ? u : '';
-const bxImg = r => { const s = r.image ? bxEsc(r.image) + (r.image.includes('?') ? '&' : '?') + 'width=200' : ''; return s ? `<img src="${s}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=ph></div>'">` : '<div class="ph"></div>'; };
+const bxLink = u => /^https:\/\//.test(u || '') ? bxEsc(u) : '';
+const bxImg0 = r => { const s = r.image ? bxEsc(r.image) + (r.image.includes('?') ? '&' : '?') + 'width=200' : ''; return s ? `<img src="${s}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=ph></div>'">` : '<div class="ph"></div>'; };
+/* product image, linked to the product page (new tab) when we know it */
+const bxImg = r => { const u = bxLink(r.product_url); return u ? `<a class="pl" href="${u}" target="_blank" rel="noopener noreferrer" title="Open product page">${bxImg0(r)}</a>` : bxImg0(r); };
+/* product name, linked the same way */
+const bxName = r => { if (!r.product_title) return ''; const u = bxLink(r.product_url), t = bxEsc(r.product_title); return `<div class="pn">${u ? `<a href="${u}" target="_blank" rel="noopener noreferrer" title="Open product page">${t} ↗</a>` : t}</div>`; };
 const bxByVariant = (a, b) => String(a.variant_title).localeCompare(String(b.variant_title), undefined, {numeric: true});
 function bxGroup(list) { const m = new Map(); list.forEach(r => { if (!m.has(r.product_id)) m.set(r.product_id, []); m.get(r.product_id).push(r); }); return [...m.values()]; }
 const bxToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
@@ -390,11 +414,11 @@ function bxTile(b, lines, o) {
     <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}</span>
     <span class="bx-right">${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : ''}${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track</a>' : ''}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
-  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
+  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
     ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}${r.wrong_pick ? '<span class="wp" title="Tagged to another supplier">⚠ wrong pick</span>' : ''}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
       <td class="q">${(!o.ro && !shipped) ? `<span class="stp"><button data-q="-1" data-id="${bxEsc(r.id)}" ${bxEff(r) <= 0 ? 'disabled' : ''}>−</button><b>${bxEff(r)}</b><button data-q="1" data-id="${bxEsc(r.id)}" ${bxEff(r) >= r.qty ? 'disabled' : ''}>+</button></span>` : bxEff(r)}${bxEff(r) < r.qty ? '<span class="low">short ' + (r.qty - bxEff(r)) + '</span>' : ''}</td>
       <td>${(!o.ro && !shipped) ? `<span style="display:inline-flex;gap:8px;align-items:center"><select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select><button class="x" data-rm="${bxEsc(r.id)}" title="Remove from this box (back to the master list)">✕</button></span>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}
-    </tbody></table></div>`;
+    </tbody></table></div></div>`;
   let body = n ? bxGroup(lines).map(rows).join('') : `<div class="bx-empty">Nothing in this box yet. Pick items from the master list and press “Add to box”.</div>`;
   if (!o.ro && !shipped) {
     body += `<div class="bx-ship" data-shipbox="${bxEsc(b.box_no)}"><label>Ship date<input type="date" class="bx-date" value="${bxToday()}"></label>
@@ -606,6 +630,7 @@ function rowHtml(r){
     <td class="sup" data-sup="${i}">${supHtml(i)}</td>
     <td class="status c-${r.level}"><span class="badge">${BADGE[r.level]}</span></td></tr>`;
 }
+const plink = P => /^https:\/\//.test(P.p.url || '') ? esc(P.p.url) : '';
 function cardHtml(g){
   const P = g.P, isOpen = state.has(g.id) ? state.get(g.id) : defaultOpen, pid = String(P.p.id);
   const dtsCls = P.pDTS === Infinity ? 't-info' : P.pDTS < 20 ? 't-green' : P.pDTS < 50 ? 't-amber' : 't-red';
@@ -616,8 +641,8 @@ function cardHtml(g){
   const arm = armed.has(pid);
   return `<section class="card${isOpen?' open':''}" data-gid="${esc(g.id)}">
     <div class="card-h" data-toggle="1"><span class="chev">▶</span>
-      <div class="thumb"><span>${esc(initials(P.p.title))}</span>${src ? `<img src="${src}" alt="" loading="lazy" referrerpolicy="no-referrer" style="position:absolute;inset:0;opacity:0" onload="this.style.opacity=1" onerror="this.remove()">` : ''}</div>
-      <div class="ttl"><h2>${esc(P.p.title)}${tag}</h2><div class="meta">${g.rows.length} variant${g.rows.length===1?'':'s'} shown · ${P.supplier ? esc(P.supplier) : 'no supplier'} · ${P.days} days on market${P.cat !== 'other' ? ' · ' + esc(P.cat) : ''}${P.last ? ' · last sale ' + esc(ago(P.last).replace('sold ', '')) : ''}</div></div>
+      <div class="thumb">${plink(P) ? `<a class="tl" href="${plink(P)}" target="_blank" rel="noopener noreferrer" title="Open product page" style="position:absolute;inset:0;z-index:2"></a>` : ''}<span>${esc(initials(P.p.title))}</span>${src ? `<img src="${src}" alt="" loading="lazy" referrerpolicy="no-referrer" style="position:absolute;inset:0;opacity:0" onload="this.style.opacity=1" onerror="this.remove()">` : ''}</div>
+      <div class="ttl"><h2>${plink(P) ? `<a class="pt" href="${plink(P)}" target="_blank" rel="noopener noreferrer" title="Open product page">${esc(P.p.title)} ↗</a>` : esc(P.p.title)}${tag}</h2><div class="meta">${g.rows.length} variant${g.rows.length===1?'':'s'} shown · ${P.supplier ? esc(P.supplier) : 'no supplier'} · ${P.days} days on market${P.cat !== 'other' ? ' · ' + esc(P.cat) : ''}${P.last ? ' · last sale ' + esc(ago(P.last).replace('sold ', '')) : ''}</div></div>
       <button class="disc${arm?' arm':''}" data-disc="${esc(pid)}" data-to="${P.disc?0:1}" title="${P.disc ? 'Put this product back into restocking' : 'Stop restocking this product and mark it discontinued in Shopify'}">${P.disc ? 'Reinstate' : arm ? 'Confirm discontinue?' : 'Discontinue'}</button>
       <div class="tiles">
         <div class="tile t-info"><b>${years(P.days)}</b><span>On market</span></div>
@@ -669,7 +694,7 @@ function render(){
   indexOrders();
   const {prods, entries} = compute();
   const supSel = $('supplier').value, colSel = $('collection').value, eligSel = $('elig').value, dSel = $('discf').value;
-  const onlyNeed = $('onlyNeed').checked, onlyElig = $('onlyElig').checked;
+  const vSel = $('vsel').value, onlyNeed = vSel === 'need' || (vSel === '' && mode === 'priority'), onlyElig = $('onlyElig').checked;
   const live = prods.filter(r => !r.disc);
   const activeElig = live.filter(r=>r.eligible && !getDone(r.p.id)).length;
   $('stats').innerHTML = [
@@ -714,7 +739,7 @@ function render(){
 /* ---------------- events ---------------- */
 const reset = () => { limit = PAGE; render(); };
 $('len').addEventListener('input', reset);
-['onlyNeed','onlyElig','supplier','collection','elig','discf'].forEach(id => $(id).addEventListener('change', reset));
+['vsel','onlyElig','supplier','collection','elig','discf'].forEach(id => $(id).addEventListener('change', reset));
 $('order').addEventListener('change', () => { mode = $('order').value; defaultOpen = FLAT.has(mode); state.clear(); reset(); });
 async function receive(ids, label){
   try {
@@ -774,7 +799,7 @@ $('list').addEventListener('click', async e => {
       if (qty <= 0) return;
       btn.disabled = true; btn.textContent = 'Saving…';
       try {
-        const row = await Store.order({ vkey: key, product_id: P.p.id, product_title: P.p.title, image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''),
+        const row = await Store.order({ vkey: key, product_id: P.p.id, product_title: P.p.title, product_url: P.p.url || '', image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''),
           variant_title: r.title, supplier: P.supplier || 'Unassigned', qty, stock_base: r.stock });
         if (row && row.id) orders.set(row.id, row);
         draft.delete(key);
@@ -783,6 +808,7 @@ $('list').addEventListener('click', async e => {
     }
     return;
   }
+  if (t.closest('a[href]')) return;      // product links open in a new tab, they don't toggle the card
   const h = t.closest('[data-toggle]');
   if (h) {
     const card = h.closest('.card'), id = card.getAttribute('data-gid');

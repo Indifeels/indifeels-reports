@@ -1539,7 +1539,7 @@
     },
     order: async (d) => {
       const r = d.row || {}, qty = Math.floor(Number(r.qty) || 0);
-      const row = { vkey: rpText(r.vkey, 100), product_id: rpText(r.product_id, 30), product_title: rpText(r.product_title, 300), image: /^https:\/\/cdn\.shopify\.com\//.test(r.image || "") ? rpText(r.image, 500) : "", variant_title: rpText(r.variant_title, 120), supplier: rpText(r.supplier, 100), qty: Math.max(0, Math.min(100000, qty)), stock_base: Number.isFinite(Number(r.stock_base)) ? Math.max(0, Math.min(1000000, Math.floor(Number(r.stock_base)))) : null };
+      const row = { vkey: rpText(r.vkey, 100), product_id: rpText(r.product_id, 30), product_title: rpText(r.product_title, 300), product_url: /^https:\/\/[^\s]{3,500}$/.test(r.product_url || "") ? rpText(r.product_url, 500) : "", image: /^https:\/\/cdn\.shopify\.com\//.test(r.image || "") ? rpText(r.image, 500) : "", variant_title: rpText(r.variant_title, 120), supplier: rpText(r.supplier, 100), qty: Math.max(0, Math.min(100000, qty)), stock_base: Number.isFinite(Number(r.stock_base)) ? Math.max(0, Math.min(1000000, Math.floor(Number(r.stock_base)))) : null };
       if (!row.vkey || !row.supplier) throw new Error("This product has no supplier set");
       return rpOk(await sb.rpc("restock_owner_order", { p: row }));
     },
