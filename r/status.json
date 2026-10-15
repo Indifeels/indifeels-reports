@@ -72,11 +72,11 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-10-15T07:00+11:00",
-  "code_sha": "c4da96c5ebe54ebf0416da3e27280c60e604f773",
+  "at": "2026-10-15T20:00+11:00",
+  "code_sha": "b92cbc06213268e9254297920bd26a91f726be33",
   "data_through": null,
-  "last_ok": "2026-10-15T07:00+11:00",
-  "manifest_version": "2026-10-14.color-game.2",
+  "last_ok": "2026-10-15T20:00+11:00",
+  "manifest_version": "2026-10-15.cash-report.1",
   "ok": true,
   "reason": ""
  },
