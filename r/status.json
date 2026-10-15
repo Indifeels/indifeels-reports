@@ -90,11 +90,11 @@
   "reason": ""
  },
  "stock": {
-  "at": "2026-10-15T08:41+11:00",
-  "code_sha": "f33cca7e28fd0a7dfd2857b073ca01cbd37d8790",
+  "at": "2026-10-15T11:43+11:00",
+  "code_sha": "81a1f1bfc05f69955a7240dcd3f23737179c8670",
   "data_through": null,
-  "last_ok": "2026-10-15T08:41+11:00",
-  "manifest_version": "2026-10-14.color-game.2",
+  "last_ok": "2026-10-15T11:43+11:00",
+  "manifest_version": "2026-10-15.restock-planner.1",
   "ok": true,
   "reason": ""
  }
