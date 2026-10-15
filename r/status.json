@@ -99,10 +99,10 @@
   "reason": ""
  },
  "seo-report": {
-  "at": "2026-10-16T07:57+11:00",
-  "code_sha": "60bf45471fc9b6edd2ad03441bcd29de8d3583bf",
+  "at": "2026-10-16T08:02+11:00",
+  "code_sha": "58341f9b35bd0fcac4174be2ab73cb9112901829",
   "data_through": null,
-  "last_ok": "2026-10-16T07:57+11:00",
+  "last_ok": "2026-10-16T08:02+11:00",
   "manifest_version": "2026-10-16.seo-report.1",
   "ok": true,
   "reason": ""
