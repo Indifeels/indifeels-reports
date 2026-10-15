@@ -169,6 +169,27 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   .mc .sub{font-size:12px}
   .mc .tg{margin:4px 0 0;display:block;width:fit-content}
 }
+@media (max-width:700px){
+  .bx-h{padding:12px 14px;gap:4px 10px}.bx-title{font-size:19px}
+  .bx-prod{display:grid;grid-template-columns:56px 1fr;gap:6px 10px;align-items:center;border-left:4px solid var(--blue);background:linear-gradient(180deg,var(--card),var(--bg))}
+  .bx-prod>.pc{display:contents}
+  .bx-prod img,.bx-prod .ph{width:56px;height:56px}
+  .bx-prod .pnrow{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin:0}
+  .bx-prod .pn{font-size:15px;line-height:1.25}
+  .bx-prod .pmv{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+  .bx-prod .pc table,.bx-prod table{display:block;grid-column:1/-1;width:100%;min-width:0!important}
+  .bx-prod tbody{display:block}.bx-prod thead{display:none}
+  .bx-prod tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"var ord" "ship ship" "mv mv";gap:8px 10px;align-items:center;padding:10px;margin-top:8px;background:var(--grey-bg);border:1px solid var(--border);border-radius:12px}
+  .bx-prod tbody td{display:block;padding:0;border:0}
+  .bx-prod tbody td:nth-child(1){grid-area:var;font-weight:800;font-size:17px}
+  .bx-prod tbody td:nth-child(2){grid-area:ord;justify-self:end;min-width:64px;background:var(--amber-bg);color:var(--amber);border-radius:10px;padding:3px 12px;font-size:20px;text-align:right}
+  .bx-prod tbody td:nth-child(2)::before{content:"ORDERED";display:block;font-size:10px;letter-spacing:.06em;font-weight:700}
+  .bx-prod tbody td:nth-child(3){grid-area:ship;text-align:left}
+  .bx-prod tbody td:nth-child(3)::before{content:"SHIPPING";display:block;font-size:10px;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:2px}
+  .bx-prod tbody td:nth-child(4){grid-area:mv;min-width:0}.bx-prod tbody td:nth-child(4){display:flex;gap:8px}.bx-prod tbody td:nth-child(4) select{flex:1;min-width:0}.bx-prod tbody td:nth-child(4) button{flex:none;width:auto}.bx-prod tbody td:nth-child(4)>*{max-width:100%}
+  .bx-prod .sub{font-size:12px}
+  .bx-ship input,.bx-ship select{max-width:100%}
+}
 </style>
 </head>
 <body>
