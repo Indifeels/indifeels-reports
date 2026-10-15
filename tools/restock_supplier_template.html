@@ -190,6 +190,29 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   .bx-prod .sub{font-size:12px}
   .bx-ship input,.bx-ship select{max-width:100%}
 }
+@media (max-width:700px){
+  /* master rows: left = variant + wanted + tags, right = you-send stepper, bottom = add */
+  .mc tr.mt{grid-template-columns:28px minmax(0,1fr) auto;grid-template-areas:"ck var snd" "ck want snd" "add add add"}
+  .mc tr.mt td:nth-child(3){justify-self:start;text-align:left;min-width:0;display:inline-flex;align-items:baseline;gap:8px;font-size:18px;padding:2px 12px;width:fit-content}
+  .mc tr.mt td:nth-child(3)::before{display:inline;font-size:10.5px}
+  .mc tr.mt td:nth-child(4){align-self:center;text-align:center}
+  .mc tr.mt td:nth-child(4)::before{text-align:center}
+  .mc tr.mt td:nth-child(5){align-self:stretch}
+  .mc td.a button{width:100%;box-sizing:border-box}
+  /* box rows: left = variant + ordered, right = shipping stepper, bottom = move */
+  .bx-prod tbody tr{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"var ship" "ord ship" "mv mv"}
+  .bx-prod tbody td:nth-child(2){justify-self:start;min-width:0;display:inline-flex;align-items:baseline;gap:8px;font-size:18px;padding:2px 12px;width:fit-content}
+  .bx-prod tbody td:nth-child(2)::before{display:inline;font-size:10.5px}
+  .bx-prod tbody td:nth-child(3){text-align:center;align-self:center}
+  .bx-prod tbody td:nth-child(3)::before{text-align:center}
+  /* tags: tidy chips under the variant name */
+  .tg,.low,.wp{display:inline-flex;align-items:center;gap:4px;width:fit-content;margin:6px 6px 0 0;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.3;white-space:normal}
+  .tg,.wp{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber)}
+  .low{background:var(--amber-bg);color:var(--amber)}
+  .mc .tg{display:flex}
+  .bx-prod tbody td:nth-child(3) .low{display:flex;justify-content:center;margin:6px auto 0}
+  .mc tr.mt td:nth-child(2) .sub{margin-top:2px}
+}
 </style>
 </head>
 <body>
