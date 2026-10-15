@@ -87,12 +87,15 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+.gbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:8px;padding:7px 14px;font-weight:700;font-size:15px;text-decoration:none}.gbtn:hover{border-color:var(--blue)}.gbtn[hidden]{display:none}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="hd"><h1>Indifeels Restock</h1><div class="portal">Supplier Portal</div><div class="who" id="who"></div></div>
+    <a id="guide" class="gbtn" target="_blank" rel="noopener noreferrer" hidden>📘 How it works</a>
+    <a id="guidepdf" class="gbtn" target="_blank" rel="noopener noreferrer" hidden>⬇ PDF</a>
     <button id="refresh">Refresh</button>
     <button id="theme" title="Light / dark">◐</button>
   </header>
@@ -278,6 +281,7 @@ $('addsel').addEventListener('click', () => {
 });
 $('newbox').addEventListener('click', () => act(() => Store.newBox(), b => 'Ready: ' + b));
 $('refresh').addEventListener('click', load);
+call('guide').then(g => { if (g && g.page) { $('guide').href = g.page; $('guide').hidden = false; $('guidepdf').href = g.pdf; $('guidepdf').hidden = false; } }).catch(() => {});
 $('boxes').addEventListener('click', e => {
   const t = e.target;
   const q = t.closest('[data-q]');

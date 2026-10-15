@@ -1556,6 +1556,7 @@
   });
   rpBridge("restock-supplier", {
     state: async () => rpOk(await sb.rpc("restock_supplier_state")),
+    guide: async () => ({ page: new URL("guide/restock-supplier.html", location.href).href, pdf: new URL("guide/restock-supplier.pdf", location.href).href }),
     add: async (d) => rpOk(await sb.rpc("restock_supplier_pick", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)), p_box: d.box ? rpText(d.box, 40) : null, p_confirm: !!d.confirm })),
     deletebox: async (d) => rpOk(await sb.rpc("restock_supplier_delete_box2", { p_box: rpText(d.box, 40), p_to: d.to ? rpText(d.to, 40) : null })),
     remove: async (d) => rpOk(await sb.rpc("restock_supplier_remove", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)) })),
