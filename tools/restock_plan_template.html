@@ -96,6 +96,8 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   .modal.show{display:flex}
   .modal form{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;display:grid;gap:8px;width:280px}
   @media (max-width:760px){.tiles .tile:nth-child(-n+2){display:none}}
+  .flag{margin-top:3px;color:var(--amber);background:var(--amber-bg);border-radius:6px;padding:2px 8px;font-size:12.5px;font-weight:600;white-space:normal;text-align:left;max-width:260px}
+  .tl{font-size:12px;color:var(--muted);font-weight:400;margin-top:2px}
   .tabs{display:flex;gap:6px;margin:8px 0 0}
   .tabs button{padding:3px 16px;font-weight:600}
   .tabs button.on{background:var(--blue);color:#fff;border-color:transparent}
@@ -329,27 +331,42 @@ const initials = t => t.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).joi
 const years = d => d >= 365 ? (Math.round(d/36.5)/10) + ' yrs' : d >= 60 ? Math.round(d/30) + ' mo' : d + ' d';
 
 /* ---------------- order cell (stepper / save) and supplier status ---------------- */
+const eff = o => o.ship_qty == null ? o.qty : o.ship_qty;
+const isLive = o => o && o.status !== 'received';          // a restocked line is history: ordering again starts a fresh one
 function curQty(i){
   const {r,key} = infos[i], row = orders.get(key);
-  return draft.has(key) ? draft.get(key) : row ? row.qty : r.toOrder;
+  return draft.has(key) ? draft.get(key) : isLive(row) ? row.qty : r.toOrder;
 }
+const dShort = d => new Date(d).toLocaleDateString(undefined,{day:'numeric',month:'short'});
+const shipDay = o => o.ship_date ? new Date(o.ship_date + 'T00:00:00') : new Date(o.shipped_at);
+const daysBetween = (a,b) => Math.max(0, Math.floor((b - a) / DAY));
+function timeline(o){
+  const bits = ['Ordered ' + dShort(o.saved_at)];
+  if (o.added_at) bits.push('In box ' + dShort(o.added_at));
+  if (o.shipped_at) bits.push('Shipped ' + dShort(shipDay(o)) + (o.box_no ? ' (box ' + o.box_no + ')' : ''));
+  if (o.received_at) bits.push('Restocked ' + dShort(o.received_at) + ' · took ' + daysBetween(shipDay(o), new Date(o.received_at)) + 'd from shipping');
+  return bits.join(' → ');
+}
+const lowFlag = o => eff(o) < o.qty ? `<div class="flag" title="The supplier cannot ship the full amount">⚠ Supplier reported low stock: shipping ${eff(o)} of ${o.qty}</div>` : '';
 function ordHtml(i){
   const {r,key} = infos[i], row = orders.get(key), cur = curQty(i);
-  const locked = !!row && row.status !== 'saved';
+  const live = isLive(row);
+  const locked = live && !!row && row.status !== 'saved';
   const noSup = false;   // products without a supplier tag go to "Unassigned" for now
-  const dirty = !row ? cur > 0 : row.qty !== cur;
+  const dirty = !live ? cur > 0 : row.qty !== cur;
   const btn = locked ? '' :
-    `<button class="save${!dirty && row ? ' ok' : ''}" data-save="1" ${(dirty && !noSup) ? '' : 'disabled'} title="${noSup ? 'No supplier on this product (custom.supplier_name)' : 'Send to supplier'}">${!dirty && row ? 'Saved ✓' : 'Save'}</button>`;
+    `<button class="save${!dirty && live ? ' ok' : ''}" data-save="1" ${(dirty && !noSup) ? '' : 'disabled'} title="Send to supplier">${!dirty && live ? 'Saved ✓' : 'Save'}</button>`;
   return `<span class="step"><button data-step="1" ${locked?'disabled':''}>+</button><b>${cur}</b><button data-step="-1" ${locked||cur<=0?'disabled':''}>−</button></span>${btn}`;
 }
 function supHtml(i){
   const row = orders.get(infos[i].key);
   if (!row) return '–';
-  if (row.status === 'saved') return '<span class="badge c-info">Saved</span>';
-  if (row.status === 'added') return '<span class="badge c-amber">📦 Added to box</span>';
-  const d = new Date(row.shipped_at), days = Math.floor((Date.now() - d.getTime()) / DAY);
-  const when = d.toLocaleDateString(undefined,{day:'numeric',month:'short'});
-  return `<span class="badge c-green">🚚 Shipped ${when} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days')}</span><button class="recv" data-recv="1" title="Stock arrived: clear this line">Received</button>`;
+  const tip = ' title="' + esc(timeline(row)) + '"';
+  if (row.status === 'saved') return `<span class="badge c-info"${tip}>Saved</span>${lowFlag(row)}`;
+  if (row.status === 'added') return `<span class="badge c-amber"${tip}>📦 In box</span>${lowFlag(row)}`;
+  const d = shipDay(row), days = daysBetween(d, Date.now());
+  if (row.status === 'received') return `<span class="badge c-green"${tip}>✅ Restocked ${dShort(row.received_at)} · took ${daysBetween(d, new Date(row.received_at))} days</span>${lowFlag(row)}`;
+  return `<span class="badge c-green"${tip}>🚚 ${eff(row)} shipped ${dShort(d)}${row.box_no ? ' · box ' + esc(row.box_no) : ''} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days')}</span>${lowFlag(row)}<button class="recv" data-recv="1" title="Stock arrived: stop the timer">Received</button>`;
 }
 function paint(i){
   const a = document.querySelector(`[data-ord="${i}"]`), b = document.querySelector(`[data-sup="${i}"]`);
@@ -392,8 +409,10 @@ function cardHtml(g){
       <tbody>${g.rows.map(rowHtml).join('')}</tbody></table></div></div></section>`;
 }
 function queueTile(){
-  const c = {saved:0,added:0,shipped:0}; orders.forEach(o => c[o.status]++);
-  return `<div class="stat"><b>${c.saved} · ${c.added} · ${c.shipped}</b><span>Saved · in box · shipped</span></div>`;
+  const c = {saved:0,added:0,shipped:0,received:0}; let incoming = 0, low = 0;
+  orders.forEach(o => { c[o.status]++; if (o.status === 'shipped') incoming += eff(o); if (o.status !== 'received' && eff(o) < o.qty) low++; });
+  return `<div class="stat" data-qt="1"><b>${c.saved} · ${c.added} · ${c.shipped}</b><span>Saved · in box · shipped</span></div>` +
+         `<div class="stat" data-qt="1"><b>${incoming}</b><span>Units on the way${low ? ' · ⚠ ' + low + ' short' : ''}</span></div>`;
 }
 function render(){
   const {prods, entries} = compute();
@@ -447,7 +466,7 @@ $('list').addEventListener('click', async e => {
   if (rc) {
     const i = +rc.closest('[data-sup]').getAttribute('data-sup'), key = infos[i].key;
     rc.disabled = true;
-    try { await Store.received([key]); orders.delete(key); } catch (err) { notify('Could not clear: ' + err.message); }
+    try { await Store.received([key]); const o = orders.get(key); if (o) { o.status = 'received'; o.received_at = new Date().toISOString(); } } catch (err) { notify('Could not clear: ' + err.message); }
     paint(i); updateQueue(); return;
   }
   const cell = t.closest('[data-ord]');
@@ -461,7 +480,7 @@ $('list').addEventListener('click', async e => {
       btn.disabled = true; btn.textContent = 'Saving…';
       try {
         const row = await Store.upsert({ id: key, product_id: P.p.id, product_title: P.p.title, image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''),
-          variant_title: r.title, supplier: P.supplier || 'Unassigned', qty });
+          variant_title: r.title, supplier: P.supplier || 'Unassigned', qty, stock_base: r.stock });
         if (row && row.id) orders.set(key, row); else orders.delete(key);
         draft.delete(key);
       } catch (err) { notify('Save failed: ' + err.message); }
@@ -490,18 +509,26 @@ function buildSuppliers(){
 
 /* ---------------- supplier sync ---------------- */
 function updateQueue(){
-  const tiles = document.querySelectorAll('#stats .stat'), last = tiles[tiles.length-1];
-  if (last) last.outerHTML = queueTile();
+  document.querySelectorAll('#stats [data-qt]').forEach(e => e.remove());
+  $('stats').insertAdjacentHTML('beforeend', queueTile());
+}
+function liveStock(o){
+  const p = data.products.find(x => String(x.id) === String(o.product_id)); if (!p) return null;
+  const v = p.variants.find(x => String(x[0]).trim().toLowerCase() === String(o.variant_title).trim().toLowerCase());
+  return v ? +v[1] : null;
 }
 async function refresh(){
   try {
     const rows = await Store.list();
     orders = new Map(rows.map(r => [r.id, r]));
+    // stock on the website has risen by what was shipped: the restock has landed, stop the timer
+    const landed = rows.filter(o => o.status === 'shipped' && o.stock_base != null && eff(o) > 0 && (liveStock(o) ?? -1) >= o.stock_base + eff(o));
+    if (landed.length) {
+      try { await Store.received(landed.map(o => o.id)); landed.forEach(o => { o.status = 'received'; o.received_at = new Date().toISOString(); }); } catch (e) { /* manual Received button still works */ }
+    }
     repaintAll(); updateQueue(); if (!$('viewSup').hidden) renderSv();
   } catch (err) { $('sub').textContent = 'Could not load supplier status: ' + err.message; }
 }
-setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 60000);   // also moves the shipped day counters
-
 /* ---------------- supplier view (read-only mirror of the supplier portal) ---------------- */
 function svGroup(list){ const m = new Map(); list.forEach(r => { if (!m.has(r.product_id)) m.set(r.product_id, []); m.get(r.product_id).push(r); }); return [...m.values()]; }
 const svSort = (a, b) => bySize({title: a.variant_title}, {title: b.variant_title});
@@ -510,23 +537,25 @@ function renderSv(){
   const all = [...orders.values()];
   const names = [...new Set(all.map(r => r.supplier).filter(Boolean))].sort();
   const sel = $('svSup'), cur = sel.value;
-  sel.innerHTML = names.map(n => `<option>${esc(n)}</option>`).join('') || '<option value="">—</option>';
+  sel.innerHTML = (names.length > 1 ? '<option value="">All</option>' : '') + names.map(n => `<option>${esc(n)}</option>`).join('') || '<option value="">—</option>';
   if (names.includes(cur)) sel.value = cur;
-  const mine = all.filter(r => r.supplier === sel.value);
-  const pending = mine.filter(r => r.status !== 'shipped'), shipped = mine.filter(r => r.status === 'shipped');
+  const mine = all.filter(r => !sel.value || r.supplier === sel.value);
+  const pending = mine.filter(r => r.status === 'saved' || r.status === 'added'), shipped = mine.filter(r => r.status === 'shipped' || r.status === 'received');
   const added = pending.filter(r => r.status === 'added');
   $('svCount').textContent = pending.length ? `${added.length} of ${pending.length} in box` : '';
+  const tl = o => `<div class="tl">${esc(timeline(o))}</div>`;
   $('svList').innerHTML = pending.length ? svGroup(pending).map(g => `<div class="sc">${svImg(g[0])}
-    <table><thead><tr><th>Variant</th><th style="text-align:center">Qty</th><th></th></tr></thead><tbody>
-    ${g.sort(svSort).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td>
+    <table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">Shipping</th><th>Status</th></tr></thead><tbody>
+    ${g.sort(svSort).map(r => `<tr><td>${esc(r.variant_title)}${tl(r)}</td><td class="q">${r.qty}</td>
+      <td class="q">${eff(r)}${eff(r) < r.qty ? '<span class="badge c-amber" style="margin-left:6px">⚠ low stock</span>' : ''}</td>
       <td class="a">${r.status === 'added' ? '<span class="badge c-amber">📦 In box</span>' : '<span class="badge c-grey">To pack</span>'}</td></tr>`).join('')}
     </tbody></table></div>`).join('') : `<div class="empty">${all.length ? 'Nothing to ship right now for this supplier.' : 'Nothing sent to a supplier yet. Press Save on a To order quantity in My view and it appears here.'}</div>`;
-  const byDay = new Map();
-  shipped.forEach(r => { const k = String(r.shipped_at).slice(0, 10); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(r); });
-  $('svShipped').innerHTML = [...byDay.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([k, list]) => {
-    const d = new Date(list[0].shipped_at), days = Math.floor((Date.now() - d.getTime()) / DAY);
-    return `<h3>Shipped ${d.toLocaleDateString(undefined, {day: 'numeric', month: 'short', year: 'numeric'})} · <span class="ship">${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days') + ' ago'}</span></h3>` +
-      svGroup(list).map(g => `<div class="sc">${svImg(g[0])}<table><tbody>${g.sort(svSort).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td></tr>`).join('')}</tbody></table></div>`).join('');
+  const byBox = new Map();
+  shipped.forEach(r => { const k = (r.ship_date || String(r.shipped_at).slice(0, 10)) + '|' + (r.box_no || ''); if (!byBox.has(k)) byBox.set(k, []); byBox.get(k).push(r); });
+  $('svShipped').innerHTML = [...byBox.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([k, list]) => {
+    const f = list[0], d = shipDay(f), days = daysBetween(d, Date.now());
+    return `<h3>${f.box_no ? 'Box ' + esc(f.box_no) + ' · ' : ''}Shipped ${d.toLocaleDateString(undefined, {day: 'numeric', month: 'short', year: 'numeric'})} · <span class="ship">${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days') + ' ago'}</span></h3>` +
+      svGroup(list).map(g => `<div class="sc">${svImg(g[0])}<table><tbody>${g.sort(svSort).map(r => `<tr><td>${esc(r.variant_title)}${tl(r)}</td><td class="q">${eff(r)}${eff(r) < r.qty ? '<span class="badge c-amber" style="margin-left:6px">⚠ of ' + r.qty + '</span>' : ''}</td><td class="a">${r.status === 'received' ? '<span class="badge c-green">✅ Restocked</span>' : '<span class="badge c-green">🚚 On the way</span>'}</td></tr>`).join('')}</tbody></table></div>`).join('');
   }).join('');
 }
 function showTab(sup){

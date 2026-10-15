@@ -33,6 +33,12 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   .box.on{background:var(--amber-bg);color:var(--amber);border-color:transparent;font-weight:600}
   h3{font-size:12px;color:var(--muted);margin:16px 2px 6px;font-weight:600}
   .ship{color:var(--green);font-weight:600}
+  .shipbox{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:var(--card);border:2px solid var(--blue);border-radius:8px;padding:10px 12px;margin:0 0 10px}
+  .shipbox input{width:170px}
+  .stp{display:inline-flex;align-items:center;gap:4px}
+  .stp b{min-width:26px;text-align:center;font-size:16px}
+  .stp button{padding:0 9px;font-weight:700}
+  .low{display:inline-block;background:var(--amber-bg);color:var(--amber);border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;margin-left:6px}
   .empty{padding:24px;text-align:center;color:var(--muted)}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
   .modal.show{display:flex}
@@ -50,6 +56,13 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
     <label><input type="checkbox" id="all"> All added to box</label>
     <span class="sp" id="count"></span>
     <button class="primary" id="ship" disabled>Ship</button>
+  </div>
+  <div class="shipbox" id="shipbox" hidden>
+    <b id="shipTitle">Ship</b>
+    <label>Box number <input id="boxNo" type="text" maxlength="40" placeholder="e.g. 010203" autocomplete="off"></label>
+    <label>Ship date <input id="shipDate" type="date"></label>
+    <button class="primary" id="shipDone">Done</button>
+    <button id="shipCancel">Cancel</button>
   </div>
   <div id="list"></div>
   <div id="shipped"></div>
@@ -78,6 +91,8 @@ window.addEventListener('message', e => {
 const Store = {
   list: () => call('list'),
   act: (op, ids) => call('act', { op, ids }),
+  setQty: (id, qty) => call('setqty', { id, qty }),
+  ship: (ids, box, date) => call('ship', { ids, box, date }),
 };
 
 const $ = id => document.getElementById(id);
@@ -99,28 +114,33 @@ function group(list){
 }
 function img(r){ const s = r.image ? esc(r.image) + (r.image.includes('?') ? '&' : '?') + 'width=200' : ''; return s ? `<img src="${s}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=ph></div>'">` : '<div class="ph"></div>'; }
 
+const eff = r => r.ship_qty == null ? r.qty : r.ship_qty;
+const fmtD = d => d.toLocaleDateString(undefined, {day: 'numeric', month: 'short', year: 'numeric'});
+const todayIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const inSup = r => !$('supplier').value || r.supplier === $('supplier').value;
 function render(){
-  const sup = $('supplier').value;
-  const mine = rows.filter(r => !sup || r.supplier === sup);
-  const pending = mine.filter(r => r.status !== 'shipped'), shipped = mine.filter(r => r.status === 'shipped');
+  const mine = rows.filter(inSup);
+  const pending = mine.filter(r => r.status === 'saved' || r.status === 'added'), shipped = mine.filter(r => r.status === 'shipped' || r.status === 'received');
   const added = pending.filter(r => r.status === 'added');
   $('all').checked = pending.length > 0 && added.length === pending.length;
   $('all').disabled = !pending.length;
   $('count').textContent = pending.length ? `${added.length} of ${pending.length} in box` : '';
   $('ship').disabled = !added.length; $('ship').textContent = added.length ? `Ship ${added.length} item${added.length>1?'s':''}` : 'Ship';
+  if (!added.length) $('shipbox').hidden = true;
 
   $('list').innerHTML = pending.length ? group(pending).map(g => `<div class="card">${img(g[0])}
-    <table><thead><tr><th>Variant</th><th style="text-align:center">Qty</th><th></th></tr></thead><tbody>
+    <table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">Shipping</th><th></th></tr></thead><tbody>
     ${g.sort(bySize).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td>
+      <td class="q"><span class="stp"><button data-q="-1" data-id="${esc(r.id)}" ${eff(r) <= 0 ? 'disabled' : ''}>−</button><b>${eff(r)}</b><button data-q="1" data-id="${esc(r.id)}" ${eff(r) >= r.qty ? 'disabled' : ''}>+</button></span>${eff(r) < r.qty ? '<span class="low">short ' + (r.qty - eff(r)) + '</span>' : ''}</td>
       <td class="a"><button class="box${r.status==='added'?' on':''}" data-id="${esc(r.id)}">${r.status==='added' ? '📦 In box' : 'Add to box'}</button></td></tr>`).join('')}
     </tbody></table></div>`).join('') : `<div class="empty">Nothing to ship right now.</div>`;
 
-  const byDay = new Map();
-  shipped.forEach(r => { const k = r.shipped_at.slice(0,10); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(r); });
-  $('shipped').innerHTML = [...byDay.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([k, list]) => {
-    const d = new Date(list[0].shipped_at), days = Math.floor((Date.now() - d.getTime()) / DAY);
-    return `<h3>Shipped ${d.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})} · <span class="ship">${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days') + ' ago'}</span></h3>` +
-      group(list).map(g => `<div class="card">${img(g[0])}<table><tbody>${g.sort(bySize).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td></tr>`).join('')}</tbody></table></div>`).join('');
+  const byBox = new Map();
+  shipped.forEach(r => { const k = (r.ship_date || String(r.shipped_at).slice(0, 10)) + '|' + (r.box_no || ''); if (!byBox.has(k)) byBox.set(k, []); byBox.get(k).push(r); });
+  $('shipped').innerHTML = [...byBox.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([k, list]) => {
+    const f = list[0], d = f.ship_date ? new Date(f.ship_date + 'T00:00:00') : new Date(f.shipped_at), days = Math.max(0, Math.floor((Date.now() - d.getTime()) / DAY));
+    return `<h3>${f.box_no ? 'Box ' + esc(f.box_no) + ' · ' : ''}Shipped ${fmtD(d)} · <span class="ship">${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days') + ' ago'}</span></h3>` +
+      group(list).map(g => `<div class="card">${img(g[0])}<table><tbody>${g.sort(bySize).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${eff(r)}${eff(r) < r.qty ? '<span class="low">of ' + r.qty + '</span>' : ''}</td><td class="a">${r.status === 'received' ? '✅ Received' : ''}</td></tr>`).join('')}</tbody></table></div>`).join('');
   }).join('');
 }
 
@@ -139,20 +159,37 @@ async function act(fn){ try { await fn(); await load(); } catch (e) { notify('Fa
 
 $('supplier').addEventListener('change', render);
 $('list').addEventListener('click', e => {
+  const q = e.target.closest('[data-q]');
+  if (q) {
+    const r = rows.find(x => x.id === q.dataset.id); if (!r) return;
+    const n = Math.max(0, Math.min(r.qty, eff(r) + (+q.dataset.q)));
+    r.ship_qty = n >= r.qty ? null : n; render();                       // instant feedback, then save
+    act(() => Store.setQty(r.id, n)); return;
+  }
   const b = e.target.closest('.box');
   if (b) { const r = rows.find(x => x.id === b.dataset.id); if (r) act(() => Store.act(r.status === 'added' ? 'unadd' : 'add', [r.id])); }
 });
 $('all').addEventListener('change', () => {
-  const sup = $('supplier').value, pend = rows.filter(r => (!sup || r.supplier === sup) && r.status !== 'shipped');
+  const pend = rows.filter(r => inSup(r) && (r.status === 'saved' || r.status === 'added'));
   const on = $('all').checked;
   act(() => Store.act(on ? 'add' : 'unadd', pend.map(r => r.id)));
 });
 $('ship').addEventListener('click', () => {
-  const ids = rows.filter(r => (!$('supplier').value || r.supplier === $('supplier').value) && r.status === 'added').map(r => r.id);
+  const n = rows.filter(r => inSup(r) && r.status === 'added').length; if (!n) return;
+  $('shipTitle').textContent = `Ship ${n} item${n > 1 ? 's' : ''}`;
+  if (!$('shipDate').value) $('shipDate').value = todayIso();
+  $('shipbox').hidden = false; $('boxNo').focus();
+});
+$('shipCancel').addEventListener('click', () => { $('shipbox').hidden = true; });
+$('shipDone').addEventListener('click', async () => {
+  const ids = rows.filter(r => inSup(r) && r.status === 'added').map(r => r.id), box = $('boxNo').value.trim(), date = $('shipDate').value;
   if (!ids.length) return;
-  const b = $('ship');
-  if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = `Tap again to ship ${ids.length}`; setTimeout(() => { b.dataset.sure = ''; render(); }, 4000); return; }
-  b.dataset.sure = ''; act(() => Store.act('ship', ids));
+  if (!box) { notify('Enter the box number'); $('boxNo').focus(); return; }
+  if (!date) { notify('Pick the ship date'); return; }
+  $('shipDone').disabled = true;
+  try { await Store.ship(ids, box, date); $('boxNo').value = ''; $('shipDate').value = todayIso(); $('shipbox').hidden = true; await load(); }
+  catch (e) { notify('Could not ship: ' + e.message); }
+  $('shipDone').disabled = false;
 });
 $('theme').addEventListener('click', () => { const n = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = n; try { parent.postMessage({ type: 'restock-supplier', action: 'theme', theme: n }, '*'); } catch(e) {} });
 setInterval(() => { if (document.visibilityState === 'visible') load(); }, 60000);   // keeps "N days ago" and new items fresh
