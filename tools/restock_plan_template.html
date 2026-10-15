@@ -147,6 +147,16 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   td.v{font-size:16px}
   .badge{font-size:13px;padding:2px 11px}
   td.stk{font-size:20px;font-weight:800}
+
+  /* variant table header stays visible while scrolling a long product (wide screens) */
+  @media (min-width:900px){.card{overflow:clip}.scroll{overflow:visible}th{position:sticky;top:var(--ctlh,0px);z-index:6}}
+  /* bigger, bolder numbers where decisions are made */
+  td.stk{font-size:24px!important;font-weight:900!important}
+  td.g2{font-size:19px!important;font-weight:800!important}
+  .step b{font-size:21px!important;font-weight:900!important}
+  :root[data-theme="dark"] td.stk.c-green{color:#7ee787}:root[data-theme="dark"] td.stk.c-red{color:#ff9a94}:root[data-theme="dark"] td.stk.c-amber,:root[data-theme="dark"] td.stk.c-orange{color:#ffc66d}:root[data-theme="dark"] td.stk.c-yellow{color:#ffe566}
+  :root[data-theme="dark"] .step b{color:#fff}
+  #saveAll{background:var(--blue);color:#06101c;border-color:var(--blue);font-weight:800}
   th.g1,td.g1{border-left:3px solid var(--border)}
   th.g3,td.g3{border-right:3px solid var(--border)}
   td.g2{font-size:16px}
@@ -290,7 +300,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
     <label class="o">Collection <select id="collection"><option value="">All</option></select></label>
     <label class="o">Eligibility <select id="elig"><option value="">All</option><option value="y">Eligible only</option><option value="n">Not eligible only</option></select></label>
     <label class="o">Discontinued <select id="discf"><option value="hide">Hide discontinued</option><option value="only">Only discontinued</option><option value="all">Show all</option></select></label>
-    <label class="o">Variants <select id="vsel" title="Auto = only variants needing stock when sorted by Priority, all variants for other sorts"><option value="">Auto</option><option value="need">Only needing stock</option><option value="all">All variants</option></select></label>
+    <label class="o">Variants <select id="vsel" title="Auto = only variants needing stock when sorted by Priority, all variants for other sorts"><option value="">Auto (needing stock on Priority)</option><option value="need">Only needing stock</option><option value="all">All variants</option></select></label>
     <label class="o"><input type="checkbox" id="onlyElig"> Only “Stock More Variants”</label>
     <label class="o" title="Saves your quantity a few seconds after you stop tapping + / −"><input type="checkbox" id="autoSave"> Auto-save</label>
     <button id="saveAll" title="Save every shown variant that has a quantity to order">Save all shown</button>
@@ -629,6 +639,7 @@ function paint(i){
   const a = document.querySelector(`[data-ord="${i}"]`), b = document.querySelector(`[data-sup="${i}"]`);
   if (a) a.innerHTML = ordHtml(i);
   if (b) b.innerHTML = supHtml(i);
+  try { saveLabel(); } catch (e) {}
 }
 const repaintAll = () => infos.forEach((_,i) => paint(i));
 
@@ -707,6 +718,7 @@ function renderBoxes(){
   }).join('');
 }
 function render(){
+  setTimeout(() => { try { saveLabel(); } catch (e) {} }, 0);
   indexOrders();
   const {prods, entries} = compute();
   const supSel = $('supplier').value, colSel = $('collection').value, eligSel = $('elig').value, dSel = $('discf').value;
@@ -863,14 +875,20 @@ $('list').addEventListener('click', async e => {
 const setAll = v => { defaultOpen = v; state.clear(); document.querySelectorAll('.card').forEach(c => c.classList.toggle('open', v)); };
 $('autoSave').checked = autoOn;
 $('autoSave').addEventListener('change', () => { autoOn = $('autoSave').checked; try { localStorage.setItem('restockAutoSave', autoOn ? '1' : '0'); } catch (e) {} });
-let armSave = false, armSaveT = null;
+let armSave = false, armSaveT = null, saveLabelT = 0;
+const saveLabel = () => { cancelAnimationFrame(saveLabelT); saveLabelT = requestAnimationFrame(() => {
+  const b = $('saveAll'); if (!b || armSave) return;
+  const list = pending(null), units = list.reduce((a, x) => a + x.qty, 0);
+  b.textContent = list.length ? 'Save all shown (' + list.length + ' · ' + units + ' units)' : 'Save all shown';
+  const c = document.querySelector('#viewMine .controls'); if (c) document.documentElement.style.setProperty('--ctlh', (c.offsetHeight + 8) + 'px');
+}); };
 $('saveAll').addEventListener('click', async () => {
   const list = pending(null);
   if (!list.length) { notify('Nothing to save: no shown variant has a quantity to order'); return; }
   const units = list.reduce((a, x) => a + x.qty, 0);
-  if (!armSave) { armSave = true; $('saveAll').textContent = 'Tap again: save ' + list.length + ' lines · ' + units + ' units'; clearTimeout(armSaveT); armSaveT = setTimeout(() => { armSave = false; $('saveAll').textContent = 'Save all shown'; }, 6000); return; }
-  armSave = false; clearTimeout(armSaveT); $('saveAll').textContent = 'Save all shown'; $('saveAll').disabled = true;
-  await saveItems(list); $('saveAll').disabled = false;
+  if (list.length > 20 && !armSave) { armSave = true; $('saveAll').textContent = 'Tap again: save ' + list.length + ' lines · ' + units + ' units'; clearTimeout(armSaveT); armSaveT = setTimeout(() => { armSave = false; saveLabel(); }, 6000); return; }
+  armSave = false; clearTimeout(armSaveT); $('saveAll').disabled = true;
+  await saveItems(list); $('saveAll').disabled = false; saveLabel();
 });
 $('expAll').addEventListener('click', () => setAll(true));
 $('colAll').addEventListener('click', () => setAll(false));
