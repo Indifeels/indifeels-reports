@@ -81,10 +81,10 @@
   "reason": ""
  },
  "restock": {
-  "at": "2026-10-16T02:17+11:00",
-  "code_sha": "a8814ed9d2b35dc473d4a6a88e2f43f77168516b",
+  "at": "2026-10-16T07:01+11:00",
+  "code_sha": "23a14438f0a632ffea7978c9594ad2ed82ca0b72",
   "data_through": null,
-  "last_ok": "2026-10-16T02:17+11:00",
+  "last_ok": "2026-10-16T07:01+11:00",
   "manifest_version": "2026-10-15.cash-report.1",
   "ok": true,
   "reason": ""
