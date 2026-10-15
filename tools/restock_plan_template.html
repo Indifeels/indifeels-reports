@@ -163,18 +163,13 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   #svShipped h3{font-size:14px}
   details{font-size:13.5px}
   @media (max-width:900px){.tiles .tile:nth-child(-n+2){display:none}.card-h{flex-wrap:wrap}}
-  /* product header: near-black 3D bar when closed, lighter charcoal + light-grey body when open */
+  /* product header: near-black 3D bar, open or closed (the arrow shows the state) */
   .card{border:1px solid #05070a;box-shadow:0 6px 14px rgba(0,0,0,.3)}
   .card-h{background:linear-gradient(180deg,#434950 0%,#272b31 48%,#0d0f12 100%);color:#f4f5f7;border-top:1px solid rgba(255,255,255,.25);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -4px 8px rgba(0,0,0,.5)}
-  .card.open .card-h{background:linear-gradient(180deg,#6a727c 0%,#4a5059 50%,#2f343b 100%);border-bottom:3px solid #d5d9de}
   .card-h:hover{filter:brightness(1.12);background-color:transparent}
   .card-h .ttl h2{color:#fff}.card-h .ttl .meta{color:#c9ced4}.card-h .chev{color:#c9ced4}
   .card-h .tile:not(.t-red):not(.t-amber):not(.t-green):not(.t-info){background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18);color:#fff}
   .card-h .tile span{color:#c9ced4}
-  .card .body{background:linear-gradient(180deg,#eceef1,#dfe2e6);color:#1f2328;
-    --bg:#f1f3f5;--card:#fff;--border:#c4cad1;--muted:#59626d;--text:#1f2328;--grey-bg:#e4e7ea;--blue:#0969da;
-    --red:#cf222e;--red-bg:#ffebe9;--orange:#bc4c00;--orange-bg:#fff1e5;--amber:#8a5a00;--amber-bg:#fff1c2;--green:#1a7f37;--green-bg:#dafbe1;--info:#0550ae;--info-bg:#ddf4ff}
-  .card .body th{background:#e4e7ea}
   button.disc{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.35)}
   .tag{display:inline-block;border-radius:999px;padding:1px 10px;font-size:12.5px;font-weight:700;margin-left:8px;vertical-align:middle}
   .tag.el{background:#dafbe1;color:#1a7f37}.tag.ne{background:#ffebe9;color:#cf222e}.tag.dc{background:#e4e7ea;color:#59626d}
