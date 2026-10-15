@@ -9,10 +9,10 @@
   "reason": ""
  },
  "cash-report": {
-  "at": "2026-10-16T00:16+11:00",
-  "code_sha": "9247e6ff1cf593cbd539c24dc71a95fc6288ac1e",
+  "at": "2026-10-16T02:16+11:00",
+  "code_sha": "fb95c47a1e50e77e03173a9c80f564b853e3a680",
   "data_through": null,
-  "last_ok": "2026-10-16T00:16+11:00",
+  "last_ok": "2026-10-16T02:16+11:00",
   "manifest_version": "2026-10-15.cash-report.1",
   "ok": true,
   "reason": ""
