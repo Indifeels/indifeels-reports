@@ -450,6 +450,10 @@ function call(action, payload) {
 window.addEventListener('message', e => {
   const d = e.data || {};
   if (d.type === 'restock-plan-state') { (d.state && d.state.done || []).forEach(k => { memDone[k] = true; }); render(); }
+  else if (d.type === 'restock-plan-scan') {
+    if (d.code) { $('scanIn').value = d.code; scanLookup(d.code); }
+    else if (d.error) scanMsg(d.error, true);
+  }
   else if (d.type === 'restock-plan-theme') { document.documentElement.dataset.theme = d.theme === 'light' ? 'light' : 'dark'; }
   else if (d.type === 'restock-plan-result') {
     const p = pendingCalls.get(d.req); if (!p) return;
@@ -887,6 +891,7 @@ function scanClear(){ scan = null; $('scanIn').value = ''; $('scanClr').hidden =
 function stopCam(){ if (camTimer) { clearInterval(camTimer); camTimer = null; } if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; } $('scanVid').hidden = true; $('scanCam').textContent = '📷'; }
 async function startCam(){
   if (camStream) { stopCam(); return; }
+  if (window.parent !== window) { try { parent.postMessage({type: 'restock-plan', action: 'camera'}, '*'); } catch (e) {} return; }   // inside the hub: the hub opens the camera (this frame has no origin of its own)
   if (!('BarcodeDetector' in window)) { scanMsg('Camera scanning is not supported in this browser. Use a barcode scanner or type the number.', true); return; }
   try {
     camStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}});

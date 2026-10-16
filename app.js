@@ -1555,6 +1555,35 @@
   // The report pages never hold credentials: every read/write goes through here, to RLS tables / security-definer functions.
   const RP_DONE = "ir-restock-plan-done";
   const rpText = (v, n) => String(v == null ? "" : v).slice(0, n);
+  function rpScanCamera(done) {
+    if (document.getElementById("rp-cam")) return;
+    const ov = document.createElement("div");
+    ov.id = "rp-cam";
+    ov.style.cssText = "position:fixed;inset:0;z-index:99999;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px";
+    ov.innerHTML = '<video playsinline muted style="width:100%;max-width:520px;max-height:60vh;object-fit:cover;border-radius:14px;border:2px solid #14b8a6;background:#111"></video><div class="rpmsg" style="color:#e6edf3;font:600 15px system-ui,sans-serif;text-align:center">Point the camera at the barcode</div><button style="height:46px;padding:0 28px;border-radius:12px;border:1px solid #38424d;background:#232b34;color:#e6edf3;font:700 15px system-ui,sans-serif">Cancel</button>';
+    document.body.appendChild(ov);
+    const vid = ov.querySelector("video"), msg = ov.querySelector(".rpmsg");
+    let stream = null, timer = null, finished = false;
+    const finish = (code, error) => {
+      if (finished) return; finished = true;
+      if (timer) clearInterval(timer);
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      ov.remove();
+      if (code || error) done(code, error);
+    };
+    ov.querySelector("button").addEventListener("click", () => finish());
+    (async () => {
+      if (!("BarcodeDetector" in window)) return finish("", "Camera scanning is not supported in this browser. Type the number or use a barcode scanner.");
+      try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); }
+      catch (e) { return finish("", "Camera is blocked. Allow camera access for this site in the browser settings, or type the number."); }
+      if (finished) { stream.getTracks().forEach((t) => t.stop()); return; }
+      vid.srcObject = stream; try { await vid.play(); } catch (_) {}
+      const det = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf"] });
+      timer = setInterval(async () => {
+        try { const r = await det.detect(vid); if (r && r.length && r[0].rawValue) finish(String(r[0].rawValue), ""); } catch (_) {}
+      }, 300);
+    })();
+  }
   function rpBridge(kind, handlers) {
     window.addEventListener("message", async (event) => {
       const fr = $("#rep-frame");
@@ -1570,6 +1599,11 @@
         let th = "dark"; try { th = localStorage.getItem("ir-restock-theme") === "light" ? "light" : "dark"; } catch (_) {}
         reply({ type: kind + "-theme", theme: th });
         if (kind === "restock-plan") { try { const done = JSON.parse(localStorage.getItem(RP_DONE) || "[]"); if (Array.isArray(done) && done.length) reply({ type: "restock-plan-state", state: { done: done.slice(0, 5000).map(String) } }); } catch (_) {} }
+        return;
+      }
+      if (d.action === "camera" && kind === "restock-plan") {
+        // The report frame is sandboxed (no real origin), so it cannot ask for the camera itself: scan here, send only the number back.
+        rpScanCamera((code, error) => reply({ type: "restock-plan-scan", code, error }));
         return;
       }
       if (d.action === "state" && kind === "restock-plan") {
