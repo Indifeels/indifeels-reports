@@ -81,11 +81,11 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-10-16T07:00+11:00",
-  "code_sha": "790db6ac8bd1676462b0b482af376068e3aeb97c",
+  "at": "2026-10-16T20:00+11:00",
+  "code_sha": "018f4f12f992ef1fe15e8caf539b44cc87161e93",
   "data_through": null,
-  "last_ok": "2026-10-16T07:00+11:00",
-  "manifest_version": "2026-10-15.cash-report.1",
+  "last_ok": "2026-10-16T20:00+11:00",
+  "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
  },
