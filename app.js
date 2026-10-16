@@ -31,6 +31,16 @@
   function genPassword() { const a = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"; const r = crypto.getRandomValues(new Uint32Array(10)); return "Indi-" + Array.from(r, (x) => a[x % a.length]).join(""); }
 
   // ---------- views ----------
+  // A report iframe that is reused after an earlier report (or after being emptied) can show a blank page until the whole app is
+  // refreshed. Every report therefore gets a brand-new iframe element, which loads the same way as on a fresh page load.
+  function freshFrame(hidden) {
+    const old = $("#rep-frame"), n = document.createElement("iframe");
+    n.id = "rep-frame"; n.title = "Report"; n.setAttribute("sandbox", "allow-scripts allow-popups allow-popups-to-escape-sandbox");
+    n.hidden = !!hidden;
+    old.replaceWith(n);
+    document.body.classList.remove("rep-full-on");
+    return n;
+  }
   const VIEWS = ["login", "reset", "shell"];
   const PAGES = ["home", "report", "stock", "attribution", "password", "admin", "schedule", "board"];
   function view(v) { VIEWS.forEach((x) => ($("#v-" + x).hidden = x !== v)); }
@@ -38,7 +48,7 @@
     PAGES.forEach((x) => ($("#v-" + x).hidden = x !== p));
     $("#b-back").hidden = p === "home";
     $("#bar-text").textContent = title || "Indifeels Reports";
-    if (p !== "report") { $("#rep-frame").hidden = true; $("#rep-frame").srcdoc = ""; }
+    if (p !== "report") freshFrame(true);
     window.scrollTo(0, 0);
     closeMenu();
   }
@@ -1259,9 +1269,9 @@
 
   async function openSeoRankings(r) {
     page("report", r.title);
-    const st=$("#rep-status"), fr=$("#rep-frame");
+    const st=$("#rep-status"), fr=freshFrame(true);
     st.hidden=false; st.textContent="Loading SEO rankings…"; fr.hidden=true;
-    try { fr.srcdoc=charcoalReport(seoReportHTML(await loadSeoRankingsData(true))); fr.hidden=false; st.hidden=true; }
+    try { const html=charcoalReport(seoReportHTML(await loadSeoRankingsData(true))); if($("#rep-frame")!==fr)return; fr.hidden=false; fr.srcdoc=html; st.hidden=true; }
     catch(e){ st.textContent="The SEO Rankings report couldn't be loaded. Pull down to refresh."; }
   }
 
@@ -1367,11 +1377,11 @@
   }
   async function openTechAvailability(r) {
     page("report", r.title);
-    const st=$("#rep-status"), fr=$("#rep-frame");
+    const st=$("#rep-status"), fr=freshFrame(true);
     st.hidden=false; st.textContent="Checking infrastructure…"; fr.hidden=true;
     try {
       const [rows, voiceCost] = await Promise.all([loadTechAvailability(), loadVoiceCostSummary()]);
-      fr.srcdoc=charcoalReport(techReportHTML(rows, voiceCost)); fr.hidden=false; st.hidden=true;
+      if($("#rep-frame")!==fr)return; fr.hidden=false; fr.srcdoc=charcoalReport(techReportHTML(rows, voiceCost)); st.hidden=true;
     }
     catch(e){ st.textContent="The Tech Availability Report couldn't be loaded. Pull down to refresh."; }
   }
@@ -1395,8 +1405,8 @@
     if (id === "tech-availability") return openTechAvailability(r);
     if (id === "project-board") return openBoard(r);
     page("report", r.title);
-    const st = $("#rep-status"), fr = $("#rep-frame");
-    st.hidden = false; st.textContent = "Opening report…"; fr.hidden = true;
+    const st = $("#rep-status"), fr = freshFrame(true);
+    st.hidden = false; st.textContent = "Opening report…";
     try {
       // Retry quietly: a dropped connection, a mid-deploy 404 or a missing/old key used to need a manual refresh.
       let html, lastErr;
@@ -1409,7 +1419,8 @@
       }
       if (html == null) throw lastErr;
       html = html.replace(/<a href="\.\/"[^>]*>[^<]*All reports<\/a>/, ""); // hub-only back link
-      fr.srcdoc = charcoalReport(html); fr.hidden = false; st.hidden = true;
+      if ($("#rep-frame") !== fr) return;
+      fr.hidden = false; fr.srcdoc = charcoalReport(html); st.hidden = true;
     } catch (e) {
       st.textContent = e.message === "not-published" ? "This report hasn't been published yet. It appears after tonight's 10 pm update." : "This report couldn't be opened. Pull down to refresh, or sign out and back in.";
     }
