@@ -27,11 +27,11 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-10-16T11:17+11:00",
-  "code_sha": "4f39248c0bf7017ef49bc4b5aad4d346074012f1",
-  "data_through": "2026-10-15T23:59:59+11:00",
-  "last_ok": "2026-10-16T11:17+11:00",
-  "manifest_version": "2026-10-16.seo-report.1",
+  "at": "2026-10-16T14:04+11:00",
+  "code_sha": "2b7580f6664803a68a4ee5fea69c9988df44faf7",
+  "data_through": "2026-10-16T14:00:12.271952+11:00",
+  "last_ok": "2026-10-16T14:04+11:00",
+  "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
  },
@@ -63,11 +63,11 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-10-16T11:17+11:00",
-  "code_sha": "4f39248c0bf7017ef49bc4b5aad4d346074012f1",
-  "data_through": "2026-10-15T23:59:59+11:00",
-  "last_ok": "2026-10-16T11:17+11:00",
-  "manifest_version": "2026-10-16.seo-report.1",
+  "at": "2026-10-16T14:04+11:00",
+  "code_sha": "2b7580f6664803a68a4ee5fea69c9988df44faf7",
+  "data_through": "2026-10-16T14:00:12.271952+11:00",
+  "last_ok": "2026-10-16T14:04+11:00",
+  "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
  },
