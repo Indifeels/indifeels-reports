@@ -93,6 +93,8 @@ CMPJS = """<script>
 function show(m){if(!ss)return;vm.hidden=!m;vs.hidden=m;sm.setAttribute('aria-pressed',m);ss.setAttribute('aria-pressed',!m);try{localStorage.setItem('fmt-src',m?'m':'s')}catch(e){}}
 if(sm&&ss){sm.onclick=function(){show(true)};ss.onclick=function(){show(false)};try{if(localStorage.getItem('fmt-src')==='s')show(false)}catch(e){}}
 var fb=document.querySelector('.fbar');function stk(){if(fb)document.documentElement.style.setProperty('--stk',(fb.offsetHeight+8)+'px')}stk();addEventListener('resize',stk);
+var raf=0;function pin(){raf=0;var s=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stk'))||0;document.querySelectorAll('.view:not([hidden]) .wrap').forEach(function(w){var ths=w.querySelectorAll('thead th'),h=ths.length?ths[0].offsetHeight:0,d=0;if(w.scrollHeight<=w.clientHeight+1){d=Math.max(0,Math.min(s-w.getBoundingClientRect().top,w.clientHeight-h-14))}ths.forEach(function(t){t.style.transform=d?'translateY('+d+'px)':''})})}
+function q(){if(!raf)raf=requestAnimationFrame(pin)}addEventListener('scroll',q,{passive:true});addEventListener('resize',q);document.addEventListener('click',function(){setTimeout(q,60)});setTimeout(pin,0);
 function $(v){return(v<0?'-':'')+'$'+Math.abs(Math.round(v)).toLocaleString('en-AU')}
 function pc(a,b){return b?(a-b)/Math.abs(b)*100:null}
 function pt(v){return v==null?'n/a':(v>=0?'+':'-')+Math.abs(v).toFixed(0)+'%%'}
