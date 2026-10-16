@@ -312,11 +312,33 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
-.scan{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin:8px 0}
-.scan input{flex:1 1 200px;min-width:0;font-size:16px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)}
-.scan button{padding:8px 12px}
-.scan .scmsg{flex:1 0 100%;font-size:13px;color:var(--muted)}.scan .scmsg.bad{color:#e5534b}
-.scan video{flex:1 0 100%;max-height:240px;border-radius:8px;background:#000}
+.scan{position:relative;display:grid;grid-template-columns:auto 1fr;gap:6px 16px;align-items:center;margin:10px 0;padding:18px 20px;border-radius:16px;color:#e6edf3;background:linear-gradient(145deg,#232a33 0%,#161b21 100%);border:1px solid #2e3640;box-shadow:0 10px 24px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.05)}
+.scan .vf{width:64px;height:64px;position:relative;grid-row:span 2;border-radius:14px;background:#10151a;border:1px solid #2e3640;display:grid;place-items:center;overflow:hidden}
+.scan .vf svg{width:34px;height:34px}
+.scan .vf i{position:absolute;left:10px;right:10px;height:2px;border-radius:2px;background:#2dd4bf;animation:scanline 2.4s ease-in-out infinite}
+@keyframes scanline{0%,100%{top:14px}50%{top:48px}}
+.scan h3{margin:0;font-size:15px;font-weight:800;letter-spacing:.2px}
+.scan h3 span{display:block;font-size:12px;font-weight:500;color:#8b949e;margin-top:2px}
+.scan .row{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.scan input{flex:1 1 220px;min-width:0;font-size:18px;font-weight:600;letter-spacing:1.5px;padding:13px 14px;border-radius:10px;border:1px solid #38424d;background:#0f1419;color:#e6edf3;outline:none;transition:border-color .15s}
+.scan input:focus{border-color:#2dd4bf}
+.scan input::placeholder{letter-spacing:0;font-weight:400;color:#6b7580;font-size:15px}
+.scan button{padding:0 18px;height:48px;border-radius:10px;font-weight:700;font-size:14px;border:1px solid #38424d;background:#232b34;color:#e6edf3;cursor:pointer}
+.scan button:hover{background:#2b343e}
+.scan #scanGo{background:#14b8a6;border-color:#14b8a6;color:#04201c}.scan #scanGo:hover{background:#2dd4bf}
+.scan #scanClr{color:#f0883e}
+.scan video{grid-column:1/-1;width:100%;max-height:260px;object-fit:cover;border-radius:12px;background:#000;border:2px solid #14b8a6;margin-top:6px}
+.scan .scmsg{grid-column:1/-1;font-size:13px;color:#8b949e}.scan .scmsg.bad{color:#ff7b72}
+.scres{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:10px;padding:14px;border-radius:12px;background:#10151a;border:1px solid #2e3640}
+.scres .ph{width:64px;height:64px;border-radius:10px;background:#232b34 center/cover;flex:none;overflow:hidden}.scres .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.scres .nm{flex:1 1 180px;min-width:0}.scres .nm b{display:block;font-size:16px;line-height:1.25}
+.scres .nm span{display:inline-block;margin-top:6px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;color:#fff}
+.scres .kp{flex:1 0 100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px}
+.scres .kp div{background:#1b222a;border:1px solid #2a323b;border-radius:10px;padding:10px 6px;text-align:center}
+.scres .kp b{display:block;font-size:24px;font-weight:800;line-height:1.1}
+.scres .kp small{display:block;margin-top:4px;font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px}
+.sv-teal{color:#2dd4bf}.sv-amber{color:#f0a030}.sv-orange{color:#f0883e}.sv-red{color:#ff6b61}.sv-grey{color:#8b949e}.sv-info{color:#58a6ff}
+.bg-teal{background:#0f9488}.bg-amber{background:#b7791f}.bg-orange{background:#c2561a}.bg-red{background:#c93c37}.bg-grey{background:#4b5563}
 #list tr.hit td{box-shadow:inset 0 0 0 9999px rgba(88,166,255,.18)}
 </style>
 </head>
@@ -330,12 +352,18 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   <nav class="tabs"><button id="tabMine" class="on">My view</button><button id="tabSup">Supplier view</button></nav>
 <div id="viewMine">
   <div class="scan" id="scanBox">
-    <input id="scanIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type a barcode, then Enter">
-    <button id="scanGo" class="primary">Find</button>
-    <button id="scanCam" type="button">📷 Camera</button>
-    <button id="scanClr" type="button" hidden>Clear</button>
+    <div class="vf"><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M7 9v6M10 9v6M13 9v6M16 9v6" stroke="#8b949e" stroke-width="1.6"/></svg><i></i></div>
+    <h3>Scan a product<span>Get its restock plan instantly</span></h3>
+    <div class="row">
+      <input id="scanIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode, press Enter">
+      <button id="scanGo">Find</button>
+      <button id="scanCam" type="button">📷 Camera</button>
+      <button id="scanClr" type="button" hidden>Clear</button>
+    </div>
     <video id="scanVid" playsinline muted hidden></video>
     <div class="scmsg" id="scanMsg"></div>
+    <div class="scres" id="scanRes" hidden></div>
+  </div>
   </div>
   <div class="phonebar"><button id="ctlToggle">☰ Filters</button><button id="saveAll2">Save all</button></div>
   <div class="controls">
@@ -797,6 +825,7 @@ function render(){
   infos.length = 0;
   const groups = [], bannered = new Set();
   const scanP = scan ? prods.find(P => String(P.p.id) === scan.pid) : null;
+  try { scanCard(scanP); } catch (e) {}
   const mkBanner = P => { const s = P.eligible && !getDone(P.p.id) && !bannered.has(P); if (s) bannered.add(P); return s; };
   if (scanP) {
     groups.push({P: scanP, rows: scanP.rows.slice().sort(bySize), id: scanP.p.id});
@@ -825,6 +854,18 @@ function render(){
 let scan = null, camStream = null, camTimer = null;
 const bcNorm = x => String(x || '').replace(/\D/g, '').replace(/^0+/, '');
 function scanMsg(t, bad){ const m = $('scanMsg'); m.textContent = t || ''; m.className = 'scmsg' + (bad ? ' bad' : ''); }
+const SV = {red:'red', orange:'orange', yellow:'amber', green:'teal', grey:'grey'};
+function scanCard(P){
+  const el = $('scanRes');
+  const r = P && scan ? P.rows.find(x => x.title === scan.title) : null;
+  if (!r) { el.hidden = true; el.innerHTML = ''; return; }
+  const c = SV[r.level] || 'grey', pp = pipeline(keyOf(P.p.id, r.title)).total;
+  const img = P.p.image ? `<img src="${esc(P.p.image)}${P.p.image.includes('?') ? '&' : '?'}width=160" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
+  const t = (v, l, cls) => `<div><b class="sv-${cls}">${v}</b><small>${l}</small></div>`;
+  el.hidden = false;
+  el.innerHTML = `<div class="ph">${img}</div><div class="nm"><b>${esc(P.p.title)}</b>${esc(r.title)} · ${P.supplier ? esc(P.supplier) : 'no supplier'}<br><span class="bg-${c}">${BADGE[r.level].replace(/^\S+\s/, '')}</span></div>
+    <div class="kp">${t(r.stock, 'In stock', r.stock <= 0 ? 'red' : 'teal')}${t(r.required, 'Required', 'info')}${t(r.toOrder, 'To order', r.toOrder > 0 ? (r.stock <= 0 ? 'red' : 'amber') : 'teal')}${t(pp, 'On order', pp ? 'info' : 'grey')}${t(r.sales === 0 ? '—' : r.stock <= 0 ? 0 : fmt(r.left), 'Days left', c)}${t(r.sales, 'Sold', 'grey')}</div>`;
+}
 function scanFind(code){
   const n = bcNorm(code);
   if (!n) return false;
@@ -838,7 +879,7 @@ function scanLookup(code){
   if (!hit) { scan = null; $('scanClr').hidden = true; scanMsg('No restock entry for barcode ' + code + '. It may have no sales yet, no barcode saved in Shopify, or the report has not refreshed since it was added.', true); render(); return; }
   scan = hit; state.set(hit.pid, true);
   $('scanClr').hidden = false;
-  scanMsg('Showing ' + hit.name + ' · ' + hit.title + ' (highlighted). Clear to go back to the full list.');
+  scanMsg('');
   render();
   const c = document.querySelector('#list .card'); if (c) c.scrollIntoView({block: 'start', behavior: 'smooth'});
 }
