@@ -360,11 +360,10 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
           <input id="scanIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode">
       <button id="scanGo">Find</button>
       <button id="scanCam" type="button" title="Scan with camera">📷</button>
-      <button id="scanClr" type="button" hidden>Clear</button>
+      <button id="scanClr" type="button" title="Clear scan" hidden>✕</button>
     <video id="scanVid" playsinline muted hidden></video>
     <div class="scmsg" id="scanMsg"></div>
     <div class="scres" id="scanRes" hidden></div>
-  </div>
   </div>
   <div class="phonebar"><button id="ctlToggle">☰ Filters</button><button id="saveAll2">Save all</button></div>
   <div class="controls">
@@ -882,7 +881,7 @@ function scanLookup(code){
   $('scanClr').hidden = false;
   scanMsg('');
   render();
-  const c = document.querySelector('#list .card'); if (c) c.scrollIntoView({block: 'start', behavior: 'smooth'});
+  $('scanBox').scrollIntoView({block: 'start', behavior: 'smooth'});
 }
 function scanClear(){ scan = null; $('scanIn').value = ''; $('scanClr').hidden = true; scanMsg(''); stopCam(); render(); }
 function stopCam(){ if (camTimer) { clearInterval(camTimer); camTimer = null; } if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; } $('scanVid').hidden = true; $('scanCam').textContent = '📷'; }
