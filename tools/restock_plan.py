@@ -12,7 +12,7 @@ Needs the read_all_orders scope on SHOPIFY_TOKEN: without it Shopify silently re
 every number would be wrong, so the build FAILS (and the last good report stays published).
 
 Also: variant/product last-sold day + units sold in the last 30 days (for the "by date" sort and the spike damping),
-collections (collection filter), custom.discountinued (yes/no), and the discontinued sync: changes made in the planner
+variant barcodes (scan box), collections (collection filter), custom.discountinued (yes/no), and the discontinued sync: changes made in the planner
 (Supabase restock_discontinued) are pushed to the Shopify metafield here, then marked done. A sync failure never fails the
 build (needs write_products on the token; the planner still honours the choice meanwhile).
 
@@ -42,7 +42,7 @@ PRODUCTS = """{ products(query:"status:active"){ edges{ node{
   supplier: metafield(namespace:"custom", key:"supplier_name"){ value }
   disc: metafield(namespace:"custom", key:"discountinued"){ value }
   collections{ edges{ node{ id title } } }
-  variants{ edges{ node{ id title inventoryQuantity } } } } } } }"""
+  variants{ edges{ node{ id title inventoryQuantity barcode } } } } } } }"""
 ORDERS = """{ orders{ edges{ node{ id cancelledAt processedAt lineItems{ edges{ node{ id quantity variant{ id } product{ id } } } } } } } }"""
 SCOPES = "query { currentAppInstallation { accessScopes { handle } } }"
 START = "mutation($q:String!){ bulkOperationRunQuery(query:$q){ bulkOperation{ id status } userErrors{ field message } } }"
@@ -208,12 +208,15 @@ def build():
         if "/ProductVariant/" in l.get("id", "") and l.get("__parentId") in products:
             p = products[l["__parentId"]]
             key = l["title"].strip().lower()
-            cur = p["variants"].setdefault(key, [l["title"], 0, 0, "", 0])   # title, stock, sold, last sold day, sold in last 30 days
+            cur = p["variants"].setdefault(key, [l["title"], 0, 0, "", 0, []])   # title, stock, sold, last sold day, sold in last 30 days, barcodes (for the scan box)
             vid = num(l["id"])
             cur[1] += int(l.get("inventoryQuantity") or 0)
             cur[2] += variant_sold.get(vid, 0)
             cur[3] = max(cur[3], variant_last.get(vid, ""))
             cur[4] += variant_30.get(vid, 0)
+            bc = (l.get("barcode") or "").strip()
+            if bc and bc not in cur[5]:
+                cur[5].append(bc)
 
     out = []
     for gid in order:
