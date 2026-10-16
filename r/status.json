@@ -90,10 +90,10 @@
   "reason": ""
  },
  "restock": {
-  "at": "2026-10-16T17:37+11:00",
-  "code_sha": "353d5484e8b119c2c15b5654894eef3bb2803523",
+  "at": "2026-10-16T18:03+11:00",
+  "code_sha": "832b03bdf8ab969112055a2616dce01cabbd3ce9",
   "data_through": null,
-  "last_ok": "2026-10-16T17:37+11:00",
+  "last_ok": "2026-10-16T18:03+11:00",
   "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
