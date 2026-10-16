@@ -20,6 +20,7 @@ import json
 import os
 import re
 import urllib.request
+from urllib.parse import parse_qs, urlsplit
 from datetime import datetime
 
 SHOP = os.environ.get("SHOPIFY_SHOP", "bvdxj3-r8.myshopify.com")
@@ -204,7 +205,24 @@ def platform_of(v):
     return None
 
 
+def has_explicit_paid_signal(v):
+    """Paid media and Google click IDs beat inherited free-listing UTMs."""
+    medium = str((v.get("utm") or {}).get("medium") or "").strip().lower()
+    if medium in {"cpc", "ppc", "cpm", "cpa", "cpv", "display", "paid", "paid_search", "paid_social", "paidsearch", "paidsocial", "paid-search", "paid-social"}:
+        return True
+    for field in ("landing_page", "referrer_url"):
+        try:
+            params = parse_qs(urlsplit(str(v.get(field) or "")).query)
+            if any(params.get(key) for key in ("gclid", "gbraid", "wbraid")):
+                return True
+        except ValueError:
+            pass
+    return False
+
+
 def is_organic(v):
+    if has_explicit_paid_signal(v):
+        return False
     u = v.get("utm") or {}
     vals = " ".join(str(x or "") for x in (
         u.get("source"), u.get("medium"), u.get("campaign"), u.get("content"),
@@ -227,6 +245,8 @@ def is_organic(v):
 
 def is_paid(v):
     u = v.get("utm") or {}
+    if has_explicit_paid_signal(v) and platform_of(v) in ("Facebook", "Google"):
+        return True
     if not u or is_organic(v):
         return False
     p = platform_of(v)
