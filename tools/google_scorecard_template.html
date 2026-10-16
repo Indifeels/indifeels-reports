@@ -230,6 +230,7 @@ td.gcol{background:color-mix(in srgb,#4DA3FF 12%,transparent)}td.fcol{background
   <section><h2>Profit — daily and cumulative</h2><div class="panel" id="profit"></div></section>
   <section>
     <div class="bar2" style="margin-bottom:12px"><h2 style="margin:0">Scorecard</h2>
+      <div class="seg2" id="allseg" style="margin-right:auto;margin-left:6px"><button data-a="open">Expand all</button><button data-a="shut">Collapse all</button></div>
       <div class="seg2" id="sortseg"><button data-s="prio" class="on">By priority</button><button data-s="step">By process (step 1 → 7)</button></div></div>
     <div class="grid" id="grid"></div></section>
   <p class="foot" id="foot"></p>
@@ -701,6 +702,7 @@ function renderGrid(){
  $("#grid").style.display="block";
  $("#grid").innerHTML=html;
  document.querySelectorAll(".tile").forEach(t=>t.onclick=()=>openTile(t.dataset.id));
+ document.querySelectorAll("#allseg button").forEach(b=>b.onclick=()=>{const shut=b.dataset.a==="shut";document.querySelectorAll(".stepd").forEach(g=>{g.classList.toggle("shut",shut);const h=g.querySelector(".gh");if(h)h.setAttribute("aria-expanded",String(!shut));GRP_OPEN[g.dataset.g]=!shut});if(shut){document.querySelectorAll(".xp").forEach(x=>x.remove());openId=null}});
  document.querySelectorAll(".stepd .gh").forEach(b=>b.onclick=()=>{const g=b.parentElement;const shut=g.classList.toggle("shut");b.setAttribute("aria-expanded",String(!shut));GRP_OPEN[g.dataset.g]=!shut;if(shut&&g.querySelector(".xp")){document.querySelectorAll(".xp").forEach(x=>x.remove());openId=null}});
  $("#foot").textContent="Scores: 75+ healthy, 50–74 watch, under 50 fix. Overall = weighted average of scored tiles (money and attribution weigh most). Tiles marked – wait on data or a target. Revenue basis switch is above the profit chart.";
 }
