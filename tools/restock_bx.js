@@ -29,7 +29,7 @@ const bxDisc = (pid, o) => {
   pid = String(pid);
   if (o.discPend && o.discPend.has(pid)) return '<span class="dq">⏳ Discontinue sent · waiting for the owner to confirm</span>';
   const a = o.armDisc === pid;
-  return `<button class="danger dsc${a ? ' arm' : ''}" data-disc="${bxEsc(pid)}">${a ? 'Sure it’s permanently discontinued or out of stock? Tap again to confirm' : 'Permanently discontinued'}</button>`;
+  return `<button class="danger dsc${a ? ' arm' : ''}" data-disc="${bxEsc(pid)}">${a ? 'Sure it’s permanently discontinued? Tap again' : 'Permanently discontinued?'}</button>`;
 };
 
 /* One box tile. b = box row, lines = its order lines, o = {ro, open, who, openBoxes}. */
