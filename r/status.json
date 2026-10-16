@@ -54,13 +54,13 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-10-16T14:00+11:00",
-  "code_sha": "2b7580f6664803a68a4ee5fea69c9988df44faf7",
+  "at": "2026-10-16T20:00+11:00",
+  "code_sha": "018f4f12f992ef1fe15e8caf539b44cc87161e93",
   "data_through": "2026-10-05T23:59:59+11:00",
   "last_ok": "2026-10-16T14:00+11:00",
   "manifest_version": "2026-10-16.google-scorecard.1",
-  "ok": true,
-  "reason": ""
+  "ok": false,
+  "reason": "Google tracked refresh failed; check GitHub Actions"
  },
  "monthly": {
   "at": "2026-10-16T14:04+11:00",
