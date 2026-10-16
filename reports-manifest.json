@@ -161,28 +161,6 @@
       "schedule_control": "report_schedules"
     },
     {
-      "id": "call-tracking",
-      "title": "Call Tracking — Nimbata",
-      "workflow": "call-tracking.yml",
-      "refresh_times": [
-        "schedule panel"
-      ],
-      "required_env": [
-        "WINDSOR_API_KEY",
-        "SYNC_READ_TOKEN"
-      ],
-      "builders": [
-        "tools/fetch_call_tracking.py",
-        "tools/call_tracking.py"
-      ],
-      "outputs": [
-        "r/call-tracking.bin",
-        "r/call-tracking.meta.bin"
-      ],
-      "supabase_sync": false,
-      "schedule_control": "report_schedules"
-    },
-    {
       "id": "stock",
       "title": "Stock management",
       "workflow": "stock.yml",
@@ -243,28 +221,6 @@
       "outputs": [
         "r/restock-plan.bin",
         "r/restock-plan.meta.bin"
-      ],
-      "supabase_sync": false,
-      "schedule_control": "report_schedules"
-    },
-    {
-      "id": "restock",
-      "title": "Restock",
-      "workflow": "restock.yml",
-      "refresh_times": [
-        "schedule panel"
-      ],
-      "required_env": [
-        "SHOPIFY_TOKEN",
-        "STOCK_KEY",
-        "SYNC_READ_TOKEN"
-      ],
-      "builders": [
-        "tools/restock.py"
-      ],
-      "outputs": [
-        "r/restock.bin",
-        "r/restock.meta.bin"
       ],
       "supabase_sync": false,
       "schedule_control": "report_schedules"

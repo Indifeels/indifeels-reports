@@ -1,13 +1,4 @@
 {
- "call-tracking": {
-  "at": "2026-10-16T20:00+11:00",
-  "code_sha": "018f4f12f992ef1fe15e8caf539b44cc87161e93",
-  "data_through": null,
-  "last_ok": "2026-10-16T20:00+11:00",
-  "manifest_version": "2026-10-16.google-scorecard.1",
-  "ok": true,
-  "reason": ""
- },
  "cash-report": {
   "at": "2026-10-17T00:05+11:00",
   "code_sha": "89b2033acf117d360f8ce936e678050338a30f68",
@@ -85,15 +76,6 @@
   "code_sha": "018f4f12f992ef1fe15e8caf539b44cc87161e93",
   "data_through": null,
   "last_ok": "2026-10-16T20:00+11:00",
-  "manifest_version": "2026-10-16.google-scorecard.1",
-  "ok": true,
-  "reason": ""
- },
- "restock": {
-  "at": "2026-10-17T00:06+11:00",
-  "code_sha": "68b606839e06a465f96c930831c362ab47b280cf",
-  "data_through": null,
-  "last_ok": "2026-10-17T00:06+11:00",
   "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""

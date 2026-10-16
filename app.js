@@ -214,13 +214,11 @@
     stock: { c: "orange", icon: "box", stat: ["box", "box", "tag"], line: [] },
     "order-attribution": { c: "teal", icon: "tag", stat: ["tag", "clock", "dollar"], line: ["teal", "purple", "green"] },
     "product-visibility": { c: "purple", icon: "eye", stat: ["eye", "tag", "alert"], line: ["purple", "teal", "rose"] },
-    restock: { c: "orange", icon: "box", stat: ["box", "alert", "tag"], line: [] },
     "restock-plan": { c: "orange", icon: "box", stat: ["box", "alert"], line: [] },
     "restock-supplier": { c: "teal", icon: "box", stat: [], line: [] },
     footwear: { c: "rose", icon: "search", stat: ["search", "bars", "trend"], line: ["rose", "purple", "green"] },
     "facebook-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
     "google-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
-    "call-tracking": { c: "teal", icon: "chart", stat: ["msg", "tag", "alert"], line: ["teal", "green", "rose"] },
     "order-source": { c: "teal", icon: "bars", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
     "tech-availability": { c: "teal", icon: "alert", stat: ["bars", "alert", "alert"], line: ["teal", "orange", "rose"] },
     "color-game": { c: "orange", icon: "tag", stat: ["box", "tag"], line: [] },
@@ -258,10 +256,10 @@
     return null;
   }
   let HOME_GROUPS = [
-    {name:"Sales Analysis",color:"#568F8C",ids:["order-source","order-attribution","call-tracking"]},
+    {name:"Sales Analysis",color:"#568F8C",ids:["order-source","order-attribution"]},
     {name:"Facebook",color:"#986D7E",ids:["facebook-tracked","daily","monthly"]},
     {name:"Google",color:"#AD915A",ids:["google-tracked","google-non-tracked"]},
-    {name:"Stock Management",color:"#708C74",ids:["restock-plan","stock","product-visibility","restock"]},
+    {name:"Stock Management",color:"#708C74",ids:["restock-plan","stock","product-visibility"]},
     {name:"SEO",color:"#927CA2",ids:["footwear"]},
     {name:"Admin Panel",color:"#838099",ids:["schedule-panel","tech-availability","project-board"]}
   ];
@@ -323,7 +321,7 @@
     const st=(unavailable ? (meta?.stats || []).map(x=>["—",x[1]]) : period?.stats || meta?.stats || []).slice(0,4);
     const stats=st.map(x=>{const raw=String(x[0]),suffix=raw.match(/\s*(\([^)]*\))$/),value=suffix?raw.slice(0,suffix.index):raw;const numeric=Number(value.replace(/[^0-9.-]/g,""));const displayed=/\$/.test(value)&&Number.isFinite(numeric)?new Intl.NumberFormat("en-AU",{style:"currency",currency:"AUD",minimumFractionDigits:/cost/i.test(x[1])?2:0,maximumFractionDigits:/cost/i.test(x[1])?2:0,notation:"standard"}).format(/−/.test(value)?-numeric:numeric):value;return `<div class="report-kpi"><span title="${esc(x[1])}">${esc(compactKpiLabel(x[1]))}</span><strong title="${esc(value)}">${esc(displayed)}</strong>${suffix?`<small>${esc(suffix[1])}</small>`:""}</div>`;}).join("");
     const periodLabel=st.some(x=>/yesterday/i.test(x[1])) ? "Yesterday" : st.some(x=>/today/i.test(x[1])) ? "Today so far" : r.id === "monthly" ? "This month" : "Summary";
-    const timeReport=["marketing-analysis","order-source","google-tracked","facebook-tracked","daily","monthly","call-tracking","order-attribution"].includes(r.id);
+    const timeReport=["marketing-analysis","order-source","google-tracked","facebook-tracked","daily","monthly","order-attribution"].includes(r.id);
     const options=r.id==="marketing-analysis" ? [["y","Yesterday"],["d7","7 days"],["d14","14 days"],["d30","30 days"]] : timeReport ? [["summary","Summary"],["y","Yesterday"],["d7","7 days"],["d15","15 days"],["d30","30 days"],["life","Lifetime"]] : [["summary","Summary"]];
     const choices=options.map(([key,label])=>`<option value="${key}" ${selected===key?"selected":""}>${key==="summary"?"Summary":label}</option>`).join("");
     return `<article class="report-card" data-id="${esc(r.id)}" style="--report-accent:var(--category-accent,var(--${L.c}))"><div class="report-heading"><span class="report-icon">${svg(L.icon)}</span><h3>${esc(HOME_TITLES[r.id] || r.title)}</h3></div><p class="report-updated">Last updated · ${esc(homeUpdated(r.id,meta))}</p><div class="report-kpis">${stats || '<span class="report-unavailable">Summary not available yet</span>'}</div><div class="report-bottom"><span class="report-status ${tone}" title="${esc(hl?.text || meta?.warn || label)}">${homeWarning(r.id)?svg("alert"):"<i></i>"}${esc(label)}</span><select class="report-period" aria-label="Summary period for ${esc(r.title)}">${choices}</select><button type="button" class="report-open" data-open="${esc(r.id)}">Open Report <span aria-hidden="true">›</span></button></div>${unavailable?`<p class="report-issue">This period is not available in the published data yet.</p>`:hl?`<p class="report-issue">${esc(hl.text)}</p>`:""}</article>`;
@@ -415,7 +413,7 @@
           if(r.id==="order-attribution"){
             meta.periods={};const today=new Date().toLocaleDateString("en-CA",{timeZone:"Australia/Melbourne"});
             for(const [key,days,label] of [["y",1,"Yesterday"],["d7",7,"7 days"],["d15",15,"15 days"],["d30",30,"30 days"]]){const end=new Date(today+"T00:00:00Z"),start=new Date(end.getTime()-days*86400000).toISOString().slice(0,10);const rows=OA.rows.filter(x=>{const date=new Date(x.created_at).toLocaleDateString("en-CA",{timeZone:"Australia/Melbourne"});return date>=start && date<today;}),pending=rows.filter(x=>x.attribution_auto || !x.order_source || x.sync_status!=="synced");meta.periods[key]={label,stats:[[String(rows.length),"Orders"],[String(rows.length-pending.length),"Confirmed"],[String(pending.length),"Review"]]};}
-          } else if(keys[r.id] && ["order-source","google-tracked","facebook-tracked","daily","monthly","call-tracking"].includes(r.id)){
+          } else if(keys[r.id] && ["order-source","google-tracked","facebook-tracked","daily","monthly"].includes(r.id)){
             try{meta.periods={...publishedPeriods(r.id,await decryptFile(`r/${r.id}.bin`,keys[r.id])),...meta.periods};}catch(_){}
           }
           homeMeta[r.id]=meta;
