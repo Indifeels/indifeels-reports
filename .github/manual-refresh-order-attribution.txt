@@ -1,2 +1,2 @@
 Manual Shopify customer journey refresh trigger.
-Request: verify latest-paid-touch retargeting fields for #17749 after preserving Shopify ad-set UTM values on 2026-10-07 09:29 Melbourne.
+Request: verify paid CPC precedence over inherited sag_organic content; corrected #17873 and #17841 on 2026-10-17 Melbourne.
