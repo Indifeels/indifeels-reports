@@ -1398,7 +1398,16 @@
     const st = $("#rep-status"), fr = $("#rep-frame");
     st.hidden = false; st.textContent = "Opening report…"; fr.hidden = true;
     try {
-      let html = await decryptFile(`r/${id}.bin`, keys[id]);
+      // Retry quietly: a dropped connection, a mid-deploy 404 or a missing/old key used to need a manual refresh.
+      let html, lastErr;
+      for (let i = 0; i < 3 && html == null; i++) {
+        try {
+          if (i > 0) { await sleep(1000 * i); try { await loadReports(); } catch (_) {} }
+          if (!keys[id]) await loadReports();
+          html = await withTimeout(decryptFile(`r/${id}.bin`, keys[id]), 20000);
+        } catch (err) { lastErr = err; }
+      }
+      if (html == null) throw lastErr;
       html = html.replace(/<a href="\.\/"[^>]*>[^<]*All reports<\/a>/, ""); // hub-only back link
       fr.srcdoc = charcoalReport(html); fr.hidden = false; st.hidden = true;
     } catch (e) {
@@ -1839,21 +1848,54 @@
   }
   window.addEventListener("popstate", () => { const id = location.hash.slice(1); if (id && reports.some((r) => r.id === id)) openReport(id); else { page("home"); renderHome(); } });
 
-  async function start() {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) { view("login"); return; }
-    const { data: prof, error } = await sb.from("profiles").select("id,username,display_name,is_admin,disabled").eq("id", session.user.id).single();
+  // Startup is retried automatically: a slow or dropped connection (common when the installed app wakes from the background)
+  // used to leave a blank screen until the user pressed refresh.
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("Connection timed out")), ms))]);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  let starting = false;
+  async function boot() {
+    const { data: { session } } = await withTimeout(sb.auth.getSession(), 10000);
+    if (!session) { me = null; view("login"); return; }
+    const { data: prof, error } = await withTimeout(sb.from("profiles").select("id,username,display_name,is_admin,disabled").eq("id", session.user.id).single(), 12000);
+    if (error && !prof && !/PGRST116/.test(error.code || "")) throw new Error(error.message || "Couldn't load your profile");
     if (error || !prof || prof.disabled) { await sb.auth.signOut(); view("login"); showErr("#l-err", prof?.disabled ? "This account is switched off. Contact your admin." : ""); return; }
     me = prof;
     $("#me-name").textContent = `Signed in as ${prof.username}`;
     $("#me-initial").textContent = (prof.display_name || prof.username)[0].toUpperCase();
     $("#m-admin").hidden = !prof.is_admin;
     view("shell");
-    try { await loadReports(); } catch (e) { toast(e.message); }
+    await withTimeout(loadReports(), 15000);
     startAttributionRealtime(); updateOrderNotifyButton(); phonePushState();
     const id = location.hash.slice(1);
     if (id && reports.some((r) => r.id === id)) openReport(id); else { page("home"); renderHome(); }
   }
+  function showStartFailure() {
+    view(me ? "shell" : "login");
+    if (me) {
+      page("home");
+      $("#tiles").innerHTML = '<div class="empty">Couldn\'t load your reports. <button class="btn primary" id="retry-load" type="button">Try again</button></div>';
+      $("#retry-load").addEventListener("click", () => start());
+    } else showErr("#l-err", "Couldn't connect. Check your internet and try again.");
+  }
+  async function start() {
+    if (starting) return;
+    starting = true;
+    try {
+      for (let i = 0; ; i++) {
+        try { await boot(); break; }
+        catch (e) {
+          console.warn("Startup attempt failed", i + 1, e);
+          if (i >= 3) { showStartFailure(); break; }
+          await sleep(900 * (i + 1));
+        }
+      }
+    } finally { starting = false; }
+  }
+  // When the app comes back from the background (or the connection returns) and nothing loaded, start again by itself.
+  const resumeIfEmpty = () => { if (document.visibilityState === "visible" && !starting && me && !reports.length) start(); };
+  document.addEventListener("visibilitychange", resumeIfEmpty);
+  window.addEventListener("online", resumeIfEmpty);
+  window.addEventListener("pageshow", (e) => { if (e.persisted) resumeIfEmpty(); });
   sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") view("login"); });
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   start();
