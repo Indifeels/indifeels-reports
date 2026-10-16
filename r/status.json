@@ -9,11 +9,11 @@
   "reason": ""
  },
  "color-game": {
-  "at": "2026-10-16T06:57+11:00",
-  "code_sha": "3b61160a008c7c19255a88ad6db4d779cd6f9702",
+  "at": "2026-10-17T06:54+11:00",
+  "code_sha": "a9565a20a966f80e8fb162870a3c854e7557e95b",
   "data_through": null,
-  "last_ok": "2026-10-16T06:57+11:00",
-  "manifest_version": "2026-10-15.cash-report.1",
+  "last_ok": "2026-10-17T06:54+11:00",
+  "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
  },
