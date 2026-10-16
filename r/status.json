@@ -44,6 +44,15 @@
   "ok": true,
   "reason": ""
  },
+ "google-scorecard": {
+  "at": "2026-10-16T11:45+11:00",
+  "code_sha": "b74e9b5a2d23b103b18776059fe87d20c9ba7949",
+  "data_through": null,
+  "last_ok": "2026-10-16T11:45+11:00",
+  "manifest_version": "2026-10-16.google-scorecard.1",
+  "ok": true,
+  "reason": ""
+ },
  "google-tracked": {
   "at": "2026-10-16T06:00+11:00",
   "code_sha": "b8edc9009c5dabf6682e79bd9c34710b2cfc3a1d",

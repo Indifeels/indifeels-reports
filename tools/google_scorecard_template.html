@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Google Tracked Scorecard</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+
+/* Charcoal Stack: charcoal raised tiles, lighter inner boxes, teal / orange / red status. */
+:root{
+  --bg:#E9ECE8;--fg:#232826;--muted:#6A726E;--line:#D3D8D3;--surface:#F7F8F5;--surface2:#EDF0EB;
+  --tile-a:#3A403E;--tile-b:#262B29;--tile-fg:#F1F3EF;--tile-muted:#A3ABA6;--tile-edge:#555C59;--tile-track:#4A514E;
+  --good:#2FCB9A;--warn:#FF9A3D;--bad:#FF6275;--none:#7C8480;
+  --good-ink:#0B7A57;--warn-ink:#B25800;--bad-ink:#C42E42;
+  --a1:#2FCB9A;--a2:#4DA3FF;--a3:#A98BFF;--a4:#FF9A3D;--shadow:rgba(30,36,33,.28);
+  --sx-a:#F4F6F2;--sx-b:#E5E9E3;--sx-hi:rgba(255,255,255,.9);--sx-lo:rgba(0,0,0,.06);--sx-drop:rgba(30,36,33,.12)}
+:root[data-theme="dark"]{
+  --bg:#171B1A;--fg:#E7EAE6;--muted:#98A19C;--line:#2F3633;--surface:#202624;--surface2:#2A312E;
+  --tile-a:#272B2D;--tile-b:#141617;--tile-edge:#3B4144;--tile-track:#383D40;
+  --sx-a:#3C4144;--sx-b:#2E3235;--sx-hi:rgba(255,255,255,.14);--sx-lo:rgba(0,0,0,.35);--sx-drop:rgba(0,0,0,.4);
+  --good-ink:#52E0B5;--warn-ink:#FFB066;--bad-ink:#FF8A98;--shadow:rgba(0,0,0,.5);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 Figtree,system-ui,sans-serif;
+  padding:20px max(16px,env(safe-area-inset-right)) 48px max(16px,env(safe-area-inset-left))}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+h1,h3,.num{font-family:"Bricolage Grotesque",Figtree,sans-serif;font-weight:700;letter-spacing:-.01em}
+h2{font:600 13px Figtree,sans-serif;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 12px}
+button{font:inherit;color:inherit;cursor:pointer}
+.banner{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn-ink);border-radius:12px;padding:8px 12px;font-size:13px;font-weight:600}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.tg{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 14px;font-weight:600;font-size:13px}
+.hero{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+.hero .big{position:relative;width:132px;height:132px;flex:none}
+.hero .big .v{position:absolute;inset:0;display:grid;place-items:center;font-size:40px}
+.hero .t{flex:1;min-width:210px}
+.hero h1{font-size:30px;margin:0 0 4px}.hero p{margin:0;color:var(--muted)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line);font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dot.good{background:var(--good)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.fixes{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.fix{text-align:left;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--bad);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.fix.warn{border-top-color:var(--warn)}
+.fix .n{font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+.fix b{font:700 16px/1.2 "Bricolage Grotesque",sans-serif}.fix span.b{font-size:13px;color:var(--muted)}
+/* profit panel */
+.panel{background:linear-gradient(155deg,var(--tile-a),var(--tile-b));color:var(--tile-fg);border-radius:20px;padding:16px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -2px 0 rgba(0,0,0,.35),0 1px 0 var(--tile-edge),0 10px 0 -3px rgba(0,0,0,.28),0 16px 24px -8px var(--shadow);display:flex;flex-direction:column;gap:12px}
+.ph{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.ph h3{margin:0;font-size:18px}
+.seg{display:flex;gap:6px}
+.seg button{border:1px solid var(--tile-track);background:transparent;color:var(--tile-fg);border-radius:99px;padding:5px 12px;font-size:13px;font-weight:600}
+.seg button.on{background:var(--tile-fg);color:#141617;border-color:var(--tile-fg)}
+.pstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.pstats .sx{background:linear-gradient(135deg,#3C4144,#2E3235);color:var(--tile-fg)}
+.sx{background:linear-gradient(135deg,var(--sx-a),var(--sx-b));border-radius:14px;padding:12px;min-width:0;box-shadow:inset 1px 1px 1px var(--sx-hi),inset -1px -2px 2px var(--sx-lo),3px 5px 10px var(--sx-drop)}
+.sx .l{font-size:12px;color:var(--muted)}.pstats .sx .l{color:var(--tile-muted)}
+.sx .v{font-size:24px;line-height:1.1;margin-top:2px}.sx .p{font-size:12px;color:var(--muted)}
+.pstats .sx .p{color:var(--tile-muted)}
+.chart svg{width:100%;height:auto;display:block;overflow:visible}
+.lg{display:flex;gap:14px;font-size:12px;color:var(--tile-muted)}.lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+/* filters */
+.flt{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.flt button{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 13px;font-size:13px;font-weight:600}
+.flt button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+/* tiles */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+@media(max-width:520px){.grid{grid-template-columns:1fr 1fr;gap:12px}.hero .big{width:108px;height:108px}.hero .big .v{font-size:32px}}
+.tile{position:relative;text-align:left;border:0;border-radius:20px;padding:14px 14px 12px;color:var(--tile-fg);
+  background:linear-gradient(155deg,var(--tile-a),var(--tile-b));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -2px 0 rgba(0,0,0,.35),0 1px 0 var(--tile-edge),0 10px 0 -3px rgba(0,0,0,.28),0 16px 24px -8px var(--shadow);
+  transition:transform .15s;display:flex;flex-direction:column;gap:10px;min-width:0}
+.tile *{min-width:0}
+.tile:hover{transform:translateY(-3px)}.tile:active{transform:translateY(2px)}
+.tile[aria-expanded="true"]{transform:translateY(2px);outline:2px solid var(--a2);outline-offset:2px}
+.tile:focus-visible,.fix:focus-visible,.tg:focus-visible,button:focus-visible{outline:3px solid var(--a2);outline-offset:3px}
+.tile .tp{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.tile .rk{font-size:12px;color:var(--tile-muted);letter-spacing:.06em}
+.tile .ring{position:relative;width:62px;height:62px;flex:none}
+.tile .ring .v{position:absolute;inset:0;display:grid;place-items:center;font-size:20px}
+.tile h3{margin:0;font-size:16px;line-height:1.15}
+.tile .key{font-size:24px;line-height:1}
+.tile .kl{font-size:12px;color:var(--tile-muted);margin-top:-4px}
+.tile .viz{margin-top:auto;height:34px;padding-top:8px}.tile .viz svg{width:100%;height:34px;display:block;overflow:visible}
+.tile .src{font-size:11px;color:var(--tile-muted);border:1px dashed var(--tile-track);border-radius:99px;padding:1px 7px;align-self:flex-start}
+.tile .cv{display:inline-block;transition:transform .2s}.tile[aria-expanded="true"] .cv{transform:rotate(180deg)}
+.xp{grid-column:1/-1;display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease}
+.xp.on{grid-template-rows:1fr}.xp>.inner{overflow:hidden;min-height:0}
+.pad{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:16px;margin-block:2px 6px}
+.sh{display:flex;gap:14px;align-items:center}
+.sh .ring{position:relative;width:76px;height:76px;flex:none}.sh .ring .v{position:absolute;inset:0;display:grid;place-items:center;font-size:26px}
+.sh h3{margin:0;font-size:22px;flex:1}.sh small{display:block;color:var(--muted);font:500 13px Figtree;margin-bottom:2px}
+.x{border:1px solid var(--line);background:var(--surface2);border-radius:99px;width:40px;height:40px;font-size:18px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.blk{display:flex;flex-direction:column;gap:8px}.blk h4{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
+.row{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,2fr) auto;gap:10px;align-items:center;font-size:13px}
+.row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .tr2{height:10px;background:var(--surface2);border-radius:99px;overflow:hidden}.row .tr2 i{display:block;height:100%;border-radius:99px}
+.row .val{font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;min-width:44px}
+.fx{padding:10px 12px;border-left:3px solid var(--good);background:var(--surface2);border-radius:0 10px 10px 0;font-size:14px}
+.how{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+.foot{font-size:12px;color:var(--muted)}
+
+/* ---- additions ---- */
+.step{grid-column:1/-1;display:flex;gap:10px;align-items:baseline;margin:10px 0 -4px;flex-wrap:wrap}
+.step b{font:700 18px "Bricolage Grotesque",sans-serif}.step span{font-size:13px;color:var(--muted)}
+.step i{font-style:normal;display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--fg);color:var(--bg);font:700 13px Figtree}
+.tile .att{font-size:11px;font-weight:600;border-radius:99px;padding:1px 8px;align-self:flex-start;background:color-mix(in srgb,var(--bad) 30%,transparent);color:#FFB3BC}
+.tile .att.w{background:color-mix(in srgb,var(--warn) 30%,transparent);color:#FFD2A3}
+.tile .att.g{background:color-mix(in srgb,var(--good) 28%,transparent);color:#8FF0CF}
+.tile .att.n{background:rgba(255,255,255,.1);color:var(--tile-muted)}
+.ring.null svg circle:last-child{display:none}.ring.null svg circle:first-child{stroke-dasharray:4 5}
+.seg2{display:flex;gap:6px;flex-wrap:wrap}
+.seg2 button{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 13px;font-size:13px;font-weight:600}
+.seg2 button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.bar2{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.chartx{overflow-x:auto;padding-bottom:4px}
+.chartx svg{display:block;height:auto}
+.cap{font-size:12px;color:var(--tile-muted);margin:2px 0 -2px}
+details.dd{background:rgba(255,255,255,.06);border-radius:12px;padding:8px 12px}
+details.dd summary{cursor:pointer;font-size:13px;font-weight:600}
+.tbl{overflow-x:auto;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font-weight:600;color:var(--muted);text-align:right;padding:7px 9px;font-size:12px;white-space:nowrap;background:var(--surface2);position:sticky;top:0}
+td{padding:7px 9px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal;min-width:200px}
+.panel table{font-size:12.5px}.panel .tbl{border-color:var(--tile-track);background:transparent}
+.panel th{background:rgba(255,255,255,.06);color:var(--tile-muted)}.panel td{border-top-color:var(--tile-track)}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;font-weight:600}
+.pill.good{background:color-mix(in srgb,var(--good) 28%,transparent);color:var(--good-ink)}
+.pill.warn{background:color-mix(in srgb,var(--warn) 30%,transparent);color:var(--warn-ink)}
+.pill.bad{background:color-mix(in srgb,var(--bad) 28%,transparent);color:var(--bad-ink)}
+.pill.none{background:var(--surface2);color:var(--muted)}
+.rk{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:7px;background:var(--fg);color:var(--bg);font:700 12px Figtree;margin-right:8px;padding:0 5px}
+.l0 td,.l0 th{background:var(--surface2);font-weight:700}
+.l1 td:first-child{padding-left:26px}.l2 td:first-child{padding-left:46px}.l3 td:first-child{padding-left:68px}
+.l1 td{background:color-mix(in srgb,var(--surface2) 55%,var(--surface))}
+.tg2{cursor:pointer;user-select:none}
+.tg2 .cv2{display:inline-block;width:16px;transition:transform .15s}.tg2.open .cv2{transform:rotate(90deg)}
+.c-g{color:#1A73E8}.c-f{color:#8E5CF7}.c-o{color:#0B9A6D}
+.cell{font-weight:600}
+td.gcol{background:color-mix(in srgb,#4DA3FF 12%,transparent)}td.fcol{background:color-mix(in srgb,#A98BFF 14%,transparent)}td.ocol{background:color-mix(in srgb,#2FCB9A 12%,transparent)}
+.ord td:first-child{font-size:12.5px;color:var(--fg)}.ord small{display:block;color:var(--muted);font-size:11.5px;white-space:normal}
+.chip2{display:inline-block;border-radius:99px;padding:0 7px;font-size:11px;font-weight:700;margin-left:6px}
+.chip2.rev{background:color-mix(in srgb,var(--warn) 35%,transparent);color:var(--warn-ink)}
+.chip2.ok{background:color-mix(in srgb,var(--good) 30%,transparent);color:var(--good-ink)}
+.chip2.tag{background:var(--surface2);color:var(--muted)}
+.cf{display:inline-flex;gap:4px;margin-top:4px}
+.cf button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:2px 8px;font-size:11.5px;font-weight:600}
+.cf button:hover{background:var(--fg);color:var(--bg)}
+.acts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.acts li{padding:10px 12px;border-left:3px solid var(--good);background:var(--surface2);border-radius:0 10px 10px 0;font-size:14px}
+.acts li.b{border-left-color:var(--bad)}.acts li.w{border-left-color:var(--warn)}
+.note{font-size:13px;color:var(--muted);background:var(--surface2);border-radius:12px;padding:10px 12px}
+.nodata{border:1px dashed var(--line);border-radius:14px;padding:14px;color:var(--muted);font-size:13.5px;background:var(--surface2)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--tile-muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.kwtag{font-size:11.5px;font-weight:700}
+
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:14px}
+.pt{background:linear-gradient(155deg,var(--tile-a),var(--tile-b));color:var(--tile-fg);border-radius:20px;padding:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -3px 8px rgba(0,0,0,.3),0 10px 24px var(--shadow);border:1px solid var(--tile-edge)}
+.pt h3{margin:0;font:700 18px 'Bricolage Grotesque',Figtree,sans-serif}.pt .rg{font-size:12px;font-weight:700;margin:2px 0 12px;color:var(--tile-fg)}
+.pm{display:grid;grid-template-columns:repeat(2,1fr);gap:12px 10px;padding-bottom:12px;border-bottom:1px solid var(--tile-track)}
+.pm b{display:block;font-size:20px;font-weight:700}.pm i{display:block;font-style:normal;font-size:12px;color:var(--tile-muted)}.pm b.neg{color:#FF8A98}
+.pm small{font-size:11.5px;font-weight:700;display:inline-block;margin-right:6px}.pm small.up{color:#2FCB9A}.pm small.dn{color:#FF8A98}.pm small.nt{color:#A3ABA6}
+.pt p{font-size:12.5px;margin:10px 0 0;color:var(--tile-fg)}.pt p.nt2{color:var(--tile-muted);font-size:12px}
+.tile .rk{display:block;min-width:0;height:auto;padding:0;margin:0 0 4px;border-radius:0;background:none;font:600 11px Figtree;color:var(--tile-muted);letter-spacing:.08em;text-transform:uppercase}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;padding:6px 14px 16px}
+.stepd{margin:14px 0;border-radius:18px;border:1px solid var(--tile-edge);background:linear-gradient(155deg,var(--tile-a),var(--tile-b));box-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -3px 8px rgba(0,0,0,.3),0 10px 24px var(--shadow);color:var(--tile-fg)}
+.stepd .gh{width:100%;background:none;border:0;color:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;border-radius:18px}
+.stepd .gh:hover{background:rgba(255,255,255,.04)}
+.stepd .gh::after{content:"▾";margin-left:auto;color:var(--tile-muted);font-size:16px;transition:transform .3s ease}.stepd.shut .gh::after{transform:rotate(-90deg)}
+.stepd .gh i{font-style:normal;display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 6px;border-radius:99px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:var(--tile-fg);font:700 13px Figtree}
+.stepd .gh b{font:700 18px 'Bricolage Grotesque',Figtree,sans-serif}.stepd .gh span{font-size:13px;color:var(--tile-muted)}
+.stepd .gh em{font-style:normal;font-size:12px;font-weight:700;color:var(--tile-fg);background:rgba(255,255,255,.08);border-radius:99px;padding:2px 10px}
+.gb{display:grid;grid-template-rows:1fr;transition:grid-template-rows .32s ease}.stepd.shut .gb{grid-template-rows:0fr}
+.gbi{overflow:hidden;min-height:0}.stepd.shut .gbi{visibility:hidden;transition:visibility 0s .32s}
+.tile{cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}.tile:hover{box-shadow:0 14px 28px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.14)}
+.tile .src{border:0;padding:0;margin-top:6px;color:var(--tile-muted)}
+.tile .opn{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;width:100%;padding:7px 10px;border-radius:12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);font:600 12.5px Figtree;color:var(--tile-fg);transition:background .15s}
+.tile:hover .opn{background:rgba(255,255,255,.15)}
+.tile .opn .o2{display:none}.tile[aria-expanded="true"] .opn .o1{display:none}.tile[aria-expanded="true"] .opn .o2{display:inline}
+/* ---- inner tiles + 3D charcoal grid ---- */
+.it{border-radius:16px;margin:12px 0;border:1px solid rgba(255,255,255,.06);background:linear-gradient(180deg,#3E4442,#2B302E);box-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 -3px 8px rgba(0,0,0,.35),0 8px 18px rgba(0,0,0,.38);color:#F1F3EF}
+.it>summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:12px 16px}
+.it>summary::-webkit-details-marker{display:none}
+.it>summary::before{content:"▸";color:#A3ABA6;transition:transform .15s}.it[open]>summary::before{transform:rotate(90deg)}
+.it>summary b{font:700 15px 'Bricolage Grotesque',Figtree,sans-serif}.it>summary span{font-size:12.5px;color:#A3ABA6}
+.itb{padding:0 12px 14px}.itb .tbl{background:rgba(0,0,0,.18);border-color:rgba(255,255,255,.07);border-radius:12px}
+.itb th{background:rgba(255,255,255,.07);color:#A3ABA6}.itb td{border-top-color:rgba(255,255,255,.07)}
+.itb .note,.itb p.note{color:#A3ABA6;font-size:12.5px;margin:2px 4px 10px}
+.up{color:#2FCB9A;font-weight:700}.dn{color:#FF6275;font-weight:700}
+#agrid{border-collapse:separate;border-spacing:0 6px;color:#F1F3EF}
+#agrid th{background:transparent;color:#A3ABA6;border:0;position:sticky;top:0;z-index:2;background:#262B29}
+#agrid th.c-g{color:#6FB4FF}#agrid th.c-f{color:#B9A2FF}#agrid th.c-o{color:#2FCB9A}
+#agrid td{border:0;color:#F1F3EF;background:linear-gradient(180deg,var(--g1),var(--g2));box-shadow:inset 0 1px 0 rgba(255,255,255,.10),inset 0 -2px 4px rgba(0,0,0,.30)}
+#agrid td:first-child{border-radius:12px 0 0 12px}#agrid td:last-child{border-radius:0 12px 12px 0}
+#agrid tr{--g1:#3A403E;--g2:#2B302E}
+#agrid tr.l0{--g1:#454B49;--g2:#303533}
+#agrid tr.l1{--g1:#3C4240;--g2:#2D3230}
+#agrid tr.l2{--g1:#353A38;--g2:#292D2B}
+#agrid tr.l3{--g1:#2F3433;--g2:#262A29}
+#agrid td.gcol{background:linear-gradient(rgba(77,163,255,.20),rgba(77,163,255,.20)),linear-gradient(180deg,var(--g1),var(--g2))}
+#agrid td.fcol{background:linear-gradient(rgba(169,139,255,.22),rgba(169,139,255,.22)),linear-gradient(180deg,var(--g1),var(--g2))}
+#agrid td.ocol{background:linear-gradient(rgba(47,203,154,.20),rgba(47,203,154,.20)),linear-gradient(180deg,var(--g1),var(--g2))}
+#agrid .ord small,#agrid td small{color:#A3ABA6}
+.olink{color:#7DBBFF;text-decoration:none;border-bottom:1px dashed #7DBBFF}.olink:hover{color:#fff}
+.perf{margin:0 4px 10px;display:flex;gap:8px;flex-wrap:wrap}.perf button{border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.2);color:#F1F3EF;border-radius:99px;padding:5px 13px;font-size:13px;font-weight:600}.perf button.on{background:#F1F3EF;color:#1d2220}
+</style></head><body>
+<div class="wrap">
+  <div class="banner" id="banner"></div>
+  <div class="top"><span id="refr"></span><span style="display:flex;gap:8px"><button class="tg" id="theme">Light / Dark</button></span></div>
+  <section><h2>Google Ads, tracked</h2><div class="pgrid" id="periods"></div></section>
+  <section class="hero" id="hero"></section>
+  <section><h2>Profit — daily and cumulative</h2><div class="panel" id="profit"></div></section>
+  <section>
+    <div class="bar2" style="margin-bottom:12px"><h2 style="margin:0">Scorecard</h2>
+      <div class="seg2" id="sortseg"><button data-s="prio" class="on">By priority</button><button data-s="step">By process (step 1 → 7)</button></div></div>
+    <div class="grid" id="grid"></div></section>
+  <p class="foot" id="foot"></p>
+</div>
+<script>
+const D=/*__DATA__*/null;
+const $=s=>document.querySelector(s);
+const fmt$=(v,d=0)=>(v<0?"−":"")+"$"+Math.abs(v).toLocaleString("en-AU",{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct=(v,d=0)=>(v*100).toFixed(d)+"%";
+const clamp=(v,a=0,b=100)=>Math.max(a,Math.min(b,v));
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const NET=0.75/1.1, EXPERT_DAY=155/7;
+const STEPS={1:["Trust the numbers","Can you believe what the reports say?"],2:["Check the money","Are we making or losing money today?"],3:["Triage campaigns","Which campaigns, ad groups and ads to scale, fix or cut"],4:["Find demand","What people search for and where we are missing it"],5:["Fix the funnel","Where visitors drop between click and purchase"],6:["Cover offline","Calls, store visits and local — about 70% of revenue"],7:["Feed & creative","Product feed and ad assets"]};
+let BASIS="shopify"; // or "ads"
+let OV={};try{OV=JSON.parse(localStorage.getItem("gts-confirm")||"{}")}catch(e){}
+function saveOV(){try{localStorage.setItem("gts-confirm",JSON.stringify(OV))}catch(e){}}
+
+/* ---------- orders ---------- */
+const MELD=t=>new Date(t).toLocaleDateString("en-CA",{timeZone:"Australia/Melbourne"});
+const MELT=t=>new Date(t).toLocaleTimeString("en-AU",{timeZone:"Australia/Melbourne",hour:"numeric",minute:"2-digit"});
+const bMeta=m=>m==="GW"?"Google":m==="FW"?"Facebook":"Organic";
+const META_NAME={GW:"Google Online Orders - WEB",FW:"FB Online Orders - WEB",OO:"Organic Orders",RC:"Repeat Customer",DO:"Direct order",UO:"Unknown Online",RS:"Referral SEO etc"};
+function bJourney(o){if(o.js==="-")return null;const us=(o.us||"").toLowerCase(),um=(o.um||"").toLowerCase();
+  if(us==="google"&&um==="cpc")return"Google";
+  if(um.startsWith("tracked")||um==="paid")return"Facebook";
+  return"Organic"}
+const CODE_BY_ID={"24024424291":"A","24030760799":"B","24038797431":"C","24331135133":"E"};
+function campCode(uc){if(!uc)return null;if(CODE_BY_ID[uc])return CODE_BY_ID[uc];
+  if(uc.startsWith("Tracked_MM_Feed"))return"A";if(uc.startsWith("Tracked_MM_Sales"))return"B";if(uc.startsWith("Tracked_MM_Best"))return"C";return null}
+const ORD=D.orders.map(o=>{const d=MELD(o.t);const jb=bJourney(o),mb=bMeta(o.m);
+  return {...o,d,time:MELT(o.t),jb,mb,st:jb==null?"tag":(jb===mb?"match":"review")}});
+const eff=o=>OV[o.n]||o.mb;
+const confirmed=o=>!!OV[o.n];
+const needsReview=o=>!confirmed(o)&&o.st==="review";
+const gCode=o=>eff(o)==="Google"?campCode(o.uc):null;
+
+/* ---------- ads ---------- */
+const ADSROWS=D.ads;const CAMP=D.camps;
+const DATES=[...new Set(ADSROWS.map(r=>r.d))].sort();
+const TRACKED=["A","B","C","E"];
+function adsDay(d,codes){let s=0,v=0;ADSROWS.forEach(r=>{if(r.d===d&&codes.includes(r.c)){s+=r.sp;v+=r.val}});return{s,v}}
+function dayRev(d){return ORD.filter(o=>o.d===d&&eff(o)==="Google").reduce((a,o)=>a+o.a,0)}
+function profitDays(){return DATES.map(d=>{const a=adsDay(d,TRACKED);const rev=BASIS==="shopify"?dayRev(d):a.v;const net=rev*NET;return{d,spend:a.s,rev,net,fixed:EXPERT_DAY,profit:net-a.s-EXPERT_DAY}})}
+function campAgg(c){const rows=ADSROWS.filter(r=>r.c===c);const o={sp:0,imp:0,clk:0,conv:0,val:0};rows.forEach(r=>{o.sp+=r.sp;o.imp+=r.imp;o.clk+=r.clk;o.conv+=r.conv;o.val+=r.val});o.first=rows.length?rows[0].d:null;return o}
+function campOrders(c){return ORD.filter(o=>gCode(o)===c)}
+function campMetrics(c){const a=campAgg(c);const os=campOrders(c);const shop=os.reduce((s,o)=>s+o.a,0);const rev=BASIS==="shopify"?shop:a.val;
+  const roas=a.sp?rev/a.sp:0;const profit=rev*NET-a.sp;
+  return{...a,shop,shopN:os.length,rev,roas,profit,adsRoas:a.sp?a.val/a.sp:0,ctr:a.imp?a.clk/a.imp:0,cpc:a.clk?a.sp/a.clk:0}}
+function health(m,code){if(m.sp<50)return["Hold","warn","Too little spend to judge"];
+  if(m.roas>=3)return["Scale","good","ROAS "+m.roas.toFixed(1)+"x"];if(m.sp>=100&&m.roas<1.5)return["Cut","bad","ROAS "+m.roas.toFixed(1)+"x on "+fmt$(m.sp)];return["Hold","warn","ROAS "+m.roas.toFixed(1)+"x"]}
+
+/* ---------- helpers: rings, spark ---------- */
+const sc=s=>s==null?"none":s>=75?"good":s>=50?"warn":"bad";
+const col=s=>s==null?"var(--none)":`var(--${sc(s)})`;
+function ring(s,sz,sw,track){const r=(sz-sw)/2,c=2*Math.PI*r,v=s==null?0:s;
+ return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}"><circle cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none" stroke="${track}" stroke-width="${sw}"/><circle cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none" stroke="${col(s)}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c*v/100} ${c}" transform="rotate(-90 ${sz/2} ${sz/2})"/></svg>`}
+function spark(a,c){if(!a||a.length<2)return"";const mn=Math.min(...a),mx=Math.max(...a),n=a.length;
+ const p=a.map((v,i)=>[i*(100/(n-1)),30-((v-mn)/((mx-mn)||1))*26]);
+ return `<svg viewBox="0 0 100 34" preserveAspectRatio="none"><polyline points="${p.map(x=>x.join(",")).join(" ")}" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`}
+const pill=(t,k)=>`<span class="pill ${k}">${esc(t)}</span>`;
+
+/* ---------- keyword gap ---------- */
+const BRAND=q=>/indifeels|indi feels/.test(q), COMP=q=>/^indya$/.test(q);
+function kwAction(k){if(BRAND(k.q))return["Defend","good","Brand — already #"+k.p.toFixed(1)];
+  if(COMP(k.q))return["Competitor","none","Competitor brand — low priority"];
+  if(k.p<=3)return["Protect","good","Strong rank; add paid only for high-margin lines"];
+  if(k.p<=10&&k.i>=300)return["Paid test + title","warn","Page 1 but "+pct(k.c/k.i,1)+" CTR on "+k.i.toLocaleString()+" impressions"];
+  if(k.p<=10)return["Improve title","warn","Page 1, low CTR"];
+  return["New content","bad","Page 2+ — needs a collection/landing page"]}
+const KW=D.gsc.map(r=>({q:r[0],c:r[1],i:r[2],p:r[3]}));
+
+/* ---------- tiles ---------- */
+const SHOP="https://admin.shopify.com/store/bvdxj3-r8/orders/";
+const IT=(t,sub,body,open)=>`<details class="it" ${open?"open":""}><summary><b>${t}</b><span>${sub||""}</span></summary><div class="itb">${body}</div></details>`;
+const dlt=(a,b,inv)=>{if(!isFinite(a)||!isFinite(b)||!b)return"";const x=(a-b)/Math.abs(b);const good=inv?x<0:x>0;return ` <small class="${Math.abs(x)<0.02?"":good?"up":"dn"}">${x>=0?"+":""}${Math.round(x*100)}%</small>`};
+function perAgg(ds,c){const set=new Set(ds);const o={sp:0,imp:0,clk:0,conv:0,val:0};ADSROWS.forEach(r=>{if(r.c===c&&set.has(r.d)){o.sp+=r.sp;o.imp+=r.imp;o.clk+=r.clk;o.conv+=r.conv;o.val+=r.val}});
+  const os=ORD.filter(x=>set.has(x.d)&&gCode(x)===c);o.n=os.length;o.shop=os.reduce((s,x)=>s+x.a,0);const rev=BASIS==="shopify"?o.shop:o.val;o.roas=o.sp?rev/o.sp:0;o.profit=rev*NET-o.sp;return o}
+function perTable(n){const cur=DATES.slice(-n),prev=DATES.slice(-2*n,-n),has=prev.length===n;const cs=[...TRACKED];
+  const sumA=(ds)=>{const t={sp:0,imp:0,clk:0,conv:0,val:0,n:0,shop:0,profit:0};cs.forEach(c=>{const a=perAgg(ds,c);Object.keys(t).forEach(k=>t[k]+=a[k])});const rev=BASIS==="shopify"?t.shop:t.val;t.roas=t.sp?rev/t.sp:0;return t};
+  const row=(name,a,b)=>`<tr><td>${name}</td><td>${fmt$(a.sp)}${has?dlt(a.sp,b.sp,true):""}</td><td>${a.clk}${has?dlt(a.clk,b.clk):""}</td><td>${pct(a.imp?a.clk/a.imp:0,1)}</td><td>${a.clk?fmt$(a.sp/a.clk,2):"–"}</td><td>${a.conv.toFixed(0)}</td><td>${a.n}</td><td>${fmt$(a.shop)}</td><td>${a.roas.toFixed(1)}x${has?dlt(a.roas,b.roas):""}</td><td>${fmt$(a.profit)}</td></tr>`;
+  const body=cs.map(c=>row(esc(CAMP[c].name.split("_Campaign")[0].slice(0,46)),perAgg(cur,c),has?perAgg(prev,c):{})).join("")+`<tr class="l0"><td><b>All tracked</b></td>${row("",sumA(cur),has?sumA(prev):{}).replace(/^<tr><td><\/td>/,"").replace(/<\/tr>$/,"")}</tr>`;
+  return `<div class="tbl"><table><thead><tr><th>Campaign · ${n} days to ${DATES[DATES.length-1].slice(5)}</th><th>Spend</th><th>Clicks</th><th>CTR</th><th>CPC</th><th>Ads conv</th><th>Shopify orders</th><th>Shopify $</th><th>ROAS</th><th>Profit</th></tr></thead><tbody>${body}</tbody></table></div><p class="note">${has?"Percentages compare with the "+n+" days before.":"Only 30 days of order data are loaded, so there is no earlier period to compare."} Lifetime view needs orders back to January; not loaded yet.</p>`}
+function periodIT(){return `<div class="perf" id="perbtns">${[7,15,30].map(n=>`<button data-n="${n}" class="${n===7?"on":""}">${n} days</button>`).join("")}</div><div id="pertbl">${perTable(7)}</div>`}
+const LIFE=D.life;const ALLD=Object.keys(LIFE).sort();
+function pStats(ds){let sp=0,cv=0,av=0,rev=0,n=0,okShop=true;
+  ds.forEach(d=>{const l=LIFE[d]||[0,0,0];sp+=l[0];cv+=l[1];av+=l[2];if(d<DATES[0])okShop=false;const os=ORD.filter(o=>o.d===d&&eff(o)==="Google");rev+=os.reduce((s,o)=>s+o.a,0);n+=os.length});
+  const useShop=BASIS==="shopify"&&okShop;const R=useShop?rev:av;const fee=EXPERT_DAY*ds.length;
+  return{sp,cv,av,rev,n,R,fee,profit:R*NET-sp-fee,roas:sp?R/sp:0,okShop,useShop,days:ds.length}}
+const arr=(a,b,inv)=>{if(!b||!isFinite(a)||!isFinite(b))return"";const x=(a-b)/Math.abs(b);const g=Math.abs(x)<0.02?"":(inv?x<0:x>0)?"up":"dn";const p=Math.abs(x)>9.99?">999%":Math.round(Math.abs(x)*100)+"%";return `<small class="${g}">${x>=0?"▲":"▼"} ${p}</small>`};
+function renderPeriods(){
+  const n=ALLD.length,last=ALLD[n-1];const dl=d=>{const [y,m,dd]=d.split("-").map(Number);return new Date(Date.UTC(y,m-1,dd)).toLocaleDateString("en-AU",{day:"numeric",month:"short",timeZone:"UTC"})};
+  const defs=[["Yesterday","#8FA8FF",ALLD.slice(-1),ALLD.slice(-2,-1),"day before"],["Last 7 days","#B9A2FF",ALLD.slice(-7),ALLD.slice(-14,-7),"7 days before"],["Last 30 days","#2FCB9A",ALLD.slice(-30),ALLD.slice(-60,-30),"30 days before"],["Lifetime","#FF9A3D",ALLD,[],""]];
+  $("#periods").innerHTML=defs.map(([t,c,ds,pv,pl])=>{const a=pStats(ds),b=pv.length===ds.length?pStats(pv):null;const cmp=b&&(a.useShop===b.useShop);
+    const rv=a.useShop?"revenue":"Google revenue";
+    const rev=t==="Lifetime"?pStats(ds):a;
+    const note=a.useShop?`Google reports ${fmt$(a.av,0)} · ${(a.sp?a.av/a.sp:0).toFixed(2)}x · ${a.cv.toFixed(1)} conversions. Shopify matched ${a.n} order${a.n===1?"":"s"}.`:(BASIS==="shopify"?`Shopify orders are loaded for 30 days only, so this shows Google's own figures (${a.cv.toFixed(0)} conversions). Shopify match not loaded.`:`Ads-reported basis. Google counted ${a.cv.toFixed(1)} conversions.`);
+    const range=ds.length===1?dl(ds[0]):dl(ds[0])+" to "+dl(ds[ds.length-1])+" 2026";
+    const rvw=t==="Yesterday"?ORD.filter(o=>o.d===ds[0]&&needsReview(o)).length:0;
+    return `<div class="pt"><h3 style="color:${c}">${t}</h3><div class="rg">${range}</div>
+    <div class="pm"><div><b class="num">${fmt$(a.sp)}</b><i>spend</i>${cmp?arr(a.sp,b.sp,false).replace(/class="(up|dn)"/,'class="nt"'):""}</div><div><b class="num">${fmt$(a.R)}</b><i>${rv}</i>${cmp?arr(a.R,b.R):""}</div><div><b class="num">${a.roas.toFixed(2)}x</b><i>ROAS</i>${cmp?arr(a.roas,b.roas):""}</div><div><b class="num ${a.profit<0?"neg":""}">${a.profit<0?"−":""}${fmt$(Math.abs(a.profit))}</b><i>profit</i>${cmp?arr(a.profit,b.profit):""}</div></div>
+    <p>${note} Profit includes ${fmt$(a.fee)} expert fee.</p>
+    ${rvw?`<span class="chip2 rev">${rvw} order${rvw>1?"s":""} to review</span>`:t==="Yesterday"?`<span class="chip2 ok">No orders waiting for review</span>`:""}
+    ${cmp?`<p class="nt2">Arrows compare with the ${pl}, ${dl(pv[0])}${pv.length>1?" to "+dl(pv[pv.length-1]):""}.</p>`:(t==="Lifetime"?`<p class="nt2">Since ${dl(ds[0])} 2026, the first day with tracked spend.</p>`:`<p class="nt2">No earlier Shopify orders loaded to compare.</p>`)}</div>`}).join("");
+}
+let TILES=[];
+function build(){
+  const days=profitDays();const n=days.length;
+  const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0);
+  const spend30=sum(days,d=>d.spend),rev30=sum(days,d=>d.rev),profit30=sum(days,d=>d.profit);
+  const last7=days.slice(-7),prev=days.slice(0,-7);
+  const spend7=sum(last7,d=>d.spend)/7,spendPrev=sum(prev,d=>d.spend)/prev.length;
+  const rev7=sum(last7,d=>d.rev),prof7=sum(last7,d=>d.profit);
+  const fixed30=EXPERT_DAY*n;
+  const tracked=TRACKED.map(c=>({c,m:campMetrics(c)}));
+  const trSpend=sum(tracked,t=>t.m.sp);
+  const be=(trSpend+fixed30)/(trSpend*NET); // break-even ROAS incl. expert cost
+  const roasAll=trSpend?rev30/trSpend:0;
+  const cac=(()=>{const cnt=BASIS==="shopify"?ORD.filter(o=>eff(o)==="Google").length:sum(tracked,t=>t.m.conv);return cnt?trSpend/cnt:0})();
+  const T=[];
+  /* attribution numbers */
+  const tot=ORD.length,mt=ORD.filter(o=>o.st==="match"||confirmed(o)).length,rv=ORD.filter(needsReview).length,tg=ORD.filter(o=>o.st==="tag"&&!confirmed(o)).length;
+  const attrScore=Math.round(100*(mt+0.5*tg)/tot);
+  const byB=b=>ORD.filter(o=>eff(o)===b);const revB=b=>byB(b).reduce((s,o)=>s+o.a,0),allRev=ORD.reduce((s,o)=>s+o.a,0);
+  /* Ads vs Shopify */
+  const adsConv=sum(tracked,t=>t.m.conv),adsVal=sum(tracked,t=>t.m.val);
+  const shopCpc=ORD.filter(o=>o.jb==="Google");const shopCpcRev=shopCpc.reduce((s,o)=>s+o.a,0);
+  const ga=D.ga4;const gpaid=ga.filter(r=>r.ch==="Paid Search"||r.ch==="Cross-network");
+  const gaP=gpaid.reduce((a,r)=>({s:a.s+r.s,atc:a.atc+r.atc,co:a.co+r.co,p:a.p+r.p,rev:a.rev+r.rev}),{s:0,atc:0,co:0,p:0,rev:0});
+  const site=ga.reduce((a,r)=>({s:a.s+r.s,atc:a.atc+r.atc,co:a.co+r.co,p:a.p+r.p,rev:a.rev+r.rev}),{s:0,atc:0,co:0,p:0,rev:0});
+  const nt=campMetrics("D");
+
+  /* 1. PROFIT */
+  T.push({id:"profit",step:2,prio:1,w:10,t:"Net Profit",
+   s:Math.round(clamp(50+(profit30/n)*1.5)),k:fmt$(profit30/n),kl:"avg profit / day · 30d · "+(BASIS==="shopify"?"Shopify-confirmed":"Ads-reported"),src:"Google Ads + Shopify",
+   trend:days.slice(-14).map(d=>d.profit),att:profit30<0?["bad","Losing money"]:["g","Profitable"],
+   stats:[["30-day profit",fmt$(profit30),"after ads and expert cost"],["Last 7 days",fmt$(prof7),(prof7/7>=profit30/n?"better":"worse")+" than 30d pace"],["Tracked spend",fmt$(spend30),fmt$(spend30/n,0)+"/day"],["Expert cost",fmt$(fixed30),"$155/week"]],
+   acts:[
+    profit30<0&&BASIS==="shopify"?["b","On Shopify-confirmed online orders alone, Google is "+fmt$(Math.abs(profit30))+" under after the expert cost. Calls and store visits (about 70% of revenue) are NOT in this number yet — add them before cutting spend."]:null,
+    ["w","Switch the basis at the top of the profit chart to compare Shopify-confirmed revenue with what Google Ads reports ("+fmt$(adsVal)+" vs "+fmt$(shopCpcRev)+")."],
+    ["","Profit = revenue ÷ 1.1 (GST) × 0.75 (product cost) − tracked ad spend − $155/week expert cost. Non-tracked PMax spend ("+fmt$(nt.sp)+") is excluded here."]
+   ],how:"Score: $0 profit/day = 50; +$33/day = 100; −$33/day = 0. Adjust the target once you set one."});
+
+  /* 2. SPEND & PACING */
+  const jump=spendPrev?spend7/spendPrev-1:0;
+  const e0=ADSROWS.filter(r=>r.c==="E").map(r=>r.d).sort()[0];
+  T.push({id:"spend",step:2,prio:2,w:8,t:"Spend & Pacing",
+   s:Math.round(clamp(100-80*Math.max(0,jump/1.5))),k:fmt$(spend7,0)+"/day",kl:"avg tracked spend, last 7 days",src:"Google Ads",
+   trend:days.slice(-14).map(d=>d.spend),att:jump>0.5?["bad","Spend +"+Math.round(jump*100)+"%"]:["g","Steady"],
+   stats:[["Last 7 days",fmt$(spend7*7),fmt$(spend7,0)+"/day"],["Before that",fmt$(spendPrev,0)+"/day","first "+prev.length+" days"],["Change",(jump>=0?"+":"")+Math.round(jump*100)+"%",""],["30-day tracked",fmt$(spend30),""]],
+   acts:[
+    jump>0.5?["b","Daily spend jumped from "+fmt$(spendPrev,0)+" to "+fmt$(spend7,0)+" (+"+Math.round(jump*100)+"%). The Dussehra Performance Max campaign started "+(e0||"").slice(5).replace("-","/")+" and the existing PMax campaigns also ramped. Revenue in the last 7 days: "+fmt$(rev7)+" vs spend "+fmt$(spend7*7)+"."]:null,
+    ["w","No monthly budget is stored yet, so pacing can't be scored against a plan. Give me the monthly Google budget and this tile will show % used and days left."]
+   ],how:"Score drops as the last-7-day daily spend rises above the earlier average (−80 points at +150%)."});
+
+  /* 3. CAMPAIGN HEALTH (tree) */
+  const ranked=[...tracked].sort((a,b)=>b.m.profit-a.m.profit);
+  ranked.forEach((t,i)=>t.rank=i+1);
+  const hh=ranked.map(t=>({...t,h:health(t.m,t.c)}));
+  const wScore={Scale:100,Hold:60,Cut:10};
+  const campScore=Math.round(sum(hh,t=>wScore[t.h[0]]*t.m.sp)/(sum(hh,t=>t.m.sp)||1));
+  const cuts=hh.filter(t=>t.h[0]==="Cut"),scales=hh.filter(t=>t.h[0]==="Scale");
+  function campTree(){
+    let rows="";
+    const head=`<tr><th>Campaign / ad group / ad</th><th>Health</th><th>Spend</th><th>Clicks</th><th>CTR</th><th>CPC</th><th>Ads conv</th><th>Ads value</th><th>Shopify orders</th><th>Shopify $</th><th>ROAS</th><th>Profit</th><th>Search IS</th></tr>`;
+    hh.forEach(t=>{const m=t.m,c=CAMP[t.c];const k="c"+t.c;
+      const is7=impW(t.c,"is");
+      rows+=`<tr class="l0 tg2" data-k="${k}"><td><span class="cv2">▸</span><span class="rk">${t.rank}</span>${esc(c.name)}<small style="display:block;font-weight:500;color:var(--muted)">${c.type} · started ${m.first?m.first.slice(5):""} · ${t.h[2]}</small></td><td>${pill(t.h[0],t.h[1])}</td><td>${fmt$(m.sp)}</td><td>${m.clk.toLocaleString()}</td><td>${pct(m.ctr,1)}</td><td>${fmt$(m.cpc,2)}</td><td>${m.conv.toFixed(0)}</td><td>${fmt$(m.val)}</td><td>${m.shopN}</td><td>${fmt$(m.shop)}</td><td>${m.roas.toFixed(1)}x</td><td style="color:${m.profit<0?"var(--bad-ink)":"var(--good-ink)"}">${fmt$(m.profit)}</td><td>${pct(is7,0)}</td></tr>`;
+      if(t.c==="B"){
+        const ags=D.adgroups.filter(g=>g.camp==="B").sort((a,b)=>(b.val/(b.sp||1))-(a.val/(a.sp||1)));
+        ags.forEach((g,gi)=>{const r=g.sp?g.val/g.sp:0;const hs=g.sp<5?["Hold","warn"]:r>=3?["Scale","good"]:(g.conv===0&&g.sp>=8)?["Cut","bad"]:["Hold","warn"];
+          rows+=`<tr class="l1 kid" data-p="${k}" hidden><td><span class="rk">${gi+1}</span>Ad group · ${esc(g.name)}</td><td>${pill(hs[0],hs[1])}</td><td>${fmt$(g.sp)}</td><td>${g.clk}</td><td>${pct(g.clk/g.imp,1)}</td><td>${fmt$(g.sp/g.clk,2)}</td><td>${g.conv}</td><td>${fmt$(g.val)}</td><td>–</td><td>–</td><td>${r.toFixed(1)}x</td><td>${fmt$(g.val*NET-g.sp)}</td><td></td></tr>`;
+          D.ads_list.filter(a=>a.group===g.name).forEach((a,ai)=>{rows+=`<tr class="l2 kid" data-p="${k}" hidden><td><span class="rk">${ai+1}</span>Ad · ${esc(a.text.split(" | ")[0])}<small>${a.strength} strength${/Visarjan|Gandhi/.test(a.text)?" · festival already over":""}</small></td><td>${/Visarjan|Gandhi/.test(a.text)?pill("Pause","bad"):""}</td><td>${fmt$(a.sp)}</td><td>${a.clk}</td><td>${pct(a.clk/a.imp,1)}</td><td>${fmt$(a.sp/a.clk,2)}</td><td>${a.conv}</td><td>${fmt$(a.val)}</td><td></td><td></td><td></td><td></td><td></td></tr>`})});
+      } else {
+        rows+=`<tr class="l1 kid" data-p="${k}" hidden><td colspan="13"><span class="note" style="display:block">Performance Max reports at asset-group level, which the data feed does not expose. Judge it by the Shopify orders column until asset-group data is pulled (see "Ad-level visibility").</span></td></tr>`;
+      }
+    });
+    const ntm=nt;rows+=`<tr class="l0"><td><span class="rk">–</span>${esc(CAMP.D.name)}<small style="display:block;font-weight:500;color:var(--muted)">Non-tracked · calls &amp; store visits · not ranked</small></td><td>${pill("Needs value","warn")}</td><td>${fmt$(ntm.sp)}</td><td>${ntm.clk}</td><td>${pct(ntm.ctr,1)}</td><td>${fmt$(ntm.cpc,2)}</td><td>${ntm.conv.toFixed(0)}</td><td>${fmt$(ntm.val)}</td><td>–</td><td>–</td><td>–</td><td>–</td><td>${pct(impW("D","is"),0)}</td></tr>`;
+    return `<div class="tbl"><table id="ctree"><thead>${head}</thead><tbody>${rows}</tbody></table></div><p class="foot" style="margin-top:8px">Rank = profit after spend on the ${BASIS==="shopify"?"Shopify-confirmed":"Ads-reported"} basis. Scale: ROAS ≥ 3x. Cut: ≥ $100 spent and ROAS &lt; 1.5x. Tap a campaign to open ad groups and ads.</p>`}
+  T.push({id:"camp",step:3,prio:3,w:9,t:"Campaign Health",s:campScore,k:cuts.length+" / "+hh.length,kl:"campaigns to cut",src:"Google Ads + Shopify",
+   trend:ranked.map(t=>t.m.roas),att:cuts.length?["bad",cuts.length+" to cut"]:["g","OK"],
+   stats:[["Scale",scales.length,""],["Hold",hh.filter(t=>t.h[0]==="Hold").length,""],["Cut",cuts.length,"≥ $100, ROAS < 1.5x"],["Best ROAS",hh.length?Math.max(...hh.map(t=>t.m.roas)).toFixed(1)+"x":"–",""]],
+   html:campTree,
+   acts:[
+    ...cuts.map(t=>["b",CAMP[t.c].name+": "+fmt$(t.m.sp)+" spent, "+t.m.conv.toFixed(0)+" conversion"+(t.m.conv===1?"":"s")+", ROAS "+t.m.roas.toFixed(1)+"x. Cut, or rebuild with new asset groups."]),
+    ...scales.map(t=>["",CAMP[t.c].name+": ROAS "+t.m.roas.toFixed(1)+"x on "+fmt$(t.m.sp)+" — give it more budget."])
+   ],how:"Score: spend-weighted mix of Scale (100), Hold (60) and Cut (10) across the tracked campaigns."});
+
+  /* 4. ROAS */
+  T.push({id:"roas",step:2,prio:4,w:9,t:"ROAS & Cost per Sale",s:Math.round(clamp(roasAll/3*100)),k:roasAll.toFixed(1)+"x",kl:"revenue ÷ tracked spend · "+(BASIS==="shopify"?"Shopify":"Ads"),src:"Google Ads + Shopify",
+   trend:days.slice(-14).map(d=>d.spend?d.rev/d.spend:0),att:roasAll<be?["bad","Below break-even"]:["g","Above break-even"],
+   stats:[["ROAS",roasAll.toFixed(1)+"x","target 3.0x"],["Break-even ROAS",be.toFixed(1)+"x","incl. expert cost"],["Cost per sale",fmt$(cac,0),(BASIS==="shopify"?"Shopify orders":"Ads conversions")],["Ads-reported ROAS",(adsVal/trSpend).toFixed(1)+"x",fmt$(adsVal)+" claimed"]],
+   acts:[["w","Because of the $155/week expert cost, tracked ROAS must beat "+be.toFixed(1)+"x just to break even — not the usual 1.5x."],
+         roasAll<be?["b","Current ROAS "+roasAll.toFixed(1)+"x is below that. Either offline revenue (calls/visits) carries the profit, or spend should come down."]:null],
+   how:"Score = ROAS ÷ 3.0 target (capped at 100). Target is a default — tell me yours."});
+
+  /* 5. ATTRIBUTION */
+  function attrGrid(){
+    const months={};
+    ORD.forEach(o=>{const mk=o.d.slice(0,7);(months[mk]=months[mk]||[]).push(o)});
+    const mondayOf=d=>{const [y,m,dd]=d.split("-").map(Number);const dt=new Date(Date.UTC(y,m-1,dd));const wd=(dt.getUTCDay()+6)%7;dt.setUTCDate(dt.getUTCDate()-wd);return dt};
+    const iso=dt=>dt.toISOString().slice(0,10);
+    const lab=dt=>dt.toLocaleDateString("en-AU",{day:"numeric",month:"short",timeZone:"UTC"});
+    const dlab=d=>{const [y,m,dd]=d.split("-").map(Number);return new Date(Date.UTC(y,m-1,dd)).toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short",timeZone:"UTC"})};
+    const mlab=mk=>{const [y,m]=mk.split("-").map(Number);return new Date(Date.UTC(y,m-1,1)).toLocaleDateString("en-AU",{month:"long",year:"numeric",timeZone:"UTC"})};
+    const sumRow=(os)=>{const g=os.filter(o=>eff(o)==="Google"),f=os.filter(o=>eff(o)==="Facebook"),og=os.filter(o=>eff(o)==="Organic");const s=x=>x.reduce((a,o)=>a+o.a,0);
+      return{g:s(g),f:s(f),o:s(og),n:os.length,rv:os.filter(needsReview).length}};
+    const cellsHtml=r=>`<td class="gcol cell">${r.g?fmt$(r.g):""}</td><td class="fcol cell">${r.f?fmt$(r.f):""}</td><td class="ocol cell">${r.o?fmt$(r.o):""}</td><td>${r.n}${r.rv?`<span class="chip2 rev">${r.rv} review</span>`:""}</td>`;
+    const mkeys=Object.keys(months).sort().reverse();let rows="";
+    mkeys.forEach((mk,mi)=>{const os=months[mk];const k="m"+mk;const open=mi===0;
+      rows+=`<tr class="l0 tg2 ${open?"open":""}" data-k="${k}"><td><span class="cv2">▸</span>${mlab(mk)}</td>${cellsHtml(sumRow(os))}</tr>`;
+      const wk={};os.forEach(o=>{const m=iso(mondayOf(o.d));(wk[m]=wk[m]||[]).push(o)});
+      Object.keys(wk).sort().reverse().forEach((w,wi)=>{const wos=wk[w];const wk_=k+"w"+w;const start=mondayOf(w);const end=new Date(start);end.setUTCDate(end.getUTCDate()+6);
+        const wopen=open&&wi===0;
+        rows+=`<tr class="l1 tg2 kid ${wopen?"open":""}" data-p="${k}" data-k="${wk_}" ${open?"":"hidden"}><td><span class="cv2">▸</span>Week · Mon ${lab(start)} – Sun ${lab(end)}</td>${cellsHtml(sumRow(wos))}</tr>`;
+        const dy={};wos.forEach(o=>{(dy[o.d]=dy[o.d]||[]).push(o)});
+        Object.keys(dy).sort().reverse().forEach(d=>{const dos=dy[d];const dk=wk_+"d"+d;
+          rows+=`<tr class="l2 tg2 kid" data-p="${wk_}" data-k="${dk}" ${wopen?"":"hidden"}><td><span class="cv2">▸</span>${dlab(d)}</td>${cellsHtml(sumRow(dos))}</tr>`;
+          dos.sort((a,b)=>a.t<b.t?1:-1).forEach(o=>{const e=eff(o);const cc=gCode(o);
+            let detail="";
+            if(e==="Google")detail=cc?CAMP[cc].name:(o.jb==="Google"?"Google paid":"Google (tag only)");
+            else if(e==="Facebook")detail=(o.um&&o.um!=="paid"?o.um.replace(/^Tracked \| MM Sales \| /,"").split(" | ")[0]:"")+(o.uc?" → "+o.uc.split(" | ").slice(0,-1).join(" | "):"");
+            else detail=o.js==="-"?META_NAME[o.m]:(o.js+(o.us==="google"&&o.um==="product_sync"?" · free listings":""));
+            const chip=confirmed(o)?`<span class="chip2 ok">confirmed ✓</span>`:o.st==="match"?`<span class="chip2 ok">auto-matched</span>`:o.st==="tag"?`<span class="chip2 tag">source field</span>`:`<span class="chip2 rev">review</span>`;
+            const why=confirmed(o)?"":o.st==="review"?`<small>Order Source field says <b>${bMeta(o.m)}</b> (${esc(META_NAME[o.m])}); customer journey says <b>${o.jb}</b> (${esc(o.js)}${o.um?" · "+esc(o.um.slice(0,40)):""}).</small>`:o.st==="tag"?`<small>No customer-journey data; using the Order Source field "${esc(META_NAME[o.m])}".</small>`:"";
+            const btns=needsReview(o)?`<div class="cf">${["Google","Facebook","Organic"].map(b=>`<button data-o="${o.n}" data-b="${b}">${b}</button>`).join("")}</div>`:(confirmed(o)?`<div class="cf"><button data-o="${o.n}" data-b="">undo</button></div>`:"");
+            const cell=b=>e===b?`<td class="${b[0].toLowerCase()}col cell">${fmt$(o.a)}</td>`:`<td></td>`;
+            rows+=`<tr class="l3 ord kid" data-p="${dk}" ${wopen&&false?"":"hidden"}><td><b><a class="olink" target="_blank" rel="noopener" href="${D.ids[o.n]?SHOP+D.ids[o.n]:'https://admin.shopify.com/store/bvdxj3-r8/orders?query='+o.n}">#${o.n} ↗</a></b> · ${o.time}${chip}<small>${esc(detail)}</small>${why}${btns}</td>${cell("Google")}${cell("Facebook")}${cell("Organic")}<td></td></tr>`})})})});
+    const all=sumRow(ORD);
+    const head=`<tr><th>Month → week (Mon–Sun) → day → order</th><th class="c-g">Google</th><th class="c-f">Facebook</th><th class="c-o">Organic</th><th>Orders</th></tr>`;
+    const foot=`<tr class="l0"><td>All 30 days (online orders)</td>${cellsHtml(all)}</tr>`;
+    return `<div class="bar2"><div class="note" style="flex:1">Online orders only (offline orders are left out). Each order lands in the column set by its Order Source field (custom.order_source). "Review" rows are where Shopify's customer journey disagrees with that field — leave them, or pick the right column and totals, profit and campaign tables update.</div><div class="seg2" id="revf"><button data-f="all" class="on">All orders</button><button data-f="review">Needs review (${rv})</button></div></div><div class="tbl" style="max-height:620px;overflow:auto"><table id="agrid"><thead>${head}</thead><tbody>${foot}${rows}</tbody></table></div>`}
+  T.push({id:"attr",step:1,prio:5,w:10,t:"Order Attribution",s:attrScore,k:rv+" to review",kl:tot+" online orders · "+pct(mt/tot)+" matched",src:"Shopify tag + customer journey",
+   trend:null,att:rv?["w",rv+" need confirming"]:["g","All confirmed"],
+   stats:[["Google",fmt$(revB("Google")),byB("Google").length+" orders"],["Facebook",fmt$(revB("Facebook")),byB("Facebook").length+" orders"],["Organic",fmt$(revB("Organic")),byB("Organic").length+" orders"],["Needs review",rv,"tag ≠ journey"]],
+   bars:[["Google",revB("Google")/allRev,"--a2"],["Facebook",revB("Facebook")/allRev,"--a3"],["Organic",revB("Organic")/allRev,"--a1"]],
+   html:attrGrid,
+   acts:[rv?["w",rv+" orders need a quick confirm. They are listed in the grid with a one-tap Google / Facebook / Organic choice."]:null,
+         ["","Repeat Customer, Direct order and Referral tags sit under Organic here. Say so if you want a fourth 'other' column."]],
+   how:"Score = share of online orders where the Shopify tag and the customer journey agree (or you confirmed), tag-only orders count half."});
+
+  /* 6. TRACKING HEALTH */
+  const trk=Math.round(clamp(100*Math.min(shopCpc.length,adsConv)/(adsConv||1)-10));
+  T.push({id:"track",step:1,prio:6,w:8,t:"Conversion Tracking Health",s:trk,k:shopCpc.length+" vs "+adsConv.toFixed(0),kl:"Shopify Google-paid orders vs Ads conversions",src:"Ads + GA4 + Shopify",
+   trend:null,att:["bad","Numbers disagree"],
+   stats:[["Google Ads says",adsConv.toFixed(0)+" sales",fmt$(adsVal)],["GA4 (Paid + PMax)",gaP.p+" purchases",fmt$(gaP.rev)],["Shopify (Google ad UTM)",shopCpc.length+" orders",fmt$(shopCpcRev)],["Tagged 'Google Online'",ORD.filter(o=>o.mb==="Google").length+" orders","Shopify tag"]],
+   acts:[["b","Google Ads and GA4 agree ("+adsConv.toFixed(0)+" vs "+gaP.p+") but Shopify's own click data finds only "+shopCpc.length+" orders from a Google ad. About "+(adsConv-shopCpc.length).toFixed(0)+" sales are credited to Google without a Google UTM on the order — check UTM / GCLID pass-through at checkout and review them in the grid."],
+         ["w","Non-tracked PMax counts "+nt.conv.toFixed(0)+" conversions at $1 value each ("+fmt$(nt.val)+" total). Your earlier fix set calls at about $136 and store visits at about $124 — that value is not showing for this campaign. Check the conversion action value."],
+         ["","Ads data feed marks every ad's strength as PENDING, so I can't score ad quality yet."]],
+   how:"Score = Shopify-confirmed Google orders ÷ Google Ads conversions, minus 10 while call/visit conversions have no real value."});
+
+  /* 7. AD GROUPS & ADS (Search only) */
+  const ags=D.adgroups.filter(g=>g.camp==="B");const stale=D.ads_list.filter(a=>/Visarjan|Gandhi/.test(a.text));
+  const agSpend=sum(ags,g=>g.sp),agWaste=sum(ags.filter(g=>g.conv===0&&g.sp>=8),g=>g.sp);
+  T.push({id:"ag",step:3,prio:7,w:6,t:"Ad Groups & Ads",s:Math.round(clamp(100-100*agWaste/(agSpend||1)*1.5)),k:fmt$(agWaste),kl:"spent on ad groups with 0 conversions",src:"Google Ads (Search)",
+   trend:null,att:agWaste?["w",ags.filter(g=>g.conv===0&&g.sp>=8).length+" to fix"]:["g","OK"],
+   stats:[["Ad groups",ags.length,"Search campaign"],["Brand Keywords",fmt$(ags.find(g=>g.name==="Brand Keywords").sp),ags.find(g=>g.name==="Brand Keywords").conv+" conv · "+fmt$(ags.find(g=>g.name==="Brand Keywords").val)],["Zero-conversion spend",fmt$(agWaste),""],["Ads with expired festival copy",stale.length,"Visarjan / Gandhi"]],
+   html:()=>`<div class="tbl"><table><thead><tr><th>Ad group</th><th>Spend</th><th>Clicks</th><th>CTR</th><th>CPC</th><th>Conv</th><th>Value</th><th>ROAS</th></tr></thead><tbody>${ags.sort((a,b)=>b.sp-a.sp).map((g,i)=>`<tr><td><span class="rk">${i+1}</span>${esc(g.name)}</td><td>${fmt$(g.sp,2)}</td><td>${g.clk}</td><td>${pct(g.clk/g.imp,1)}</td><td>${fmt$(g.sp/(g.clk||1),2)}</td><td>${g.conv}</td><td>${fmt$(g.val)}</td><td>${(g.val/g.sp).toFixed(1)}x</td></tr>`).join("")}</tbody></table></div>`,
+   acts:[...ags.filter(g=>g.conv===0&&g.sp>=8).map(g=>["b","Pause or rework “"+g.name+"”: "+fmt$(g.sp)+" for "+g.clk+" clicks and no sale."]),
+         ["w","Diwali is about 8 Nov. Build the Diwali ad group and its copy now so it is approved before the rush."],
+         ["","Brand Keywords earns "+(ags.find(g=>g.name==="Brand Keywords").val/ags.find(g=>g.name==="Brand Keywords").sp).toFixed(1)+"x, but organic already ranks #1 for your name — see Brand vs Non-brand."]],
+   how:"Score drops with the share of ad-group spend that produced no conversion."});
+
+  /* 8. IMPRESSION SHARE */
+  function impW(c,k){const rows=ADSROWS.filter(r=>r.c===c&&r.d>=DATES[DATES.length-7]);const w=rows.reduce((s,r)=>s+r.imp,0);return w?rows.reduce((s,r)=>s+r[k]*r.imp,0)/w:0}
+  window.impW=impW;
+  const bEarly=ADSROWS.filter(r=>r.c==="B"&&r.d<="2026-09-22"),bLate=ADSROWS.filter(r=>r.c==="B"&&r.d>=DATES[DATES.length-7]);
+  const avgIS=a=>{const w=a.reduce((s,r)=>s+r.imp,0);return w?a.reduce((s,r)=>s+r.is*r.imp,0)/w:0};
+  const isE=bEarly.reduce((s,r)=>s+r.is,0)/(bEarly.length||1),isL=impW("B","is");
+  T.push({id:"is",step:3,prio:8,w:6,t:"Impression Share",s:Math.round(clamp(isL/0.6*100)),k:pct(isL,0),kl:"Search impression share · last 7 days",src:"Google Ads",
+   trend:DATES.map(d=>{const r=ADSROWS.find(x=>x.d===d&&x.c==="B");return r?r.is:0}),att:isL<0.3?["bad","IS collapsed"]:["g","OK"],
+   stats:[["Sales Search, 16–22 Sep",pct(isE,0),"average"],["Sales Search, last 7d",pct(isL,0),""],["Lost to rank",pct(impW("B","lr"),0),"last 7d"],["Lost to budget",pct(impW("B","lb"),0),"last 7d"]],
+   html:()=>`<div class="tbl"><table><thead><tr><th>Campaign (last 7 days)</th><th>Impression share</th><th>Lost to budget</th><th>Lost to rank</th></tr></thead><tbody>${[...TRACKED,"D"].map(c=>`<tr><td>${esc(CAMP[c].name)}</td><td>${pct(impW(c,"is"),0)}</td><td>${pct(impW(c,"lb"),0)}</td><td>${pct(impW(c,"lr"),0)}</td></tr>`).join("")}</tbody></table></div><p class="foot" style="margin-top:8px">Google shows “below 10%” as 10%, so the real numbers can be lower.</p>`,
+   acts:[["b","Search impression share fell from about "+pct(isE,0)+" (16–22 Sep) to "+pct(isL,0)+" as the campaign grew beyond brand terms. Check share by ad group — generic groups are likely dragging the average."],
+         ["w","Most of what's lost is on rank, not budget: improve ad relevance and bids before adding budget."]],
+   how:"Score = last-7-day Search impression share ÷ 60% target."});
+
+  /* 9. AD-LEVEL VISIBILITY */
+  const pmaxSp=sum(["A","C","E","D"],c=>campAgg(c).sp),allSp=pmaxSp+campAgg("B").sp;
+  T.push({id:"vis",step:3,prio:10,w:5,t:"Ad-level Visibility",s:Math.round(100*campAgg("B").sp/allSp),k:pct(campAgg("B").sp/allSp,0),kl:"of spend visible at ad-group / ad level",src:"Google Ads",
+   trend:null,att:["w","PMax blind spot"],
+   stats:[["Performance Max spend",fmt$(pmaxSp),pct(pmaxSp/allSp,0)+" of spend"],["Search spend",fmt$(campAgg("B").sp),"fully visible"],["Search terms seen","1","brand term only"],["Asset groups seen","0","not in feed"]],
+   acts:[["b",pct(pmaxSp/allSp,0)+" of all Google spend ("+fmt$(pmaxSp)+") goes through Performance Max, and the data feed returns no asset groups, search categories or search terms for it."],
+         ["","Fix: a weekly Google Ads script (or a Chrome-extension capture of the PMax Insights page) saved to Supabase would give asset-group rank and search-category data. Until then judge PMax by Shopify orders."]],
+   how:"Score = share of Google spend that I can see below campaign level."});
+
+  /* 10. KEYWORD GAP */
+  const nb=KW.filter(k=>!BRAND(k.q)&&!COMP(k.q));const nbI=sum(nb,k=>k.i);const top3=sum(nb.filter(k=>k.p<=3),k=>k.i);
+  const gaps=nb.filter(k=>k.p>3).sort((a,b)=>b.i-a.i);
+  T.push({id:"kw",step:4,prio:9,w:8,t:"Keyword Gap",s:Math.round(100*top3/nbI),k:nbI.toLocaleString(),kl:"non-brand impressions · "+pct(top3/nbI,0)+" in top 3",src:"Search Console + Ads",
+   trend:null,att:["w",gaps.length+" gap queries"],
+   stats:[["Non-brand impressions",nbI.toLocaleString(),"queries ≥30 impr."],["In top 3",pct(top3/nbI,0),""],["Paid coverage","brand only","1 search term seen"],["Gap queries",gaps.length,"position 4+"]],
+   html:()=>`<div class="tbl" style="max-height:520px;overflow:auto"><table><thead><tr><th>Search query</th><th>Impr.</th><th>Clicks</th><th>CTR</th><th>Position</th><th>Action</th></tr></thead><tbody>${[...KW].sort((a,b)=>b.i-a.i).slice(0,40).map(k=>{const a=kwAction(k);return `<tr><td>${esc(k.q)}</td><td>${k.i.toLocaleString()}</td><td>${k.c}</td><td>${pct(k.c/k.i,1)}</td><td>${k.p.toFixed(1)}</td><td>${pill(a[0],a[1])}</td></tr>`}).join("")}</tbody></table></div>`,
+   acts:[["b","The Search campaign only bids on brand terms. Non-brand demand — "+gaps.slice(0,4).map(k=>"“"+k.q+"” ("+k.i.toLocaleString()+")").join(", ")+" — is served only by organic at positions 4–10."],
+         ["w","Test a small exact/phrase campaign on the top page-1 queries and rewrite the matching collection titles for CTR."],
+         ["","Research history: next build saves a weekly snapshot of these queries (plus Semrush volume, CPC and competitor ads) so you can see movement over time."]],
+   how:"Score = share of non-brand search impressions where you already rank in the top 3. Uses the last 30 days of Search Console queries with 30+ impressions."});
+
+  /* 11. BRAND MIX */
+  const bClk=sum(KW.filter(k=>BRAND(k.q)),k=>k.c),nClk=sum(nb,k=>k.c);const bAd=D.adgroups.find(g=>g.name==="Brand Keywords");
+  T.push({id:"brand",step:4,prio:13,w:4,t:"Brand vs Non-brand",s:Math.round(clamp(100*nClk/(bClk+nClk)*2)),k:pct(nClk/(bClk+nClk),0),kl:"of organic clicks are non-brand",src:"Search Console + Ads",
+   trend:null,att:["w","Test brand ads"],
+   stats:[["Organic brand clicks",bClk,"rank #1"],["Paid brand clicks",bAd.clk,fmt$(bAd.sp)+" spend"],["Organic non-brand clicks",nClk,""],["Brand ads ROAS",(bAd.val/bAd.sp).toFixed(1)+"x",""]],
+   acts:[["w","You get "+bAd.clk+" paid brand clicks on top of "+bClk+" organic brand clicks at position 1. Pause brand ads for a week and watch total brand orders to see how much is really incremental."]],
+   how:"Score = non-brand share of organic clicks, scaled so 50% = 100."});
+
+  /* 12. FUNNEL */
+  const cr=gaP.p/gaP.s;
+  T.push({id:"funnel",step:5,prio:11,w:7,t:"Funnel Conversion",s:Math.round(clamp(cr/0.02*100)),k:pct(cr,2),kl:"Google paid sessions → purchase",src:"GA4",
+   trend:null,att:["w","Cart → checkout leak"],
+   stats:[["Sessions",gaP.s.toLocaleString(),"site "+site.s.toLocaleString()],["Add to cart",pct(gaP.atc/gaP.s,1),"site "+pct(site.atc/site.s,1)],["Cart → checkout",pct(gaP.co/gaP.atc,0),"site "+pct(site.co/site.atc,0)],["Checkout → buy",pct(gaP.p/gaP.co,0),"site "+pct(site.p/site.co,0)]],
+   html:()=>`<div class="tbl"><table><thead><tr><th>Channel (30d)</th><th>Sessions</th><th>Engaged</th><th>Add to cart</th><th>Checkouts</th><th>Purchases</th><th>Revenue</th><th>Conv. rate</th></tr></thead><tbody>${[...ga].sort((a,b)=>b.s-a.s).map(r=>`<tr><td>${esc(r.ch)}</td><td>${r.s.toLocaleString()}</td><td>${pct(r.e/r.s,0)}</td><td>${r.atc}</td><td>${r.co}</td><td>${r.p}</td><td>${fmt$(r.rev)}</td><td>${pct(r.p/r.s,2)}</td></tr>`).join("")}</tbody></table></div>`,
+   acts:[["w","Only "+pct(gaP.co/gaP.atc,0)+" of Google-paid add-to-carts reach checkout (site-wide "+pct(site.co/site.atc,0)+"). That is the biggest leak — test a shipping-threshold message and a cart reminder."],
+         ["","Google paid (Paid Search + Performance Max) converts at "+pct(cr,2)+" vs site average "+pct(site.p/site.s,2)+"."]],
+   how:"Score = Google-paid purchase conversion rate ÷ 2% target."});
+
+  /* 13. LANDING PAGES */
+  const lp=D.lp;const good=lp.filter(r=>r.atc/r.s>=0.05).reduce((s,r)=>s+r.s,0),lpS=lp.reduce((s,r)=>s+r.s,0);
+  const leaks=lp.filter(r=>r.s>=100&&r.atc/r.s<0.03&&r.path!=="(not set)");
+  T.push({id:"lp",step:5,prio:12,w:5,t:"Landing Pages",s:Math.round(100*good/lpS),k:leaks.length,kl:"busy pages with weak add-to-cart",src:"GA4",
+   trend:null,att:leaks.length?["w",leaks.length+" leaking"]:["g","OK"],
+   stats:[["Top page","/","3,282 sessions"],["Best converter","/collections/kurta-pajama","1,312 sessions · $1,425"],["Untracked sessions","347","(not set) · 2% engaged"],["Pages checked",lp.length,"≥ 60 sessions"]],
+   html:()=>`<div class="tbl" style="max-height:480px;overflow:auto"><table><thead><tr><th>Landing page (all channels, 30d)</th><th>Sessions</th><th>Engaged</th><th>Add to cart</th><th>ATC rate</th><th>Purchases</th><th>Revenue</th></tr></thead><tbody>${lp.map(r=>`<tr><td>${esc(r.path)}</td><td>${r.s.toLocaleString()}</td><td>${pct(r.e/r.s,0)}</td><td>${r.atc}</td><td>${pct(r.atc/r.s,1)}</td><td>${r.p}</td><td>${fmt$(r.rev)}</td></tr>`).join("")}</tbody></table></div>`,
+   acts:[...leaks.slice(0,4).map(r=>["w",r.path+": "+r.s+" sessions, "+r.atc+" add-to-carts ("+pct(r.atc/r.s,1)+"). Send ad traffic elsewhere or fix the page."]),
+         ["b","347 sessions land on “(not set)” with 2% engagement — likely bot or tracking noise inflating traffic."]],
+   how:"Score = share of landing-page sessions on pages with 5%+ add-to-cart."});
+
+  /* 14. GBP */
+  const gm=D.gmb;
+  T.push({id:"gbp",step:6,prio:15,w:5,t:"Google Business Profile",s:null,k:(gm[0].calls+gm[1].calls),kl:"call clicks · 30 days",src:"Business Profile",
+   trend:null,att:["w","Sydney: 0 calls"],
+   stats:[["Melbourne calls",gm[0].calls,gm[0].dir+" directions"],["Sydney calls",gm[1].calls,gm[1].dir+" directions"],["Website clicks",gm[0].web+gm[1].web,"both profiles"],["Direction requests",gm[0].dir+gm[1].dir,"store visits"]],
+   acts:[["w","Sydney shows 0 call clicks but "+gm[1].dir+" direction requests. Check the phone number and opening hours on the Sydney profile."],["","No target is set yet, so this tile has no score. Tell me a monthly call and direction target."]],
+   how:"Needs targets before it can be scored."});
+
+  /* 15. NON-TRACKED */
+  T.push({id:"nt",step:6,prio:14,w:6,t:"Non-tracked Google (calls & visits)",s:null,k:fmt$(nt.sp),kl:"spend · "+nt.conv.toFixed(0)+" calls/visits counted",src:"Google Ads",
+   trend:days.slice(-14).map(d=>adsDay(d.d,["D"]).s),att:["w","Value is $1 each"],
+   stats:[["Spend",fmt$(nt.sp),fmt$(nt.sp/n,0)+"/day"],["Conversions",nt.conv.toFixed(0),"calls + visits"],["Cost per conversion",fmt$(nt.sp/nt.conv,2),"looks too low"],["Reported value",fmt$(nt.val),"$1 per conversion"]],
+   acts:[["b","This campaign reports "+nt.conv.toFixed(0)+" conversions worth "+fmt$(nt.val)+" — $1 each. Real value per call/visit is in the $120–$140 range, so ROAS can't be judged yet."],["w","Match these to the POS orders tagged Google CALLS / Direction to get real revenue per call and per visit."]],
+   how:"No score until conversion value is reliable."});
+
+  /* 16-17 */
+  T.push({id:"call",step:6,prio:16,w:4,t:"Call Tracking Match",s:null,k:"–",kl:"calls matched to a source",src:"Nimbata (not connected)",trend:null,att:["n","Needs data"],stats:[],
+   acts:[["w","Nimbata isn't in the Windsor connections yet. Once its daily numbers land in Supabase, this tile scores how many calls have a known source."]],how:"Needs the Nimbata feed."});
+  T.push({id:"feed",step:7,prio:17,w:4,t:"Shopping Feed Coverage",s:null,k:"–",kl:"products serving in Shopping",src:"Merchant Center (not pulled)",trend:null,att:["n","Needs data"],stats:[],
+   acts:[["w","Earlier audit found about 94–95% of products excluded from feed campaigns. I haven't re-pulled Merchant Center in this draft — it's the next connection to wire."]],how:"Needs Merchant Center data."});
+
+  T.forEach(t=>{t.acts=(t.acts||[]).filter(Boolean)});
+
+  /* ---- grouped inner tiles ---- */
+  const wrapT=(id,fn)=>{const t=T.find(x=>x.id===id);if(!t)return;const old=t.html;t.html=()=>fn(old?old():"")};
+  wrapT("camp",old=>IT("Campaign → ad group → ad","ranked, with health, spend, CTR, ROAS and profit",old,true)
+    +IT("Period view &amp; change vs previous","7 / 15 / 30 days, % change against the period before",periodIT(),false)
+    +IT("Status &amp; daily budget","is each campaign live, and is it spending to its budget",(()=>{const l7=DATES.slice(-7);return `<div class="tbl"><table><thead><tr><th>Campaign</th><th>Status</th><th>Type</th><th>Daily budget</th><th>Avg spend / day (7d)</th><th>vs budget</th></tr></thead><tbody>${[...TRACKED,"D"].map(c=>{const st=D.cstat[c];const avg=l7.reduce((s,d)=>s+adsDay(d,[c]).s,0)/7;const r=avg/st[1];return `<tr><td>${esc(CAMP[c].name)}</td><td>${pill(st[0].toLowerCase(),"good")}</td><td>${CAMP[c].type}</td><td>${fmt$(st[1],0)}</td><td>${fmt$(avg)}</td><td>${r>1.15?pill(Math.round(r*100)+"% — over","warn"):pill(Math.round(r*100)+"%","good")}</td></tr>`}).join("")}</tbody></table></div><p class="note">Performance Max may spend up to 2× its daily budget on a day, so only a sustained average over 100% is a flag.</p>`})(),false));
+  wrapT("track",old=>IT("Shopify vs Google Ads, day by day","Google's counted sales against Shopify orders with a Google ad click",(()=>{const rows=[...DATES].reverse().map(d=>{const a=adsDay(d,TRACKED);const cv=ADSROWS.filter(r=>r.d===d&&TRACKED.includes(r.c)).reduce((s,r)=>s+r.conv,0);const os=ORD.filter(o=>o.d===d&&eff(o)==="Google");const sv=os.reduce((s,o)=>s+o.a,0);const gap=cv-os.length;return `<tr><td>${d.slice(5)}</td><td>${cv.toFixed(0)}</td><td>${fmt$(a.v)}</td><td>${os.length}</td><td>${fmt$(sv)}</td><td>${gap>=2?pill("Google +"+gap.toFixed(0),"bad"):gap<=-1?pill("Shopify +"+(-gap).toFixed(0),"warn"):pill("close","good")}</td></tr>`}).join("");return `<div class="tbl" style="max-height:360px;overflow:auto"><table><thead><tr><th>Day</th><th>Ads conversions</th><th>Ads value</th><th>Shopify Google orders</th><th>Shopify $</th><th>Gap</th></tr></thead><tbody>${rows}</tbody></table></div><p class="note">Google does not say which order a conversion was, and it counts on the click day while Shopify counts on the order day, so match by day, not by order. Persistent "Google +" gaps point to missing UTM/GCLID on orders.</p>`})(),true)
+    +IT("Conversion actions","what each Google conversion is worth — a $1 value means it is not set up properly",`<div class="tbl"><table><thead><tr><th>Campaign</th><th>Conversion action</th><th>Conversions</th><th>Value</th><th>Value each</th></tr></thead><tbody>${D.cact.map(r=>{const each=r[2]?r[3]/r[2]:0;return `<tr><td>${esc(CAMP[r[0]].name.split("_Campaign")[0].slice(0,46))}</td><td>${esc(r[1])}</td><td>${r[2]}</td><td>${fmt$(r[3])}</td><td>${each<=1.01?pill(fmt$(each,2)+" — fix","bad"):pill(fmt$(each,0),"good")}</td></tr>`}).join("")}</tbody></table></div><p class="note">Calls and direction requests count at $1 each, so the non-tracked campaign shows ROAS ≈ 1. Setting them near $136 / $124 (your earlier values) would show its real worth.</p>`,false));
+  wrapT("kw",old=>IT("Organic queries — Search Console","what people search and where you rank",old,true)
+    +IT("Paid search terms","what people typed before clicking your ads (last 30 days)",`<div class="tbl" style="max-height:420px;overflow:auto"><table><thead><tr><th>Search term</th><th>Ad group</th><th>Spend</th><th>Clicks</th><th>Conv</th><th>Value</th><th>Action</th></tr></thead><tbody>${D.stq.map(r=>{const b=BRAND(r.t);const bad=/kids|boys|brisbane|photos|size chart|tdo|sale|cheap/.test(r.t);const a=r.cv>0?["Winning","good"]:b?["Brand","none"]:bad?["Add negative","bad"]:r.sp>=1?["Review","warn"]:["Low spend","none"];return `<tr><td>${esc(r.t)}</td><td>${esc(r.g)}</td><td>${fmt$(r.sp)}</td><td>${r.clk}</td><td>${r.cv}</td><td>${fmt$(r.val)}</td><td>${pill(a[0],a[1])}</td></tr>`}).join("")}</tbody></table></div><p class="note">Search terms exist only for the Search campaign. Performance Max does not report them through the data feed.</p>`,false)
+    +IT("Paid keywords &amp; match type","the keywords you bid on",`<div class="tbl" style="max-height:420px;overflow:auto"><table><thead><tr><th>Keyword</th><th>Match</th><th>Ad group</th><th>Spend</th><th>Impr.</th><th>Clicks</th><th>Conv</th><th>Value</th></tr></thead><tbody>${[...D.kws].sort((a,b)=>b[3]-a[3]).map(r=>`<tr><td>${esc(r[1])}</td><td>${r[2].toLowerCase()}</td><td>${esc(r[0])}</td><td>${fmt$(r[3])}</td><td>${r[4]}</td><td>${r[5]}</td><td>${r[6]}</td><td>${fmt$(r[7])}</td></tr>`).join("")}</tbody></table></div><p class="note">Broad-match generic keywords spent about ${fmt$(D.kws.filter(r=>r[2]==="BROAD"&&r[6]===0).reduce((s,r)=>s+r[3],0))} with no conversion in 30 days.</p>`,false));
+  TILES=T;
+}
+
+/* ---------- render ---------- */
+let sortMode="prio",openId=null,openProfitPer=30;
+function overall(){const sc_=TILES.filter(t=>t.s!=null);return Math.round(sc_.reduce((a,t)=>a+t.s*t.w,0)/sc_.reduce((a,t)=>a+t.w,0))}
+function renderHero(){renderPeriods();const o=overall(),sc_=TILES.filter(t=>t.s!=null);
+ const g=sc_.filter(t=>t.s>=75).length,w=sc_.filter(t=>t.s>=50&&t.s<75).length,b=sc_.filter(t=>t.s<50).length,nd=TILES.length-sc_.length;
+ $("#hero").innerHTML=`<div class="big" style="color:${col(o)}">${ring(o,132,12,"var(--line)")}<div class="v num" style="color:var(--fg)">${o}</div></div>
+ <div class="t"><h1>Google Tracked Scorecard</h1><p>Overall score out of 100 across ${sc_.length} scored areas (${nd} more waiting on data). Ordered by priority or by process.</p>
+ <div class="chips"><span class="chip"><i class="dot good"></i>${g} healthy</span><span class="chip"><i class="dot warn"></i>${w} watch</span><span class="chip"><i class="dot bad"></i>${b} fix</span><span class="chip"><i class="dot"></i>${nd} no data yet</span></div></div>`;
+ $("#refr").textContent="Last refreshed: "+D.meta.refreshed+" · Next refresh: "+D.meta.next;$("#banner").textContent="Data window: "+D.meta.period+" (Google Ads and Shopify). "+D.meta.note;
+}
+function renderProfit(){
+ const all=profitDays();const d=all.slice(-openProfitPer);let cum=0;const c=d.map(x=>cum+=x.profit);
+ const colw=44,W=Math.max(640,d.length*colw+60),pl=46,iw=W-pl-12;const bw=iw/d.length;
+ const lab=ds=>{const [y,m,dd]=ds.split("-").map(Number);return dd+" "+new Date(Date.UTC(y,m-1,dd)).toLocaleDateString("en-AU",{month:"short",timeZone:"UTC"})};
+ const f=v=>(v<0?"−":"")+"$"+Math.abs(Math.round(v));
+ /* cumulative */
+ const H1=210,pt=26,pb=26,ih=H1-pt-pb;const mx=Math.max(...c,0),mn=Math.min(...c,0),y1=v=>pt+ih-((v-mn)/((mx-mn)||1))*ih;
+ let s1=`<svg width="${W}" height="${H1}" viewBox="0 0 ${W} ${H1}" role="img" aria-label="Cumulative profit by day">`;
+ for(let i=0;i<=3;i++){const v=mn+(mx-mn)*i/3,yy=y1(v);s1+=`<line x1="${pl}" x2="${W-8}" y1="${yy}" y2="${yy}" stroke="var(--tile-track)" stroke-width=".6"/><text x="${pl-6}" y="${yy+4}" text-anchor="end" font-size="10" fill="var(--tile-muted)">${f(v)}</text>`}
+ s1+=`<line x1="${pl}" x2="${W-8}" y1="${y1(0)}" y2="${y1(0)}" stroke="var(--tile-muted)" stroke-width="1" stroke-dasharray="3 3"/>`;
+ s1+=`<polyline fill="none" stroke="var(--a2)" stroke-width="2.4" points="${c.map((v,i)=>`${pl+i*bw+bw/2},${y1(v)}`).join(" ")}"/>`;
+ c.forEach((v,i)=>{const x=pl+i*bw+bw/2;s1+=`<circle cx="${x}" cy="${y1(v)}" r="3" fill="var(--a2)"/><text x="${x}" y="${y1(v)-8}" text-anchor="middle" font-size="9.5" fill="${v<0?"var(--bad)":"var(--tile-fg)"}" font-weight="600">${f(v)}</text><text x="${x}" y="${H1-8}" text-anchor="middle" font-size="9" fill="var(--tile-muted)">${lab(d[i].d)}</text>`});
+ s1+="</svg>";
+ /* daily */
+ const H2=210,dm=Math.max(...d.map(x=>x.profit),1),dn=Math.min(...d.map(x=>x.profit),0),y2=v=>pt+ih-((v-dn)/((dm-dn)||1))*ih;
+ let s2=`<svg width="${W}" height="${H2}" viewBox="0 0 ${W} ${H2}" role="img" aria-label="Daily profit">`;
+ for(let i=0;i<=3;i++){const v=dn+(dm-dn)*i/3,yy=y2(v);s2+=`<line x1="${pl}" x2="${W-8}" y1="${yy}" y2="${yy}" stroke="var(--tile-track)" stroke-width=".6"/><text x="${pl-6}" y="${yy+4}" text-anchor="end" font-size="10" fill="var(--tile-muted)">${f(v)}</text>`}
+ d.forEach((x,i)=>{const bx=pl+i*bw+bw*.18,h=Math.abs(y2(x.profit)-y2(0));const top=Math.min(y2(x.profit),y2(0));const cl=x.profit<0?"var(--bad)":x.profit<10?"var(--warn)":"var(--good)";
+  s2+=`<rect x="${bx}" y="${top}" width="${bw*.64}" height="${Math.max(h,1)}" rx="3" fill="${cl}"/><text x="${bx+bw*.32}" y="${x.profit<0?top+h+11:top-4}" text-anchor="middle" font-size="9.5" fill="var(--tile-fg)" font-weight="600">${f(x.profit)}</text><text x="${bx+bw*.32}" y="${H2-8}" text-anchor="middle" font-size="9" fill="var(--tile-muted)">${lab(x.d)}</text>`});
+ s2+=`<line x1="${pl}" x2="${W-8}" y1="${y2(0)}" y2="${y2(0)}" stroke="var(--tile-muted)" stroke-width="1"/></svg>`;
+ const tot=c[c.length-1],sp=d.reduce((a,x)=>a+x.spend,0),rv=d.reduce((a,x)=>a+x.rev,0),neg=d.filter(x=>x.profit<0).length;
+ const tbl=`<div class="tbl"><table><thead><tr><th>Date</th><th>Ad spend</th><th>Revenue (${BASIS==="shopify"?"Shopify":"Ads"})</th><th>After GST &amp; cost</th><th>Expert</th><th>Profit</th><th>Cumulative</th></tr></thead><tbody>${d.map((x,i)=>`<tr><td>${lab(x.d)}</td><td>${fmt$(x.spend,2)}</td><td>${fmt$(x.rev)}</td><td>${fmt$(x.net,2)}</td><td>${fmt$(x.fixed,2)}</td><td style="color:${x.profit<0?"var(--bad-ink)":"var(--good-ink)"}">${fmt$(x.profit,2)}</td><td>${fmt$(c[i],2)}</td></tr>`).join("")}</tbody></table></div>`;
+ $("#profit").innerHTML=`<div class="ph"><h3>Profit after ads, GST, product cost and expert fee</h3><div class="seg">${[7,10,30].map(p=>`<button data-p="${p}" class="${p===openProfitPer?"on":""}">${p} days</button>`).join("")}</div></div>
+ <div class="seg" style="gap:6px"><button data-b="shopify" class="${BASIS==="shopify"?"on":""}">Revenue: Shopify-confirmed</button><button data-b="ads" class="${BASIS==="ads"?"on":""}">Revenue: Google Ads reported</button></div>
+ <div class="pstats"><div class="sx"><div class="l">Cumulative profit</div><div class="v num" style="color:${tot<0?"var(--bad)":"inherit"}">${fmt$(tot)}</div><div class="p">last ${d.length} days</div></div>
+ <div class="sx"><div class="l">Ad spend (tracked)</div><div class="v num">${fmt$(sp)}</div><div class="p">${fmt$(sp/d.length)}/day</div></div>
+ <div class="sx"><div class="l">Revenue</div><div class="v num">${fmt$(rv)}</div><div class="p">${BASIS==="shopify"?"online orders from Google":"Google Ads conv. value"}</div></div>
+ <div class="sx"><div class="l">Loss days</div><div class="v num">${neg}</div><div class="p">of ${d.length}</div></div></div>
+ <div class="cap">Cumulative profit — every day labelled</div><div class="chartx">${s1}</div>
+ <div class="cap">Profit per day</div><div class="chartx">${s2}</div>
+ <div class="legend"><span><i style="background:var(--good)"></i>Profit day</span><span><i style="background:var(--warn)"></i>Thin day</span><span><i style="background:var(--bad)"></i>Loss day</span><span><i style="background:var(--a2)"></i>Cumulative</span></div>
+ <div class="note" style="background:rgba(255,255,255,.07);color:var(--tile-muted)">Tracked campaigns only. Calls and store visits from Google (about 70% of revenue) are not included yet, so real profit is higher than this. Non-tracked PMax spend is excluded. Profit days run to 15 Oct (last full Google Ads day); orders from 16 Oct show in the attribution grid only.</div>
+ <details class="dd"><summary>Daily table</summary><div style="margin-top:8px">${tbl}</div></details>`;
+ document.querySelectorAll("#profit .chartx").forEach(c=>{c.scrollLeft=c.scrollWidth});
+ document.querySelectorAll("#profit .seg:first-of-type button").forEach(b=>b.onclick=()=>{openProfitPer=+b.dataset.p;renderProfit()});
+ document.querySelectorAll("#profit button[data-b]").forEach(b=>b.onclick=()=>{BASIS=b.dataset.b;refresh()});
+}
+function tileHTML(t,i){
+ const nullr=t.s==null;
+ return `<button class="tile" data-id="${t.id}" aria-expanded="false">
+ <div class="tp"><div><div class="rk">#${t.prio} priority</div><h3>${esc(t.t)}</h3></div><div class="ring ${nullr?"null":""}">${ring(t.s,62,7,"var(--tile-track)")}<div class="v num">${nullr?"–":t.s}</div></div></div>
+ <div class="key num">${esc(String(t.k))}</div><div class="kl">${esc(t.kl)}</div>
+ ${t.att?`<span class="att ${t.att[0]}">${esc(t.att[1])}</span>`:""}
+ <div class="viz">${t.trend?spark(t.trend,col(t.s)):""}</div><span class="src">${esc(t.src)}</span><span class="opn"><span class="o1">View details</span><span class="o2">Hide details</span><span class="cv">▾</span></span></button>`}
+const GRP_OPEN={};
+function groupHTML(id,num,title,sub,ts){const sc2=ts.filter(t=>t.s!=null);const av=sc2.length?Math.round(sc2.reduce((a,t)=>a+t.s,0)/sc2.length):null;const open=GRP_OPEN[id]!==false;
+ return `<div class="stepd ${open?"":"shut"}" data-g="${id}"><button class="gh" aria-expanded="${open}"><i>${num}</i><b>${title}</b><span>${sub}</span><em>${ts.length} tile${ts.length>1?"s":""}${av!=null?" · avg "+av:""}</em></button><div class="gb"><div class="gbi"><div class="sgrid">${ts.map(tileHTML).join("")}</div></div></div></div>`}
+const TIERS=[["Do first","Money and trust: fix these before anything else",1,4],["Do next","Find where the waste is and what to change",5,8],["Then","Demand, funnel and brand checks",9,12],["Later","Offline cover, plus tiles that need a feed or a target",13,99]];
+function renderGrid(){
+ let list=[...TILES];let html="";
+ if(sortMode==="prio"){list.sort((a,b)=>a.prio-b.prio);
+  TIERS.forEach((tr,i)=>{const ts=list.filter(t=>t.prio>=tr[2]&&t.prio<=tr[3]);if(ts.length)html+=groupHTML("p"+i,"P"+(i+1),tr[0],tr[1]+" · priorities "+ts[0].prio+"–"+ts[ts.length-1].prio,ts)})}
+ else{list.sort((a,b)=>a.step-b.step||a.prio-b.prio);const g={};list.forEach(t=>(g[t.step]=g[t.step]||[]).push(t));
+  Object.keys(g).sort((a,b)=>a-b).forEach(n=>{html+=groupHTML("s"+n,n,STEPS[n][0],STEPS[n][1],g[n])})}
+ $("#grid").style.display="block";
+ $("#grid").innerHTML=html;
+ document.querySelectorAll(".tile").forEach(t=>t.onclick=()=>openTile(t.dataset.id));
+ document.querySelectorAll(".stepd .gh").forEach(b=>b.onclick=()=>{const g=b.parentElement;const shut=g.classList.toggle("shut");b.setAttribute("aria-expanded",String(!shut));GRP_OPEN[g.dataset.g]=!shut;if(shut&&g.querySelector(".xp")){document.querySelectorAll(".xp").forEach(x=>x.remove());openId=null}});
+ $("#foot").textContent="Scores: 75+ healthy, 50–74 watch, under 50 fix. Overall = weighted average of scored tiles (money and attribution weigh most). Tiles marked – wait on data or a target. Revenue basis switch is above the profit chart.";
+}
+function bindTables(root){
+ root.querySelectorAll(".tg2").forEach(tr=>tr.onclick=e=>{if(e.target.closest("button"))return;const k=tr.dataset.k;const open=!tr.classList.contains("open");tr.classList.toggle("open",open);
+   const hide=(key)=>{root.querySelectorAll(`[data-p="${key}"]`).forEach(c=>{c.hidden=true;if(c.dataset.k){c.classList.remove("open");hide(c.dataset.k)}})};
+   if(open)root.querySelectorAll(`[data-p="${k}"]`).forEach(c=>c.hidden=false);else hide(k)});
+ /* initial open state */
+ root.querySelectorAll(".tg2.open").forEach(tr=>root.querySelectorAll(`[data-p="${tr.dataset.k}"]`).forEach(c=>{c.hidden=false}));
+ root.querySelectorAll(".cf button").forEach(b=>b.onclick=e=>{e.stopPropagation();if(b.dataset.b)OV[b.dataset.o]=b.dataset.b;else delete OV[b.dataset.o];saveOV();refresh(true)});
+ const pb=root.querySelector("#perbtns");if(pb)pb.querySelectorAll("button").forEach(b=>b.onclick=()=>{pb.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));root.querySelector("#pertbl").innerHTML=perTable(+b.dataset.n)});
+ const rf=root.querySelector("#revf");if(rf)rf.querySelectorAll("button").forEach(b=>b.onclick=()=>{rf.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+   const tb=root.querySelector("#agrid tbody");if(b.dataset.f==="review"){tb.querySelectorAll("tr").forEach(r=>{r.hidden=true});
+     tb.querySelectorAll("tr.ord").forEach(r=>{if(r.querySelector(".chip2.rev")||r.querySelector(".chip2.tag")){r.hidden=false;let p=r.dataset.p;while(p){const par=tb.querySelector(`[data-k="${p}"]`);if(!par)break;par.hidden=false;par.classList.add("open");p=par.dataset.p}}})}
+   else{tb.querySelectorAll("tr").forEach(r=>{r.hidden=!!r.dataset.p});tb.querySelectorAll(".tg2").forEach(r=>r.classList.remove("open"));const first=tb.querySelector(".l0.tg2");if(first){first.classList.add("open");tb.querySelectorAll(`[data-p="${first.dataset.k}"]`).forEach(c=>c.hidden=false)}}})}
+function openTile(id,scroll){
+ document.querySelectorAll(".xp").forEach(x=>x.remove());
+ const tiles=[...document.querySelectorAll(".tile")];tiles.forEach(t=>t.setAttribute("aria-expanded","false"));
+ if(openId===id&&!scroll){openId=null;return}
+ openId=id;const el=tiles.find(t=>t.dataset.id===id);if(!el)return;el.setAttribute("aria-expanded","true");
+ const t=TILES.find(x=>x.id===id);
+ const cols=getComputedStyle($("#grid")).gridTemplateColumns.split(" ").length;
+ /* find last tile in same visual row */
+ const top=el.offsetTop;let end=el;tiles.forEach(x=>{if(Math.abs(x.offsetTop-top)<4)end=x});
+ const xp=document.createElement("div");xp.className="xp";
+ const stats=(t.stats||[]).length?`<div class="stats">${t.stats.map(s=>`<div class="sx"><div class="l">${esc(s[0])}</div><div class="v num">${esc(String(s[1]))}</div><div class="p">${esc(s[2]||"")||"&nbsp;"}</div></div>`).join("")}</div>`:"";
+ const bars=t.bars?`<div class="blk"><h4>Share of revenue</h4>${t.bars.map(b=>`<div class="row"><span class="nm">${esc(b[0])}</span><span class="tr2"><i style="width:${Math.round(b[1]*100)}%;background:var(${b[2]})"></i></span><span class="val">${Math.round(b[1]*100)}%</span></div>`).join("")}</div>`:"";
+ const acts=t.acts.length?`<div class="blk"><h4>${t.s==null?"What's needed":"Do this next"}</h4><ul class="acts">${t.acts.map(a=>`<li class="${a[0]}">${a[1]}</li>`).join("")}</ul></div>`:"";
+ const body=t.html?`<div class="blk"><h4>Detail</h4>${t.html()}</div>`:"";
+ xp.innerHTML=`<div class="inner"><div class="pad">
+  <div class="sh"><div class="ring ${t.s==null?"null":""}" style="color:${col(t.s)}">${ring(t.s,76,8,"var(--line)")}<div class="v num">${t.s==null?"–":t.s}</div></div><h3><small>${esc(STEPS[t.step][0])} · step ${t.step} · priority #${t.prio} · ${esc(t.src)}</small>${esc(t.t)}</h3><button class="x" aria-label="Close">✕</button></div>
+  ${stats}${bars}${acts}${body}<div class="how">${esc(t.how)}</div></div></div>`;
+ end.after(xp);xp.querySelector(".x").onclick=()=>openTile(id);bindTables(xp);
+ requestAnimationFrame(()=>{xp.classList.add("on");if(scroll)setTimeout(()=>xp.scrollIntoView({behavior:"smooth",block:"start"}),60)});
+}
+function refresh(keepOpen){const keep=keepOpen?openId:null;build();renderHero();renderProfit();renderGrid();openId=null;if(keep)openTile(keep)}
+$("#sortseg").querySelectorAll("button").forEach(b=>b.onclick=()=>{sortMode=b.dataset.s;$("#sortseg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));openId=null;renderGrid()});
+function setTheme(t){document.documentElement.dataset.theme=t;try{localStorage.setItem("gts-theme",t)}catch(e){}}
+let th="dark";try{th=localStorage.getItem("gts-theme")||"dark"}catch(e){}
+document.documentElement.dataset.theme=th;
+$("#theme").onclick=()=>setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark");
+refresh();
+</script></body></html>

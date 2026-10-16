@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-16.seo-report.1",
+  "manifest_version": "2026-10-16.google-scorecard.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -112,6 +112,28 @@
       ],
       "supabase_sync": false,
       "schedule_control": "report_schedules"
+    },
+    {
+      "id": "google-scorecard",
+      "title": "Google Scorecard",
+      "workflow": "claude-scheduled-task",
+      "refresh_times": [
+        "on request"
+      ],
+      "required_env": [
+        "GOOGLE_SCORECARD_KEY"
+      ],
+      "builders": [
+        "tools/google_scorecard.py",
+        "tools/google_scorecard_template.html",
+        "tools/google_scorecard_REFRESH.md"
+      ],
+      "outputs": [
+        "r/google-scorecard.bin",
+        "r/google-scorecard.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "none"
     },
     {
       "id": "order-source",
