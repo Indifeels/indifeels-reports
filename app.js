@@ -184,7 +184,7 @@
       sb.from("report_keys").select("report_id,key_b64"),
     ]);
     if (e1 || e2) throw new Error((e1 || e2).message);
-    reports = (reps || []).filter(r=>!r.admin_only || me?.is_admin);
+    reports = (reps || []).filter(r=>(!r.admin_only || me?.is_admin) && r.id!=="report-access"); // Report Access lives in the top-corner menu
     const {data: cats,error: ce} = await sb.from("report_categories").select("*").order("sort");
     if(ce) throw new Error(ce.message);
     if(cats?.length) HOME_GROUPS=cats.map(c=>({id:c.id,name:c.title,color:c.color,ids:reports.filter(r=>r.category_id===c.id).map(r=>r.id)}));
