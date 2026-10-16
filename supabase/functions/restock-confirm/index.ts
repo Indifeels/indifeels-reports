@@ -22,7 +22,7 @@ Deno.serve(async (req: Request) => {
   if (!prof || prof.disabled) return json({ error: "Not allowed" }, 403);
   if (!prof.is_admin) {
     const { data: grant } = await svc.from("user_reports").select("report_id")
-      .eq("user_id", who.user.id).eq("report_id", "restock").maybeSingle();
+      .eq("user_id", who.user.id).eq("report_id", "restock-plan").maybeSingle();
     if (!grant) return json({ error: "Not allowed" }, 403);
   }
 
