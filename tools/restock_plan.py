@@ -138,6 +138,54 @@ def sync_discontinued():
     return len(done)
 
 
+def sync_supplier_tags(prod_lines):
+    """Suppliers who picked an untagged product become its supplier. Push to Shopify custom.supplier_name
+    (copying the existing "id : Name" spelling when known) and overlay on this build. Never raises."""
+    token = os.environ.get("SYNC_READ_TOKEN")
+    if not token:
+        return
+    try:
+        tags = sb_rpc("sync_get_restock_product_tags", {"p_token": token})
+    except Exception as exc:
+        print("supplier tag sync skipped:", str(exc)[:120])
+        return
+    prods = {num(l["id"]): l for l in prod_lines if "/Product/" in l.get("id", "") and "__parentId" not in l}
+    full = {}
+    for l in prods.values():
+        raw = ((l.get("supplier") or {}).get("value") or "").strip()
+        if raw:
+            full.setdefault(re.sub(r"^\s*\d+\s*:\s*", "", raw).strip().lower(), raw)
+    done = []
+    for t in tags:
+        pid = str(t["product_id"])
+        l = prods.get(pid)
+        if not l:
+            continue
+        cur = ((l.get("supplier") or {}).get("value") or "").strip()
+        val = full.get(t["supplier"].strip().lower(), t["supplier"].strip())
+        if cur:
+            if not t["synced"]:
+                done.append(pid)          # somebody tagged it in Shopify meanwhile: Shopify wins
+            continue
+        l["supplier"] = {"value": val}    # show it on this build either way
+        if t["synced"]:
+            continue
+        try:
+            res = pv.gql(SET_META, {"m": [{"ownerId": l["id"], "namespace": "custom", "key": "supplier_name", "type": "single_line_text_field", "value": val}]})["data"]["metafieldsSet"]
+            if res["userErrors"]:
+                print("supplier tag sync: Shopify refused", pid, json.dumps(res["userErrors"])[:160])
+                continue
+            done.append(pid)
+        except Exception as exc:
+            print("supplier tag sync: failed for", pid, str(exc)[:120])
+    if done:
+        try:
+            sb_rpc("sync_mark_restock_product_tags", {"p_token": token, "p_ids": done})
+        except Exception as exc:
+            print("supplier tag sync: could not mark done:", str(exc)[:120])
+    print(f"supplier tag sync: {len(done)} of {len(tags)} tags pushed to Shopify")
+
+
 def require_scopes():
     scopes = {x["handle"] for x in pv.gql(SCOPES, {})["data"]["currentAppInstallation"]["accessScopes"]}
     missing = {"read_products", "read_orders", "read_all_orders"} - scopes
@@ -154,6 +202,7 @@ def build():
     require_scopes()
     sync_discontinued()          # before reading products, so this build already carries the new value
     prod_lines = bulk(PRODUCTS, "products")
+    sync_supplier_tags(prod_lines)
     order_lines = bulk(ORDERS, "orders")
 
     # orders: bulk output is one JSON object per line; line items point at their order by __parentId
