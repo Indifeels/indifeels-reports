@@ -215,6 +215,7 @@ td.gcol{background:color-mix(in srgb,#4DA3FF 12%,transparent)}td.fcol{background
 .olink{color:#7DBBFF;text-decoration:none;border-bottom:1px dashed #7DBBFF}.olink:hover{color:#fff}
 .perf{margin:0 4px 10px;display:flex;gap:8px;flex-wrap:wrap}.perf button{border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.2);color:#F1F3EF;border-radius:99px;padding:5px 13px;font-size:13px;font-weight:600}.perf button.on{background:#F1F3EF;color:#1d2220}
 .cf{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}.cf button{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#F1F3EF;border-radius:99px;padding:4px 12px;font:600 12px Figtree}.cf button:hover:not(:disabled){background:rgba(255,255,255,.2)}.cf button:disabled{opacity:.5}
+.xp.nt,.xp.nt *{transition:none!important}
 .cf .cfl{font:700 12px Figtree;color:#1b201e}
 #agrid .cf{margin-top:8px;padding-top:8px;border-top:1px dashed rgba(0,0,0,.3);gap:8px}
 #agrid .cf button.sb{border:0;border-radius:10px;padding:8px 18px;font:800 13px Figtree;color:#fff;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.45),0 4px 10px rgba(0,0,0,.25);transition:transform .08s,filter .15s}
@@ -264,11 +265,14 @@ let SAVED={};try{SAVED=JSON.parse(localStorage.getItem("gts-saved")||"{}")}catch
 const PEND={};let REQN=0;
 function reopenGrid(keep,sc){keep.forEach(k=>{const r=document.querySelector('#agrid [data-k="'+k+'"]');if(r){r.classList.add("open");document.querySelectorAll('#agrid [data-p="'+k+'"]').forEach(c=>c.hidden=false)}});const t=document.querySelector("#agrid");if(t&&t.parentElement)t.parentElement.scrollTop=sc||0}
 function toast(msg,ok){let t=document.getElementById("gtoast");if(!t){t=document.createElement("div");t.id="gtoast";document.body.appendChild(t)}t.className=ok===true?"ok":ok==="warn"?"warn":"bad";t.innerHTML=(ok===true?"✓ ":"⚠ ")+msg;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("on"),ok?4500:9000)}
-function keepView(n,fn){const wy=window.scrollY,h=document.documentElement.scrollHeight;document.body.style.minHeight=h+"px";const st=gridState();const rv=document.querySelector("#revf button.on");const mode=rv?rv.dataset.f:"all";fn();
+function ordRow(n){const a=[...document.querySelectorAll("#agrid a.olink")].find(x=>x.textContent.indexOf("#"+n+" ")===0);return a?a.closest("tr"):null}
+function keepView(n,fn){const wy=window.scrollY,h=document.documentElement.scrollHeight;document.body.style.minHeight=h+"px";const st=gridState();const rv=document.querySelector("#revf button.on");const mode=rv?rv.dataset.f:"all";
+  const r0=ordRow(n);const top0=r0?r0.getBoundingClientRect().top:null;fn();
   if(mode==="review"){const b=document.querySelector('#revf button[data-f="review"]');if(b)b.click()}else reopenGrid(st.keep,st.sc);
   const t=document.querySelector("#agrid");if(t&&t.parentElement)t.parentElement.scrollTop=st.sc;
-  const a=[...document.querySelectorAll("#agrid a.olink")].find(x=>x.textContent.indexOf("#"+n+" ")===0);if(a){const r=a.closest("tr");if(r){r.classList.add("flash");setTimeout(()=>r.classList.remove("flash"),5000)}}
-  window.scrollTo(0,wy);setTimeout(()=>{window.scrollTo(0,wy);document.body.style.minHeight=""},350)}
+  const fix=()=>{window.scrollTo(0,wy);const r=ordRow(n);if(r&&top0!=null&&r.offsetParent){const d=r.getBoundingClientRect().top-top0;if(Math.abs(d)>2)window.scrollBy(0,d)}};
+  const r1=ordRow(n);if(r1){r1.classList.add("flash");setTimeout(()=>r1.classList.remove("flash"),5000)}
+  fix();setTimeout(()=>{fix();document.body.style.minHeight=""},350)}
 function gridState(){const t=document.querySelector("#agrid");return{keep:[...document.querySelectorAll("#agrid .tg2.open")].map(r=>r.dataset.k),sc:t&&t.parentElement?t.parentElement.scrollTop:0}}
 window.addEventListener("message",ev=>{const d=ev.data||{};if(d.type!=="scorecard-order-source-result")return;const p=PEND[d.req];if(!p)return;delete PEND[d.req];
   if(d.ok){OV[p.n]=p.b;saveOV();SAVED[p.n]=1;try{localStorage.setItem("gts-saved",JSON.stringify(SAVED))}catch(e){}keepView(p.n,()=>refresh(true));toast("Order #"+p.n+" saved to Shopify as "+p.b+". Order Source field updated.",true)}
@@ -515,7 +519,7 @@ function build(){
             else detail=o.js==="-"?META_NAME[o.m]:(o.js+(o.us==="google"&&o.um==="product_sync"?" · free listings":""));
             const chip=confirmed(o)?(SAVED[o.n]?`<span class="chip2 ok">saved to Shopify ✓</span>`:`<span class="chip2 ok">confirmed ✓ · this browser only</span>`):o.st==="match"?`<span class="chip2 ok">auto-matched</span>`:o.st==="tag"?`<span class="chip2 tag">source field</span>`:`<span class="chip2 rev">review</span>`;
             const why=confirmed(o)?"":o.st==="review"?`<small>Order Source field says <b>${bMeta(o.m)}</b> (${esc(META_NAME[o.m])}); customer journey says <b>${o.jb}</b> (${esc(o.js)}${o.um?" · "+esc(o.um.slice(0,40)):""}).</small>`:o.st==="tag"?`<small>No customer-journey data; using the Order Source field "${esc(META_NAME[o.m])}".</small>`:"";
-            const live=IN_HUB&&o.q&&o.q.g;const btns=needsReview(o)?`<div class="cf" data-o="${o.n}"><span class="cfl">Set source:</span>${["Google","Facebook","Organic"].map(b=>`<button class="sb sb-${b[0].toLowerCase()}" data-o="${o.n}" data-b="${b}">${b}</button>`).join("")}<small class="cfh">${live?"saves to the Shopify Order Source field":(IN_HUB?"browser only: older than the hub queue":"browser only")}</small><small class="cfmsg"></small></div>`:(confirmed(o)&&!SAVED[o.n]?`<div class="cf" data-o="${o.n}"><button data-o="${o.n}" data-b="">undo</button><small class="cfmsg"></small></div>`:"");
+            const live=IN_HUB&&D.ids[o.n];const btns=needsReview(o)?`<div class="cf" data-o="${o.n}"><span class="cfl">Set source:</span>${["Google","Facebook","Organic"].map(b=>`<button class="sb sb-${b[0].toLowerCase()}" data-o="${o.n}" data-b="${b}">${b}</button>`).join("")}<small class="cfh">${live?"saves to the Shopify Order Source field":"browser only (open this report in the hub to save to Shopify)"}</small><small class="cfmsg"></small></div>`:(confirmed(o)&&!SAVED[o.n]?`<div class="cf" data-o="${o.n}"><button data-o="${o.n}" data-b="">undo</button><small class="cfmsg"></small></div>`:"");
             const cell=b=>e===b?`<td class="${b[0].toLowerCase()}col cell">${fmt$(o.a)}</td>`:`<td></td>`;
             rows+=`<tr class="l3 ord kid" data-p="${dk}" ${wopen&&false?"":"hidden"}><td><b><a class="olink" target="_blank" rel="noopener" href="${D.ids[o.n]?SHOP+D.ids[o.n]:'https://admin.shopify.com/store/bvdxj3-r8/orders?query='+o.n}">#${o.n} ↗</a></b> · ${o.time}${chip}<small>${esc(detail)}</small>${why}${btns}</td>${cell("Google")}${cell("Facebook")}${cell("Organic")}<td></td></tr>${needsReview(o)?detRow(o,dk):""}`})})})});
     const all=sumRow(ORD);
@@ -733,16 +737,17 @@ function bindTables(root){
  root.querySelectorAll(".cf button").forEach(b=>b.onclick=e=>{e.stopPropagation();const n=b.dataset.o,bk=b.dataset.b;const st=gridState();
    if(!bk){delete OV[n];delete SAVED[n];saveOV();keepView(n,()=>refresh(true));toast("Order #"+n+" is back in review.",true);return}
    const q=QD[n];
-   if(IN_HUB&&q&&q.g){const cf=b.closest(".cf");cf.querySelectorAll("button").forEach(x=>x.disabled=true);cf.classList.add("saving");cf.querySelector(".cfmsg").textContent="Saving to Shopify…";const req=++REQN;PEND[req]={n,b:bk};
-     window.parent.postMessage({type:"scorecard-order-source",req,n,order_id:q.g,bucket:bk},"*");
+   const oid=q&&q.g?q.g:(D.ids[n]?"gid://shopify/Order/"+D.ids[n]:"");const oo=ORD.find(x=>String(x.n)===String(n))||{};
+   if(IN_HUB&&oid){const cf=b.closest(".cf");cf.querySelectorAll("button").forEach(x=>x.disabled=true);cf.classList.add("saving");cf.querySelector(".cfmsg").textContent="Saving to Shopify…";const req=++REQN;PEND[req]={n,b:bk};
+     window.parent.postMessage({type:"scorecard-order-source",req,n,order_id:oid,bucket:bk,order:{name:"#"+n,created_at:oo.t||"",total:oo.a||0}},"*");
      setTimeout(()=>{if(PEND[req]){delete PEND[req];cf.querySelectorAll("button").forEach(x=>x.disabled=false);cf.classList.remove("saving");cf.querySelector(".cfmsg").className="cfmsg bad";cf.querySelector(".cfmsg").textContent="Not saved: no answer from the hub. Try again.";toast("Order #"+n+" was NOT saved. No answer from the hub.",false)}},25000)}
-   else{OV[n]=bk;saveOV();keepView(n,()=>refresh(true));toast("Order #"+n+" set to "+bk+" in this browser only (NOT saved to Shopify: older than the hub queue).","warn")}});
+   else{OV[n]=bk;saveOV();keepView(n,()=>refresh(true));toast("Order #"+n+" set to "+bk+" in this browser only (NOT saved to Shopify: open this report inside the hub to save).","warn")}});
  const pb=root.querySelector("#perbtns");if(pb)pb.querySelectorAll("button").forEach(b=>b.onclick=()=>{pb.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));root.querySelector("#pertbl").innerHTML=perTable(+b.dataset.n)});
  const rf=root.querySelector("#revf");if(rf)rf.querySelectorAll("button").forEach(b=>b.onclick=()=>{rf.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
    const tb=root.querySelector("#agrid tbody");if(b.dataset.f==="review"){tb.querySelectorAll("tr").forEach(r=>{r.hidden=true});
      tb.querySelectorAll("tr.ord").forEach(r=>{if(r.querySelector(".chip2.rev")){r.hidden=false;const nx=r.nextElementSibling;if(nx&&nx.classList.contains("det"))nx.hidden=false;let p=r.dataset.p;while(p){const par=tb.querySelector(`[data-k="${p}"]`);if(!par)break;par.hidden=false;par.classList.add("open");p=par.dataset.p}}})}
    else{tb.querySelectorAll("tr").forEach(r=>{r.hidden=!!r.dataset.p});tb.querySelectorAll(".tg2").forEach(r=>r.classList.remove("open"));const first=tb.querySelector(".l0.tg2");if(first){first.classList.add("open");tb.querySelectorAll(`[data-p="${first.dataset.k}"]`).forEach(c=>c.hidden=false)}}})}
-function openTile(id,scroll){
+function openTile(id,scroll,instant){
  document.querySelectorAll(".xp").forEach(x=>x.remove());
  const tiles=[...document.querySelectorAll(".tile")];tiles.forEach(t=>t.setAttribute("aria-expanded","false"));
  if(openId===id&&!scroll){openId=null;return}
@@ -760,9 +765,9 @@ function openTile(id,scroll){
   <div class="sh"><div class="ring ${t.s==null?"null":""}" style="color:${col(t.s)}">${ring(t.s,76,8,"var(--line)")}<div class="v num">${t.s==null?"–":t.s}</div></div><h3><small>${esc(STEPS[t.step][0])} · step ${t.step} · priority #${t.prio} · ${esc(t.src)}</small>${esc(t.t)}</h3><button class="x" aria-label="Close">✕</button></div>
   ${stats}${bars}${acts}${body}<div class="how">${esc(t.how)}</div></div></div>`;
  end.after(xp);xp.querySelector(".x").onclick=()=>openTile(id);bindTables(xp);
- requestAnimationFrame(()=>{xp.classList.add("on");if(scroll)setTimeout(()=>xp.scrollIntoView({behavior:"smooth",block:"start"}),60)});
+ if(instant)xp.classList.add("on","nt");else requestAnimationFrame(()=>{xp.classList.add("on");if(scroll)setTimeout(()=>xp.scrollIntoView({behavior:"smooth",block:"start"}),60)});
 }
-function refresh(keepOpen){const keep=keepOpen?openId:null;build();renderHero();renderProfit();renderGrid();openId=null;if(keep)openTile(keep)}
+function refresh(keepOpen){const keep=keepOpen?openId:null;build();renderHero();renderProfit();renderGrid();openId=null;if(keep)openTile(keep,false,true)}
 $("#sortseg").querySelectorAll("button").forEach(b=>b.onclick=()=>{sortMode=b.dataset.s;$("#sortseg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));openId=null;renderGrid()});
 function setTheme(t){document.documentElement.dataset.theme=t;try{localStorage.setItem("gts-theme",t)}catch(e){}}
 let th="dark";try{th=localStorage.getItem("gts-theme")||"dark"}catch(e){}

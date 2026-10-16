@@ -1537,7 +1537,7 @@
     const source = SRC[d.bucket], orderId = String(d.order_id || "");
     if (!source || !/^gid:\/\/shopify\/Order\/\d{1,20}$/.test(orderId)) { reply({ ok: false, error: "Invalid order or source." }); return; }
     try {
-      const { data, error } = await sb.functions.invoke("order-attribution", { body: { action: "update", order_id: orderId, source } });
+      const { data, error } = await sb.functions.invoke("order-attribution", { body: { action: "update", order_id: orderId, source, backfill: { order_name: String(d.order?.name || "").slice(0, 40), created_at: String(d.order?.created_at || "").slice(0, 40), total: Number(d.order?.total) || 0 } } });
       if (error || data?.error) {
         let msg = data?.error || error?.message || "Couldn't save to Shopify.";
         try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
