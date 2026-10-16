@@ -9,10 +9,10 @@
   "reason": ""
  },
  "cash-report": {
-  "at": "2026-10-17T00:00+11:00",
-  "code_sha": "dd5a1a9b4e0b89d34b101f6858dc038d7d46d6f6",
+  "at": "2026-10-17T00:05+11:00",
+  "code_sha": "89b2033acf117d360f8ce936e678050338a30f68",
   "data_through": null,
-  "last_ok": "2026-10-17T00:00+11:00",
+  "last_ok": "2026-10-17T00:05+11:00",
   "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
