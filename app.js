@@ -35,7 +35,7 @@
   // refreshed. Every report therefore gets a brand-new iframe element, which loads the same way as on a fresh page load.
   function freshFrame(hidden) {
     const old = $("#rep-frame"), n = document.createElement("iframe");
-    n.id = "rep-frame"; n.title = "Report"; n.setAttribute("sandbox", "allow-scripts allow-popups allow-popups-to-escape-sandbox");
+    n.id = "rep-frame"; n.title = "Report"; n.setAttribute("allow", "camera *"); n.setAttribute("sandbox", "allow-scripts allow-popups allow-popups-to-escape-sandbox");
     n.hidden = !!hidden;
     old.replaceWith(n);
     document.body.classList.remove("rep-full-on");
