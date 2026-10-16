@@ -235,6 +235,11 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   button.recvbox{background:var(--green-bg);color:var(--green);border-color:transparent;font-weight:600}
   td.sub2{font-size:12px;color:var(--muted);font-weight:400}
   .why{cursor:help}
+  #discreq{background:var(--card);border:2px solid #c2561a;border-radius:12px;padding:10px 16px;margin-bottom:12px;color:var(--text)}
+  #discreq .dr{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 0;border-bottom:1px solid var(--border);font-size:15px}
+  #discreq .dr:last-child{border-bottom:0}#discreq .dr .t{flex:1;min-width:240px}#discreq .dr label{display:inline-flex;gap:6px;align-items:center;font-weight:600}
+  #discreq .dr img,#discreq .dr .ph{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--border);flex:none}
+  #discreq button.ok{background:#c93c37;border-color:#c93c37;color:#fff;font-weight:700}#discreq button.ok:disabled{opacity:.4}
   #wrong{background:var(--red-bg);border:2px solid var(--red);border-radius:12px;padding:10px 16px;margin-bottom:12px;color:var(--text)}
   #wrong .wr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:7px 0;border-bottom:1px solid var(--border);font-size:15px}
   #wrong .wr:last-child{border-bottom:0}
@@ -278,6 +283,66 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .low{display:inline-block;background:var(--amber-bg);color:var(--amber);border-radius:999px;padding:1px 10px;font-size:12.5px;font-weight:700;margin-left:6px}
 @media (max-width:700px){.bx-prod{flex-direction:column}.bx-right{margin-left:0}}
 /*BXCSS_END*/
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
+.bx .pnrow{display:flex;gap:10px 14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}.bx .pnrow .pn{margin:0}
+.bx .pmv{display:inline-flex;gap:10px;align-items:center}.bx .pmv .ck{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;color:var(--muted);font-weight:600}
+.bx .bx-mvbox{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pact{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:2px 0 10px;padding:8px 10px;border-radius:10px;background:var(--grey-bg,rgba(128,128,128,.12))}
+.pact .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600}
+.pact select{font-size:14px;padding:6px 8px}
+.dq{display:inline-block;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px;background:#b7791f;color:#fff}
+.pact button.danger,.mc button.danger{color:var(--red);border-color:var(--red);font-weight:700}
+.pact button.danger.arm,.mc button.danger.arm{background:var(--red);color:#fff}
+
+@media (max-width:700px){
+  .pact{flex-direction:column;align-items:stretch;gap:8px;grid-column:1/-1;width:100%;box-sizing:border-box}
+  .pact .bx-mvto{display:flex;flex-direction:column;align-items:stretch;gap:4px}
+  .pact select,.pact button{width:100%;box-sizing:border-box;min-height:42px}
+}
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
+.bx .pnrow{display:flex;gap:10px 14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}.bx .pnrow .pn{margin:0}
+.bx .pmv{display:inline-flex;gap:10px;align-items:center}.bx .pmv .ck{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;color:var(--muted);font-weight:600}
+.bx .bx-mvbox{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pact{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:2px 0 10px;padding:8px 10px;border-radius:10px;background:var(--grey-bg,rgba(128,128,128,.12))}
+.pact .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600}
+.pact select{font-size:14px;padding:6px 8px}
+.dq{display:inline-block;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px;background:#b7791f;color:#fff}
+.pact button.danger,.mc button.danger{color:var(--red);border-color:var(--red);font-weight:700}
+.pact button.danger.arm,.mc button.danger.arm{background:var(--red);color:#fff}
+
+@media (max-width:700px){
+  .pact{flex-direction:column;align-items:stretch;gap:8px}
+  .pact .bx-mvto{display:flex;flex-direction:column;align-items:stretch;gap:4px}
+  .pact select,.pact button{width:100%;box-sizing:border-box;min-height:42px}
+}
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
+.bx .pnrow{display:flex;gap:10px 14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}.bx .pnrow .pn{margin:0}
+.bx .pmv{display:inline-flex;gap:10px;align-items:center}.bx .pmv .ck{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;color:var(--muted);font-weight:600}
+.bx .bx-mvbox{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pact{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:2px 0 10px;padding:8px 10px;border-radius:10px;background:var(--grey-bg,rgba(128,128,128,.12))}
+.pact .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600}
+.pact select{font-size:14px;padding:6px 8px}
+.dq{display:inline-block;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px;background:#b7791f;color:#fff}
+.pact button.danger,.mc button.danger{color:var(--red);border-color:var(--red);font-weight:700}
+.pact button.danger.arm,.mc button.danger.arm{background:var(--red);color:#fff}
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 
@@ -396,6 +461,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
     <span>🔴 Out of stock</span><span>🟠 &lt; 7 days to stockout</span><span>🟡 &lt; 14 days</span><span>🟢 OK</span><span>⚪ No sales</span>
     <span>Cells: green = good · amber = watch · red = act · blue = info</span>
   </div>
+  <div id="discreq" hidden></div>
   <div id="wrong" hidden></div>
   <div id="boxes" hidden></div>
   <div id="list"></div>
@@ -474,6 +540,8 @@ const Store = {
   boxes: () => call('boxes'),
   release: id => call('release', { id }),
   ackWrong: ids => call('ackwrong', { ids }),
+  discReq: () => call('discreq'),
+  discDecide: (product, approve) => call('discdecide', { product, approve }),
 };
 
 /* ---------------- calculations ---------------- */
@@ -512,6 +580,15 @@ function bxDel(b, n, others, o) {
   return pick + `<button class="danger${armed ? ' arm' : ''}" data-delbox="${bxEsc(b.box_no)}">${armed ? 'Tap again to delete' : 'Delete box'}</button>`;
 }
 
+/* Supplier-only "permanently discontinued" button (two taps). Hidden unless o.canDisc; shows a waiting pill once sent. */
+const bxDisc = (pid, o) => {
+  if (!o || !o.canDisc) return '';
+  pid = String(pid);
+  if (o.discPend && o.discPend.has(pid)) return '<span class="dq">⏳ Discontinue sent · waiting for the owner to confirm</span>';
+  const a = o.armDisc === pid;
+  return `<button class="danger dsc${a ? ' arm' : ''}" data-disc="${bxEsc(pid)}">${a ? 'Sure it’s permanently discontinued or out of stock? Tap again to confirm' : 'Permanently discontinued'}</button>`;
+};
+
 /* One box tile. b = box row, lines = its order lines, o = {ro, open, who, openBoxes}. */
 function bxTile(b, lines, o) {
   const shipped = b.status === 'shipped', units = lines.reduce((a, r) => a + bxEff(r), 0), n = lines.length;
@@ -524,7 +601,7 @@ function bxTile(b, lines, o) {
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
   const mvSel = (key, label) => `<select data-mvg="${bxEsc(key)}"><option value="">${label}</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select>`;
   const selN = o.selP ? [...o.selP].filter(k => k.startsWith(b.box_no + '|')).length : 0;
-  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${(!o.ro && !shipped) ? `<div class="pnrow">${bxName(g[0]) || '<div class="pn"></div>'}<span class="pmv"><label class="ck"><input type="checkbox" data-selp="${bxEsc(b.box_no + '|' + g[0].product_id)}" ${(o.selP && o.selP.has(b.box_no + '|' + g[0].product_id)) ? 'checked' : ''}> Select</label>${others.length ? mvSel('p:' + b.box_no + '|' + g[0].product_id, 'Move product to…') : ''}</span></div>` : bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
+  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${(!o.ro && !shipped) ? `<div class="pnrow">${bxName(g[0]) || '<div class="pn"></div>'}<span class="pmv"><label class="ck"><input type="checkbox" data-selp="${bxEsc(b.box_no + '|' + g[0].product_id)}" ${(o.selP && o.selP.has(b.box_no + '|' + g[0].product_id)) ? 'checked' : ''}> Select</label></span></div><div class="pact"><label class="bx-mvto">Move whole product (${g.length} variant${g.length === 1 ? '' : 's'}) to<select data-mvg="${bxEsc('p:' + b.box_no + '|' + g[0].product_id)}"><option value="">Choose box…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select></label>${bxDisc(g[0].product_id, o)}</div>` : bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
     ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}${r.wrong_pick ? '<span class="wp" title="Tagged to another supplier">⚠ wrong pick</span>' : ''}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
       <td class="q">${(!o.ro && !shipped) ? `<span class="stp"><button data-q="-1" data-id="${bxEsc(r.id)}" ${bxEff(r) <= 0 ? 'disabled' : ''}>−</button><b>${bxEff(r)}</b><button data-q="1" data-id="${bxEsc(r.id)}" ${bxEff(r) >= r.qty ? 'disabled' : ''}>+</button></span>` : bxEff(r)}${bxEff(r) < r.qty ? '<span class="low">short ' + (r.qty - bxEff(r)) + '</span>' : ''}</td>
       <td>${(!o.ro && !shipped) ? `<span style="display:inline-flex;gap:8px;align-items:center"><select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select><button class="x" data-rm="${bxEsc(r.id)}" title="Remove from this box (back to the master list)">✕</button></span>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}
@@ -787,6 +864,36 @@ function renderWrong(){
   if (seenWrong) { const fresh = w.filter(o => !seenWrong.has(o.id)); if (fresh.length) notify('Wrong pick: ' + fresh[0].supplier + ' picked ' + fresh[0].product_title + ' · ' + fresh[0].variant_title + ' (tagged to ' + (fresh[0].orig_supplier || '?') + ')'); }
   seenWrong = ids;
 }
+let discReqs = [];
+function renderDiscReq(){
+  const el = $('discreq');
+  el.hidden = !discReqs.length;
+  if (!discReqs.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<b>🛑 ${discReqs.length} product${discReqs.length === 1 ? '' : 's'} declared permanently discontinued by a supplier</b>` + discReqs.map(r => {
+    const img = r.image ? `<img src="${esc(r.image)}${r.image.includes('?') ? '&' : '?'}width=100" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : '<div class="ph"></div>';
+    return `<div class="dr" data-dr="${esc(r.product_id)}">${img}<span class="t"><b>${esc(r.supplier || 'A supplier')}</b> says <b>${esc(r.product_title || 'this product')}</b> is permanently discontinued</span>
+      <label><input type="checkbox" data-drck> I confirm it is permanently discontinued</label>
+      <button class="ok" data-drok disabled>Confirm &amp; clear from the list</button>
+      <button data-drno title="Keep restocking this product">Not discontinued</button></div>`;
+  }).join('');
+}
+$('discreq').addEventListener('change', e => { const c = e.target.closest('[data-drck]'); if (c) c.closest('.dr').querySelector('[data-drok]').disabled = !c.checked; });
+$('discreq').addEventListener('click', async e => {
+  const ok = e.target.closest('[data-drok]'), no = e.target.closest('[data-drno]');
+  if (!ok && !no) return;
+  const row = e.target.closest('.dr'), pid = row.getAttribute('data-dr');
+  row.querySelectorAll('button').forEach(b => { b.disabled = true; });
+  try {
+    const n = await Store.discDecide(pid, !!ok);
+    discReqs = discReqs.filter(r => String(r.product_id) !== String(pid));
+    if (ok) {
+      discMap.set(String(pid), true);
+      [...orders.values()].filter(o => String(o.product_id) === String(pid) && (o.status === 'saved' || o.status === 'added')).forEach(o => orders.delete(o.id));
+      notify('Cleared: marked discontinued' + (n ? ' · ' + n + ' line' + (n === 1 ? '' : 's') + ' removed from the supplier lists' : ''), true);
+    } else notify('Kept: it stays on the restock list', true);
+    lastSig = ''; render(); refresh();
+  } catch (err) { notify('Could not save: ' + err.message); renderDiscReq(); }
+});
 let boxGroups = [];
 const trk = box => { const x = boxesData.find(b => b.box_no === box); if (!x) return ''; const u = bxUrl(x.tracking_url); return (x.tracking_no ? ' <span class="sub">· tracking ' + esc(x.tracking_no) + '</span>' : '') + (u ? ' <a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">🔗 Track</a>' : ''); };
 function renderBoxes(){
@@ -851,7 +958,7 @@ function render(){
   let html = shown.map(cardHtml).join('');
   if (groups.length > shown.length) html += `<button class="more" id="more">Show more (${groups.length - shown.length} more)</button>`;
   $('list').innerHTML = html || '<div class="empty">Nothing to show with the current filters.</div>';
-  renderBoxes(); renderWrong();
+  renderBoxes(); renderWrong(); renderDiscReq();
 }
 
 /* ---------------- barcode scan ---------------- */
@@ -1064,7 +1171,8 @@ function liveStock(o){
 let lastSig = '';
 async function refresh(){
   try {
-    const [rows, disc, bx] = await Promise.all([Store.list(), Store.discList().catch(() => null), Store.boxes().catch(() => null)]);
+    const [rows, disc, bx, dreq] = await Promise.all([Store.list(), Store.discList().catch(() => null), Store.boxes().catch(() => null), Store.discReq().catch(() => null)]);
+    if (dreq) discReqs = dreq;
     if (bx) boxesData = bx;
     orders = new Map(rows.map(r => [r.id, r]));
     if (disc) disc.forEach(d => discMap.set(String(d.product_id), !!d.discontinued));
@@ -1082,7 +1190,7 @@ async function refresh(){
     if (landed.length) {
       try { await Store.received(landed.map(o => o.id)); landed.forEach(o => { o.status = 'received'; o.received_at = new Date().toISOString(); }); } catch (e) { /* manual Received buttons still work */ }
     }
-    const sig = JSON.stringify([[...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty, o.box_no, o.supplier, o.wrong_pick, o.wrong_ack]), [...discMap.entries()], boxesData.map(x => [x.box_no, x.status, x.tracking_no, x.tracking_url])]);
+    const sig = JSON.stringify([[...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty, o.box_no, o.supplier, o.wrong_pick, o.wrong_ack]), [...discMap.entries()], boxesData.map(x => [x.box_no, x.status, x.tracking_no, x.tracking_url]), discReqs.map(r => r.product_id)]);
     if (sig !== lastSig) { lastSig = sig; render(); }
     updateQueue(); if (!$('viewSup').hidden) renderSv();
   } catch (err) { $('sub').textContent = 'Could not load supplier status: ' + err.message; }

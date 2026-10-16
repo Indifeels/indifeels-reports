@@ -1642,6 +1642,8 @@
     received: async (d) => rpOk(await sb.rpc("restock_owner_received", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)) })),
     users: async () => rpOk(await sb.rpc("restock_supplier_users_list")),
     events: async () => rpOk(await sb.from("restock_events").select("at,order_id,label,supplier,actor_name,actor_role,action,qty_from,qty_to,box_no").order("at", { ascending: false }).limit(300)) || [],
+    discreq: async () => rpOk(await sb.from("restock_disc_requests").select("product_id,product_title,image,supplier,requested_by_name,requested_at").eq("status", "pending").order("requested_at", { ascending: true })) || [],
+    discdecide: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); return rpOk(await sb.rpc("restock_owner_disc_decide", { p_product: String(d.product), p_approve: !!d.approve })); },
     setuser: async (d) => { rpOk(await sb.rpc("restock_supplier_user_set", { p_user: rpText(d.user_id, 40), p_supplier: rpText(d.supplier, 100) })); return true; },
   });
   rpBridge("restock-supplier", {
@@ -1656,6 +1658,8 @@
       const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : "";
       return rpOk(await sb.rpc("restock_supplier_ship_box", { p_box: rpText(d.box, 40), p_date: date || null, p_url: rpText(d.url, 500) || null, p_no: rpText(d.no, 80) || null }));
     },
+    discontinue: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); return rpOk(await sb.rpc("restock_supplier_discontinue", { p_product: String(d.product) })); },
+    discpending: async () => rpOk(await sb.rpc("restock_supplier_disc_pending")) || [],
     tracking: async (d) => { rpOk(await sb.rpc("restock_supplier_tracking", { p_box: rpText(d.box, 40), p_url: rpText(d.url, 500), p_no: rpText(d.no, 80) })); return true; },
   });
 

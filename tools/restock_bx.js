@@ -23,6 +23,15 @@ function bxDel(b, n, others, o) {
   return pick + `<button class="danger${armed ? ' arm' : ''}" data-delbox="${bxEsc(b.box_no)}">${armed ? 'Tap again to delete' : 'Delete box'}</button>`;
 }
 
+/* Supplier-only "permanently discontinued" button (two taps). Hidden unless o.canDisc; shows a waiting pill once sent. */
+const bxDisc = (pid, o) => {
+  if (!o || !o.canDisc) return '';
+  pid = String(pid);
+  if (o.discPend && o.discPend.has(pid)) return '<span class="dq">⏳ Discontinue sent · waiting for the owner to confirm</span>';
+  const a = o.armDisc === pid;
+  return `<button class="danger dsc${a ? ' arm' : ''}" data-disc="${bxEsc(pid)}">${a ? 'Sure it’s permanently discontinued or out of stock? Tap again to confirm' : 'Permanently discontinued'}</button>`;
+};
+
 /* One box tile. b = box row, lines = its order lines, o = {ro, open, who, openBoxes}. */
 function bxTile(b, lines, o) {
   const shipped = b.status === 'shipped', units = lines.reduce((a, r) => a + bxEff(r), 0), n = lines.length;
@@ -35,7 +44,7 @@ function bxTile(b, lines, o) {
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
   const mvSel = (key, label) => `<select data-mvg="${bxEsc(key)}"><option value="">${label}</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select>`;
   const selN = o.selP ? [...o.selP].filter(k => k.startsWith(b.box_no + '|')).length : 0;
-  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${(!o.ro && !shipped) ? `<div class="pnrow">${bxName(g[0]) || '<div class="pn"></div>'}<span class="pmv"><label class="ck"><input type="checkbox" data-selp="${bxEsc(b.box_no + '|' + g[0].product_id)}" ${(o.selP && o.selP.has(b.box_no + '|' + g[0].product_id)) ? 'checked' : ''}> Select</label>${others.length ? mvSel('p:' + b.box_no + '|' + g[0].product_id, 'Move product to…') : ''}</span></div>` : bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
+  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${(!o.ro && !shipped) ? `<div class="pnrow">${bxName(g[0]) || '<div class="pn"></div>'}<span class="pmv"><label class="ck"><input type="checkbox" data-selp="${bxEsc(b.box_no + '|' + g[0].product_id)}" ${(o.selP && o.selP.has(b.box_no + '|' + g[0].product_id)) ? 'checked' : ''}> Select</label></span></div><div class="pact"><label class="bx-mvto">Move whole product (${g.length} variant${g.length === 1 ? '' : 's'}) to<select data-mvg="${bxEsc('p:' + b.box_no + '|' + g[0].product_id)}"><option value="">Choose box…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select></label>${bxDisc(g[0].product_id, o)}</div>` : bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
     ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}${r.wrong_pick ? '<span class="wp" title="Tagged to another supplier">⚠ wrong pick</span>' : ''}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
       <td class="q">${(!o.ro && !shipped) ? `<span class="stp"><button data-q="-1" data-id="${bxEsc(r.id)}" ${bxEff(r) <= 0 ? 'disabled' : ''}>−</button><b>${bxEff(r)}</b><button data-q="1" data-id="${bxEsc(r.id)}" ${bxEff(r) >= r.qty ? 'disabled' : ''}>+</button></span>` : bxEff(r)}${bxEff(r) < r.qty ? '<span class="low">short ' + (r.qty - bxEff(r)) + '</span>' : ''}</td>
       <td>${(!o.ro && !shipped) ? `<span style="display:inline-flex;gap:8px;align-items:center"><select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select><button class="x" data-rm="${bxEsc(r.id)}" title="Remove from this box (back to the master list)">✕</button></span>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}

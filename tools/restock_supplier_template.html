@@ -95,6 +95,66 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx .pnrow{display:flex;gap:10px 14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}.bx .pnrow .pn{margin:0}
 .bx .pmv{display:inline-flex;gap:10px;align-items:center}.bx .pmv .ck{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;color:var(--muted);font-weight:600}
 .bx .bx-mvbox{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pact{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:2px 0 10px;padding:8px 10px;border-radius:10px;background:var(--grey-bg,rgba(128,128,128,.12))}
+.pact .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600}
+.pact select{font-size:14px;padding:6px 8px}
+.dq{display:inline-block;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px;background:#b7791f;color:#fff}
+.pact button.danger,.mc button.danger{color:var(--red);border-color:var(--red);font-weight:700}
+.pact button.danger.arm,.mc button.danger.arm{background:var(--red);color:#fff}
+
+@media (max-width:700px){
+  .pact{flex-direction:column;align-items:stretch;gap:8px;grid-column:1/-1;width:100%;box-sizing:border-box}
+  .pact .bx-mvto{display:flex;flex-direction:column;align-items:stretch;gap:4px}
+  .pact select,.pact button{width:100%;box-sizing:border-box;min-height:42px}
+}
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
+.bx .pnrow{display:flex;gap:10px 14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}.bx .pnrow .pn{margin:0}
+.bx .pmv{display:inline-flex;gap:10px;align-items:center}.bx .pmv .ck{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;color:var(--muted);font-weight:600}
+.bx .bx-mvbox{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pact{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:2px 0 10px;padding:8px 10px;border-radius:10px;background:var(--grey-bg,rgba(128,128,128,.12))}
+.pact .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600}
+.pact select{font-size:14px;padding:6px 8px}
+.dq{display:inline-block;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px;background:#b7791f;color:#fff}
+.pact button.danger,.mc button.danger{color:var(--red);border-color:var(--red);font-weight:700}
+.pact button.danger.arm,.mc button.danger.arm{background:var(--red);color:#fff}
+
+@media (max-width:700px){
+  .pact{flex-direction:column;align-items:stretch;gap:8px}
+  .pact .bx-mvto{display:flex;flex-direction:column;align-items:stretch;gap:4px}
+  .pact select,.pact button{width:100%;box-sizing:border-box;min-height:42px}
+}
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
+.bx .pnrow{display:flex;gap:10px 14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}.bx .pnrow .pn{margin:0}
+.bx .pmv{display:inline-flex;gap:10px;align-items:center}.bx .pmv .ck{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;color:var(--muted);font-weight:600}
+.bx .bx-mvbox{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pact{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:2px 0 10px;padding:8px 10px;border-radius:10px;background:var(--grey-bg,rgba(128,128,128,.12))}
+.pact .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600}
+.pact select{font-size:14px;padding:6px 8px}
+.dq{display:inline-block;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px;background:#b7791f;color:#fff}
+.pact button.danger,.mc button.danger{color:var(--red);border-color:var(--red);font-weight:700}
+.pact button.danger.arm,.mc button.danger.arm{background:var(--red);color:#fff}
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
+.bx .pnrow{display:flex;gap:10px 14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}.bx .pnrow .pn{margin:0}
+.bx .pmv{display:inline-flex;gap:10px;align-items:center}.bx .pmv .ck{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;color:var(--muted);font-weight:600}
+.bx .bx-mvbox{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 
@@ -276,6 +336,8 @@ const Store = {
   shipBox: (box, date, url, no) => call('shipbox', { box, date, url, no }),
   tracking: (box, url, no) => call('tracking', { box, url, no }),
   setQty: (id, qty) => call('setqty', { id, qty }),
+  discontinue: product => call('discontinue', { product }),
+  discPending: () => call('discpending'),
 };
 
 const $ = id => document.getElementById(id);
@@ -304,6 +366,15 @@ function bxDel(b, n, others, o) {
   return pick + `<button class="danger${armed ? ' arm' : ''}" data-delbox="${bxEsc(b.box_no)}">${armed ? 'Tap again to delete' : 'Delete box'}</button>`;
 }
 
+/* Supplier-only "permanently discontinued" button (two taps). Hidden unless o.canDisc; shows a waiting pill once sent. */
+const bxDisc = (pid, o) => {
+  if (!o || !o.canDisc) return '';
+  pid = String(pid);
+  if (o.discPend && o.discPend.has(pid)) return '<span class="dq">⏳ Discontinue sent · waiting for the owner to confirm</span>';
+  const a = o.armDisc === pid;
+  return `<button class="danger dsc${a ? ' arm' : ''}" data-disc="${bxEsc(pid)}">${a ? 'Sure it’s permanently discontinued or out of stock? Tap again to confirm' : 'Permanently discontinued'}</button>`;
+};
+
 /* One box tile. b = box row, lines = its order lines, o = {ro, open, who, openBoxes}. */
 function bxTile(b, lines, o) {
   const shipped = b.status === 'shipped', units = lines.reduce((a, r) => a + bxEff(r), 0), n = lines.length;
@@ -316,7 +387,7 @@ function bxTile(b, lines, o) {
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
   const mvSel = (key, label) => `<select data-mvg="${bxEsc(key)}"><option value="">${label}</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select>`;
   const selN = o.selP ? [...o.selP].filter(k => k.startsWith(b.box_no + '|')).length : 0;
-  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${(!o.ro && !shipped) ? `<div class="pnrow">${bxName(g[0]) || '<div class="pn"></div>'}<span class="pmv"><label class="ck"><input type="checkbox" data-selp="${bxEsc(b.box_no + '|' + g[0].product_id)}" ${(o.selP && o.selP.has(b.box_no + '|' + g[0].product_id)) ? 'checked' : ''}> Select</label>${others.length ? mvSel('p:' + b.box_no + '|' + g[0].product_id, 'Move product to…') : ''}</span></div>` : bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
+  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${(!o.ro && !shipped) ? `<div class="pnrow">${bxName(g[0]) || '<div class="pn"></div>'}<span class="pmv"><label class="ck"><input type="checkbox" data-selp="${bxEsc(b.box_no + '|' + g[0].product_id)}" ${(o.selP && o.selP.has(b.box_no + '|' + g[0].product_id)) ? 'checked' : ''}> Select</label></span></div><div class="pact"><label class="bx-mvto">Move whole product (${g.length} variant${g.length === 1 ? '' : 's'}) to<select data-mvg="${bxEsc('p:' + b.box_no + '|' + g[0].product_id)}"><option value="">Choose box…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select></label>${bxDisc(g[0].product_id, o)}</div>` : bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
     ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}${r.wrong_pick ? '<span class="wp" title="Tagged to another supplier">⚠ wrong pick</span>' : ''}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
       <td class="q">${(!o.ro && !shipped) ? `<span class="stp"><button data-q="-1" data-id="${bxEsc(r.id)}" ${bxEff(r) <= 0 ? 'disabled' : ''}>−</button><b>${bxEff(r)}</b><button data-q="1" data-id="${bxEsc(r.id)}" ${bxEff(r) >= r.qty ? 'disabled' : ''}>+</button></span>` : bxEff(r)}${bxEff(r) < r.qty ? '<span class="low">short ' + (r.qty - bxEff(r)) + '</span>' : ''}</td>
       <td>${(!o.ro && !shipped) ? `<span style="display:inline-flex;gap:8px;align-items:center"><select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select><button class="x" data-rm="${bxEsc(r.id)}" title="Remove from this box (back to the master list)">✕</button></span>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}
@@ -340,7 +411,9 @@ function bxTile(b, lines, o) {
 }
 /*BXJS_END*/
 let S = {orders: [], boxes: [], active: '', identity: '', code: ''};
-let armKey = '', armDel = '', delTo = '', armT = null;
+let armKey = '', armDel = '', delTo = '', armT = null, armDisc = '', armDiscT = null;
+const discSet = () => new Set((S.disc || []).map(String));
+const armD = pid => { armDisc = pid; clearTimeout(armDiscT); armDiscT = setTimeout(() => { armDisc = ''; render(); }, 7000); render(); };
 const arm = (k, kind) => { if (kind === 'del') armDel = k; else armKey = k; clearTimeout(armT); armT = setTimeout(() => { armKey = ''; armDel = ''; render(); }, 6000); render(); };
 const taggedOf = ids => ids.filter(id => (S.orders.find(r => r.id === id) || {}).tagged_other);
 const picked = new Set(), openState = new Map();
@@ -375,7 +448,7 @@ function render(){
   $('msel').textContent = picked.size ? picked.size + ' selected' : 'Items you add go to ' + act;
   const tg = taggedOf([...picked]).length;
   $('addsel').disabled = !picked.size; $('addsel').classList.toggle('warn', armKey === '__sel'); $('addsel').textContent = armKey === '__sel' ? `${tg} tagged to another supplier — tap again to confirm they're yours` : picked.size ? `Add ${picked.size} to ${tgtBox === '__new' ? 'a new box' : (tgtBox || act)}` : 'Add selected to box';
-  $('master').innerHTML = m.length ? bxGroup(m).map(g => `<div class="mc">${bxImg(g[0])}<div class="pc">${bxName(g[0])}<table><thead><tr><th style="width:34px"></th><th>Variant</th><th style="text-align:center">Qty wanted</th><th style="text-align:center">You send</th><th></th></tr></thead><tbody>
+  $('master').innerHTML = m.length ? bxGroup(m).map(g => `<div class="mc">${bxImg(g[0])}<div class="pc">${bxName(g[0])}<div class="pact">${bxDisc(g[0].product_id, {canDisc: true, discPend: discSet(), armDisc})}</div><table><thead><tr><th style="width:34px"></th><th>Variant</th><th style="text-align:center">Qty wanted</th><th style="text-align:center">You send</th><th></th></tr></thead><tbody>
       ${g.slice().sort(bxByVariant).map(r => `<tr class="mt"><td><input type="checkbox" data-pick="${bxEsc(r.id)}" ${picked.has(r.id) ? 'checked' : ''}></td><td>${bxEsc(r.variant_title)}${r.tagged_other ? '<span class="tg">⚠ Tagged to another supplier</span>' : ''}<span class="sub">Requested ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td><td class="q"><span class="stp"><button data-mq="-1" data-id="${bxEsc(r.id)}" ${sendOf(r) <= 1 ? 'disabled' : ''}>−</button><b>${sendOf(r)}</b><button data-mq="1" data-id="${bxEsc(r.id)}" ${sendOf(r) >= r.qty ? 'disabled' : ''}>+</button></span></td>
         <td class="a"><button data-add="${bxEsc(r.id)}" class="${armKey === r.id ? 'warn' : ''}">${armKey === r.id ? 'Not yours? Tap again to confirm' : 'Add to ' + bxEsc(act)}</button></td></tr>`).join('')}
       </tbody></table></div></div>`).join('') : `<div class="empty">${allMaster().length ? 'Nothing tagged to you right now. Switch to “Show: all products” to see the rest.' : 'Nothing waiting on the master list right now.'}</div>`;
@@ -387,7 +460,7 @@ function render(){
   html += order.map(b => {
     const lines = S.orders.filter(r => r.box_no === b.box_no && ['added', 'shipped', 'received'].includes(r.status));
     const isOpen = openState.has(b.box_no) ? openState.get(b.box_no) : b.status === 'open';
-    return bxTile(b, lines, {ro: false, open: isOpen, openBoxes: openNos, armDel, delTo, selP, lastOpen: openNos[0]});
+    return bxTile(b, lines, {ro: false, open: isOpen, openBoxes: openNos, armDel, delTo, selP, lastOpen: openNos[0], canDisc: true, discPend: discSet(), armDisc});
   }).join('');
   // shipped lines from before boxes existed (no box row): show them as shipped tiles
   const known = new Set(S.boxes.map(b => b.box_no)), legacy = new Map();
@@ -399,7 +472,7 @@ function render(){
 let busy = false;
 async function load(){
   if (busy) return;
-  try { S = await Store.state(); render(); }
+  try { S = await Store.state(); S.disc = await Store.discPending().catch(() => []); render(); }
   catch (e) { $('master').innerHTML = '<div class="empty">' + bxEsc(e.message) + '</div>'; $('mbar').hidden = true; $('boxes').innerHTML = ''; }
 }
 async function act(fn, okMsg){
@@ -409,7 +482,16 @@ async function act(fn, okMsg){
   busy = false; await load();
 }
 
+function onDisc(e){
+  const b = e.target.closest('[data-disc]'); if (!b) return false;
+  const pid = b.getAttribute('data-disc');
+  if (armDisc !== pid) { armD(pid); return true; }
+  armDisc = ''; clearTimeout(armDiscT);
+  act(() => Store.discontinue(pid), 'Sent to the owner to confirm it is permanently discontinued');
+  return true;
+}
 $('master').addEventListener('click', e => {
+  if (onDisc(e)) return;
   const mq = e.target.closest('[data-mq]');
   if (mq) { const r = S.orders.find(x => x.id === mq.getAttribute('data-id')); if (r) { sendQ.set(r.id, Math.max(1, Math.min(r.qty, sendOf(r) + (+mq.getAttribute('data-mq'))))); render(); } return; }
   const one = e.target.closest('[data-add]');
@@ -437,6 +519,7 @@ $('newbox').addEventListener('click', () => act(() => Store.newBox(), b => 'Read
 $('refresh').addEventListener('click', load);
 call('guide').then(g => { if (g && g.page) { $('guide').href = g.page; $('guide').hidden = false; $('guidepdf').href = g.pdf; $('guidepdf').hidden = false; } }).catch(() => {});
 $('boxes').addEventListener('click', e => {
+  if (onDisc(e)) return;
   const t = e.target;
   const q = t.closest('[data-q]');
   if (q) {
