@@ -1504,6 +1504,33 @@
     }
   });
 
+  // ---------- Google Scorecard: save an order's attribution to Shopify ----------
+  // The report page never holds credentials. It asks here; this uses the signed-in user's session and the same
+  // "order-attribution" function the Order Attribution report uses, which writes custom.order_source to Shopify via GitHub.
+  window.addEventListener("message", async (event) => {
+    const fr = $("#rep-frame");
+    if (!fr || event.source !== fr.contentWindow) return;
+    const d = event.data || {};
+    if (d.type !== "scorecard-order-source" || location.hash !== "#google-scorecard") return;
+    const reply = (o) => { try { fr.contentWindow?.postMessage(Object.assign({ type: "scorecard-order-source-result", req: d.req, n: d.n }, o), "*"); } catch (_) {} };
+    const SRC = { Google: "Google Online Orders - WEB", Facebook: "FB Online Orders - WEB", Organic: "Organic Orders" };
+    const source = SRC[d.bucket], orderId = String(d.order_id || "");
+    if (!source || !/^gid:\/\/shopify\/Order\/\d{1,20}$/.test(orderId)) { reply({ ok: false, error: "Invalid order or source." }); return; }
+    try {
+      const { data, error } = await sb.functions.invoke("order-attribution", { body: { action: "update", order_id: orderId, source } });
+      if (error || data?.error) {
+        let msg = data?.error || error?.message || "Couldn't save to Shopify.";
+        try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {}
+        reply({ ok: false, error: msg });
+        return;
+      }
+      reply({ ok: true });
+      toast("Order " + String(d.n || "") + " set to " + source + " — Shopify syncing in background");
+    } catch (err) {
+      reply({ ok: false, error: err?.message || "Couldn't save to Shopify." });
+    }
+  });
+
   // ---------- restock planner (owner) and supplier portal ----------
   // The report pages never hold credentials: every read/write goes through here, to RLS tables / security-definer functions.
   const RP_DONE = "ir-restock-plan-done";

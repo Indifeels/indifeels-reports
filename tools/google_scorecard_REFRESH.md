@@ -19,6 +19,7 @@ Last 30 completed days ending yesterday for orders and daily Ads rows. Google Ad
 |---|---|
 | `meta` | `{refreshed, next, period, note, warn}` display strings |
 | `orders` | online Shopify orders (`source_name:web`, amount > 0): `{n, t (UTC ISO), a (amount), m (custom.order_source code GW/FW/OO/RC/DO/UO/RS), js (customer journey source), us, um, uc (utm source/medium/campaign)}` |
+| `qd` | per order (key = order number) from Supabase `order_attribution_queue` (joined by order name, `shopify_source='web'`): `{g: Shopify order gid, c: customer, src: order_source, sync, auto, mm: match method, note, utm{}, camp, adset, prod[], j:{first,last,moments[] (each {t,s,d,l,r,u}), days, idx, ready}}`. Only orders since the queue started (2 Oct 2026) have one. Without a `qd` entry the order's buttons stay browser-only. |
 | `ids` | order name (no #) to Shopify numeric order id, for the admin links |
 | `ads` | 30 days of daily campaign rows `{d, c (campaign code A-E), sp, imp, clk, conv, val, is, lb, lr}` (impression share, lost to budget, lost to rank) |
 | `camps` | `{code: {name, type, id}}` |
@@ -32,5 +33,7 @@ Last 30 completed days ending yesterday for orders and daily Ads rows. Google Ad
 | `ga4` | channel rows `{ch, s, e, atc, co, p, rev}` |
 | `lp` | landing pages `{path, s, e, atc, p, rev}` |
 | `gmb` | Business Profile `[{calls, dir, web} Melbourne, {calls, dir, web} Sydney]` |
+
+Order buttons: inside the hub, Google / Facebook / Organic on a review order calls the `order-attribution` function (app.js handler for `scorecard-order-source`), which updates Shopify's `custom.order_source`; the choice then also shows here until the next refresh brings the new field value.
 
 Not yet collected: Performance Max asset groups and search categories, Nimbata call matching, Merchant Center feed coverage, a monthly budget and targets. Those tiles show "–".

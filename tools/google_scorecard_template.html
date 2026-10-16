@@ -205,6 +205,13 @@ td.gcol{background:color-mix(in srgb,#4DA3FF 12%,transparent)}td.fcol{background
 #agrid .ord small,#agrid td small{color:#A3ABA6}
 .olink{color:#7DBBFF;text-decoration:none;border-bottom:1px dashed #7DBBFF}.olink:hover{color:#fff}
 .perf{margin:0 4px 10px;display:flex;gap:8px;flex-wrap:wrap}.perf button{border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.2);color:#F1F3EF;border-radius:99px;padding:5px 13px;font-size:13px;font-weight:600}.perf button.on{background:#F1F3EF;color:#1d2220}
+.cf{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}.cf button{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#F1F3EF;border-radius:99px;padding:4px 12px;font:600 12px Figtree}.cf button:hover:not(:disabled){background:rgba(255,255,255,.2)}.cf button:disabled{opacity:.5}
+.cf .cfh{color:#A3ABA6;font-size:11.5px}.cf .cfmsg{color:#FFB066;font-size:11.5px}
+#agrid tr.det td{padding:0 0 4px 58px;background:none;box-shadow:none;text-align:left;white-space:normal}
+.rd{background:linear-gradient(180deg,#222625,#1B1F1E);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px 14px;box-shadow:inset 0 2px 6px rgba(0,0,0,.4);color:#E6EAE8}
+.rdh{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;margin:10px 0 6px}.rdh:first-child{margin-top:0}.rdh b{font:700 13px Figtree}.rdh span{font-size:12.5px;color:#A3ABA6}.rdh u{text-decoration:none;font-weight:700;color:#F1F3EF}
+.rdg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px 14px}.rdg i{display:block;font-style:normal;font-size:11px;color:#8E9692;text-transform:uppercase;letter-spacing:.05em}.rdg b{display:block;font:600 12.5px Figtree;word-break:break-word}
+.vt{width:100%;font-size:12px}.vt td,.vt th{text-align:left;white-space:normal;padding:5px 8px}.vt td small{display:block;color:#8E9692}
 </style></head><body>
 <div class="wrap">
   <div class="banner" id="banner"></div>
@@ -230,12 +237,34 @@ const STEPS={1:["Trust the numbers","Can you believe what the reports say?"],2:[
 let BASIS="shopify"; // or "ads"
 let OV={};try{OV=JSON.parse(localStorage.getItem("gts-confirm")||"{}")}catch(e){}
 function saveOV(){try{localStorage.setItem("gts-confirm",JSON.stringify(OV))}catch(e){}}
+const IN_HUB=(()=>{try{return window.parent!==window}catch(e){return false}})();
+let SAVED={};try{SAVED=JSON.parse(localStorage.getItem("gts-saved")||"{}")}catch(e){}
+const PEND={};let REQN=0;
+function reopenGrid(keep,sc){keep.forEach(k=>{const r=document.querySelector('#agrid [data-k="'+k+'"]');if(r){r.classList.add("open");document.querySelectorAll('#agrid [data-p="'+k+'"]').forEach(c=>c.hidden=false)}});const t=document.querySelector("#agrid");if(t&&t.parentElement)t.parentElement.scrollTop=sc||0}
+function gridState(){const t=document.querySelector("#agrid");return{keep:[...document.querySelectorAll("#agrid .tg2.open")].map(r=>r.dataset.k),sc:t&&t.parentElement?t.parentElement.scrollTop:0}}
+window.addEventListener("message",ev=>{const d=ev.data||{};if(d.type!=="scorecard-order-source-result")return;const p=PEND[d.req];if(!p)return;delete PEND[d.req];
+  if(d.ok){const st=gridState();OV[p.n]=p.b;saveOV();SAVED[p.n]=1;try{localStorage.setItem("gts-saved",JSON.stringify(SAVED))}catch(e){}refresh(true);reopenGrid(st.keep,st.sc)}
+  else{const cf=document.querySelector('.cf[data-o="'+p.n+'"]');if(cf){cf.querySelector(".cfmsg").textContent=d.error||"Could not save to Shopify.";cf.querySelectorAll("button").forEach(x=>x.disabled=false)}}});
 
 /* ---------- orders ---------- */
 const MELD=t=>new Date(t).toLocaleDateString("en-CA",{timeZone:"Australia/Melbourne"});
 const MELT=t=>new Date(t).toLocaleTimeString("en-AU",{timeZone:"Australia/Melbourne",hour:"numeric",minute:"2-digit"});
 const bMeta=m=>m==="GW"?"Google":m==="FW"?"Facebook":"Organic";
 const META_NAME={GW:"Google Online Orders - WEB",FW:"FB Online Orders - WEB",OO:"Organic Orders",RC:"Repeat Customer",DO:"Direct order",UO:"Unknown Online",RS:"Referral SEO etc"};
+
+function detRow(o,dk){const q=o.q,esc2=esc;const U=q&&q.utm&&Object.keys(q.utm).length?q.utm:{source:o.us,medium:o.um,campaign:o.uc};
+  const kv=(k,v)=>v?`<div><i>${k}</i><b>${esc2(String(v))}</b></div>`:"";
+  const when=new Date(o.t).toLocaleString("en-AU",{timeZone:"Australia/Melbourne",weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
+  let h=`<div class="rd"><div class="rdh"><b>Why this needs review</b><span>Order Source field says <u>${bMeta(o.m)}</u> (${esc2(META_NAME[o.m])}); the customer journey says <u>${o.jb}</u>${o.hs?" — "+esc2(o.hs.why):""}.</span></div>
+  <div class="rdg">${kv("Order",'#'+o.n)}${kv("Placed",when)}${kv("Amount",fmt$(o.a,2))}${kv("Customer",q&&q.c)}${kv("Items",q&&q.prod&&q.prod.join(" · "))}
+  ${kv("Order Source field (Shopify)",META_NAME[o.m])}${kv("Hub queue value",q&&q.src?q.src+" ("+(q.sync||"")+")":"")}${kv("Matched by",q&&q.mm)}${kv("Hub note",q&&q.note)}${kv("Campaign saved",q&&q.camp)}${kv("Ad set saved",q&&q.adset)}</div>
+  <div class="rdh"><b>UTM on the order</b></div><div class="rdg">${kv("Source",U.source)}${kv("Medium",U.medium)}${kv("Campaign",U.campaign)}${kv("Content",U.content)}${kv("Term / ad id",U.term)}${Object.values(U).some(Boolean)?"":'<div><i>UTM</i><b>none recorded</b></div>'}</div>`;
+  if(q&&q.j){const j=q.j;const vs=[];[j.first,...(j.moments||[]),j.last].filter(Boolean).forEach(v=>{if(!vs.some(x=>x.t===v.t&&x.l===v.l&&x.s===v.s))vs.push(v)});vs.sort((a,b)=>String(a.t).localeCompare(String(b.t)));
+    h+=`<div class="rdh"><b>Customer journey</b><span>${vs.length} visit${vs.length===1?"":"s"}${j.days!=null?" · "+j.days+" day"+(j.days===1?"":"s")+" to buy":""}${j.idx?" · customer order #"+j.idx:""}${j.first?" · first visit "+fmtVT(j.first.t):""}</span></div>
+    <div class="tbl"><table class="vt"><thead><tr><th>When</th><th>Source</th><th>Landing page</th><th>Referrer</th><th>UTM</th><th>Signal</th></tr></thead><tbody>${vs.map(v=>{const u=v.u||{};const isP=o.hs&&[...o.hs.paid].some(x=>x.t===v.t&&x.l===v.l);const lp=(v.l||"").replace(/^https?:\/\/[^/]+/,"")||"/";const rf=(v.r||"").replace(/^https?:\/\//,"").replace(/\/$/,"");
+      return `<tr><td>${fmtVT(v.t)}</td><td>${esc2(v.s||"")}${v.d?`<small>${esc2(v.d)}</small>`:""}</td><td>${esc2(lp.slice(0,60))}</td><td>${esc2(rf.slice(0,40))}</td><td>${esc2([u.source,u.medium,u.campaign,u.content,u.term].filter(Boolean).join(" · ").slice(0,140))}</td><td>${isP?'<span class="pill warn">paid click</span>':""}</td></tr>`}).join("")}</tbody></table></div>`}
+  else h+=`<div class="rdh"><b>Customer journey</b><span>Not in the hub queue (it only holds orders since 2 Oct), so only Shopify's first-visit source is available: ${esc2(o.js)} ${esc2([o.us,o.um].filter(Boolean).join(" · "))}</span></div>`;
+  return `<tr class="det kid" data-p="${dk}" hidden><td colspan="5">${h}</div></td></tr>`}
 function bJourney(o){if(o.js==="-")return null;const us=(o.us||"").toLowerCase(),um=(o.um||"").toLowerCase();
   if(us==="google"&&um==="cpc")return"Google";
   if(um.startsWith("tracked")||um==="paid")return"Facebook";
@@ -243,8 +272,28 @@ function bJourney(o){if(o.js==="-")return null;const us=(o.us||"").toLowerCase()
 const CODE_BY_ID={"24024424291":"A","24030760799":"B","24038797431":"C","24331135133":"E"};
 function campCode(uc){if(!uc)return null;if(CODE_BY_ID[uc])return CODE_BY_ID[uc];
   if(uc.startsWith("Tracked_MM_Feed"))return"A";if(uc.startsWith("Tracked_MM_Sales"))return"B";if(uc.startsWith("Tracked_MM_Best"))return"C";return null}
-const ORD=D.orders.map(o=>{const d=MELD(o.t);const jb=bJourney(o),mb=bMeta(o.m);
-  return {...o,d,time:MELT(o.t),jb,mb,st:jb==null?"tag":(jb===mb?"match":"review")}});
+const QD=D.qd||{};
+function fmtVT(t){try{return new Date(t).toLocaleString('en-AU',{timeZone:'Australia/Melbourne',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}catch(e){return t||''}}
+function hubSuggest(q){const j=q.j||{};const all=[],seen=new Set();
+  [j.first,...(j.moments||[]),j.last].filter(Boolean).forEach(v=>{const k=[v.t,v.s,v.l,JSON.stringify(v.u||{})].join("|");if(!seen.has(k)){seen.add(k);all.push(v)}});
+  all.sort((a,b)=>String(a.t||"").localeCompare(String(b.t||"")));if(!all.length)return null;
+  const hay=v=>{const u=v.u||{};return [v.s,v.d,v.r,u.source,u.medium,u.campaign,u.content].filter(Boolean).join(" ").toLowerCase()};
+  const plat=v=>{const h=hay(v);return /facebook|instagram|meta|m\.facebook|l\.instagram/.test(h)?"Facebook":/google/.test(h)?"Google":null};
+  const org=v=>{const u=v.u||{},h=hay(v),m=String(u.medium||"").toLowerCase(),p=plat(v);
+    if(/sag[_ ]organic|organic/.test(h))return true;
+    if(p==="Google"&&["","organic","product_sync"].includes(m)&&!/cpc|ppc|paid|ads|adwords/.test(h))return true;
+    if(p==="Facebook"&&((!u.source&&!u.medium&&!u.campaign&&!u.term&&!u.content)||["social","organic","referral"].includes(m)))return true;return false};
+  const paid=v=>{const u=v.u||{},p=plat(v);if(!p||org(v))return false;
+    const h=[u.source,u.medium,u.campaign,u.term,u.content,v.d].filter(Boolean).join(" ").toLowerCase();
+    if(/cpc|ppc|paid|tracked|non tracked|non-tracked|sales|campaign/.test(h))return true;
+    if(p==="Facebook"&&(u.campaign||u.term||u.content)&&!["social","organic","referral"].includes(String(u.medium||"").toLowerCase()))return true;
+    if(p==="Google"&&!["","organic","product_sync"].includes(String(u.medium||"").toLowerCase()))return true;return false};
+  const pv=all.filter(paid);const visit=pv.length?pv[pv.length-1]:all.find(org)||all[0];const p=plat(visit);const isOrg=!pv.length&&org(visit);
+  const b=isOrg?"Organic":p==="Facebook"?"Facebook":p==="Google"?"Google":null;
+  const why=pv.length?`${pv.length} paid ${p||""} visit${pv.length>1?"s":""} before the order (latest ${fmtVT(visit.t)}${visit.u&&visit.u.medium?", "+visit.u.medium:""})`:isOrg?"only organic / unpaid visits before the order":"no clear paid or organic signal";
+  return {b,why,visit,paid:new Set(pv)}}
+const ORD=D.orders.map(o=>{const d=MELD(o.t);const q=QD[o.n];const hs=q&&q.j?hubSuggest(q):null;const jb=hs&&hs.b?hs.b:bJourney(o),mb=bMeta(o.m);
+  return {...o,d,q,hs,time:MELT(o.t),jb,mb,st:jb==null?"tag":(jb===mb?"match":"review")}});
 const eff=o=>OV[o.n]||o.mb;
 const confirmed=o=>!!OV[o.n];
 const needsReview=o=>!confirmed(o)&&o.st==="review";
@@ -436,11 +485,11 @@ function build(){
             if(e==="Google")detail=cc?CAMP[cc].name:(o.jb==="Google"?"Google paid":"Google (tag only)");
             else if(e==="Facebook")detail=(o.um&&o.um!=="paid"?o.um.replace(/^Tracked \| MM Sales \| /,"").split(" | ")[0]:"")+(o.uc?" → "+o.uc.split(" | ").slice(0,-1).join(" | "):"");
             else detail=o.js==="-"?META_NAME[o.m]:(o.js+(o.us==="google"&&o.um==="product_sync"?" · free listings":""));
-            const chip=confirmed(o)?`<span class="chip2 ok">confirmed ✓</span>`:o.st==="match"?`<span class="chip2 ok">auto-matched</span>`:o.st==="tag"?`<span class="chip2 tag">source field</span>`:`<span class="chip2 rev">review</span>`;
+            const chip=confirmed(o)?(SAVED[o.n]?`<span class="chip2 ok">saved to Shopify ✓</span>`:`<span class="chip2 ok">confirmed ✓ · this browser only</span>`):o.st==="match"?`<span class="chip2 ok">auto-matched</span>`:o.st==="tag"?`<span class="chip2 tag">source field</span>`:`<span class="chip2 rev">review</span>`;
             const why=confirmed(o)?"":o.st==="review"?`<small>Order Source field says <b>${bMeta(o.m)}</b> (${esc(META_NAME[o.m])}); customer journey says <b>${o.jb}</b> (${esc(o.js)}${o.um?" · "+esc(o.um.slice(0,40)):""}).</small>`:o.st==="tag"?`<small>No customer-journey data; using the Order Source field "${esc(META_NAME[o.m])}".</small>`:"";
-            const btns=needsReview(o)?`<div class="cf">${["Google","Facebook","Organic"].map(b=>`<button data-o="${o.n}" data-b="${b}">${b}</button>`).join("")}</div>`:(confirmed(o)?`<div class="cf"><button data-o="${o.n}" data-b="">undo</button></div>`:"");
+            const live=IN_HUB&&o.q&&o.q.g;const btns=needsReview(o)?`<div class="cf" data-o="${o.n}">${["Google","Facebook","Organic"].map(b=>`<button data-o="${o.n}" data-b="${b}">${b}</button>`).join("")}<small class="cfh">${live?"saves to the Shopify Order Source field":(IN_HUB?"browser only: older than the hub queue":"browser only")}</small><small class="cfmsg"></small></div>`:(confirmed(o)&&!SAVED[o.n]?`<div class="cf" data-o="${o.n}"><button data-o="${o.n}" data-b="">undo</button><small class="cfmsg"></small></div>`:"");
             const cell=b=>e===b?`<td class="${b[0].toLowerCase()}col cell">${fmt$(o.a)}</td>`:`<td></td>`;
-            rows+=`<tr class="l3 ord kid" data-p="${dk}" ${wopen&&false?"":"hidden"}><td><b><a class="olink" target="_blank" rel="noopener" href="${D.ids[o.n]?SHOP+D.ids[o.n]:'https://admin.shopify.com/store/bvdxj3-r8/orders?query='+o.n}">#${o.n} ↗</a></b> · ${o.time}${chip}<small>${esc(detail)}</small>${why}${btns}</td>${cell("Google")}${cell("Facebook")}${cell("Organic")}<td></td></tr>`})})})});
+            rows+=`<tr class="l3 ord kid" data-p="${dk}" ${wopen&&false?"":"hidden"}><td><b><a class="olink" target="_blank" rel="noopener" href="${D.ids[o.n]?SHOP+D.ids[o.n]:'https://admin.shopify.com/store/bvdxj3-r8/orders?query='+o.n}">#${o.n} ↗</a></b> · ${o.time}${chip}<small>${esc(detail)}</small>${why}${btns}</td>${cell("Google")}${cell("Facebook")}${cell("Organic")}<td></td></tr>${needsReview(o)?detRow(o,dk):""}`})})})});
     const all=sumRow(ORD);
     const head=`<tr><th>Month → week (Mon–Sun) → day → order</th><th class="c-g">Google</th><th class="c-f">Facebook</th><th class="c-o">Organic</th><th>Orders</th></tr>`;
     const foot=`<tr class="l0"><td>All 30 days (online orders)</td>${cellsHtml(all)}</tr>`;
@@ -652,11 +701,17 @@ function bindTables(root){
    if(open)root.querySelectorAll(`[data-p="${k}"]`).forEach(c=>c.hidden=false);else hide(k)});
  /* initial open state */
  root.querySelectorAll(".tg2.open").forEach(tr=>root.querySelectorAll(`[data-p="${tr.dataset.k}"]`).forEach(c=>{c.hidden=false}));
- root.querySelectorAll(".cf button").forEach(b=>b.onclick=e=>{e.stopPropagation();if(b.dataset.b)OV[b.dataset.o]=b.dataset.b;else delete OV[b.dataset.o];saveOV();refresh(true)});
+ root.querySelectorAll(".cf button").forEach(b=>b.onclick=e=>{e.stopPropagation();const n=b.dataset.o,bk=b.dataset.b;const st=gridState();
+   if(!bk){delete OV[n];delete SAVED[n];saveOV();refresh(true);reopenGrid(st.keep,st.sc);return}
+   const q=QD[n];
+   if(IN_HUB&&q&&q.g){const cf=b.closest(".cf");cf.querySelectorAll("button").forEach(x=>x.disabled=true);cf.querySelector(".cfmsg").textContent="Saving to Shopify…";const req=++REQN;PEND[req]={n,b:bk};
+     window.parent.postMessage({type:"scorecard-order-source",req,n,order_id:q.g,bucket:bk},"*");
+     setTimeout(()=>{if(PEND[req]){delete PEND[req];cf.querySelectorAll("button").forEach(x=>x.disabled=false);cf.querySelector(".cfmsg").textContent="No answer from the hub. Try again."}},25000)}
+   else{OV[n]=bk;saveOV();refresh(true);reopenGrid(st.keep,st.sc)}});
  const pb=root.querySelector("#perbtns");if(pb)pb.querySelectorAll("button").forEach(b=>b.onclick=()=>{pb.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));root.querySelector("#pertbl").innerHTML=perTable(+b.dataset.n)});
  const rf=root.querySelector("#revf");if(rf)rf.querySelectorAll("button").forEach(b=>b.onclick=()=>{rf.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
    const tb=root.querySelector("#agrid tbody");if(b.dataset.f==="review"){tb.querySelectorAll("tr").forEach(r=>{r.hidden=true});
-     tb.querySelectorAll("tr.ord").forEach(r=>{if(r.querySelector(".chip2.rev")||r.querySelector(".chip2.tag")){r.hidden=false;let p=r.dataset.p;while(p){const par=tb.querySelector(`[data-k="${p}"]`);if(!par)break;par.hidden=false;par.classList.add("open");p=par.dataset.p}}})}
+     tb.querySelectorAll("tr.ord").forEach(r=>{if(r.querySelector(".chip2.rev")){r.hidden=false;const nx=r.nextElementSibling;if(nx&&nx.classList.contains("det"))nx.hidden=false;let p=r.dataset.p;while(p){const par=tb.querySelector(`[data-k="${p}"]`);if(!par)break;par.hidden=false;par.classList.add("open");p=par.dataset.p}}})}
    else{tb.querySelectorAll("tr").forEach(r=>{r.hidden=!!r.dataset.p});tb.querySelectorAll(".tg2").forEach(r=>r.classList.remove("open"));const first=tb.querySelector(".l0.tg2");if(first){first.classList.add("open");tb.querySelectorAll(`[data-p="${first.dataset.k}"]`).forEach(c=>c.hidden=false)}}})}
 function openTile(id,scroll){
  document.querySelectorAll(".xp").forEach(x=>x.remove());
