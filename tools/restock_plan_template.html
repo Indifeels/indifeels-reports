@@ -616,6 +616,7 @@ select.sel{appearance:none;-webkit-appearance:none}
 .pv .ud{flex:none;width:40px;text-align:center;line-height:1.05;align-self:center}.pv .ud b{display:block;font-size:12px;color:var(--muted);font-weight:700}.pv .ud span{text-transform:uppercase;display:block;margin:0;font-size:8.5px;color:var(--muted)}
 .hnum small.pud{display:block;font-size:8.5px;color:#9aa0a8;margin-top:1px}
 
+.pv .step b.n-red{color:#ff7b72!important}.pv .step b.n-amber{color:#e3b341!important}.pv .step b.n-green{color:#4cc364!important}
 /* polish: one aligned row, quieter pills */
 .pv .rw{align-items:center!important;gap:6px}
 .pv .act{flex-wrap:nowrap!important}
@@ -1008,13 +1009,18 @@ function timeline(o){
   return bits.join(' → ');
 }
 const lowFlag = o => eff(o) < o.qty ? `<div class="flag" title="The supplier cannot ship the full amount">⚠ Supplier reported low stock: shipping ${eff(o)} of ${o.qty}${o.qty_by_name ? ' · ' + esc(o.qty_by_name) : ''}</div>` : '';
+function needClr(r){
+  if (!(r.toOrder > 0) || r.P.disc || !(r.sales > 0)) return '';
+  if (pipeline(keyOf(r.P.p.id, r.title)).total > 0) return 'amber';          // partly covered by an order in progress
+  return (r.stock <= 0 || r.level === 'red' || r.level === 'orange') ? 'red' : r.level === 'yellow' ? 'amber' : 'green';
+}
 function ordHtml(i){
   const {r,key} = infos[i];
   if (r.P.disc) return '<span class="sub">Discontinued</span>';
   const cur = curQty(i), pp = pipeline(key);
   const parts = []; if (pp.saved) parts.push('Ordered ' + pp.saved); if (pp.box) parts.push('Packed ' + pp.box); if (pp.way) parts.push('Shipped ' + pp.way);
-  const label = cur > 0 && pp.total > 0 ? 'Save +' + cur : 'Save';
-  return `<span class="step"><button data-step="1">+</button><b>${cur}</b><button data-step="-1" ${cur<=0?'disabled':''}>−</button></span>` +
+  const label = 'Save', nc = needClr(r);
+  return `<span class="step"><button data-step="1">+</button><b${cur > 0 && nc ? ` class="n-${nc}"` : ''}>${cur}</b><button data-step="-1" ${cur<=0?'disabled':''}>−</button></span>` +
     `<button class="save" data-save="1" ${cur > 0 ? '' : 'disabled'} title="Send this quantity to the supplier as a new order line">${label}</button>` +
     (parts.length ? `<div class="pipe">${parts.join(' · ')}</div>` : '');
 }
@@ -1078,8 +1084,7 @@ function rowHtml(r){
   const sc = r.sales > 0 && r.stock <= 0 ? 'red' : r.stock < r.required ? 'amber' : 'green';
   const dl = r.sales > 0 && isFinite(r.left) ? Math.ceil(r.left) : 0, dTxt = dl + (dl === 1 ? ' day' : ' days');
   const stTxt = r.level === 'red' ? 'Out of stock' : (r.level === 'orange' || r.level === 'yellow') ? 'Low stock · ' + dTxt : r.level === 'green' ? 'OK · ' + dTxt : 'No sales';
-  const ppv = pipeline(keyOf(r.P.p.id, r.title));
-  const needC = r.toOrder > 0 && !r.P.disc && r.sales > 0 ? (ppv.total > 0 ? 'amber' : (r.stock <= 0 || r.level === 'red' || r.level === 'orange') ? 'red' : r.level === 'yellow' ? 'amber' : 'green') : '';
+  const needC = needClr(r);
   const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span>${vTag(r)}<div class="pipes" data-sup="${i}">${supMv(i)}</div></div>
     <div class="rw"><div class="mc mc-${sc}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><b>${fmt2(r.dts)}</b><span>U.D</span></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
   return {tr, mv};
