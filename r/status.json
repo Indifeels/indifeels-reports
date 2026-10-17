@@ -45,10 +45,10 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-10-17T21:49+11:00",
-  "code_sha": "06a6b4e80b20692cc2c2bfc80132caf88a8333ba",
+  "at": "2026-10-18T06:00+11:00",
+  "code_sha": "aeeef022187ae49af4594dee207537c226d5849a",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-10-17T21:49+11:00",
+  "last_ok": "2026-10-18T06:00+11:00",
   "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
