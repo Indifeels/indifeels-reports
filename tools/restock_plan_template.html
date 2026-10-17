@@ -619,6 +619,15 @@ select.sel{appearance:none;-webkit-appearance:none}
 .hnum small.pud{display:block;font-size:8.5px;color:#9aa0a8;margin-top:1px}
 
 .pv .step b.n-red{color:#ff7b72!important}.pv .step b.n-amber{color:#e3b341!important}.pv .step b.n-green{color:#4cc364!important}
+/* saved flash + slide-away, header pills in one row */
+.pv.just-saved{box-shadow:inset 0 0 0 1px #2ea043;transition:box-shadow .3s}
+.pv button.save.ok{background:#2ea043!important;color:#fff!important;opacity:1!important}
+.pv.fade-out,tr.fade-out{opacity:0;transform:translateX(28px);max-height:0!important;margin-top:0!important;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important;border-width:0;overflow:hidden;transition:opacity .35s ease,transform .45s ease,max-height .45s ease .05s,margin .45s ease .05s,padding .45s ease .05s}
+.hnum .prow{display:flex;gap:4px;justify-content:flex-end;align-items:center;margin-bottom:1px}
+.hnum i.prk{display:inline-block;margin:0;width:auto;font-size:11px;padding:1px 8px}
+.hnum .pnum{white-space:nowrap;line-height:1.1}
+.hnum .pnum b{display:inline;font-size:19px}
+.hnum .pnum span{display:inline;margin-left:4px;font-size:10px}
 /* polish: one aligned row, quieter pills */
 .pv .rw{align-items:center!important;gap:6px}
 .pv .act{flex-wrap:nowrap!important}
@@ -675,6 +684,7 @@ select.sel{appearance:none;-webkit-appearance:none}
       </select>
       <button type="button" class="sel mt" id="ctlToggle" title="More filters">⋯</button>
     </div>
+    <div class="ckrow" id="hideRow"><label><input type="checkbox" id="hideOrd" checked> Hide already ordered</label><span>covered by an order, box or shipment</span></div>
     <div class="ckrow" id="newRow" hidden><label><input type="checkbox" id="newOnly" checked> Since last restock</label><span>or sold since</span><input type="date" id="sinceDate"><button type="button" id="sinceX" hidden>✕</button></div>
     <div class="lenrow"><label for="len">Leniency</label><input type="range" id="len" min="1" max="10" step="1" value="3"><b class="pill" id="lenv"></b></div>
     <div class="pop" id="colPop"><input type="text" id="colQ" placeholder="Search collections" autocomplete="off"><div class="opts" id="colOpts"></div></div>
@@ -758,6 +768,7 @@ window.addEventListener('message', e => {
     if (d.code) { $('scanIn').value = d.code; scanLookup(d.code); }
     else if (d.error) scanMsg(d.error, true);
   }
+  else if (d.type === 'restock-plan-filters') { try { applyFilters(d.filters); } catch (e) {} }
   else if (d.type === 'restock-plan-theme') { document.documentElement.dataset.theme = d.theme === 'light' ? 'light' : 'dark'; }
   else if (d.type === 'restock-plan-result') {
     const p = pendingCalls.get(d.req); if (!p) return;
@@ -1077,12 +1088,13 @@ function vTag(r){
 }
 function pTag(g){
   const P = g.P; if (P.disc) return '';
-  let t, c, tip;
-  if (mode === 'priority') { t = '#' + g.rank; c = P.worst; tip = 'Product priority rank'; }
-  else if (mode === 'date') { if (!P.last) return ''; t = ago(P.last).replace('sold ', ''); c = 'info'; tip = 'Last sold'; }
-  else if (mode === 'vdts') { const d = Math.min(...g.rows.filter(r => r.sales > 0).map(r => r.dts)); t = fmt2(d) + '<small>D.U</small>'; c = dtsCol(d); tip = 'Fastest variant: days to sell 1 unit'; }
-  else { t = fmt2(P.pDTS) + '<small>D.U</small>'; c = dtsCol(P.pDTS); tip = 'Product: days to sell 1 unit'; }
-  return `<i class="badge prk c-${c}" title="${tip}">${t}</i>`;
+  const mk = (t, c, tip) => `<i class="badge prk c-${c}" title="${tip}">${t}</i>`;
+  let h = '';
+  if (mode === 'priority') h += mk('#' + g.rank, P.worst, 'Product priority rank');
+  else if (mode === 'date' && P.last) h += mk(esc(ago(P.last).replace('sold ', '')), 'info', 'Last sold');
+  const d = mode === 'vdts' ? Math.min(...g.rows.filter(r => r.sales > 0).map(r => r.dts)) : P.pDTS;
+  if (isFinite(d)) h += mk(fmt2(d) + '<small>D.U</small>', dtsCol(d), mode === 'vdts' ? 'Fastest variant: days to sell 1 unit' : 'Product: days to sell 1 unit');
+  return h;
 }
 
 /* ---------------- render ---------------- */
@@ -1130,7 +1142,7 @@ function cardHtml(g){
         <div class="tile ${dtsCls}"><b>${fmt(P.pDTS)}</b><span>Days / 1 unit (product)</span></div>
         <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
       </div>
-      <div class="hnum ${P.units ? '' : 'zero'}">${pTag(g)}<b>${P.units}</b><span>to order</span>${(mode === 'priority' || mode === 'date') && isFinite(P.pDTS) ? `<small class="pud" title="Days to sell 1 unit (product)">${fmt2(P.pDTS)} D.U</small>` : ''}</div></div>
+      <div class="hnum ${P.units ? '' : 'zero'}"><div class="prow">${pTag(g)}</div><div class="pnum"><b>${P.units}</b><span>to order</span></div></div></div>
     <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>
       <div class="scroll dtable"><table>
       <thead><tr><th>Priority</th><th>Variant</th><th>Sold</th><th>Days / 1 sold</th><th>Days left</th><th class="g1">Current stock</th><th class="g2">Required stock</th><th class="g3">To order</th><th>Supplier</th><th>Status</th></tr></thead>
@@ -1230,7 +1242,9 @@ function render(){
     (!eligSel || (eligSel === 'y' ? r.P.elig : !r.P.elig)) &&
     (dSel === 'all' || (dSel === 'only' ? r.P.disc : !r.P.disc)) &&
     (!onlyElig || (r.P.eligible && !getDone(r.P.p.id)));
-  const pass = r => passBase(r) && (tf && TFP[tf] ? TFP[tf](r) : (!onlyNeed || r.toOrder > 0 || pipeline(keyOf(r.P.p.id, r.title)).live.length));
+  const hideOrd = $('hideOrd').checked && !tf;
+  const covered = r => r.toOrder === 0 && pipeline(keyOf(r.P.p.id, r.title)).live.length > 0;      // fully handled by orders in progress
+  const pass = r => passBase(r) && (tf && TFP[tf] ? TFP[tf](r) : (!onlyNeed || r.toOrder > 0 || pipeline(keyOf(r.P.p.id, r.title)).live.length)) && !(hideOrd && covered(r));
   statCtx = {rows: prods.flatMap(P => P.rows).filter(passBase)}; drawStats();
   infos.length = 0;
   const groups = [], bannered = new Set();
@@ -1320,7 +1334,7 @@ $('scanClr').addEventListener('click', scanClear);
 /* ---------------- events ---------------- */
 const reset = () => { limit = PAGE; render(); };
 $('len').addEventListener('input', reset);
-['vsel','onlyElig','supplier','collection','elig','discf'].forEach(id => $(id).addEventListener('change', reset));
+['vsel','onlyElig','supplier','collection','elig','discf','hideOrd'].forEach(id => $(id).addEventListener('change', reset));
 const syncNew = () => { $('newRow').hidden = $('order').value !== 'date'; };
 $('order').addEventListener('change', () => { mode = $('order').value; syncNew(); state.clear(); reset(); });
 $('newOnly').addEventListener('change', () => { if ($('newOnly').checked) { $('sinceDate').value = ''; $('sinceX').hidden = true; } reset(); });
@@ -1341,17 +1355,42 @@ let autoOn = true; try { autoOn = localStorage.getItem('restockAutoSave') !== '0
 const autoT = new Map();
 async function saveItems(list){
   let ok = 0, units = 0, fail = '';
+  const savedKeys = [];
   for (const {r, key, qty} of list) {
     const P = r.P; if (qty <= 0 || P.disc) continue;
     try {
       const row = await Store.order({ vkey: key, product_id: P.p.id, product_title: P.p.title, product_url: P.p.url || '', image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''),
         variant_title: r.title, supplier: P.supplier || 'Unassigned', qty, stock_base: r.stock });
       if (row && row.id) orders.set(row.id, row);
-      draft.delete(key); ok++; units += qty;
+      draft.delete(key); ok++; units += qty; savedKeys.push(key);
     } catch (err) { fail = err.message; }
   }
   if (fail) notify('Save failed: ' + fail + (ok ? ' (' + ok + ' saved)' : ''));
   else if (ok > 1) notify(ok + ' lines saved · ' + units + ' units', true);
+  if (savedKeys.length) {
+    // show it as saved for a moment, then let covered rows slide away, then redraw
+    try {
+      indexOrders();
+      const fade = [], hideNow = $('hideOrd').checked && !tf;
+      savedKeys.forEach(key => {
+        const i = infos.findIndex(x => x.key === key); if (i < 0) return;
+        paint(i);
+        const x = infos[i], left = Math.max(0, x.r.required - x.r.stock - pipeline(key).total);
+        document.querySelectorAll(`[data-ord="${i}"]`).forEach(a => {
+          const row = a.closest('.pv') || a.closest('tr'); if (!row) return;
+          row.classList.add('just-saved');
+          const sv = a.querySelector('button.save'); if (sv) { sv.textContent = '✓ Saved'; sv.classList.add('ok'); sv.disabled = true; }
+          const nb = a.querySelector('.step b'); if (nb) { nb.textContent = String(left); nb.className = ''; }
+          row.querySelectorAll('em.gap').forEach(e => e.remove());
+          row.querySelectorAll('.mc.need').forEach(m => { m.className = 'mc'; });
+          if (hideNow && left === 0) fade.push(row);
+        });
+      });
+      await new Promise(r => setTimeout(r, 1700));
+      fade.forEach(r => { r.style.maxHeight = r.offsetHeight + 'px'; void r.offsetHeight; r.classList.add('fade-out'); });
+      if (fade.length) await new Promise(r => setTimeout(r, 520));
+    } catch (e) {}
+  }
   render();
   return ok;
 }
@@ -1467,6 +1506,33 @@ function buildSuppliers(){
   const cnt = new Map(); data.products.forEach(p => (p.cols || []).forEach(c => cnt.set(c, (cnt.get(c) || 0) + 1)));
   $('collection').innerHTML = '<option value="">All</option>' + [...cnt.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([c,n])=>`<option value="${esc(c)}">${esc(c)} (${n})</option>`).join('');
 }
+
+/* ---------------- filters survive a refresh (the hub keeps them) ---------------- */
+let applyingFilters = false;
+function collectFilters(){
+  return {order: $('order').value, vsel: $('vsel').value, len: $('len').value, collection: $('collection').value, supplier: $('supplier').value, elig: $('elig').value,
+    discf: $('discf').value, onlyElig: $('onlyElig').checked, newOnly: $('newOnly').checked, sinceDate: $('sinceDate').value, hideOrd: $('hideOrd').checked};
+}
+function saveFilters(){ if (applyingFilters) return; try { parent.postMessage({type: 'restock-plan', action: 'filters', filters: collectFilters()}, '*'); } catch (e) {} }
+function applyFilters(f){
+  if (!f || typeof f !== 'object') return;
+  applyingFilters = true;
+  try {
+    const setSel = (id, v) => { const el = $(id); if (v != null && [...el.options].some(o => o.value === String(v))) el.value = String(v); };
+    setSel('order', f.order); mode = $('order').value; syncNew();
+    if (f.vsel === 'need' || f.vsel === 'all') { $('vsel').value = f.vsel; document.querySelectorAll('#vseg button').forEach(x => x.classList.toggle('on', x.dataset.v === f.vsel)); }
+    if (f.len != null && +f.len >= 1 && +f.len <= 10) $('len').value = String(+f.len);
+    setSel('supplier', f.supplier); setSel('collection', f.collection); setSel('elig', f.elig); setSel('discf', f.discf);
+    if (typeof f.onlyElig === 'boolean') $('onlyElig').checked = f.onlyElig;
+    if (typeof f.hideOrd === 'boolean') $('hideOrd').checked = f.hideOrd;
+    if (typeof f.newOnly === 'boolean') $('newOnly').checked = f.newOnly;
+    if (typeof f.sinceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f.sinceDate)) { $('sinceDate').value = f.sinceDate; $('sinceX').hidden = false; $('newOnly').checked = false; }
+    colOpts(); state.clear(); limit = PAGE; render();
+  } finally { applyingFilters = false; }
+}
+document.getElementById('fwrap').addEventListener('change', () => setTimeout(saveFilters, 0));
+document.getElementById('fwrap').addEventListener('input', () => setTimeout(saveFilters, 0));
+document.getElementById('fwrap').addEventListener('click', () => setTimeout(saveFilters, 0));
 
 /* ---------------- cleaned-up filter bar, tiles, collection search ---------------- */
 document.querySelectorAll('#vseg button').forEach(b => b.addEventListener('click', () => {
