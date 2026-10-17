@@ -464,6 +464,116 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 #viewMine .controls{position:static;display:none;margin:0 0 8px}
 #viewMine .controls.open{display:flex;max-height:60vh;overflow:auto}
 #list tr.hit td{box-shadow:inset 0 0 0 9999px rgba(88,166,255,.18)}
+
+/* ===== owner view v2: clean filters, overview tiles, compact phone rows, sticky product header ===== */
+:root[data-theme="dark"] body{background:#111214}
+.fbar{position:relative;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:8px;margin:6px 0 8px}
+:root[data-theme="dark"] .fbar,:root[data-theme="dark"] .ov,:root[data-theme="dark"] #viewMine .card{background:linear-gradient(135deg,#292a2c,#151618 85%);border-color:#3c3d40;box-shadow:5px 8px 14px #0008,inset 1px 2px 1px #ffffff2e,inset -2px -3px 3px #0007}
+.seg{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:3px;margin-bottom:6px}
+.seg button{flex:1;border:0;background:transparent;padding:7px;border-radius:8px;font-weight:700;color:var(--muted);font-size:14px}
+.seg button.on{background:var(--blue);color:#06101c}
+.row2{display:flex;gap:6px}
+.row2>*{min-width:0}
+.sel{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:7px 10px;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:6px;overflow:hidden;white-space:nowrap;font-size:14px}
+.sel i{font-style:normal;color:var(--muted);font-size:11px}
+select.sel{appearance:none;-webkit-appearance:none}
+.sel.mt{flex:none;width:42px;justify-content:center;font-size:18px;color:var(--muted)}
+.lenrow{display:flex;align-items:center;gap:8px;margin-top:6px;padding:0 4px;font-size:13px;color:var(--muted)}
+.lenrow input{flex:1;margin:0;accent-color:var(--blue);height:22px}
+.lenrow .pill{min-width:62px;text-align:center;font-size:12.5px}
+#fbar .controls{margin:8px 0 0;border:0;background:transparent;padding:6px 2px 0;border-top:1px solid var(--border)}
+.pop{position:absolute;left:8px;right:8px;top:100%;margin-top:6px;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 30px #000c;padding:8px;display:none;z-index:40}
+.pop.open{display:block}
+.pop input{width:100%;margin-bottom:6px;padding:8px 10px}
+.pop .opts{max-height:240px;overflow:auto}
+.pop .opt{padding:9px 10px;border-radius:8px;cursor:pointer}
+.pop .opt:hover,.pop .opt.on{background:var(--grey-bg)}
+/* overview panel */
+.ov{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:8px;overflow:hidden}
+.ov-h{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none}
+.ov-t{font-size:20px;font-weight:800}
+.ov-t{white-space:nowrap}.ov-s{flex:1;text-align:right;color:var(--muted);font-size:12.5px;white-space:nowrap;display:none}
+.ov.shut .ov-s{display:block}.ov:not(.shut) .ov-h{justify-content:space-between}
+.chev2{color:var(--muted);font-size:16px;transition:transform .15s}
+.ov.shut .chev2{transform:rotate(-90deg)}
+.ov.shut .stats{display:none}
+.ov .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:0 10px 10px;margin:0}
+.ot{cursor:pointer;padding:7px 8px;border-radius:11px;border:1px solid var(--border);border-top:3px solid #55575c;background:var(--bg)}
+:root[data-theme="dark"] .ot{background:linear-gradient(160deg,#2c2d30,#121315);box-shadow:3px 5px 9px #0008,inset 1px 1px 1px #ffffff26}
+.ot b{display:block;font-size:21px;line-height:1.1;font-weight:800}
+.ot span{display:block;font-size:10.5px;color:var(--muted);line-height:1.15;margin-top:1px}
+.ot.t-red{border-top-color:#ff7b72}.ot.t-red b{color:var(--red)}
+.ot.t-orange{border-top-color:#ffa657}.ot.t-orange b{color:var(--orange)}
+.ot.t-amber{border-top-color:#e3b341}.ot.t-amber b{color:var(--amber)}
+.ot.t-blue{border-top-color:#79c0ff}.ot.t-blue b{color:var(--info)}
+.ot.t-green{border-top-color:#4cc364}.ot.t-green b{color:var(--green)}
+.ot.on{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue),0 0 14px #58a6ff66}
+.legend{margin:0 3px 4px;font-size:11px;gap:0 10px}
+.count{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:12.5px;margin:0 3px 6px}
+.count .ea{margin-left:auto;display:flex;gap:6px}
+.count button{padding:3px 9px;font-size:12px;border-radius:8px}
+.count .chipx{background:var(--blue);color:#06101c;border-color:var(--blue);font-weight:700}
+/* product cards: sticky header, one open at a time, status stripe */
+#viewMine .card{overflow:clip;margin-bottom:8px;border-radius:12px}
+#viewMine .card-h{position:sticky;top:0;z-index:15;padding:8px 10px;gap:9px}
+.card:not(.open) .card-h{position:relative}
+#viewMine .card.w-red .card-h{box-shadow:inset 5px 0 0 #ff7b72,inset 0 1px 0 #ffffff24,inset 0 -4px 8px #0008}
+#viewMine .card.w-orange .card-h{box-shadow:inset 5px 0 0 #ffa657,inset 0 1px 0 #ffffff24,inset 0 -4px 8px #0008}
+#viewMine .card.w-yellow .card-h{box-shadow:inset 5px 0 0 #e3b341,inset 0 1px 0 #ffffff24,inset 0 -4px 8px #0008}
+#viewMine .card.w-green .card-h{box-shadow:inset 5px 0 0 #4cc364,inset 0 1px 0 #ffffff24,inset 0 -4px 8px #0008}
+.tag.nw{background:var(--info-bg);color:var(--info)}
+.tag.ne{background:#3a3b3e;color:#d0d3d8}
+.hnum{text-align:right;flex:none}.hnum b{display:block;font-size:19px;line-height:1.05;color:var(--amber)}.hnum span{font-size:10px;color:#c9ced4}.hnum.zero b{color:var(--green)}
+.pbar{display:flex;gap:8px;margin:0 0 6px}
+.pbar .pbtn{flex:none;padding:6px 12px;font-size:13px;font-weight:700}
+.pbar .pbtn:first-child{background:var(--blue);color:#06101c;border-color:var(--blue)}
+.pbar .pbtn[data-disc]{margin-left:auto;color:var(--muted)}
+.card-h .hbtn{display:none}
+.card-h .tiles{display:none}
+.dtable{display:none}
+.ptable{display:block}
+.body{padding:6px}
+/* phone variant row */
+.pv{background:var(--bg);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:10px;padding:6px 8px;margin-bottom:5px}
+.pv.lc-red{border-left-color:#ff7b72;background:#241415}.pv.lc-orange{border-left-color:#ffa657;background:#241a10}.pv.lc-yellow{border-left-color:#e3b341;background:#221d0f}.pv.lc-green{border-left-color:#4cc364;background:#111b14}.pv.lc-grey{border-left-color:#55575c}
+:root[data-theme="light"] .pv.lc-red{background:#fff0ee}:root[data-theme="light"] .pv.lc-orange{background:#fff4e8}:root[data-theme="light"] .pv.lc-yellow{background:#fffbe0}:root[data-theme="light"] .pv.lc-green{background:#eefbf1}
+.pv .vh{display:flex;align-items:center;gap:8px;margin-bottom:4px}.pv .vh b{flex:1;font-size:14px}
+.pv .vh .badge{font-size:11px;padding:1px 8px}
+.pv .rw{display:flex;align-items:center;gap:6px}
+.pv .mc{flex:none;min-width:44px;padding:2px 4px;text-align:center;border-radius:8px;border:1px solid #1d4a75;background:#0c2d4d33}
+.pv .mc b{display:block;font-size:17px;line-height:1.15;color:var(--info)}.pv .mc span{display:block;font-size:9.5px;color:var(--muted)}
+.pv .mc.mc-red{background:var(--red-bg);border-color:#6b2a2d}.pv .mc.mc-red b{color:var(--red)}
+.pv .mc.mc-amber{background:var(--amber-bg);border-color:#6b5000}.pv .mc.mc-amber b{color:var(--amber)}
+.pv .mc.mc-green{background:var(--green-bg);border-color:#1f5c33}.pv .mc.mc-green b{color:var(--green)}
+.pv .act{margin-left:auto;display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:4px}
+.pv .act .pipe{display:none}
+.pv .step button{width:30px;height:30px;font-size:17px;padding:0;border-radius:8px}
+.pv .step b{min-width:22px;font-size:17px!important;color:#fff}
+.pv button.save{margin-left:2px;padding:6px 12px;font-size:14px}
+.pv .pipes{font-size:12.5px}.pv .pipes:not(:empty){margin-top:4px}
+.pv .pipes .ln{margin:2px 0}
+/* desktop (computer): original table + header tiles, only the filters are new */
+@media(min-width:800px){
+  .dtable{display:block}.ptable{display:none}
+  .card-h .hbtn{display:inline-block}.card-h .tiles{display:flex}.card-h .hnum{display:none}.pbar{display:none}
+  .ov .stats{grid-template-columns:repeat(8,1fr)}.ot b{font-size:24px}.ot span{font-size:12px}
+  #fbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  #fbar .seg{margin:0;width:330px}#fbar .row2{flex:1;max-width:560px}#fbar .lenrow{margin:0;flex:1 1 260px}
+  #fbar .controls{flex-basis:100%}
+  #fbar .pop{left:350px;right:auto;width:320px}
+}
+@media(min-width:900px){th{top:var(--hh,72px)!important}}
+@media(max-width:799px){
+  .sub{display:none}
+  header{padding:8px 0 2px}h1{font-size:20px}
+  .tabs button{padding:6px 14px;font-size:14px}
+  #viewMine .card-h{flex-wrap:nowrap!important}
+  #viewMine .card-h .ttl{flex:1 1 auto!important;min-width:0}
+  #viewMine .card-h .thumb{width:38px;height:38px}
+  #viewMine .card-h .ttl h2{font-size:14px}
+  #viewMine .card-h .ttl .meta{font-size:11px}
+  .scan{margin:4px 0}
+}
 </style>
 </head>
 <body>
@@ -485,37 +595,40 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
     <div class="scmsg" id="scanMsg"></div>
     <div class="scres" id="scanRes" hidden></div>
   </div>
-  <div class="phonebar"><button id="ctlToggle">☰ Filters</button><button id="saveAll2">Save all</button></div>
-  <div class="controls">
-    <div class="slider">
-      <label for="len">Leniency <span class="pill" id="lenv"></span></label>
-      <input type="range" id="len" min="1" max="10" step="1" value="3">
-      <div class="lvl"><span>1 · minimum (lead time only)</span><span>10 · max buffer (5×)</span></div>
+  <section class="fbar" id="fbar">
+    <div class="seg" id="vseg"><button type="button" data-v="need" class="on">Needs stock</button><button type="button" data-v="all">All variants</button></div>
+    <div class="row2">
+      <button type="button" class="sel" id="colBtn"><span id="colTxt">All collections</span><i>▾</i></button>
+      <select class="sel" id="order" title="Sort">
+        <option value="priority">Sort: Priority</option>
+        <option value="pdts">Sort: Days / 1 unit · product</option>
+        <option value="vdts">Sort: Days / 1 unit · variant</option>
+        <option value="date">Sort: Latest sold</option>
+      </select>
+      <button type="button" class="sel mt" id="ctlToggle" title="More filters">⋯</button>
     </div>
-    <label class="o">Sort by
-      <select id="order">
-        <option value="priority">Priority</option><option value="date">By date (latest sale first)</option><option value="size">Size</option>
-        <option value="sales">Total sales (product)</option><option value="supplier">Supplier</option>
-        <option value="pdts">Days to sell 1 unit (product)</option><option value="vdts">Days to sell 1 unit (variant)</option>
-      </select></label>
-    <label class="o">Supplier <select id="supplier"><option value="">All</option></select></label>
-    <label class="o">Collection <select id="collection"><option value="">All</option></select></label>
-    <label class="o">Eligibility <select id="elig"><option value="">All</option><option value="y">Eligible only</option><option value="n">Not eligible only</option></select></label>
-    <label class="o">Discontinued <select id="discf"><option value="hide">Hide discontinued</option><option value="only">Only discontinued</option><option value="all">Show all</option></select></label>
-    <label class="o">Variants <select id="vsel" title="Auto = only variants needing stock when sorted by Priority, all variants for other sorts"><option value="">Auto (needing stock on Priority)</option><option value="need">Only needing stock</option><option value="all">All variants</option></select></label>
-    <label class="o"><input type="checkbox" id="onlyElig"> Only “Stock More Variants”</label>
-    <label class="o" title="Saves your quantity a few seconds after you stop tapping + / −"><input type="checkbox" id="autoSave"> Auto-save</label>
-    <button id="saveAll" title="Save every shown variant that has a quantity to order">Save all shown</button>
-    <button id="expAll">Expand all</button>
-    <button id="colAll">Collapse all</button>
-    <button id="resetDone" title="Bring back dismissed recommendations">Reset dismissed</button>
-  </div>
+    <div class="lenrow"><label for="len">Leniency</label><input type="range" id="len" min="1" max="10" step="1" value="3"><b class="pill" id="lenv"></b></div>
+    <div class="pop" id="colPop"><input type="text" id="colQ" placeholder="Search collections" autocomplete="off"><div class="opts" id="colOpts"></div></div>
+    <div class="controls" id="moreBox">
+      <label class="o">Supplier <select id="supplier"><option value="">All</option></select></label>
+      <label class="o">Eligibility <select id="elig"><option value="">All</option><option value="y">Eligible only</option><option value="n">Not eligible only</option></select></label>
+      <label class="o">Discontinued <select id="discf"><option value="hide">Hide discontinued</option><option value="only">Only discontinued</option><option value="all">Show all</option></select></label>
+      <label class="o"><input type="checkbox" id="onlyElig"> Only “Stock More Variants”</label>
+      <label class="o" title="Saves your quantity a few seconds after you stop tapping + / −"><input type="checkbox" id="autoSave"> Auto-save</label>
+      <select id="collection" hidden><option value="">All</option></select>
+      <input type="hidden" id="vsel" value="need">
+      <button id="saveAll" title="Save every shown variant that has a quantity to order">Save all shown</button>
+      <button id="expAll" hidden>Expand all</button><button id="colAll" hidden>Collapse all</button>
+      <button id="resetDone" title="Bring back dismissed recommendations">Reset dismissed</button>
+    </div>
+    <button id="saveAll2" hidden>Save all</button>
+  </section>
 
-  <div class="stats" id="stats"></div>
+  <section class="ov" id="ov"><div class="ov-h" id="ovh"><span class="ov-t">Stock overview</span><span class="ov-s" id="ovs"></span><span class="chev2">▾</span></div><div class="stats" id="stats"></div></section>
   <div class="legend">
     <span>🔴 Out of stock</span><span>🟠 &lt; 7 days to stockout</span><span>🟡 &lt; 14 days</span><span>🟢 OK</span><span>⚪ No sales</span>
-    <span>Cells: green = good · amber = watch · red = act · blue = info</span>
   </div>
+  <div class="count" id="count"><span id="cnt"></span><span id="tfchip"></span><span class="ea"><button type="button" id="expA">Expand all</button><button type="button" id="colA">Collapse all</button></span></div>
   <div id="discreq" hidden></div>
   <div id="wrong" hidden></div>
   <div id="boxes" hidden></div>
@@ -602,7 +715,7 @@ const Store = {
 /* ---------------- calculations ---------------- */
 const MULT = [null,1,1.2,1.4,1.6,1.8,2,2.5,3,4,5];
 const LEAD_DAYS = 28, MIN_MARKET_DAYS = 90, MAX_PRODUCT_DTS = 50, MIN_UNITS = 3, DAY = 86400000, PAGE = 120;
-let data = DATA, mode = 'priority', defaultOpen = true, limit = PAGE;
+let data = DATA, mode = 'priority', defaultOpen = false, limit = PAGE, tf = '', touched = false;
 let discMap = new Map();            // product id -> true/false chosen in the planner (wins over the Shopify value until the next build)
 const armed = new Set();
 const state = new Map(), draft = new Map(), infos = [];
@@ -750,7 +863,8 @@ function compute(){
     const pDTS = total > 0 ? days / total : Infinity;
     const cat = catOf(p), share = allUnits ? (catUnits[cat] || 0) / allUnits : 0, catW = 0.6 + 0.4 * Math.min(1, share / 0.25);
     const disc = discOf(p);
-    const P = {p, days, total, pDTS, elig: pDTS < MAX_PRODUCT_DTS, eligible: !disc && days >= MIN_MARKET_DAYS && pDTS < MAX_PRODUCT_DTS && total >= MIN_UNITS, disc, cat, catW, supplier: p.supplier || ''};
+    const newSlow = days < 60 && total < 5;     // launched under 2 months ago and under 5 sold: never ranked high
+    const P = {p, days, total, pDTS, newSlow, isNew: days < 60, elig: pDTS < MAX_PRODUCT_DTS, eligible: !disc && days >= MIN_MARKET_DAYS && pDTS < MAX_PRODUCT_DTS && total >= MIN_UNITS, disc, cat, catW, supplier: p.supplier || ''};
     const maxSales = Math.max(0, ...p.variants.map(v=>v[2]));
     P.rows = p.variants.map(([title,stock,sales,last,s30,bc]) => {
       last = last || ''; s30 = s30 || 0;
@@ -769,7 +883,7 @@ function compute(){
         conf = Math.min(1, sales / 8) * Math.min(1, days / 60);
         const life = sales / Math.max(days, 1), recent = s30 / 30, ratio = life > 0 ? recent / life : 1;
         if (s30 >= 5 && ratio > 2) damp = Math.max(0.35, 1 / (1 + (ratio - 2) * (SEASONAL.has(cat) ? 0.5 : 0.2)));
-        score = Math.round(short * conf * catW * damp * 10) / 10;
+        score = Math.round(short * conf * catW * damp * (P.newSlow ? 0.25 : 1) * 10) / 10;
       }
       return {P,title,bc: bc || [],stock,sales,last,s30,dts,required,toOrder,left,level,score,conf,damp,
         cSales: sales === 0 ? 'grey' : share >= .5 ? 'green' : share >= .2 ? 'amber' : 'red',
@@ -783,7 +897,7 @@ function compute(){
     P.last = P.rows.reduce((a,r)=> r.last > a ? r.last : a, p.last || '');
     return P;
   });
-  const EP = P => P.elig ? 0 : 1, E = r => EP(r.P);           // eligible products always first
+  const EP = P => (P.elig && !P.newSlow) ? 0 : 1, E = r => EP(r.P);           // eligible products always first
   const byPrio = (a,b) => (E(a) - E(b)) || (b.score - a.score) || (a.left - b.left) || (a.dts - b.dts) || (b.sales - a.sales);
   const entries = [];
   prods.forEach(P => P.rows.forEach(r => { if (r.sales > 0) entries.push(r); }));
@@ -831,18 +945,18 @@ function ordHtml(i){
   const {r,key} = infos[i];
   if (r.P.disc) return '<span class="sub">Discontinued</span>';
   const cur = curQty(i), pp = pipeline(key);
-  const parts = []; if (pp.saved) parts.push(pp.saved + ' saved'); if (pp.box) parts.push(pp.box + ' in box'); if (pp.way) parts.push(pp.way + ' on the way');
+  const parts = []; if (pp.saved) parts.push('Ordered ' + pp.saved); if (pp.box) parts.push('Packed ' + pp.box); if (pp.way) parts.push('Shipped ' + pp.way);
   const label = cur > 0 && pp.total > 0 ? 'Save +' + cur : 'Save';
   return `<span class="step"><button data-step="1">+</button><b>${cur}</b><button data-step="-1" ${cur<=0?'disabled':''}>−</button></span>` +
     `<button class="save" data-save="1" ${cur > 0 ? '' : 'disabled'} title="Send this quantity to the supplier as a new order line">${label}</button>` +
-    (parts.length ? `<div class="pipe">Already: ${parts.join(' · ')}</div>` : '');
+    (parts.length ? `<div class="pipe">${parts.join(' · ')}</div>` : '');
 }
 function lineHtml(o){
   const tip = ' title="' + esc(timeline(o)) + '"';
-  if (o.status === 'saved') return `<div class="ln"><span class="badge c-info"${tip}>On master list ${o.qty}</span><span class="sub">${dShort(o.saved_at)}</span><button class="x" data-cancel="${esc(o.id)}" title="Cancel this order line (only until the supplier boxes it)">×</button></div>`;
-  if (o.status === 'added') return `<div class="ln"><span class="badge c-amber"${tip}>📦 In box ${eff(o)}${o.box_no ? ' · ' + esc(o.box_no) : ''}${o.claimed && o.supplier ? ' · ' + esc(o.supplier) : ''}</span>${o.wrong_pick ? '<span class="wp" title="Picked by a supplier this product is not tagged to">⚠ wrong pick</span>' : ''}<button class="x" data-cancel="${esc(o.id)}" title="Remove this line (the supplier loses it)">×</button></div>${lowFlag(o)}`;
+  if (o.status === 'saved') return `<div class="ln"><span class="badge c-info"${tip}>Ordered ${o.qty}</span><span class="sub">${dShort(o.saved_at)}</span><button class="x" data-cancel="${esc(o.id)}" title="Cancel this order line (only until the supplier boxes it)">×</button></div>`;
+  if (o.status === 'added') return `<div class="ln"><span class="badge c-amber"${tip}>📦 Packed ${eff(o)}${o.box_no ? ' · ' + esc(o.box_no) : ''}${o.claimed && o.supplier ? ' · ' + esc(o.supplier) : ''}</span>${o.wrong_pick ? '<span class="wp" title="Picked by a supplier this product is not tagged to">⚠ wrong pick</span>' : ''}<button class="x" data-cancel="${esc(o.id)}" title="Remove this line (the supplier loses it)">×</button></div>${lowFlag(o)}`;
   const d = shipDay(o), days = daysBetween(d, Date.now());
-  return `<div class="ln"><span class="badge c-green"${tip}>🚚 ${eff(o)} shipped ${dShort(d)}${o.box_no ? ' · ' + esc(o.box_no) : ''} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days')}</span><button class="recv" data-recv="${esc(o.id)}" title="This line arrived: stop its timer">Received</button></div>${lowFlag(o)}`;
+  return `<div class="ln"><span class="badge c-green"${tip}>🚚 Shipped ${eff(o)} · ${dShort(d)}${o.box_no ? ' · ' + esc(o.box_no) : ''} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days')}</span><button class="recv" data-recv="${esc(o.id)}" title="This line arrived: stop its timer">Received</button></div>${lowFlag(o)}`;
 }
 function supHtml(i){
   const pp = pipeline(infos[i].key);
@@ -853,10 +967,10 @@ function supHtml(i){
   }
   return pp.live.map(lineHtml).join('');
 }
+const supMv = i => { const h = supHtml(i); return h === '–' ? '' : h; };
 function paint(i){
-  const a = document.querySelector(`[data-ord="${i}"]`), b = document.querySelector(`[data-sup="${i}"]`);
-  if (a) a.innerHTML = ordHtml(i);
-  if (b) b.innerHTML = supHtml(i);
+  document.querySelectorAll(`[data-ord="${i}"]`).forEach(a => { a.innerHTML = ordHtml(i); });
+  document.querySelectorAll(`[data-sup="${i}"]`).forEach(b => { b.innerHTML = b.classList.contains('pipes') ? supMv(i) : supHtml(i); });
   try { saveLabel(); } catch (e) {}
 }
 const repaintAll = () => infos.forEach((_,i) => paint(i));
@@ -865,7 +979,8 @@ const repaintAll = () => infos.forEach((_,i) => paint(i));
 function rowHtml(r){
   const i = infos.length; infos.push({r, key: keyOf(r.P.p.id, r.title)});
   const why = r.rank == null ? '' : ` title="Priority score ${r.score} (short over lead time × confidence ${Math.round(r.conf*100)}% × category ${Math.round(r.P.catW*100)}% × spike ${Math.round(r.damp*100)}%)"`;
-  return `<tr${scan && scan.title === r.title && scan.pid === String(r.P.p.id) ? ' class="hit"' : ''}><td class="c-${r.level} why"${why}>${r.rank ?? '–'}</td><td class="v">${esc(r.title)}</td>
+  const hit = scan && scan.title === r.title && scan.pid === String(r.P.p.id);
+  const tr = `<tr${hit ? ' class="hit"' : ''}><td class="c-${r.level} why"${why}>${r.rank ?? '–'}</td><td class="v">${esc(r.title)}</td>
     <td class="c-${r.cSales}">${r.sales}<div class="sub2">${ago(r.last)}</div></td><td class="c-${r.cDts}">${fmt(r.dts)}</td>
     <td class="c-${r.cLeft}">${r.sales===0?'—':r.stock<=0?0:fmt(r.left)}</td>
     <td class="stk g1 c-${r.cStock}">${r.stock}</td>
@@ -873,38 +988,55 @@ function rowHtml(r){
     <td class="ord g3 c-${r.cOrder}" data-ord="${i}">${ordHtml(i)}</td>
     <td class="sup" data-sup="${i}">${supHtml(i)}</td>
     <td class="status c-${r.level}"><span class="badge">${BADGE[r.level]}</span></td></tr>`;
+  const sc = r.sales > 0 && r.stock <= 0 ? 'red' : r.stock < r.required ? 'amber' : 'green';
+  const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${BADGE[r.level].replace(/^\S+\s/, '')}</span></div>
+    <div class="rw"><div class="mc mc-${sc}"><b>${r.stock}</b><span>Stock</span></div><div class="mc"><b>${r.required}</b><span>Req.</span></div><div class="act" data-ord="${i}">${ordHtml(i)}</div></div>
+    <div class="pipes" data-sup="${i}">${supMv(i)}</div></div>`;
+  return {tr, mv};
 }
 const plink = P => /^https:\/\//.test(P.p.url || '') ? esc(P.p.url) : '';
 function cardHtml(g){
-  const P = g.P, isOpen = state.has(g.id) ? state.get(g.id) : defaultOpen, pid = String(P.p.id);
+  const P = g.P, isOpen = state.has(g.id) ? state.get(g.id) : (defaultOpen || (!touched && g.first)), pid = String(P.p.id);
   const dtsCls = P.pDTS === Infinity ? 't-info' : P.pDTS < 20 ? 't-green' : P.pDTS < 50 ? 't-amber' : 't-red';
   const ordCls = P.units === 0 ? 't-green' : P.worst === 'red' ? 't-red' : 't-amber';
   const thumb = P.p.thumb || P.p.image;
   const src = thumb ? esc(thumb) + (thumb.startsWith('data:') ? '' : (thumb.includes('?') ? '&' : '?') + 'width=120') : '';
-  const tag = (P.disc ? '<span class="tag dc">Discontinued</span>' : '') + (P.elig ? '<span class="tag el">Eligible</span>' : '<span class="tag ne">Not eligible</span>');
+  const tag = (P.disc ? '<span class="tag dc">Discontinued</span>' : '') + (P.isNew ? '<span class="tag nw">New</span>' : '') + (!P.elig ? '<span class="tag ne">Not eligible</span>' : '');
   const arm = armed.has(pid);
-  return `<section class="card${isOpen?' open':''}" data-gid="${esc(g.id)}">
+  const worst = ['red','orange','yellow','green'].find(l => g.rows.some(r => r.level === l)) || 'grey';
+  const btns = (cls) => (P.disc ? '' : `<button class="disc ${cls}" data-psave="${esc(pid)}" title="Save every variant of this product that has a quantity to order">Save all</button>`) +
+    `<button class="disc ${cls}${arm?' arm':''}" data-disc="${esc(pid)}" data-to="${P.disc?0:1}" title="${P.disc ? 'Put this product back into restocking' : 'Stop restocking this product and mark it discontinued in Shopify'}">${P.disc ? 'Reinstate' : arm ? 'Confirm discontinue?' : 'Discontinue'}</button>`;
+  const rows = g.rows.map(rowHtml);
+  return `<section class="card w-${worst}${isOpen?' open':''}" data-gid="${esc(g.id)}">
     <div class="card-h" data-toggle="1"><span class="chev">▶</span>
       <div class="thumb">${plink(P) ? `<a class="tl" href="${plink(P)}" target="_blank" rel="noopener noreferrer" title="Open product page" style="position:absolute;inset:0;z-index:2"></a>` : ''}<span>${esc(initials(P.p.title))}</span>${src ? `<img src="${src}" alt="" loading="lazy" referrerpolicy="no-referrer" style="position:absolute;inset:0;opacity:0" onload="this.style.opacity=1" onerror="this.remove()">` : ''}</div>
       <div class="ttl"><h2>${plink(P) ? `<a class="pt" href="${plink(P)}" target="_blank" rel="noopener noreferrer" title="Open product page">${esc(P.p.title)} ↗</a>` : esc(P.p.title)}${tag}</h2><div class="meta">${g.rows.length} variant${g.rows.length===1?'':'s'} shown · ${P.supplier ? esc(P.supplier) : 'no supplier'} · ${P.days} days on market${P.cat !== 'other' ? ' · ' + esc(P.cat) : ''}${P.last ? ' · last sale ' + esc(ago(P.last).replace('sold ', '')) : ''}</div></div>
-      ${P.disc ? '' : `<button class="disc" data-psave="${esc(pid)}" title="Save every variant of this product that has a quantity to order">Save all</button>`}
-      <button class="disc${arm?' arm':''}" data-disc="${esc(pid)}" data-to="${P.disc?0:1}" title="${P.disc ? 'Put this product back into restocking' : 'Stop restocking this product and mark it discontinued in Shopify'}">${P.disc ? 'Reinstate' : arm ? 'Confirm discontinue?' : 'Discontinue'}</button>
+      ${btns('hbtn')}
       <div class="tiles">
         <div class="tile t-info"><b>${years(P.days)}</b><span>On market</span></div>
         <div class="tile"><b>${P.total}</b><span>Total sold</span></div>
         <div class="tile ${dtsCls}"><b>${fmt(P.pDTS)}</b><span>Days / 1 unit (product)</span></div>
         <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
-      </div></div>
+      </div>
+      <div class="hnum ${P.units ? '' : 'zero'}"><b>${P.units}</b><span>to order</span></div></div>
     ${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}
-    <div class="body"><div class="scroll"><table>
+    <div class="body"><div class="pbar">${btns('pbtn')}</div>
+      <div class="scroll dtable"><table>
       <thead><tr><th>Priority</th><th>Variant</th><th>Sold</th><th>Days / 1 sold</th><th>Days left</th><th class="g1">Current stock</th><th class="g2">Required stock</th><th class="g3">To order</th><th>Supplier</th><th>Status</th></tr></thead>
-      <tbody>${g.rows.map(rowHtml).join('')}</tbody></table></div></div></section>`;
+      <tbody>${rows.map(x => x.tr).join('')}</tbody></table></div>
+      <div class="ptable">${rows.map(x => x.mv).join('')}</div></div></section>`;
 }
-function queueTile(){
-  const c = {saved:0,added:0,shipped:0,received:0}; let incoming = 0, low = 0;
-  orders.forEach(o => { c[o.status]++; if (o.status === 'shipped') incoming += eff(o); if (o.status !== 'received' && eff(o) < o.qty) low++; });
-  return `<div class="stat" data-qt="1"><b>${c.saved} · ${c.added} · ${c.shipped}</b><span>Saved · in box · shipped</span></div>` +
-         `<div class="stat" data-qt="1"><b>${incoming}</b><span>Units on the way${low ? ' · ⚠ ' + low + ' short' : ''}</span></div>`;
+let statCtx = {live: [], entries: []};
+function drawStats(){
+  const {live, entries} = statCtx;
+  let ord = 0, box = 0, way = 0;
+  orders.forEach(o => { if (o.status === 'saved') ord += o.qty; else if (o.status === 'added') box += eff(o); else if (o.status === 'shipped') way += eff(o); });
+  const oos = entries.filter(v=>!v.P.disc && v.level==='red').length, u7 = entries.filter(v=>!v.P.disc && v.level==='orange').length;
+  const units = live.reduce((a,r)=>a+r.units,0), smv = live.filter(r=>r.eligible && !getDone(r.p.id)).length;
+  const T = (k, cls, n, l) => `<div class="ot ${cls}${tf === k ? ' on' : ''}" data-tf="${k}"><b>${n}</b><span>${l}</span></div>`;
+  $('stats').innerHTML = T('all','',live.length,'Products') + T('oos','t-red',oos,'Out of stock') + T('u7','t-orange',u7,'Under 7 days') + T('need','t-amber',units,'To order') +
+    T('smv','',smv,'Stock more variants') + T('ord','t-blue',ord,'Ordered') + T('pack','t-amber',box,'Packed') + T('ship','t-green',way,'Shipped');
+  $('ovs').textContent = units + ' to order · ' + oos + ' out of stock';
 }
 const wrongList = () => [...orders.values()].filter(o => o.wrong_pick && !o.wrong_ack && (o.status === 'added' || o.status === 'shipped'));
 let seenWrong = null;
@@ -973,20 +1105,16 @@ function render(){
   const vSel = $('vsel').value, onlyNeed = vSel === 'need' || (vSel === '' && mode === 'priority'), onlyElig = $('onlyElig').checked;
   const live = prods.filter(r => !r.disc);
   const activeElig = live.filter(r=>r.eligible && !getDone(r.p.id)).length;
-  $('stats').innerHTML = [
-    [live.length,'Products'],
-    [entries.filter(v=>!v.P.disc && v.level==='red').length,'Out-of-stock selling variants'],
-    [entries.filter(v=>!v.P.disc && v.level==='orange').length,'Under 7 days left'],
-    [live.reduce((a,r)=>a+r.units,0),'Units still to order'],[activeElig,'Stock More Variants'],
-    [prods.length - live.length,'Discontinued']
-  ].concat(wrongList().length ? [[wrongList().length,'⚠ Wrong picks']] : []).map(([n,l])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join('') + queueTile();
+  statCtx = {live, entries}; drawStats();
   $('sub').textContent = `${data.source || ''} · Generated ${new Date(data.generatedAt).toLocaleString()} · ${LEAD_DAYS}-day lead time`;
 
+  const TFP = {oos: r => r.level==='red' && !r.P.disc, u7: r => r.level==='orange' && !r.P.disc, need: r => r.toOrder > 0, smv: r => r.P.eligible && !getDone(r.P.p.id),
+    ord: r => pipeline(keyOf(r.P.p.id, r.title)).saved > 0, pack: r => pipeline(keyOf(r.P.p.id, r.title)).box > 0, ship: r => pipeline(keyOf(r.P.p.id, r.title)).way > 0};
   const pass = r => (!supSel || (r.P.supplier || '(none)') === supSel) &&
     (!colSel || (r.P.p.cols || []).includes(colSel)) &&
     (!eligSel || (eligSel === 'y' ? r.P.elig : !r.P.elig)) &&
     (dSel === 'all' || (dSel === 'only' ? r.P.disc : !r.P.disc)) &&
-    (!onlyNeed || r.toOrder > 0 || pipeline(keyOf(r.P.p.id, r.title)).live.length) &&
+    (tf && TFP[tf] ? TFP[tf](r) : (!onlyNeed || r.toOrder > 0 || pipeline(keyOf(r.P.p.id, r.title)).live.length)) &&
     (!onlyElig || (r.P.eligible && !getDone(r.P.p.id)));
   infos.length = 0;
   const groups = [], bannered = new Set();
@@ -1009,11 +1137,15 @@ function render(){
     }
   }
   const shown = groups.slice(0, limit);
-  shown.forEach(g => { g.banner = mkBanner(g.P); });
+  shown.forEach((g, ix) => { g.banner = mkBanner(g.P); g.first = ix === 0; });
+  const TN = {oos:'Out of stock',u7:'Under 7 days',need:'To order',smv:'Stock more variants',ord:'Ordered',pack:'Packed',ship:'Shipped'};
+  $('cnt').textContent = groups.length + ' product' + (groups.length === 1 ? '' : 's') + ' · ' + groups.reduce((a, g) => a + g.rows.length, 0) + ' variants';
+  $('tfchip').innerHTML = tf && TN[tf] ? '<button type="button" class="chipx" id="tfx">' + TN[tf] + ' ✕</button>' : '';
   let html = shown.map(cardHtml).join('');
   if (groups.length > shown.length) html += `<button class="more" id="more">Show more (${groups.length - shown.length} more)</button>`;
   $('list').innerHTML = html || '<div class="empty">Nothing to show with the current filters.</div>';
   renderBoxes(); renderWrong(); renderDiscReq();
+  const h0 = document.querySelector('#list .card-h'); if (h0) document.documentElement.style.setProperty('--hh', h0.offsetHeight + 'px');
 }
 
 /* ---------------- barcode scan ---------------- */
@@ -1074,7 +1206,7 @@ $('scanClr').addEventListener('click', scanClear);
 const reset = () => { limit = PAGE; render(); };
 $('len').addEventListener('input', reset);
 ['vsel','onlyElig','supplier','collection','elig','discf'].forEach(id => $(id).addEventListener('change', reset));
-$('order').addEventListener('change', () => { mode = $('order').value; defaultOpen = FLAT.has(mode); state.clear(); reset(); });
+$('order').addEventListener('change', () => { mode = $('order').value; state.clear(); reset(); });
 async function receive(ids, label){
   try {
     await Store.received(ids);
@@ -1174,22 +1306,25 @@ $('list').addEventListener('click', async e => {
   if (t.closest('a[href]')) return;      // product links open in a new tab, they don't toggle the card
   const h = t.closest('[data-toggle]');
   if (h) {
-    const card = h.closest('.card'), id = card.getAttribute('data-gid');
-    card.classList.toggle('open'); state.set(id, card.classList.contains('open'));
+    const card = h.closest('.card'), id = card.getAttribute('data-gid'), was = card.classList.contains('open'), y0 = h.getBoundingClientRect().top;
+    touched = true; defaultOpen = false; state.clear();
+    document.querySelectorAll('#list .card.open').forEach(c => c.classList.remove('open'));
+    if (!was) { card.classList.add('open'); state.set(id, true); }
+    window.scrollBy(0, h.getBoundingClientRect().top - y0);
   }
 });
-const setAll = v => { defaultOpen = v; state.clear(); document.querySelectorAll('.card').forEach(c => c.classList.toggle('open', v)); };
+const setAll = v => { touched = true; defaultOpen = v; state.clear(); document.querySelectorAll('.card').forEach(c => c.classList.toggle('open', v)); };
 $('autoSave').checked = autoOn;
 $('autoSave').addEventListener('change', () => { autoOn = $('autoSave').checked; try { localStorage.setItem('restockAutoSave', autoOn ? '1' : '0'); } catch (e) {} });
 let armSave = false, armSaveT = null, saveLabelT = 0;
-$('ctlToggle').addEventListener('click', () => { const c = document.querySelector('#viewMine .controls'), on = c.classList.toggle('open'); $('ctlToggle').textContent = on ? '✕ Close filters' : '☰ Filters'; });
+$('ctlToggle').addEventListener('click', () => { const c = $('moreBox'), on = c.classList.toggle('open'); $('ctlToggle').textContent = on ? '✕' : '⋯'; });
 $('saveAll2').addEventListener('click', () => $('saveAll').click());
 const saveLabel = () => { cancelAnimationFrame(saveLabelT); saveLabelT = requestAnimationFrame(() => {
   const b = $('saveAll'); if (!b || armSave) return;
   const list = pending(null), units = list.reduce((a, x) => a + x.qty, 0);
   b.textContent = list.length ? 'Save all shown (' + list.length + ' · ' + units + ' units)' : 'Save all shown';
   const b2 = $('saveAll2'); if (b2) b2.textContent = list.length ? 'Save all (' + list.length + ')' : 'Save all';
-  const c = document.querySelector('#viewMine .controls'); if (c) document.documentElement.style.setProperty('--ctlh', (c.offsetHeight + 8) + 'px');
+  
 }); };
 $('saveAll').addEventListener('click', async () => {
   const list = pending(null);
@@ -1213,11 +1348,31 @@ function buildSuppliers(){
   $('collection').innerHTML = '<option value="">All</option>' + [...cnt.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([c,n])=>`<option value="${esc(c)}">${esc(c)} (${n})</option>`).join('');
 }
 
-/* ---------------- supplier sync ---------------- */
-function updateQueue(){
-  document.querySelectorAll('#stats [data-qt]').forEach(e => e.remove());
-  $('stats').insertAdjacentHTML('beforeend', queueTile());
+/* ---------------- cleaned-up filter bar, tiles, collection search ---------------- */
+document.querySelectorAll('#vseg button').forEach(b => b.addEventListener('click', () => {
+  $('vsel').value = b.dataset.v; document.querySelectorAll('#vseg button').forEach(x => x.classList.toggle('on', x === b)); tf = ''; reset();
+}));
+$('stats').addEventListener('click', e => { const t = e.target.closest('[data-tf]'); if (!t) return; const k = t.dataset.tf; tf = (k === 'all' || tf === k) ? '' : k; reset(); });
+$('count').addEventListener('click', e => {
+  if (e.target.closest('#tfx')) { tf = ''; reset(); }
+  else if (e.target.closest('#expA')) { setAll(true); }
+  else if (e.target.closest('#colA')) { setAll(false); }
+});
+$('ovh').addEventListener('click', () => $('ov').classList.toggle('shut'));
+function colOpts(){
+  const q = ($('colQ').value || '').trim().toLowerCase(), cur = $('collection').value;
+  $('colOpts').innerHTML = [...$('collection').options].filter(o => !o.value || o.textContent.toLowerCase().includes(q)).map(o =>
+    `<div class="opt${o.value === cur ? ' on' : ''}" data-col="${esc(o.value)}">${o.value ? esc(o.textContent) : 'All collections'}</div>`).join('');
+  $('colTxt').textContent = cur || 'All collections';
 }
+$('colBtn').addEventListener('click', e => { e.stopPropagation(); $('colPop').classList.toggle('open'); if ($('colPop').classList.contains('open')) { $('colQ').value = ''; colOpts(); $('colQ').focus(); } });
+$('colQ').addEventListener('input', colOpts);
+$('colOpts').addEventListener('click', e => { const o = e.target.closest('[data-col]'); if (!o) return; $('collection').value = o.getAttribute('data-col'); $('colPop').classList.remove('open'); colOpts(); reset(); });
+document.addEventListener('click', e => { if (!e.target.closest('#colPop') && !e.target.closest('#colBtn')) $('colPop').classList.remove('open'); });
+$('collection').closest('label') && ($('collection').closest('label').style.display = 'none');
+
+/* ---------------- supplier sync ---------------- */
+function updateQueue(){ try { drawStats(); } catch (e) {} }
 function liveStock(o){
   const p = data.products.find(x => String(x.id) === String(o.product_id)); if (!p) return null;
   const v = p.variants.find(x => String(x[0]).trim().toLowerCase() === String(o.variant_title).trim().toLowerCase());
