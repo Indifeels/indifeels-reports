@@ -1130,7 +1130,7 @@ function cardHtml(g){
         <div class="tile ${dtsCls}"><b>${fmt(P.pDTS)}</b><span>Days / 1 unit (product)</span></div>
         <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
       </div>
-      <div class="hnum ${P.units ? '' : 'zero'}">${pTag(g)}<b>${P.units}</b><span>to order</span>${mode === 'priority' && isFinite(P.pDTS) ? `<small class="pud" title="Days to sell 1 unit (product)">${fmt2(P.pDTS)} D.U</small>` : ''}</div></div>
+      <div class="hnum ${P.units ? '' : 'zero'}">${pTag(g)}<b>${P.units}</b><span>to order</span>${(mode === 'priority' || mode === 'date') && isFinite(P.pDTS) ? `<small class="pud" title="Days to sell 1 unit (product)">${fmt2(P.pDTS)} D.U</small>` : ''}</div></div>
     <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>
       <div class="scroll dtable"><table>
       <thead><tr><th>Priority</th><th>Variant</th><th>Sold</th><th>Days / 1 sold</th><th>Days left</th><th class="g1">Current stock</th><th class="g2">Required stock</th><th class="g3">To order</th><th>Supplier</th><th>Status</th></tr></thead>
