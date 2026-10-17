@@ -598,7 +598,7 @@ select.sel{appearance:none;-webkit-appearance:none}
     <div class="scres" id="scanRes" hidden></div>
   </div>
   <section class="fbar" id="fbar">
-    <div class="seg" id="vseg"><button type="button" data-v="need" class="on">Needs stock</button><button type="button" data-v="all">All variants</button></div>
+    <div class="seg" id="vseg"><button type="button" data-v="need">Needs stock</button><button type="button" data-v="all" class="on">All variants</button></div>
     <div class="row2">
       <button type="button" class="sel" id="colBtn"><span id="colTxt">All collections</span><i>▾</i></button>
       <select class="sel" id="order" title="Sort">
@@ -619,7 +619,7 @@ select.sel{appearance:none;-webkit-appearance:none}
       <label class="o"><input type="checkbox" id="onlyElig"> Only “Stock More Variants”</label>
       <label class="o" title="Saves your quantity a few seconds after you stop tapping + / −"><input type="checkbox" id="autoSave"> Auto-save</label>
       <select id="collection" hidden><option value="">All</option></select>
-      <input type="hidden" id="vsel" value="need">
+      <input type="hidden" id="vsel" value="all">
       <button id="saveAll" title="Save every shown variant that has a quantity to order">Save all shown</button>
       <button id="expAll" hidden>Expand all</button><button id="colAll" hidden>Collapse all</button>
       <button id="resetDone" title="Bring back dismissed recommendations">Reset dismissed</button>
@@ -1029,15 +1029,15 @@ function cardHtml(g){
       <tbody>${rows.map(x => x.tr).join('')}</tbody></table></div>
       <div class="ptable">${rows.map(x => x.mv).join('')}</div></div></section>`;
 }
-let statCtx = {live: [], entries: []};
+let statCtx = {rows: []};
 function drawStats(){
-  const {live, entries} = statCtx;
-  let ord = 0, box = 0, way = 0;
-  orders.forEach(o => { if (o.status === 'saved') ord += o.qty; else if (o.status === 'added') box += eff(o); else if (o.status === 'shipped') way += eff(o); });
-  const oos = entries.filter(v=>!v.P.disc && v.level==='red').length, u7 = entries.filter(v=>!v.P.disc && v.level==='orange').length;
-  const units = live.reduce((a,r)=>a+r.units,0), smv = live.filter(r=>r.eligible && !getDone(r.p.id)).length;
+  const rows = statCtx.rows.filter(r => !r.P.disc);
+  let ord = 0, box = 0, way = 0, units = 0;
+  rows.forEach(r => { const pp = pipeline(keyOf(r.P.p.id, r.title)); ord += pp.saved; box += pp.box; way += pp.way; units += r.toOrder; });
+  const oos = rows.filter(r => r.level === 'red').length, u7 = rows.filter(r => r.level === 'orange').length;
+  const prodsN = new Set(rows.map(r => r.P)).size, smv = new Set(rows.filter(r => r.P.eligible && !getDone(r.P.p.id)).map(r => r.P)).size;
   const T = (k, cls, n, l) => `<div class="ot ${cls}${tf === k ? ' on' : ''}" data-tf="${k}"><b>${n}</b><span>${l}</span></div>`;
-  $('stats').innerHTML = T('all','',live.length,'Products') + T('oos','t-red',oos,'Out of stock') + T('u7','t-orange',u7,'Under 7 days') + T('need','t-amber',units,'To order') +
+  $('stats').innerHTML = T('all','',prodsN,'Products') + T('oos','t-red',oos,'Out of stock') + T('u7','t-orange',u7,'Under 7 days') + T('need','t-amber',units,'To order') +
     T('smv','',smv,'Stock more variants') + T('ord','t-blue',ord,'Ordered') + T('pack','t-amber',box,'Packed') + T('ship','t-green',way,'Shipped');
   $('ovs').textContent = units + ' to order · ' + oos + ' out of stock';
 }
@@ -1108,7 +1108,6 @@ function render(){
   const vSel = $('vsel').value, onlyNeed = vSel === 'need' || (vSel === '' && mode === 'priority'), onlyElig = $('onlyElig').checked;
   const live = prods.filter(r => !r.disc);
   const activeElig = live.filter(r=>r.eligible && !getDone(r.p.id)).length;
-  statCtx = {live, entries}; drawStats();
   $('sub').textContent = `${data.source || ''} · Generated ${new Date(data.generatedAt).toLocaleString()} · ${LEAD_DAYS}-day lead time`;
 
   const TFP = {oos: r => r.level==='red' && !r.P.disc, u7: r => r.level==='orange' && !r.P.disc, need: r => r.toOrder > 0, smv: r => r.P.eligible && !getDone(r.P.p.id),
@@ -1117,13 +1116,14 @@ function render(){
   const cut90 = ymd(new Date(Date.now() - 90 * DAY));
   const lastRecvDay = vk => { let m = ''; (byV.get(vk) || []).forEach(o => { if (o.status === 'received' && o.received_at && String(o.received_at) > m) m = String(o.received_at); }); return m ? ymd(new Date(m)) : ''; };
   const since = $('sinceDate').value;
-  const dateOk = r => { if (mode !== 'date' || !r.last) return true; if (since) return r.last >= since; if (!$('newOnly').checked) return r.last >= cut90; const d = lastRecvDay(keyOf(r.P.p.id, r.title)); return !d || r.last >= d; };
-  const pass = r => dateOk(r) && (!supSel || (r.P.supplier || '(none)') === supSel) &&
+  const dateOk = r => { if (mode !== 'date') return true; if (!r.last) return false; if (since) return r.last >= since; if (!$('newOnly').checked) return r.last >= cut90; const d = lastRecvDay(keyOf(r.P.p.id, r.title)); return !d || r.last >= d; };
+  const passBase = r => dateOk(r) && (!supSel || (r.P.supplier || '(none)') === supSel) &&
     (!colSel || (r.P.p.cols || []).includes(colSel)) &&
     (!eligSel || (eligSel === 'y' ? r.P.elig : !r.P.elig)) &&
     (dSel === 'all' || (dSel === 'only' ? r.P.disc : !r.P.disc)) &&
-    (tf && TFP[tf] ? TFP[tf](r) : (!onlyNeed || r.toOrder > 0 || pipeline(keyOf(r.P.p.id, r.title)).live.length)) &&
     (!onlyElig || (r.P.eligible && !getDone(r.P.p.id)));
+  const pass = r => passBase(r) && (tf && TFP[tf] ? TFP[tf](r) : (!onlyNeed || r.toOrder > 0 || pipeline(keyOf(r.P.p.id, r.title)).live.length));
+  statCtx = {rows: prods.flatMap(P => P.rows).filter(passBase)}; drawStats();
   infos.length = 0;
   const groups = [], bannered = new Set();
   const scanP = scan ? prods.find(P => String(P.p.id) === scan.pid) : null;
@@ -1132,12 +1132,10 @@ function render(){
   if (scanP) {
     groups.push({P: scanP, rows: scanP.rows.slice().sort(bySize), id: scanP.p.id});
   } else if (FLAT.has(mode)) {
-    for (const r of entries) {
-      if (!pass(r)) continue;
-      const last = groups[groups.length-1];
-      if (last && last.P === r.P) last.rows.push(r);
-      else groups.push({P: r.P, rows: [r], id: r.P.p.id + '#' + r.title});
-    }
+    const m = new Map();
+    for (const r of entries) { if (!pass(r)) continue; if (!m.has(r.P)) m.set(r.P, []); m.get(r.P).push(r); }
+    if (mode !== 'date') m.forEach((rows, P) => P.rows.forEach(r => { if (r.sales === 0 && pass(r)) rows.push(r); }));
+    m.forEach((rows, P) => groups.push({P, rows, id: P.p.id}));
   } else {
     for (const P of prods) {
       const rows = P.rows.filter(pass).sort(bySize);
