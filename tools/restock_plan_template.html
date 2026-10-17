@@ -605,16 +605,27 @@ select.sel{appearance:none;-webkit-appearance:none}
 .hnum i.prk{display:block;font-style:normal;font-size:12px;font-weight:800;padding:1px 9px;margin-bottom:3px;width:max-content;margin-left:auto}
 
 /* solid order-status pills, req gap chip, tiny u.d */
-.badge.ob-ord{background:#1f6feb!important;color:#fff!important}
-.badge.ob-pack{background:#e3b341!important;color:#1a1300!important}
-.badge.ob-ship{background:#2ea043!important;color:#fff!important}
-.badge small,.pv .ud span{font-size:8px;font-weight:600;opacity:.8;margin-left:2px}
+.badge.ob-ord{background:#10233d!important;color:#8ab8f5!important;box-shadow:inset 0 0 0 1px #24456f}
+.badge.ob-pack{background:#2b2410!important;color:#d9b24a!important;box-shadow:inset 0 0 0 1px #5a4a14}
+.badge.ob-ship{background:#0f2a1a!important;color:#5fcf7b!important;box-shadow:inset 0 0 0 1px #1f5c33}
+.badge small,.pv .ud span{text-transform:uppercase;font-size:8px;font-weight:600;opacity:.8;margin-left:2px}
 .pv .mc{position:relative}
 .pv .mc em.gap{position:absolute;top:-7px;right:-7px;font-style:normal;font-size:10px;font-weight:800;line-height:1;padding:2px 5px;border-radius:999px;box-shadow:0 1px 3px #0008}
 .pv .mc em.g-red{background:#e5484d;color:#fff}.pv .mc em.g-amber{background:#e3b341;color:#1a1300}.pv .mc em.g-green{background:#2ea043;color:#fff}
 .pv .mc.need.mc-red{background:#5a1d20;border-color:#ff7b72}.pv .mc.need.mc-amber{background:#4a3a08;border-color:#e3b341}.pv .mc.need.mc-green{background:#123b1f;border-color:#4cc364}
-.pv .ud{flex:1;text-align:center;line-height:1.05}.pv .ud b{display:block;font-size:12px;color:var(--muted);font-weight:700}.pv .ud span{display:block;margin:0;font-size:8.5px;color:var(--muted)}
+.pv .ud{flex:none;width:40px;text-align:center;line-height:1.05;align-self:center}.pv .ud b{display:block;font-size:12px;color:var(--muted);font-weight:700}.pv .ud span{text-transform:uppercase;display:block;margin:0;font-size:8.5px;color:var(--muted)}
 .hnum small.pud{display:block;font-size:8.5px;color:#9aa0a8;margin-top:1px}
+
+/* polish: one aligned row, quieter pills */
+.pv .rw{align-items:center!important;gap:6px}
+.pv .act{flex-wrap:nowrap!important}
+.pv .rc{margin-left:auto}
+.pv .vh{align-items:center}
+.pv .vh .badge{font-size:10.5px;padding:2px 9px;line-height:1.3}
+.pv .vh .badge.rk{font-size:10px;padding:2px 8px;opacity:.9}
+.pv .vh .pipes .ln .badge{font-size:10.5px;padding:2px 9px;font-weight:600}
+.pv .ud b{font-size:13px;font-variant-numeric:tabular-nums}
+.pv .mc{min-width:46px}
 
 /* sticky Filters tile: slim charcoal 3D bar, panel drops over the list */
 .fwrap{position:sticky;top:0;z-index:40;margin:6px 0 8px}
@@ -1039,15 +1050,15 @@ function vTag(r){
   if (r.P.disc || !(r.sales > 0)) return '';
   if (mode === 'priority') return r.rank == null ? '' : `<span class="badge rk c-${r.level}" title="Variant priority rank">#${r.rank}</span>`;
   if (mode === 'date') return r.last ? `<span class="badge rk c-info" title="Last sold">${esc(ago(r.last).replace('sold ', ''))}</span>` : '';
-  return `<span class="badge rk c-${r.cDts}" title="Days to sell 1 unit (variant)">${fmt2(r.dts)}<small>u.d</small></span>`;
+  return `<span class="badge rk c-${r.cDts}" title="Days to sell 1 unit (variant)">${fmt2(r.dts)}<small>U.D</small></span>`;
 }
 function pTag(g){
   const P = g.P; if (P.disc) return '';
   let t, c, tip;
   if (mode === 'priority') { t = '#' + g.rank; c = P.worst; tip = 'Product priority rank'; }
   else if (mode === 'date') { if (!P.last) return ''; t = ago(P.last).replace('sold ', ''); c = 'info'; tip = 'Last sold'; }
-  else if (mode === 'vdts') { const d = Math.min(...g.rows.filter(r => r.sales > 0).map(r => r.dts)); t = fmt2(d) + '<small>u.d</small>'; c = dtsCol(d); tip = 'Fastest variant: days to sell 1 unit'; }
-  else { t = fmt2(P.pDTS) + '<small>u.d</small>'; c = dtsCol(P.pDTS); tip = 'Product: days to sell 1 unit'; }
+  else if (mode === 'vdts') { const d = Math.min(...g.rows.filter(r => r.sales > 0).map(r => r.dts)); t = fmt2(d) + '<small>U.D</small>'; c = dtsCol(d); tip = 'Fastest variant: days to sell 1 unit'; }
+  else { t = fmt2(P.pDTS) + '<small>U.D</small>'; c = dtsCol(P.pDTS); tip = 'Product: days to sell 1 unit'; }
   return `<i class="badge prk c-${c}" title="${tip}">${t}</i>`;
 }
 
@@ -1070,7 +1081,7 @@ function rowHtml(r){
   const ppv = pipeline(keyOf(r.P.p.id, r.title));
   const needC = r.toOrder > 0 && !r.P.disc && r.sales > 0 ? (ppv.total > 0 ? 'amber' : (r.stock <= 0 || r.level === 'red' || r.level === 'orange') ? 'red' : r.level === 'yellow' ? 'amber' : 'green') : '';
   const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span>${vTag(r)}<div class="pipes" data-sup="${i}">${supMv(i)}</div></div>
-    <div class="rw"><div class="mc mc-${sc}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><b>${fmt2(r.dts)}</b><span>u.d</span></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
+    <div class="rw"><div class="mc mc-${sc}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><b>${fmt2(r.dts)}</b><span>U.D</span></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
   return {tr, mv};
 }
 const plink = P => /^https:\/\//.test(P.p.url || '') ? esc(P.p.url) : '';
@@ -1097,7 +1108,7 @@ function cardHtml(g){
         <div class="tile ${dtsCls}"><b>${fmt(P.pDTS)}</b><span>Days / 1 unit (product)</span></div>
         <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
       </div>
-      <div class="hnum ${P.units ? '' : 'zero'}">${pTag(g)}<b>${P.units}</b><span>to order</span>${mode === 'priority' && isFinite(P.pDTS) ? `<small class="pud" title="Days to sell 1 unit (product)">${fmt2(P.pDTS)} u.d</small>` : ''}</div></div>
+      <div class="hnum ${P.units ? '' : 'zero'}">${pTag(g)}<b>${P.units}</b><span>to order</span>${mode === 'priority' && isFinite(P.pDTS) ? `<small class="pud" title="Days to sell 1 unit (product)">${fmt2(P.pDTS)} U.D</small>` : ''}</div></div>
     <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>
       <div class="scroll dtable"><table>
       <thead><tr><th>Priority</th><th>Variant</th><th>Sold</th><th>Days / 1 sold</th><th>Days left</th><th class="g1">Current stock</th><th class="g2">Required stock</th><th class="g3">To order</th><th>Supplier</th><th>Status</th></tr></thead>
