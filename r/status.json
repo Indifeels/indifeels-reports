@@ -72,10 +72,10 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-10-17T20:00+11:00",
-  "code_sha": "4a58ce88863a5d0d688d7373ca26a5ad3bc7b9eb",
+  "at": "2026-10-18T07:00+11:00",
+  "code_sha": "2f73dd33ab87174933d96b6cecd65a17e343bfbd",
   "data_through": null,
-  "last_ok": "2026-10-17T20:00+11:00",
+  "last_ok": "2026-10-18T07:00+11:00",
   "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
