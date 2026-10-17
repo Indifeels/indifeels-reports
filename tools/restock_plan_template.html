@@ -585,6 +585,18 @@ select.sel{appearance:none;-webkit-appearance:none}
 #viewMine .card .body{background:#0c0d0f;box-shadow:inset 0 6px 10px -4px #000c}
 :root[data-theme="light"] #viewMine .card .body{background:#eef1f4;box-shadow:inset 0 4px 8px -4px #0003}
 #viewMine .card.open{border-color:#6a6d74}
+
+/* phone: status badge sits next to the size, pills sit by the stepper, header stays compact */
+.pv .vh b{flex:none}.pv .vh{justify-content:flex-start}
+.pv .pipes{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px 6px;align-items:center}
+.pv .pipes .ln{display:inline-flex;margin:0}
+@media(max-width:799px){
+  #viewMine .card-h{background-color:#1d2024}
+  #viewMine .card-h .ttl h2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
+  #viewMine .card-h .ttl .meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
+.pv .rw{align-items:flex-end}.pv .rc{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px}.pv .pipes:empty{display:none}
+.pv .rw{align-items:flex-end}.pv .rc{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px}.pv .pipes:empty{display:none}
 </style>
 </head>
 <body>
@@ -1001,9 +1013,10 @@ function rowHtml(r){
     <td class="sup" data-sup="${i}">${supHtml(i)}</td>
     <td class="status c-${r.level}"><span class="badge">${BADGE[r.level]}</span></td></tr>`;
   const sc = r.sales > 0 && r.stock <= 0 ? 'red' : r.stock < r.required ? 'amber' : 'green';
-  const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${BADGE[r.level].replace(/^\S+\s/, '')}</span></div>
-    <div class="rw"><div class="mc mc-${sc}"><b>${r.stock}</b><span>Stock</span></div><div class="mc"><b>${r.required}</b><span>Req.</span></div><div class="act" data-ord="${i}">${ordHtml(i)}</div></div>
-    <div class="pipes" data-sup="${i}">${supMv(i)}</div></div>`;
+  const dl = r.sales > 0 && isFinite(r.left) ? Math.ceil(r.left) : 0, dTxt = dl + (dl === 1 ? ' day' : ' days');
+  const stTxt = r.level === 'red' ? 'Out of stock' : (r.level === 'orange' || r.level === 'yellow') ? 'Low stock · ' + dTxt : r.level === 'green' ? 'OK · ' + dTxt : 'No sales';
+  const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span></div>
+    <div class="rw"><div class="mc mc-${sc}"><b>${r.stock}</b><span>Stock</span></div><div class="mc"><b>${r.required}</b><span>Req.</span></div><div class="rc"><div class="pipes" data-sup="${i}">${supMv(i)}</div><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
   return {tr, mv};
 }
 const plink = P => /^https:\/\//.test(P.p.url || '') ? esc(P.p.url) : '';
@@ -1031,8 +1044,7 @@ function cardHtml(g){
         <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
       </div>
       <div class="hnum ${P.units ? '' : 'zero'}"><b>${P.units}</b><span>to order</span></div></div>
-    ${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}
-    <div class="body"><div class="pbar">${btns('pbtn')}</div>
+    <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>
       <div class="scroll dtable"><table>
       <thead><tr><th>Priority</th><th>Variant</th><th>Sold</th><th>Days / 1 sold</th><th>Days left</th><th class="g1">Current stock</th><th class="g2">Required stock</th><th class="g3">To order</th><th>Supplier</th><th>Status</th></tr></thead>
       <tbody>${rows.map(x => x.tr).join('')}</tbody></table></div>
