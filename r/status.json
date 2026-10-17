@@ -9,10 +9,10 @@
   "reason": ""
  },
  "color-game": {
-  "at": "2026-10-17T06:54+11:00",
-  "code_sha": "a9565a20a966f80e8fb162870a3c854e7557e95b",
+  "at": "2026-10-18T06:50+11:00",
+  "code_sha": "6e6f2aec0e01bd4296c69b6d533e47cb8075be05",
   "data_through": null,
-  "last_ok": "2026-10-17T06:54+11:00",
+  "last_ok": "2026-10-18T06:50+11:00",
   "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
