@@ -1210,7 +1210,7 @@ function render(){
     const m = new Map();
     for (const r of entries) { if (!pass(r)) continue; if (!m.has(r.P)) m.set(r.P, []); m.get(r.P).push(r); }
     if (mode !== 'date') m.forEach((rows, P) => P.rows.forEach(r => { if (r.sales === 0 && pass(r)) rows.push(r); }));
-    m.forEach((rows, P) => groups.push({P, rows, id: P.p.id}));
+    m.forEach((rows, P) => groups.push({P, rows: rows.slice().sort(bySize), id: P.p.id}));   // variants always in size order inside a product
   } else {
     for (const P of prods) {
       const rows = P.rows.filter(pass).sort(bySize);
