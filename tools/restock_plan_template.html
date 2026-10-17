@@ -574,6 +574,7 @@ select.sel{appearance:none;-webkit-appearance:none}
   #viewMine .card-h .ttl .meta{font-size:11px}
   .scan{margin:4px 0}
 }
+.ckrow{display:flex;align-items:center;gap:8px;margin:6px 4px 0;font-size:13px;font-weight:600}.ckrow span{font-weight:400;color:var(--muted);font-size:11.5px}.ckrow[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -607,6 +608,7 @@ select.sel{appearance:none;-webkit-appearance:none}
       </select>
       <button type="button" class="sel mt" id="ctlToggle" title="More filters">⋯</button>
     </div>
+    <label class="ckrow" id="newRow" hidden><input type="checkbox" id="newOnly" checked> New since the last restock only <span>(untick: everything sold in the last 3 months)</span></label>
     <div class="lenrow"><label for="len">Leniency</label><input type="range" id="len" min="1" max="10" step="1" value="3"><b class="pill" id="lenv"></b></div>
     <div class="pop" id="colPop"><input type="text" id="colQ" placeholder="Search collections" autocomplete="off"><div class="opts" id="colOpts"></div></div>
     <div class="controls" id="moreBox">
@@ -624,7 +626,7 @@ select.sel{appearance:none;-webkit-appearance:none}
     <button id="saveAll2" hidden>Save all</button>
   </section>
 
-  <section class="ov" id="ov"><div class="ov-h" id="ovh"><span class="ov-t">Stock overview</span><span class="ov-s" id="ovs"></span><span class="chev2">▾</span></div><div class="stats" id="stats"></div></section>
+  <section class="ov shut" id="ov"><div class="ov-h" id="ovh"><span class="ov-t">Stock overview</span><span class="ov-s" id="ovs"></span><span class="chev2">▾</span></div><div class="stats" id="stats"></div></section>
   <div class="legend">
     <span>🔴 Out of stock</span><span>🟠 &lt; 7 days to stockout</span><span>🟡 &lt; 14 days</span><span>🟢 OK</span><span>⚪ No sales</span>
   </div>
@@ -1110,7 +1112,11 @@ function render(){
 
   const TFP = {oos: r => r.level==='red' && !r.P.disc, u7: r => r.level==='orange' && !r.P.disc, need: r => r.toOrder > 0, smv: r => r.P.eligible && !getDone(r.P.p.id),
     ord: r => pipeline(keyOf(r.P.p.id, r.title)).saved > 0, pack: r => pipeline(keyOf(r.P.p.id, r.title)).box > 0, ship: r => pipeline(keyOf(r.P.p.id, r.title)).way > 0};
-  const pass = r => (!supSel || (r.P.supplier || '(none)') === supSel) &&
+  const ymd = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  const cut90 = ymd(new Date(Date.now() - 90 * DAY));
+  const lastRecvDay = vk => { let m = ''; (byV.get(vk) || []).forEach(o => { if (o.status === 'received' && o.received_at && String(o.received_at) > m) m = String(o.received_at); }); return m ? ymd(new Date(m)) : ''; };
+  const dateOk = r => { if (mode !== 'date' || !r.last) return true; if (!$('newOnly').checked) return r.last >= cut90; const d = lastRecvDay(keyOf(r.P.p.id, r.title)); return !d || r.last >= d; };
+  const pass = r => dateOk(r) && (!supSel || (r.P.supplier || '(none)') === supSel) &&
     (!colSel || (r.P.p.cols || []).includes(colSel)) &&
     (!eligSel || (eligSel === 'y' ? r.P.elig : !r.P.elig)) &&
     (dSel === 'all' || (dSel === 'only' ? r.P.disc : !r.P.disc)) &&
@@ -1206,7 +1212,9 @@ $('scanClr').addEventListener('click', scanClear);
 const reset = () => { limit = PAGE; render(); };
 $('len').addEventListener('input', reset);
 ['vsel','onlyElig','supplier','collection','elig','discf'].forEach(id => $(id).addEventListener('change', reset));
-$('order').addEventListener('change', () => { mode = $('order').value; state.clear(); reset(); });
+const syncNew = () => { $('newRow').hidden = $('order').value !== 'date'; };
+$('order').addEventListener('change', () => { mode = $('order').value; syncNew(); state.clear(); reset(); });
+$('newOnly').addEventListener('change', reset); syncNew();
 async function receive(ids, label){
   try {
     await Store.received(ids);
