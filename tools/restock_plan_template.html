@@ -613,7 +613,9 @@ select.sel{appearance:none;-webkit-appearance:none}
 .pv .mc em.gap{position:absolute;top:-7px;right:-7px;font-style:normal;font-size:10px;font-weight:800;line-height:1;padding:2px 5px;border-radius:999px;box-shadow:0 1px 3px #0008}
 .pv .mc em.g-red{background:#e5484d;color:#fff}.pv .mc em.g-amber{background:#e3b341;color:#1a1300}.pv .mc em.g-green{background:#2ea043;color:#fff}
 .pv .mc.need.mc-red{background:#5a1d20;border-color:#ff7b72}.pv .mc.need.mc-amber{background:#4a3a08;border-color:#e3b341}.pv .mc.need.mc-green{background:#123b1f;border-color:#4cc364}
-.pv .ud{flex:none;width:40px;text-align:center;line-height:1.05;align-self:center}.pv .ud b{display:block;font-size:12px;color:var(--muted);font-weight:700}.pv .ud span{text-transform:uppercase;display:block;margin:0;font-size:8.5px;color:var(--muted)}
+.pv .ud{flex:1;display:flex;justify-content:center;align-self:center;min-width:0}
+.pv .udt{border-radius:10px;padding:3px 10px;text-align:center;line-height:1.05;border:1px solid #ffffff14}
+.pv .udt b,.pv .udt span{color:inherit!important;opacity:1!important}.pv .ud b{display:block;font-size:12px;color:var(--muted);font-weight:700}.pv .ud span{text-transform:uppercase;display:block;margin:0;font-size:8.5px;color:var(--muted)}
 .hnum small.pud{display:block;font-size:8.5px;color:#9aa0a8;margin-top:1px}
 
 .pv .step b.n-red{color:#ff7b72!important}.pv .step b.n-amber{color:#e3b341!important}.pv .step b.n-green{color:#4cc364!important}
@@ -1031,6 +1033,22 @@ function lineHtml(o){
   const d = shipDay(o), days = daysBetween(d, Date.now());
   return `<div class="ln"><span class="badge c-green ob-ship"${tip}>🚚 Shipped ${eff(o)} · ${dShort(d)}${o.box_no ? ' · ' + esc(o.box_no) : ''} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days')}</span><button class="recv" data-recv="${esc(o.id)}" title="This line arrived: stop its timer">Received</button></div>${lowFlag(o)}`;
 }
+function liveHtml(live){
+  const sv = live.filter(o => o.status === 'saved'), ad = live.filter(o => o.status === 'added'), sh = live.filter(o => o.status !== 'saved' && o.status !== 'added');
+  const newest = a => a.reduce((m, o) => String(o.saved_at) > String(m.saved_at) ? o : m);
+  let h = '';
+  if (sv.length === 1) h += lineHtml(sv[0]);
+  else if (sv.length > 1) {      // several order lines for one variant: one tile with the total
+    const q = sv.reduce((a, o) => a + o.qty, 0), last = newest(sv);
+    h += `<div class="ln"><span class="badge c-info ob-ord" title="${esc(sv.map(timeline).join(' | '))}">Ordered ${q}</span><button class="x" data-cancel="${esc(last.id)}" title="Cancel the latest order line (${last.qty})">×</button></div>`;
+  }
+  if (ad.length === 1) h += lineHtml(ad[0]);
+  else if (ad.length > 1) {
+    const q = ad.reduce((a, o) => a + eff(o), 0), last = newest(ad), boxes = [...new Set(ad.map(o => o.box_no).filter(Boolean))];
+    h += `<div class="ln"><span class="badge c-amber ob-pack" title="${esc(ad.map(timeline).join(' | '))}">📦 Packed ${q}${boxes.length ? ' · ' + esc(boxes.join(', ')) : ''}</span><button class="x" data-cancel="${esc(last.id)}" title="Remove the latest packed line (${eff(last)})">×</button></div>` + ad.map(lowFlag).join('');
+  }
+  return h + sh.map(lineHtml).join('');
+}
 function supHtml(i){
   const pp = pipeline(infos[i].key);
   if (!pp.live.length) {
@@ -1038,8 +1056,7 @@ function supHtml(i){
     if (!lr) return '–';
     return `<span class="badge c-green" title="${esc(timeline(lr))}">✅ Restocked ${dShort(lr.received_at)} · took ${daysBetween(shipDay(lr), new Date(lr.received_at))} days</span>`;
   }
-  const SO = {saved: 0, added: 1};
-  return pp.live.slice().sort((a, b) => (SO[a.status] ?? 2) - (SO[b.status] ?? 2)).map(lineHtml).join('');
+  return liveHtml(pp.live);
 }
 const supMv = i => { const h = supHtml(i); return h === '–' ? '' : h; };
 function paint(i){
@@ -1056,15 +1073,15 @@ function vTag(r){
   if (r.P.disc || !(r.sales > 0)) return '';
   if (mode === 'priority') return r.rank == null ? '' : `<span class="badge rk c-${r.level}" title="Variant priority rank">#${r.rank}</span>`;
   if (mode === 'date') return r.last ? `<span class="badge rk c-info" title="Last sold">${esc(ago(r.last).replace('sold ', ''))}</span>` : '';
-  return `<span class="badge rk c-${r.cDts}" title="Days to sell 1 unit (variant)">${fmt2(r.dts)}<small>U.D</small></span>`;
+  return '';   // D.U for a variant lives in the middle of its row, keeping this line free for the order pills
 }
 function pTag(g){
   const P = g.P; if (P.disc) return '';
   let t, c, tip;
   if (mode === 'priority') { t = '#' + g.rank; c = P.worst; tip = 'Product priority rank'; }
   else if (mode === 'date') { if (!P.last) return ''; t = ago(P.last).replace('sold ', ''); c = 'info'; tip = 'Last sold'; }
-  else if (mode === 'vdts') { const d = Math.min(...g.rows.filter(r => r.sales > 0).map(r => r.dts)); t = fmt2(d) + '<small>U.D</small>'; c = dtsCol(d); tip = 'Fastest variant: days to sell 1 unit'; }
-  else { t = fmt2(P.pDTS) + '<small>U.D</small>'; c = dtsCol(P.pDTS); tip = 'Product: days to sell 1 unit'; }
+  else if (mode === 'vdts') { const d = Math.min(...g.rows.filter(r => r.sales > 0).map(r => r.dts)); t = fmt2(d) + '<small>D.U</small>'; c = dtsCol(d); tip = 'Fastest variant: days to sell 1 unit'; }
+  else { t = fmt2(P.pDTS) + '<small>D.U</small>'; c = dtsCol(P.pDTS); tip = 'Product: days to sell 1 unit'; }
   return `<i class="badge prk c-${c}" title="${tip}">${t}</i>`;
 }
 
@@ -1086,7 +1103,7 @@ function rowHtml(r){
   const stTxt = r.level === 'red' ? 'Out of stock' : (r.level === 'orange' || r.level === 'yellow') ? 'Low stock · ' + dTxt : r.level === 'green' ? 'OK · ' + dTxt : 'No sales';
   const needC = needClr(r);
   const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span>${vTag(r)}<div class="pipes" data-sup="${i}">${supMv(i)}</div></div>
-    <div class="rw"><div class="mc mc-${sc}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><b>${fmt2(r.dts)}</b><span>U.D</span></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
+    <div class="rw"><div class="mc mc-${sc}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><div class="udt c-${r.cDts}"><b>${fmt2(r.dts)}</b><span>D.U</span></div></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
   return {tr, mv};
 }
 const plink = P => /^https:\/\//.test(P.p.url || '') ? esc(P.p.url) : '';
@@ -1113,7 +1130,7 @@ function cardHtml(g){
         <div class="tile ${dtsCls}"><b>${fmt(P.pDTS)}</b><span>Days / 1 unit (product)</span></div>
         <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
       </div>
-      <div class="hnum ${P.units ? '' : 'zero'}">${pTag(g)}<b>${P.units}</b><span>to order</span>${mode === 'priority' && isFinite(P.pDTS) ? `<small class="pud" title="Days to sell 1 unit (product)">${fmt2(P.pDTS)} U.D</small>` : ''}</div></div>
+      <div class="hnum ${P.units ? '' : 'zero'}">${pTag(g)}<b>${P.units}</b><span>to order</span>${mode === 'priority' && isFinite(P.pDTS) ? `<small class="pud" title="Days to sell 1 unit (product)">${fmt2(P.pDTS)} D.U</small>` : ''}</div></div>
     <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>
       <div class="scroll dtable"><table>
       <thead><tr><th>Priority</th><th>Variant</th><th>Sold</th><th>Days / 1 sold</th><th>Days left</th><th class="g1">Current stock</th><th class="g2">Required stock</th><th class="g3">To order</th><th>Supplier</th><th>Status</th></tr></thead>
