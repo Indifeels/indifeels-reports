@@ -597,6 +597,18 @@ select.sel{appearance:none;-webkit-appearance:none}
 }
 .pv .rw{align-items:flex-end}.pv .rc{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px}.pv .pipes:empty{display:none}
 .pv .rw{align-items:flex-end}.pv .rc{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px}.pv .pipes:empty{display:none}
+
+/* sticky Filters tile: slim charcoal 3D bar, panel drops over the list */
+.fwrap{position:sticky;top:0;z-index:40;margin:6px 0 8px}
+.fhead{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:10px 14px;border-radius:14px;border:1px solid #3c3d40;color:#f5f5f6;font:inherit;cursor:pointer;text-align:left;background:linear-gradient(135deg,#2d2e31,#151618 85%);box-shadow:5px 8px 14px #0009,inset 1px 2px 1px #ffffff38,inset -2px -3px 3px #0008}
+.fhead .ft{font-weight:800;font-size:16px}
+.fhead .fs{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#bec0c5;font-size:12.5px}
+.fhead .chev2{transition:transform .15s}.fwrap.open .fhead .chev2{transform:rotate(180deg)}
+.fbody{display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);max-height:calc(100vh - 80px);overflow:auto;padding:8px;border-radius:14px;border:1px solid #3c3d40;background:linear-gradient(135deg,#292a2c,#151618 85%);box-shadow:7px 10px 22px #000b}
+.fwrap.open .fbody{display:block}
+.fbody .scan{margin:0 0 8px}.fbody .fbar{margin:0;box-shadow:none}
+#viewMine .card-h{top:var(--fh,46px)}
+@media(min-width:900px){th{top:calc(var(--hh,72px) + var(--fh,46px))!important}}
 </style>
 </head>
 <body>
@@ -608,6 +620,7 @@ select.sel{appearance:none;-webkit-appearance:none}
 
   <nav class="tabs"><button id="tabMine" class="on">My view</button><button id="tabSup">Supplier view</button></nav>
 <div id="viewMine">
+<div class="fwrap" id="fwrap"><button type="button" class="fhead" id="fhead"><span class="ft">Filters</span><span class="fs" id="fsum"></span><span class="chev2">▾</span></button><div class="fbody" id="fbody">
   <div class="scan" id="scanBox">
     <div class="vf"><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M7 9v6M10 9v6M13 9v6M16 9v6" stroke="#8b949e" stroke-width="1.6"/></svg><i></i></div>
           <input id="scanIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode">
@@ -647,6 +660,7 @@ select.sel{appearance:none;-webkit-appearance:none}
     </div>
     <button id="saveAll2" hidden>Save all</button>
   </section>
+</div></div>
 
   <section class="ov shut" id="ov"><div class="ov-h" id="ovh"><span class="ov-t">Stock overview</span><span class="ov-s" id="ovs"></span><span class="chev2">▾</span></div><div class="stats" id="stats"></div></section>
   <div class="legend">
@@ -1521,6 +1535,21 @@ buildSuppliers();
 render();
 refresh();
 try { parent.postMessage({ type: 'restock-plan', action: 'ready' }, '*'); } catch (e) {}
+
+(function(){
+  const w=document.getElementById('fwrap'),hd=document.getElementById('fhead'),sm=document.getElementById('fsum');
+  const $=id=>document.getElementById(id);
+  function sum(){
+    const v=document.querySelector('#vseg .on'),c=$('colTxt'),o=$('order');
+    const t=[v&&v.textContent,c&&c.textContent!=='All collections'?c.textContent:null,o&&o.selectedOptions[0]&&o.selectedOptions[0].textContent.replace('Sort: ','')];
+    sm.textContent=t.filter(Boolean).join(' · ');
+    document.documentElement.style.setProperty('--fh',hd.offsetHeight+1+'px');
+  }
+  hd.addEventListener('click',()=>{w.classList.toggle('open');sum()});
+  w.addEventListener('click',()=>setTimeout(sum,0));w.addEventListener('input',()=>setTimeout(sum,0));w.addEventListener('change',()=>setTimeout(sum,0));
+  document.addEventListener('click',e=>{if(w.classList.contains('open')&&!w.contains(e.target))w.classList.remove('open')});
+  sum();window.addEventListener('resize',sum);
+})();
 </script>
 </body>
 </html>
