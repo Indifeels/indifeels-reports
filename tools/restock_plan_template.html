@@ -597,6 +597,11 @@ select.sel{appearance:none;-webkit-appearance:none}
 }
 .pv .rw{align-items:flex-end}.pv .rc{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px}.pv .pipes:empty{display:none}
 .pv .rw{align-items:flex-end}.pv .rc{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px}.pv .pipes:empty{display:none}
+/* ordered pill rides top-right of the variant row; rank pills */
+.pv .vh{flex-wrap:wrap;gap:4px 6px}
+.pv .vh .pipes{margin:0 0 0 auto!important}
+.pv .vh .badge.rk{font-weight:800;letter-spacing:.2px}
+.hnum i.prk{display:block;font-style:normal;font-size:12px;font-weight:800;padding:1px 9px;margin-bottom:3px;width:max-content;margin-left:auto}
 
 /* sticky Filters tile: slim charcoal 3D bar, panel drops over the list */
 .fwrap{position:sticky;top:0;z-index:40;margin:6px 0 8px}
@@ -1013,6 +1018,25 @@ function paint(i){
 }
 const repaintAll = () => infos.forEach((_,i) => paint(i));
 
+/* ---------------- rank pills: follow the active sort ---------------- */
+const fmt2 = n => (n === Infinity || n == null) ? '—' : n >= 100 ? Math.round(n) : n >= 10 ? Math.round(n * 10) / 10 : Math.round(n * 100) / 100;
+const dtsCol = d => d === Infinity ? 'grey' : d < 20 ? 'green' : d < 50 ? 'amber' : 'red';
+function vTag(r){
+  if (r.P.disc || !(r.sales > 0)) return '';
+  if (mode === 'priority') return r.rank == null ? '' : `<span class="badge rk c-${r.level}" title="Variant priority rank">#${r.rank}</span>`;
+  if (mode === 'date') return r.last ? `<span class="badge rk c-info" title="Last sold">${esc(ago(r.last).replace('sold ', ''))}</span>` : '';
+  return `<span class="badge rk c-${r.cDts}" title="Days to sell 1 unit (variant)">${fmt2(r.dts)} d/unit</span>`;
+}
+function pTag(g){
+  const P = g.P; if (P.disc) return '';
+  let t, c, tip;
+  if (mode === 'priority') { t = '#' + g.rank; c = P.worst; tip = 'Product priority rank'; }
+  else if (mode === 'date') { if (!P.last) return ''; t = ago(P.last).replace('sold ', ''); c = 'info'; tip = 'Last sold'; }
+  else if (mode === 'vdts') { const d = Math.min(...g.rows.filter(r => r.sales > 0).map(r => r.dts)); t = fmt2(d) + ' d/unit'; c = dtsCol(d); tip = 'Fastest variant: days to sell 1 unit'; }
+  else { t = fmt2(P.pDTS) + ' d/unit'; c = dtsCol(P.pDTS); tip = 'Product: days to sell 1 unit'; }
+  return `<i class="badge prk c-${c}" title="${tip}">${t}</i>`;
+}
+
 /* ---------------- render ---------------- */
 function rowHtml(r){
   const i = infos.length; infos.push({r, key: keyOf(r.P.p.id, r.title)});
@@ -1029,8 +1053,8 @@ function rowHtml(r){
   const sc = r.sales > 0 && r.stock <= 0 ? 'red' : r.stock < r.required ? 'amber' : 'green';
   const dl = r.sales > 0 && isFinite(r.left) ? Math.ceil(r.left) : 0, dTxt = dl + (dl === 1 ? ' day' : ' days');
   const stTxt = r.level === 'red' ? 'Out of stock' : (r.level === 'orange' || r.level === 'yellow') ? 'Low stock · ' + dTxt : r.level === 'green' ? 'OK · ' + dTxt : 'No sales';
-  const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span></div>
-    <div class="rw"><div class="mc mc-${sc}"><b>${r.stock}</b><span>Stock</span></div><div class="mc"><b>${r.required}</b><span>Req.</span></div><div class="rc"><div class="pipes" data-sup="${i}">${supMv(i)}</div><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
+  const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span>${vTag(r)}<div class="pipes" data-sup="${i}">${supMv(i)}</div></div>
+    <div class="rw"><div class="mc mc-${sc}"><b>${r.stock}</b><span>Stock</span></div><div class="mc"><b>${r.required}</b><span>Req.</span></div><div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
   return {tr, mv};
 }
 const plink = P => /^https:\/\//.test(P.p.url || '') ? esc(P.p.url) : '';
@@ -1057,7 +1081,7 @@ function cardHtml(g){
         <div class="tile ${dtsCls}"><b>${fmt(P.pDTS)}</b><span>Days / 1 unit (product)</span></div>
         <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
       </div>
-      <div class="hnum ${P.units ? '' : 'zero'}"><b>${P.units}</b><span>to order</span></div></div>
+      <div class="hnum ${P.units ? '' : 'zero'}">${pTag(g)}<b>${P.units}</b><span>to order</span></div></div>
     <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>
       <div class="scroll dtable"><table>
       <thead><tr><th>Priority</th><th>Variant</th><th>Sold</th><th>Days / 1 sold</th><th>Days left</th><th class="g1">Current stock</th><th class="g2">Required stock</th><th class="g3">To order</th><th>Supplier</th><th>Status</th></tr></thead>
@@ -1177,6 +1201,7 @@ function render(){
       if (rows.length) groups.push({P, rows, id: P.p.id});
     }
   }
+  groups.forEach((g, ix) => { g.rank = ix + 1; });
   const shown = groups.slice(0, limit);
   shown.forEach((g, ix) => { g.banner = mkBanner(g.P); g.first = ix === 0; });
   const TN = {oos:'Out of stock',u7:'Under 7 days',need:'To order',smv:'Stock more variants',ord:'Ordered',pack:'Packed',ship:'Shipped'};
