@@ -536,19 +536,24 @@
   };
   const oaFindAdset = (campaign, value) => oaAdsets(campaign).find((x) => x.adset_name === String(value || "").trim()) || null;
 
-  async function loadAttribution() {
+  let oaLoadedAt = 0, oaCatAt = 0;
+  async function loadAttribution(force) {
+    // The queue payload is ~290 kB (journeys) and the campaign list ~90 kB: avoid re-downloading it for every caller.
+    if (!force && OA.rows.length && Date.now() - oaLoadedAt < 60000) return OA.rows;
+    const needCat = force === "cat" || !OA.catalog.length || Date.now() - oaCatAt > 30 * 60000;
     const [q, c] = await Promise.all([
       sb.from("order_attribution_queue")
         .select("order_id,legacy_id,order_name,created_at,customer_name,contact_email,contact_phone,total,currency,shopify_source,products,order_source,campaign_platform,campaign_id,campaign_name,adset_id,adset_name,sync_status,sync_error,attribution_auto,journey_ready,journey_checked_at,journey,attribution_note,updated_at")
         .order("created_at", { ascending: false }).limit(150),
-      sb.from("ad_attribution_catalog")
+      needCat ? sb.from("ad_attribution_catalog")
         .select("option_key,platform,campaign_id,campaign_name,campaign_status,adset_id,adset_name,adset_status,last_seen_date,refreshed_at")
-        .order("platform").order("campaign_name"),
+        .order("platform").order("campaign_name") : Promise.resolve(null),
     ]);
     if (q.error) throw new Error(q.error.message);
-    if (c.error) throw new Error(c.error.message);
+    if (c && c.error) throw new Error(c.error.message);
     OA.rows = q.data || [];
-    OA.catalog = c.data || [];
+    if (c) { OA.catalog = c.data || []; oaCatAt = Date.now(); }
+    oaLoadedAt = Date.now();
     return OA.rows;
   }
   function attributionStats() {
@@ -814,7 +819,7 @@
       if (data?.error) throw new Error(data.error);
       toast("Shopify session details are being re-checked");
       const reload = async () => {
-        try { await loadAttribution(); if (!$("#v-attribution").hidden) renderAttribution(); } catch (_) {}
+        try { await loadAttribution(true); if (!$("#v-attribution").hidden) renderAttribution(); } catch (_) {}
       };
       setTimeout(reload, 9000);
       setTimeout(reload, 25000);
@@ -971,13 +976,13 @@
     $("#oa-pending").innerHTML = ""; $("#oa-sum").innerHTML = ""; $("#oa-done-wrap").hidden = true;
     const st = $("#oa-status"); st.hidden = false; st.textContent = "Loading…";
     try {
-      await loadAttribution();
+      await loadAttribution(true);
       renderAttribution();
       if (oaWatchTimer) clearInterval(oaWatchTimer);
       oaWatchTimer = setInterval(async () => {
-        if ($("#v-attribution").hidden || oaSavingOrders.size) return;
-        try { await loadAttribution(); if (!$("#v-attribution").hidden) renderAttribution(); } catch (e) { console.warn("Attribution background refresh failed",e); }
-      }, 15000);
+        if ($("#v-attribution").hidden || document.hidden || oaSavingOrders.size) return;
+        try { await loadAttribution(true); if (!$("#v-attribution").hidden) renderAttribution(); } catch (e) { console.warn("Attribution background refresh failed",e); }
+      }, 300000);          // realtime already pushes changes; this is only a safety net
       if (!OA.catalog.length) toast("Campaign list is refreshing; source attribution still works.");
     } catch (e) { st.textContent = "The order queue couldn't be loaded. Pull down to refresh."; }
     updateOrderNotifyButton();
@@ -1007,14 +1012,25 @@
       } else new Notification(`New order ${r.order_name}`, { body });
     } catch (_) {}
   }
+  let oaRtTimer = null, oaRtStale = false;
+  function oaScheduleReload(delay) {
+    clearTimeout(oaRtTimer);
+    oaRtTimer = setTimeout(async () => {
+      if (document.hidden) { oaRtStale = true; return; }
+      oaRtStale = false;
+      try { await loadAttribution(true); } catch (_) { return; }
+      if (!$("#v-attribution").hidden) renderAttribution();
+      if (!$("#v-home").hidden) renderHome();
+    }, delay);
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && oaRtStale) oaScheduleReload(1500); });
   function startAttributionRealtime() {
     if (OA.channel || !reports.some((r) => r.id === "order-attribution")) return;
     OA.channel = sb.channel("order-attribution-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "order_attribution_queue" }, async (payload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_attribution_queue" }, (payload) => {
         if (payload.eventType === "INSERT" && payload.new) notifyNewOrder(payload.new);
-        try { await loadAttribution(); } catch (_) { return; }
-        if (!$("#v-attribution").hidden) renderAttribution();
-        if (!$("#v-home").hidden) renderHome();
+        // the journey job touches every recent order each run: coalesce the burst into one reload
+        oaScheduleReload(payload.eventType === "INSERT" ? 3000 : 30000);
       }).subscribe();
   }
 
