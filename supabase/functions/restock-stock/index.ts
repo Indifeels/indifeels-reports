@@ -17,8 +17,11 @@ const API = `https://${SHOP}/admin/api/2026-04/graphql.json`;
 const BACKUP = "gid://shopify/Location/99841048933", SHOPLOC = "gid://shopify/Location/99623436645";
 
 async function gql(query: string, variables: Record<string, unknown>) {
-  const token = Deno.env.get("SHOPIFY_TOKEN");
-  if (!token) throw new Error("SHOPIFY_TOKEN is not set on the Supabase function");
+  const env = Deno.env.toObject();
+  const nm = ["SHOPIFY_TOKEN", "SHOPIFY_ACCESS_TOKEN", "SHOPIFY_ADMIN_TOKEN", "SHOPIFY_ADMIN_ACCESS_TOKEN", "SHOPIFY_API_TOKEN", "SHOPIFY_ADMIN_API_TOKEN"].find((k) => env[k]) ||
+    Object.keys(env).find((k) => /shopify/i.test(k) && /(token|secret|key)/i.test(k) && !/(shop$|domain|store|url)/i.test(k));
+  const token = nm ? env[nm] : "";
+  if (!token) throw new Error("SHOPIFY_TOKEN is not set on the Supabase function. Shopify-like names here: " + (Object.keys(env).filter((k) => /shop/i.test(k)).join(", ") || "none"));
   for (let a = 0; a < 3; a++) {
     const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token }, body: JSON.stringify({ query, variables }) });
     if ((r.status === 429 || r.status >= 500) && a < 2) { await new Promise((x) => setTimeout(x, 1500 * (a + 1))); continue; }

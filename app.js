@@ -1654,12 +1654,12 @@
     },
     stockget: async (d) => {
       const { data, error } = await sb.functions.invoke("restock-stock", { body: { action: "get", vid: String(d.vid || "") } });
-      if (error || !data?.ok) { let m = data?.error; try { if (!m && error?.context) m = (await error.context.json()).error; } catch (_) {} throw new Error(/SHOPIFY_TOKEN/.test(m || "") ? "Stock editing isn't connected to Shopify yet. The owner needs to finish a one-time setup." : (m || error?.message || "Couldn't read stock")); }
+      if (error || !data?.ok) { let m = data?.error; try { if (!m && error?.context) m = (await error.context.json()).error; } catch (_) {} throw new Error(m || error?.message || "Couldn't read stock"); }
       return data;
     },
     stockadjust: async (d) => {
       const { data, error } = await sb.functions.invoke("restock-stock", { body: { action: "adjust", vid: String(d.vid || ""), dShop: Math.trunc(Number(d.dShop) || 0), dBackup: Math.trunc(Number(d.dBackup) || 0) } });
-      if (error || !data?.ok) { let m = data?.error; try { if (!m && error?.context) m = (await error.context.json()).error; } catch (_) {} throw new Error(/SHOPIFY_TOKEN/.test(m || "") ? "Stock editing isn't connected to Shopify yet. The owner needs to finish a one-time setup." : (m || error?.message || "Couldn't save stock")); }
+      if (error || !data?.ok) { let m = data?.error; try { if (!m && error?.context) m = (await error.context.json()).error; } catch (_) {} throw new Error(m || error?.message || "Couldn't save stock"); }
       return data;
     },
     cancel: async (d) => rpOk(await sb.rpc("restock_owner_cancel", { p_id: rpText(d.id, 140) })),
