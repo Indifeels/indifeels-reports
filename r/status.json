@@ -1,9 +1,9 @@
 {
  "cash-report": {
-  "at": "2026-10-18T12:38+11:00",
-  "code_sha": "0aded1a0406ea473f93fe87eae86d68c1995c796",
+  "at": "2026-10-18T13:40+11:00",
+  "code_sha": "eedc8149f195dcc4f7576442304f37fbb73ffc6a",
   "data_through": null,
-  "last_ok": "2026-10-18T12:38+11:00",
+  "last_ok": "2026-10-18T13:40+11:00",
   "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
