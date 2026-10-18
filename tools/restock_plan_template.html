@@ -1528,7 +1528,7 @@ function applyFilters(f){
     if (f.len != null && +f.len >= 1 && +f.len <= 10) $('len').value = String(+f.len);
     setSel('supplier', f.supplier); setSel('collection', f.collection); setSel('elig', f.elig); setSel('discf', f.discf);
     if (typeof f.onlyElig === 'boolean') $('onlyElig').checked = f.onlyElig;
-    if (typeof f.hideOrd === 'boolean') $('hideOrd').checked = f.hideOrd;
+    // "Hide already ordered" is deliberately not restored: it starts ticked every time
     if (typeof f.newOnly === 'boolean') $('newOnly').checked = f.newOnly;
     if (typeof f.sinceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f.sinceDate)) { $('sinceDate').value = f.sinceDate; $('sinceX').hidden = false; $('newOnly').checked = false; }
     colOpts(); state.clear(); limit = PAGE; render();
