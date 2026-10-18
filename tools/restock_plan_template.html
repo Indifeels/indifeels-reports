@@ -919,7 +919,9 @@ function catOf(p){
   for (const [name, re] of CAT_RULES) if (re.test(t)) return name;
   return 'other';
 }
-const ago = day => { if (!day) return ''; const n = Math.max(0, Math.round((Date.now() - parseDay(day)) / DAY)); return n === 0 ? 'sold today' : n === 1 ? 'sold yesterday' : 'sold ' + n + ' d ago'; };
+const melToday = () => { try { return new Intl.DateTimeFormat('en-CA', {timeZone: 'Australia/Melbourne'}).format(new Date()); } catch (e) { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); } };
+const dayDiff = (a, b) => { const f = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); }; return Math.round((f(a) - f(b)) / DAY); };
+const ago = day => { if (!day) return ''; const n = Math.max(0, dayDiff(melToday(), day)); return n === 0 ? 'sold today' : n === 1 ? 'sold yesterday' : 'sold ' + n + ' d ago'; };
 
 /* orders index: every order line belongs to a variant (vkey); a variant can have several lines (top-ups) */
 let byV = new Map();
