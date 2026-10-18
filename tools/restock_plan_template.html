@@ -490,10 +490,10 @@ select.sel{appearance:none;-webkit-appearance:none}
 .pop .opt:hover,.pop .opt.on{background:var(--grey-bg)}
 /* overview panel */
 .ov{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:8px;overflow:hidden}
-.ov-h{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none}
+.ov-h{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none}.ov-t{flex:1}
 .ov-t{font-size:20px;font-weight:800}
-.ov-t{white-space:nowrap}.ov-s{flex:1;text-align:right;color:var(--muted);font-size:12.5px;white-space:nowrap;display:none}
-.ov.shut .ov-s{display:block}.ov:not(.shut) .ov-h{justify-content:space-between}
+.ov-t{white-space:nowrap}.ov-s{order:3;flex-basis:100%;gap:6px;flex-wrap:wrap;display:none}
+.ov.shut .ov-s{display:flex}.ov:not(.shut) .ov-h{justify-content:space-between}
 .chev2{color:var(--muted);font-size:16px;transition:transform .15s}
 .ov.shut .chev2{transform:rotate(-90deg)}
 .ov.shut .stats{display:none}
@@ -643,7 +643,14 @@ select.sel{appearance:none;-webkit-appearance:none}
 .fwrap{position:sticky;top:0;z-index:40;margin:6px 0 8px}
 .fhead{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:10px 14px;border-radius:14px;border:1px solid #3c3d40;color:#f5f5f6;font:inherit;cursor:pointer;text-align:left;background:linear-gradient(135deg,#2d2e31,#151618 85%);box-shadow:5px 8px 14px #0009,inset 1px 2px 1px #ffffff38,inset -2px -3px 3px #0008}
 .fhead .ft{font-weight:800;font-size:16px}
-.fhead .fs{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#bec0c5;font-size:12.5px}
+.fhead{flex-wrap:wrap}.fhead .ft{flex:1}
+.fhead .fs{order:3;flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.chp{display:inline-flex;align-items:baseline;gap:5px;padding:5px 11px;border-radius:999px;font-weight:800;font-size:15px;line-height:1.2;background:#1c2a40;color:#9cc4ff;box-shadow:inset 0 0 0 1px #2d4a75}
+.chp b,.chp small{display:inline!important;margin:0!important}.chp b{font-size:16px}.chp small{font-size:12.5px;font-weight:700;opacity:.9;color:inherit!important}
+.chp.c-amber{background:#33280c;color:#ffd166;box-shadow:inset 0 0 0 1px #6b5316}
+.chp.c-red{background:#3a1416;color:#ff8a8a;box-shadow:inset 0 0 0 1px #7a2a2d}
+.chp.c-orange{background:#3a230e;color:#ffab5e;box-shadow:inset 0 0 0 1px #7a4818}
+.chp.c-grey{background:#26272b;color:#d5d7dc;box-shadow:inset 0 0 0 1px #46474c}
 .fhead .chev2{transition:transform .15s}.fwrap.open .fhead .chev2{transform:rotate(180deg)}
 .fbody{display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);max-height:calc(100vh - 80px);overflow:auto;padding:8px;border-radius:14px;border:1px solid #3c3d40;background:linear-gradient(135deg,#292a2c,#151618 85%);box-shadow:7px 10px 22px #000b}
 .fwrap.open .fbody{display:block}
@@ -1158,7 +1165,8 @@ function drawStats(){
   const T = (k, cls, n, l) => `<div class="ot ${cls}${tf === k ? ' on' : ''}" data-tf="${k}"><b>${n}</b><span>${l}</span></div>`;
   $('stats').innerHTML = T('all','',prodsN,'Products') + T('oos','t-red',oos,'Out of stock') + T('u7','t-orange',u7,'Under 7 days') + T('need','t-amber',units,'To order') +
     T('smv','',smv,'Stock more variants') + T('ord','t-blue',ord,'Ordered') + T('pack','t-amber',box,'Packed') + T('ship','t-green',way,'Shipped');
-  $('ovs').textContent = units + ' to order · ' + oos + ' out of stock';
+  const C = (c, n, l) => `<span class="chp c-${c}"><b>${n}</b><small>${l}</small></span>`;
+  $('ovs').innerHTML = C('amber', units, 'to order') + C(oos ? 'red' : 'grey', oos, 'out of stock') + C(u7 ? 'orange' : 'grey', u7, 'under 7 days');
 }
 const wrongList = () => [...orders.values()].filter(o => o.wrong_pick && !o.wrong_ack && (o.status === 'added' || o.status === 'shipped'));
 let seenWrong = null;
@@ -1684,7 +1692,7 @@ try { parent.postMessage({ type: 'restock-plan', action: 'ready' }, '*'); } catc
   function sum(){
     const v=document.querySelector('#vseg .on'),c=$('colTxt'),o=$('order');
     const t=[v&&v.textContent,c&&c.textContent!=='All collections'?c.textContent:null,o&&o.selectedOptions[0]&&o.selectedOptions[0].textContent.replace('Sort: ','')];
-    sm.textContent=t.filter(Boolean).join(' · ');
+    sm.innerHTML=t.filter(Boolean).map(x=>'<span class="chp">'+String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>').join('');
     document.documentElement.style.setProperty('--fh',hd.offsetHeight+1+'px');
   }
   hd.addEventListener('click',()=>{w.classList.toggle('open');sum()});
