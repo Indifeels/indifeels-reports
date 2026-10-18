@@ -657,6 +657,20 @@ select.sel{appearance:none;-webkit-appearance:none}
 .fbody .scan{margin:0 0 8px}.fbody .fbar{margin:0;box-shadow:none}
 #viewMine .card-h{top:var(--fh,46px)}
 @media(min-width:900px){th{top:calc(var(--hh,72px) + var(--fh,46px))!important}}
+
+[data-stk]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.stkm{position:fixed;inset:0;z-index:9999;background:#000a;display:none;align-items:center;justify-content:center;padding:16px}
+.stkm.on{display:flex}
+.stkb{width:100%;max-width:380px;background:#1b1c1f;color:#f5f5f6;border:1px solid #3c3d40;border-radius:16px;padding:16px;box-shadow:0 12px 40px #000c}
+.stkb h3{margin:0 0 2px;font-size:17px}.stkb .sub{color:#aeb1b8;font-size:13px;margin-bottom:12px}
+.stkr{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #34353a}
+.stkr .nm{flex:1;font-weight:700;font-size:15px}.stkr .nm small{display:block;font-weight:500;color:#aeb1b8;font-size:12px}
+.stkr .cur{min-width:64px;text-align:center;font-size:22px;font-weight:800}.stkr .cur small{display:block;font-size:11px;font-weight:600;color:#aeb1b8}
+.stkr button{width:44px;height:44px;border-radius:12px;border:1px solid #4a4b50;background:#26272b;color:#fff;font-size:22px;font-weight:800}
+.stkr .d{color:#ffd166}
+.stka{display:flex;gap:10px;margin-top:14px}.stka button{flex:1;height:46px;border-radius:12px;border:1px solid #4a4b50;background:#26272b;color:#fff;font-size:16px;font-weight:700}
+.stka .go{background:#4da3ff;border-color:#4da3ff;color:#06203d}.stka button:disabled{opacity:.45}
+.stkm .msg{min-height:18px;margin-top:10px;font-size:13px;color:#ff8a8a}.stkm .msg.ok{color:#7ee08c}
 </style>
 </head>
 <body>
@@ -797,6 +811,8 @@ const Store = {
   ackWrong: ids => call('ackwrong', { ids }),
   discReq: () => call('discreq'),
   discDecide: (product, approve) => call('discdecide', { product, approve }),
+  stockGet: vid => call('stockget', { vid }),
+  stockAdjust: (vid, dShop, dBackup) => call('stockadjust', { vid, dShop, dBackup }),
 };
 
 /* ---------------- calculations ---------------- */
@@ -955,7 +971,7 @@ function compute(){
     const newSlow = days < 60 && total < 5;     // launched under 2 months ago and under 5 sold: never ranked high
     const P = {p, days, total, pDTS, newSlow, isNew: days < 60, elig: pDTS < MAX_PRODUCT_DTS, eligible: !disc && days >= MIN_MARKET_DAYS && pDTS < MAX_PRODUCT_DTS && total >= MIN_UNITS, disc, cat, catW, supplier: p.supplier || ''};
     const maxSales = Math.max(0, ...p.variants.map(v=>v[2]));
-    P.rows = p.variants.map(([title,stock,sales,last,s30,bc]) => {
+    P.rows = p.variants.map(([title,stock,sales,last,s30,bc,vids]) => {
       last = last || ''; s30 = s30 || 0;
       const dts = sales > 0 ? days / sales : Infinity;
       const required = sales > 0 && !disc ? Math.ceil(Math.ceil(LEAD_DAYS / dts) * mult - 1e-9) : 0;
@@ -974,7 +990,7 @@ function compute(){
         if (s30 >= 5 && ratio > 2) damp = Math.max(0.35, 1 / (1 + (ratio - 2) * (SEASONAL.has(cat) ? 0.5 : 0.2)));
         score = Math.round(short * conf * catW * damp * (P.newSlow ? 0.25 : 1) * 10) / 10;
       }
-      return {P,title,bc: bc || [],stock,sales,last,s30,dts,required,toOrder,left,level,score,conf,damp,
+      return {P,title,bc: bc || [],vids: vids || [],stock,sales,last,s30,dts,required,toOrder,left,level,score,conf,damp,
         cSales: sales === 0 ? 'grey' : share >= .5 ? 'green' : share >= .2 ? 'amber' : 'red',
         cDts: sales === 0 ? 'grey' : dts < 20 ? 'green' : dts < 50 ? 'amber' : 'red',
         cStock: sales === 0 ? (stock > 0 ? 'info' : 'grey') : stock <= 0 ? 'red' : stock < required ? 'amber' : 'green',
@@ -1113,7 +1129,7 @@ function rowHtml(r){
   const tr = `<tr${hit ? ' class="hit"' : ''}><td class="c-${r.level} why"${why}>${r.rank ?? '–'}</td><td class="v">${esc(r.title)}</td>
     <td class="c-${r.cSales}">${r.sales}<div class="sub2">${ago(r.last)}</div></td><td class="c-${r.cDts}">${fmt(r.dts)}</td>
     <td class="c-${r.cLeft}">${r.sales===0?'—':r.stock<=0?0:fmt(r.left)}</td>
-    <td class="stk g1 c-${r.cStock}">${r.stock}</td>
+    <td class="stk g1 c-${r.cStock}" data-stk="${esc((r.vids || []).join(','))}" data-pt="${esc(r.P.p.title)}" data-vt="${esc(r.title)}">${r.stock}</td>
     <td class="g2 c-${r.cReq}">${r.required}</td>
     <td class="ord g3 c-${r.cOrder}" data-ord="${i}">${ordHtml(i)}</td>
     <td class="sup" data-sup="${i}">${supHtml(i)}</td>
@@ -1123,7 +1139,7 @@ function rowHtml(r){
   const stTxt = r.level === 'red' ? 'Out of stock' : (r.level === 'orange' || r.level === 'yellow') ? 'Low stock · ' + dTxt : r.level === 'green' ? 'OK · ' + dTxt : 'No sales';
   const needC = needClr(r);
   const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span>${vTag(r)}<div class="pipes" data-sup="${i}">${supMv(i)}</div></div>
-    <div class="rw"><div class="mc mc-${sc}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><div class="udt c-${r.cDts}"><b>${fmt2(r.dts)}</b><span>D.U</span></div></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
+    <div class="rw"><div class="mc mc-${sc}" data-stk="${esc((r.vids || []).join(','))}" data-pt="${esc(r.P.p.title)}" data-vt="${esc(r.title)}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><div class="udt c-${r.cDts}"><b>${fmt2(r.dts)}</b><span>D.U</span></div></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
   return {tr, mv};
 }
 const plink = P => /^https:\/\//.test(P.p.url || '') ? esc(P.p.url) : '';
@@ -1701,6 +1717,67 @@ try { parent.postMessage({ type: 'restock-plan', action: 'ready' }, '*'); } catc
   w.addEventListener('click',()=>setTimeout(sum,0));w.addEventListener('input',()=>setTimeout(sum,0));w.addEventListener('change',()=>setTimeout(sum,0));
   document.addEventListener('click',e=>{if(w.classList.contains('open')&&!w.contains(e.target))w.classList.remove('open')});
   sum();window.addEventListener('resize',sum);
+})();
+</script>
+<div class="stkm" id="stkm"><div class="stkb">
+  <h3 id="stkT">Stock</h3><div class="sub" id="stkS"></div>
+  <div class="stkr"><div class="nm">Shop location<small>website ST first number</small></div><button type="button" data-k="shop" data-d="-1">−</button><div class="cur" id="stkShop">…</div><button type="button" data-k="shop" data-d="1">+</button></div>
+  <div class="stkr"><div class="nm">Backup<small>website ST second number</small></div><button type="button" data-k="backup" data-d="-1">−</button><div class="cur" id="stkBackup">…</div><button type="button" data-k="backup" data-d="1">+</button></div>
+  <div class="msg" id="stkMsg"></div>
+  <div class="stka"><button type="button" id="stkCancel">Cancel</button><button type="button" class="go" id="stkSave" disabled>Save</button></div>
+</div></div>
+<script>
+/* Long-press a Stock tile: see + adjust stock at both Shopify locations. Save changes Shopify, the website ST numbers, then closes. */
+(function(){
+  const $ = id => document.getElementById(id);
+  let cur = null, timer = null, sx = 0, sy = 0, busy = false;
+  const shown = () => {
+    if (!cur) return;
+    ['shop','backup'].forEach(k => { const d = cur.d[k], el = $(k === 'shop' ? 'stkShop' : 'stkBackup'); el.innerHTML = cur[k] == null ? '…' : (cur[k] + d) + (d ? '<small class="d">' + (d > 0 ? '+' : '') + d + ' (was ' + cur[k] + ')</small>' : ''); });
+    $('stkSave').disabled = busy || cur.shop == null || (!cur.d.shop && !cur.d.backup);
+  };
+  const msg = (t, ok) => { const m = $('stkMsg'); m.textContent = t || ''; m.className = 'msg' + (ok ? ' ok' : ''); };
+  const close = () => { $('stkm').classList.remove('on'); cur = null; busy = false; };
+  async function open(vids, vtitle, ptitle) {
+    const ids = (vids || '').split(',').filter(Boolean);
+    $('stkT').textContent = ptitle || 'Stock'; $('stkS').textContent = vtitle || ''; msg('');
+    cur = {vid: ids[0], shop: null, backup: null, d: {shop: 0, backup: 0}};
+    $('stkm').classList.add('on'); shown();
+    if (ids.length !== 1) { msg(ids.length ? 'Several Shopify variants share this size, so it can\'t be edited here.' : 'No variant id yet. It appears after the next data refresh.'); return; }
+    try { const r = await Store.stockGet(ids[0]); if (!cur) return; cur.shop = r.shop; cur.backup = r.backup; shown(); }
+    catch (e) { msg(String(e.message || e)); }
+  }
+  document.addEventListener('pointerdown', e => {
+    const t = e.target.closest && e.target.closest('[data-stk]'); if (!t) return;
+    sx = e.clientX; sy = e.clientY; clearTimeout(timer);
+    timer = setTimeout(() => {
+      const vt = t.getAttribute('data-vt') || '', pt = t.getAttribute('data-pt') || '';
+      if (navigator.vibrate) try { navigator.vibrate(15); } catch (x) {}
+      open(t.getAttribute('data-stk'), vt, pt);
+    }, 550);
+  });
+  const stop = () => clearTimeout(timer);
+  document.addEventListener('pointerup', stop); document.addEventListener('pointercancel', stop);
+  document.addEventListener('pointermove', e => { if (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8) stop(); });
+  document.addEventListener('scroll', stop, true);
+  document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('[data-stk]')) e.preventDefault(); });
+  $('stkm').addEventListener('click', e => {
+    if (e.target === $('stkm')) return close();
+    const b = e.target.closest('button[data-k]'); if (!b || !cur || cur.shop == null || busy) return;
+    const k = b.getAttribute('data-k'), d = Number(b.getAttribute('data-d'));
+    if (cur[k] + cur.d[k] + d < 0) return;
+    cur.d[k] += d; msg(''); shown();
+  });
+  $('stkCancel').addEventListener('click', close);
+  $('stkSave').addEventListener('click', async () => {
+    if (!cur || busy) return; busy = true; shown(); msg('Saving…', true);
+    const vid = cur.vid, dS = cur.d.shop, dB = cur.d.backup;
+    try {
+      const r = await Store.stockAdjust(vid, dS, dB);
+      data.products.forEach(p => p.variants.forEach(v => { if (v[6] && v[6].includes(vid)) v[1] = (Number(v[1]) || 0) + dS + dB; }));
+      close(); try { render(); } catch (e) {}
+    } catch (e) { busy = false; msg(String(e.message || e)); shown(); }
+  });
 })();
 </script>
 </body>

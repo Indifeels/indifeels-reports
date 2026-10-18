@@ -257,12 +257,14 @@ def build():
         if "/ProductVariant/" in l.get("id", "") and l.get("__parentId") in products:
             p = products[l["__parentId"]]
             key = l["title"].strip().lower()
-            cur = p["variants"].setdefault(key, [l["title"], 0, 0, "", 0, []])   # title, stock, sold, last sold day, sold in last 30 days, barcodes (for the scan box)
+            cur = p["variants"].setdefault(key, [l["title"], 0, 0, "", 0, [], []])   # title, stock, sold, last sold day, sold in last 30 days, barcodes (for the scan box)
             vid = num(l["id"])
             cur[1] += int(l.get("inventoryQuantity") or 0)
             cur[2] += variant_sold.get(vid, 0)
             cur[3] = max(cur[3], variant_last.get(vid, ""))
             cur[4] += variant_30.get(vid, 0)
+            if vid and str(vid) not in cur[6]:
+                cur[6].append(str(vid))   # Shopify variant ids (long-press Stock tile edits stock)
             bc = (l.get("barcode") or "").strip()
             if bc and bc not in cur[5]:
                 cur[5].append(bc)
