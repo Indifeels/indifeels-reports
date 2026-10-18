@@ -99,10 +99,10 @@
   "reason": ""
  },
  "stock": {
-  "at": "2026-10-19T00:12+11:00",
-  "code_sha": "37ca4987a360b6e892986c3c4a32b4a7b4ac2abf",
+  "at": "2026-10-19T07:01+11:00",
+  "code_sha": "1711a36161790dc48971b447b5a79ecfcac6d9e7",
   "data_through": null,
-  "last_ok": "2026-10-19T00:12+11:00",
+  "last_ok": "2026-10-19T07:01+11:00",
   "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
