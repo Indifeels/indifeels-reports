@@ -690,7 +690,7 @@ select.sel{appearance:none;-webkit-appearance:none}
     <div class="pop" id="colPop"><input type="text" id="colQ" placeholder="Search collections" autocomplete="off"><div class="opts" id="colOpts"></div></div>
     <div class="controls" id="moreBox">
       <label class="o">Supplier <select id="supplier"><option value="">All</option></select></label>
-      <label class="o">Eligibility <select id="elig"><option value="">All</option><option value="y">Eligible only</option><option value="n">Not eligible only</option></select></label>
+      <label class="o">Eligibility <select id="elig"><option value="">All</option><option value="y" selected>Eligible only</option><option value="n">Not eligible only</option></select></label>
       <label class="o">Discontinued <select id="discf"><option value="hide">Hide discontinued</option><option value="only">Only discontinued</option><option value="all">Show all</option></select></label>
       <label class="o"><input type="checkbox" id="onlyElig"> Only “Stock More Variants”</label>
       <label class="o" title="Saves your quantity a few seconds after you stop tapping + / −"><input type="checkbox" id="autoSave"> Auto-save</label>
@@ -1526,7 +1526,7 @@ function applyFilters(f){
     setSel('order', f.order); mode = $('order').value; syncNew();
     if (f.vsel === 'need' || f.vsel === 'all') { $('vsel').value = f.vsel; document.querySelectorAll('#vseg button').forEach(x => x.classList.toggle('on', x.dataset.v === f.vsel)); }
     if (f.len != null && +f.len >= 1 && +f.len <= 10) $('len').value = String(+f.len);
-    setSel('supplier', f.supplier); setSel('collection', f.collection); setSel('elig', f.elig); setSel('discf', f.discf);
+    setSel('supplier', f.supplier); setSel('collection', f.collection); setSel('discf', f.discf);
     if (typeof f.onlyElig === 'boolean') $('onlyElig').checked = f.onlyElig;
     // "Hide already ordered" is deliberately not restored: it starts ticked every time
     if (typeof f.newOnly === 'boolean') $('newOnly').checked = f.newOnly;
