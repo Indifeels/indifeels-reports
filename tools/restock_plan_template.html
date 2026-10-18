@@ -1237,14 +1237,17 @@ function render(){
   const lastRecvDay = vk => { let m = ''; (byV.get(vk) || []).forEach(o => { if (o.status === 'received' && o.received_at && String(o.received_at) > m) m = String(o.received_at); }); return m ? ymd(new Date(m)) : ''; };
   const since = $('sinceDate').value;
   const dateOk = r => { if (mode !== 'date') return true; if (!r.last) return false; if (since) return r.last >= since; if (!$('newOnly').checked) return r.last >= cut90; const d = lastRecvDay(keyOf(r.P.p.id, r.title)); return !d || r.last >= d; };
-  const passBase = r => dateOk(r) && (!supSel || (r.P.supplier || '(none)') === supSel) &&
+  const passCore = r => (!supSel || (r.P.supplier || '(none)') === supSel) &&
     (!colSel || (r.P.p.cols || []).includes(colSel)) &&
     (!eligSel || (eligSel === 'y' ? r.P.elig : !r.P.elig)) &&
     (dSel === 'all' || (dSel === 'only' ? r.P.disc : !r.P.disc)) &&
     (!onlyElig || (r.P.eligible && !getDone(r.P.p.id)));
-  const hideOrd = $('hideOrd').checked && !tf;
+  const passBase = r => dateOk(r) && passCore(r);
+  const hideOrd = $('hideOrd').checked && !tf && vSel !== 'all';          // "All variants" means all: nothing is hidden
   const covered = r => r.toOrder === 0 && pipeline(keyOf(r.P.p.id, r.title)).live.length > 0;      // fully handled by orders in progress
-  const pass = r => passBase(r) && (tf && TFP[tf] ? TFP[tf](r) : (!onlyNeed || r.toOrder > 0 || pipeline(keyOf(r.P.p.id, r.title)).live.length)) && !(hideOrd && covered(r));
+  const tail = r => (tf && TFP[tf] ? TFP[tf](r) : (!onlyNeed || r.toOrder > 0 || pipeline(keyOf(r.P.p.id, r.title)).live.length)) && !(hideOrd && covered(r));
+  const pass = r => passBase(r) && tail(r);
+  const passAnyDate = r => passCore(r) && tail(r);
   statCtx = {rows: prods.flatMap(P => P.rows).filter(passBase)}; drawStats();
   infos.length = 0;
   const groups = [], bannered = new Set();
@@ -1257,6 +1260,7 @@ function render(){
     const m = new Map();
     for (const r of entries) { if (!pass(r)) continue; if (!m.has(r.P)) m.set(r.P, []); m.get(r.P).push(r); }
     if (mode !== 'date') m.forEach((rows, P) => P.rows.forEach(r => { if (r.sales === 0 && pass(r)) rows.push(r); }));
+    else if (vSel === 'all') m.forEach((rows, P) => P.rows.forEach(r => { if (!rows.includes(r) && passAnyDate(r)) rows.push(r); }));   // Latest sold + All variants: every variant of a product that sold in the period
     m.forEach((rows, P) => groups.push({P, rows: rows.slice().sort(bySize), id: P.p.id}));   // variants always in size order inside a product
   } else {
     for (const P of prods) {
