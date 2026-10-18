@@ -693,7 +693,6 @@ select.sel{appearance:none;-webkit-appearance:none}
       <label class="o">Eligibility <select id="elig"><option value="">All</option><option value="y" selected>Eligible only</option><option value="n">Not eligible only</option></select></label>
       <label class="o">Discontinued <select id="discf"><option value="hide">Hide discontinued</option><option value="only">Only discontinued</option><option value="all">Show all</option></select></label>
       <label class="o"><input type="checkbox" id="onlyElig"> Only “Stock More Variants”</label>
-      <label class="o" title="Saves your quantity a few seconds after you stop tapping + / −"><input type="checkbox" id="autoSave"> Auto-save</label>
       <select id="collection" hidden><option value="">All</option></select>
       <input type="hidden" id="vsel" value="need">
       <button id="saveAll" title="Save every shown variant that has a quantity to order">Save all shown</button>
@@ -1355,7 +1354,7 @@ async function receive(ids, label){
 }
 
 /* ---------------- saving: one line, a whole product, everything shown, or auto ---------------- */
-let autoOn = true; try { autoOn = localStorage.getItem('restockAutoSave') !== '0'; } catch (e) {}
+let autoOn = false; // manual Save only
 const autoT = new Map();
 async function saveItems(list){
   let ok = 0, units = 0, fail = '';
@@ -1477,8 +1476,6 @@ $('list').addEventListener('click', async e => {
   }
 });
 const setAll = v => { touched = true; defaultOpen = v; state.clear(); document.querySelectorAll('.card').forEach(c => c.classList.toggle('open', v)); };
-$('autoSave').checked = autoOn;
-$('autoSave').addEventListener('change', () => { autoOn = $('autoSave').checked; try { localStorage.setItem('restockAutoSave', autoOn ? '1' : '0'); } catch (e) {} });
 let armSave = false, armSaveT = null, saveLabelT = 0;
 $('ctlToggle').addEventListener('click', () => { const c = $('moreBox'), on = c.classList.toggle('open'); $('ctlToggle').textContent = on ? '✕' : '⋯'; });
 $('saveAll2').addEventListener('click', () => $('saveAll').click());
