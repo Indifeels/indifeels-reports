@@ -613,7 +613,9 @@ select.sel{appearance:none;-webkit-appearance:none}
 .pv .mc em.gap{position:absolute;top:-7px;right:-7px;font-style:normal;font-size:10px;font-weight:800;line-height:1;padding:2px 5px;border-radius:999px;box-shadow:0 1px 3px #0008}
 .pv .mc em.g-red{background:#e5484d;color:#fff}.pv .mc em.g-amber{background:#e3b341;color:#1a1300}.pv .mc em.g-green{background:#2ea043;color:#fff}
 .pv .mc.need.mc-red{background:#5a1d20;border-color:#ff7b72}.pv .mc.need.mc-amber{background:#4a3a08;border-color:#e3b341}.pv .mc.need.mc-green{background:#123b1f;border-color:#4cc364}
-.pv .ud{flex:1;display:flex;justify-content:center;align-self:center;min-width:0}
+.pv .ud{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;align-self:center;min-width:0}
+.pv .ud .sld{display:block;margin-top:3px;font-size:11.5px;color:#aeb1b8;white-space:nowrap}.pv .ud .sld b{display:inline!important;font-size:12.5px!important;color:#e6e8ec!important}
+.hnum .psd{font-size:11.5px;color:#aeb1b8;white-space:nowrap;margin-top:1px}.hnum .psd b{display:inline!important;font-size:12.5px!important;color:#e6e8ec!important}
 .pv .udt{border-radius:10px;padding:3px 10px;text-align:center;line-height:1.05;border:1px solid #ffffff14}
 .pv .udt b,.pv .udt span{color:inherit!important;opacity:1!important}.pv .ud b{display:block;font-size:12px;color:var(--muted);font-weight:700}.pv .ud span{text-transform:uppercase;display:block;margin:0;font-size:8.5px;color:var(--muted)}
 .hnum small.pud{display:block;font-size:8.5px;color:#9aa0a8;margin-top:1px}
@@ -707,7 +709,7 @@ select.sel{appearance:none;-webkit-appearance:none}
       </select>
       <button type="button" class="sel mt" id="ctlToggle" title="More filters">⋯</button>
     </div>
-    <div class="ckrow" id="hideRow"><label><input type="checkbox" id="hideOrd" checked> Hide already ordered</label><span>covered by an order, box or shipment</span></div>
+    <div class="ckrow" id="hideRow"><label><input type="checkbox" id="hideOrd" checked> Hide ordered / not needed</label><span>products that need nothing, or are covered by an order, box or shipment</span></div>
     <div class="ckrow" id="newRow" hidden><label><input type="checkbox" id="newOnly" checked> Since last restock</label><span>or sold since</span><input type="date" id="sinceDate"><button type="button" id="sinceX" hidden>✕</button></div>
     <div class="lenrow"><label for="len">Leniency</label><input type="range" id="len" min="1" max="10" step="1" value="3"><b class="pill" id="lenv"></b></div>
     <div class="pop" id="colPop"><input type="text" id="colQ" placeholder="Search collections" autocomplete="off"><div class="opts" id="colOpts"></div></div>
@@ -1141,7 +1143,7 @@ function rowHtml(r){
   const stTxt = r.level === 'red' ? 'Out of stock' : (r.level === 'orange' || r.level === 'yellow') ? 'Low stock · ' + dTxt : r.level === 'green' ? 'OK · ' + dTxt : 'No sales';
   const needC = needClr(r);
   const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span>${vTag(r)}<div class="pipes" data-sup="${i}">${supMv(i)}</div></div>
-    <div class="rw"><div class="mc mc-${sc}" data-stk="${esc((r.vids || []).join(','))}" data-pt="${esc(r.P.p.title)}" data-vt="${esc(r.title)}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><div class="udt c-${r.cDts}"><b>${fmt2(r.dts)}</b><span>D.U</span></div></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
+    <div class="rw"><div class="mc mc-${sc}" data-stk="${esc((r.vids || []).join(','))}" data-pt="${esc(r.P.p.title)}" data-vt="${esc(r.title)}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><div class="udt c-${r.cDts}"><b>${fmt2(r.dts)}</b><span>D.U</span></div><small class="sld" title="Total units sold"><b>${r.sales}</b> sold</small></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
   return {tr, mv};
 }
 const plink = P => /^https:\/\//.test(P.p.url || '') ? esc(P.p.url) : '';
@@ -1168,7 +1170,7 @@ function cardHtml(g){
         <div class="tile ${dtsCls}"><b>${fmt(P.pDTS)}</b><span>Days / 1 unit (product)</span></div>
         <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
       </div>
-      <div class="hnum ${P.units ? '' : 'zero'}"><div class="prow">${pTag(g)}</div><div class="pnum"><b>${P.units}</b><span>to order</span></div></div></div>
+      <div class="hnum ${P.units ? '' : 'zero'}"><div class="prow">${pTag(g)}</div><div class="pnum"><b>${P.units}</b><span>to order</span></div><div class="psd" title="Total units sold, all variants"><b>${P.total}</b> sold</div></div></div>
     <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>
       <div class="scroll dtable"><table>
       <thead><tr><th>Priority</th><th>Variant</th><th>Sold</th><th>Days / 1 sold</th><th>Days left</th><th class="g1">Current stock</th><th class="g2">Required stock</th><th class="g3">To order</th><th>Supplier</th><th>Status</th></tr></thead>
@@ -1277,7 +1279,8 @@ function render(){
   const passAnyDate = r => passCore(r) && tail(r);
   statCtx = {rows: prods.flatMap(P => P.rows).filter(passBase)}; drawStats();
   infos.length = 0;
-  const groups = [], bannered = new Set();
+  let groups = [];
+  const bannered = new Set();
   const scanP = scan ? prods.find(P => String(P.p.id) === scan.pid) : null;
   try { scanCard(scanP); } catch (e) {}
   const mkBanner = P => { const s = P.eligible && !getDone(P.p.id) && !bannered.has(P); if (s) bannered.add(P); return s; };
@@ -1295,6 +1298,7 @@ function render(){
       if (rows.length) groups.push({P, rows, id: P.p.id});
     }
   }
+  if ($('hideOrd').checked && !tf && !scanP) groups = groups.filter(g => g.P.units > 0);   // products needing nothing (stocked, or already ordered) are hidden too
   groups.forEach((g, ix) => { g.rank = ix + 1; });
   const shown = groups.slice(0, limit);
   shown.forEach((g, ix) => { g.banner = mkBanner(g.P); g.first = ix === 0; });
