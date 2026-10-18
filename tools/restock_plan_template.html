@@ -1125,8 +1125,14 @@ function pTag(g){
   let h = '';
   if (mode === 'priority') h += mk('#' + g.rank, P.worst, 'Product priority rank');
   else if (mode === 'date' && P.last) h += mk(esc(ago(P.last).replace('sold ', '')), 'info', 'Last sold');
-  const d = mode === 'vdts' ? Math.min(...g.rows.filter(r => r.sales > 0).map(r => r.dts)) : P.pDTS;
-  if (isFinite(d)) h += mk(fmt2(d) + '<small>D.U</small>', dtsCol(d), mode === 'vdts' ? 'Fastest variant: days to sell 1 unit' : 'Product: days to sell 1 unit');
+  // Header D.U is always the PRODUCT figure (days on market ÷ total units sold).
+  const d = P.pDTS;
+  if (isFinite(d)) h += mk(fmt2(d) + '<small>D.U</small>', dtsCol(d), 'Product: days to sell 1 unit');
+  // Variant sort: show the fastest variant as a second, smaller pill so the two are never confused.
+  if (mode === 'vdts') {
+    const f = Math.min(...g.rows.filter(r => r.sales > 0).map(r => r.dts));
+    if (isFinite(f)) h += mk('V ' + fmt2(f) + '<small>D.U</small>', dtsCol(f), 'Fastest variant: days to sell 1 unit');
+  }
   return h;
 }
 
