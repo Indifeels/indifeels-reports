@@ -661,6 +661,8 @@ select.sel{appearance:none;-webkit-appearance:none}
 [data-stk]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .stkm{position:fixed;inset:0;z-index:9999;background:#000a;display:none;align-items:center;justify-content:center;padding:16px}
 .stkm.on{display:flex}
+.stkm,.stkm *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.stkm .stkb{pointer-events:none}.stkm.ready .stkb{pointer-events:auto}
 .stkb{width:100%;max-width:380px;background:#1b1c1f;color:#f5f5f6;border:1px solid #3c3d40;border-radius:16px;padding:16px;box-shadow:0 12px 40px #000c}
 .stkb h3{margin:0 0 2px;font-size:17px}.stkb .sub{color:#aeb1b8;font-size:13px;margin-bottom:12px}
 .stkr{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #34353a}
@@ -1737,12 +1739,12 @@ try { parent.postMessage({ type: 'restock-plan', action: 'ready' }, '*'); } catc
     $('stkSave').disabled = busy || cur.shop == null || (!cur.d.shop && !cur.d.backup);
   };
   const msg = (t, ok) => { const m = $('stkMsg'); m.textContent = t || ''; m.className = 'msg' + (ok ? ' ok' : ''); };
-  const close = () => { $('stkm').classList.remove('on'); cur = null; busy = false; };
+  const close = () => { $('stkm').classList.remove('on', 'ready'); cur = null; busy = false; };
   async function open(vids, vtitle, ptitle) {
     const ids = (vids || '').split(',').filter(Boolean);
     $('stkT').textContent = ptitle || 'Stock'; $('stkS').textContent = vtitle || ''; msg('');
     cur = {vid: ids[0], shop: null, backup: null, d: {shop: 0, backup: 0}};
-    $('stkm').classList.add('on'); shown();
+    $('stkm').classList.add('on'); setTimeout(() => $('stkm').classList.add('ready'), 500); shown();
     if (ids.length !== 1) { msg(ids.length ? 'Several Shopify variants share this size, so it can\'t be edited here.' : 'No variant id yet. It appears after the next data refresh.'); return; }
     try { const r = await Store.stockGet(ids[0]); if (!cur) return; cur.shop = r.shop; cur.backup = r.backup; shown(); }
     catch (e) { msg(String(e.message || e)); }
@@ -1751,15 +1753,17 @@ try { parent.postMessage({ type: 'restock-plan', action: 'ready' }, '*'); } catc
     const t = e.target.closest && e.target.closest('[data-stk]'); if (!t) return;
     sx = e.clientX; sy = e.clientY; clearTimeout(timer);
     timer = setTimeout(() => {
+      timer = null;
       const vt = t.getAttribute('data-vt') || '', pt = t.getAttribute('data-pt') || '';
       if (navigator.vibrate) try { navigator.vibrate(15); } catch (x) {}
       open(t.getAttribute('data-stk'), vt, pt);
     }, 550);
   });
-  const stop = () => clearTimeout(timer);
+  const stop = () => { clearTimeout(timer); timer = null; };
   document.addEventListener('pointerup', stop); document.addEventListener('pointercancel', stop);
   document.addEventListener('pointermove', e => { if (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8) stop(); });
   document.addEventListener('scroll', stop, true);
+  document.addEventListener('selectstart', e => { if (timer || $('stkm').classList.contains('on')) e.preventDefault(); });
   document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('[data-stk]')) e.preventDefault(); });
   $('stkm').addEventListener('click', e => {
     if (e.target === $('stkm')) return close();
