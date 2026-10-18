@@ -94,6 +94,20 @@ def sb_rpc(name, body):
     return json.load(urllib.request.urlopen(req, timeout=60))
 
 
+def sync_product_cols(products):
+    """Tell Supabase which collections each product is in (supplier logins linked to a collection only see those). Never raises."""
+    token = os.environ.get("SYNC_READ_TOKEN")
+    if not token:
+        return
+    rows = [{"product_id": str(p["id"]), "cols": p["cols"]} for p in products.values() if p.get("id")]
+    try:
+        for i in range(0, len(rows), 400):
+            sb_rpc("sync_set_restock_product_cols", {"p_token": token, "p_rows": rows[i:i + 400]})
+        print("product collections synced:", len(rows))
+    except Exception as exc:
+        print("product collection sync skipped:", str(exc)[:120])
+
+
 def sync_discontinued():
     """Push 'discontinued' choices made in the planner to Shopify (custom.discountinued yes/no + date). Never raises."""
     token = os.environ.get("SYNC_READ_TOKEN")
@@ -278,6 +292,7 @@ def build():
         out.append({"id": p["id"], "title": p["title"], "image": p["image"], "url": p["url"], "published": p["published"],
                     "supplier": p["supplier"], "sales": sales, "last": product_last.get(p["id"], ""), "sold30": product_30.get(p["id"], 0),
                     "disc": p["disc"], "cols": sorted(p["cols"]), "variants": list(p["variants"].values())})
+    sync_product_cols(products)
     no_meta = sum(1 for p in products.values() if p["migrated"] and not p["fromMeta"])
 
     now = dt.datetime.now(SYD)

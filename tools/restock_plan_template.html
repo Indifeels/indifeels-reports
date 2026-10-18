@@ -716,6 +716,7 @@ select.sel{appearance:none;-webkit-appearance:none}
     <div class="controls" id="moreBox">
       <label class="o">Supplier <select id="supplier"><option value="">All</option></select></label>
       <label class="o">Eligibility <select id="elig"><option value="">All</option><option value="y" selected>Eligible only</option><option value="n">Not eligible only</option></select></label>
+      <label class="o">Parked <select id="parkf"><option value="hide">Hide parked</option><option value="only">Only parked</option><option value="all">Show all</option></select></label>
       <label class="o">Discontinued <select id="discf"><option value="hide">Hide discontinued</option><option value="only">Only discontinued</option><option value="all">Show all</option></select></label>
       <label class="o"><input type="checkbox" id="onlyElig"> Only “Stock More Variants”</label>
       <select id="collection" hidden><option value="">All</option></select>
@@ -808,13 +809,15 @@ const Store = {
   disc: (product, value) => call('disc', { product, value }),
   discList: () => call('disclist'),
   users: () => call('users'),
-  setUser: (user_id, supplier) => call('setuser', { user_id, supplier }),
+  setUser: (user_id, supplier, collection) => call('setuser', { user_id, supplier, collection }),
   events: () => call('events'),
   boxes: () => call('boxes'),
   release: id => call('release', { id }),
   ackWrong: ids => call('ackwrong', { ids }),
   discReq: () => call('discreq'),
   discDecide: (product, approve) => call('discdecide', { product, approve }),
+  park: (product, value) => call('park', { product, value }),
+  parkList: () => call('parklist'),
   stockGet: vid => call('stockget', { vid }),
   stockAdjust: (vid, dShop, dBackup) => call('stockadjust', { vid, dShop, dBackup }),
 };
@@ -823,6 +826,7 @@ const Store = {
 const MULT = [null,1,1.2,1.4,1.6,1.8,2,2.5,3,4,5];
 const LEAD_DAYS = 28, MIN_MARKET_DAYS = 90, MAX_PRODUCT_DTS = 50, MIN_UNITS = 3, DAY = 86400000, PAGE = 120;
 let data = DATA, mode = 'priority', defaultOpen = false, limit = PAGE, tf = '', touched = false;
+let parkMap = new Map();            // product id -> parked in the planner (app only, never sent to Shopify)
 let discMap = new Map();            // product id -> true/false chosen in the planner (wins over the Shopify value until the next build)
 const armed = new Set();
 const state = new Map(), draft = new Map(), infos = [];
@@ -962,6 +966,7 @@ function pipeline(vk){
 function compute(){
   const lvl = +$('len').value, mult = MULT[lvl], now = new Date(); now.setHours(0,0,0,0);
   $('lenv').textContent = lvl + ' · ' + mult + '×';
+  const parkOf = p => parkMap.get(String(p.id)) === true;
   const discOf = p => discMap.has(String(p.id)) ? discMap.get(String(p.id)) : !!p.disc;
   // category share of all sales (for the priority weight)
   const catUnits = {}; let allUnits = 0;
@@ -973,7 +978,7 @@ function compute(){
     const cat = catOf(p), share = allUnits ? (catUnits[cat] || 0) / allUnits : 0, catW = 0.6 + 0.4 * Math.min(1, share / 0.25);
     const disc = discOf(p);
     const newSlow = days < 60 && total < 5;     // launched under 2 months ago and under 5 sold: never ranked high
-    const P = {p, days, total, pDTS, newSlow, isNew: days < 60, elig: pDTS < MAX_PRODUCT_DTS, eligible: !disc && days >= MIN_MARKET_DAYS && pDTS < MAX_PRODUCT_DTS && total >= MIN_UNITS, disc, cat, catW, supplier: p.supplier || ''};
+    const P = {parked: parkOf(p), p, days, total, pDTS, newSlow, isNew: days < 60, elig: pDTS < MAX_PRODUCT_DTS, eligible: !disc && days >= MIN_MARKET_DAYS && pDTS < MAX_PRODUCT_DTS && total >= MIN_UNITS, disc, cat, catW, supplier: p.supplier || ''};
     const maxSales = Math.max(0, ...p.variants.map(v=>v[2]));
     P.rows = p.variants.map(([title,stock,sales,last,s30,bc,vids]) => {
       last = last || ''; s30 = s30 || 0;
@@ -1153,10 +1158,11 @@ function cardHtml(g){
   const ordCls = P.units === 0 ? 't-green' : P.worst === 'red' ? 't-red' : 't-amber';
   const thumb = P.p.thumb || P.p.image;
   const src = thumb ? esc(thumb) + (thumb.startsWith('data:') ? '' : (thumb.includes('?') ? '&' : '?') + 'width=120') : '';
-  const tag = (P.disc ? '<span class="tag dc">Discontinued</span>' : '') + (P.isNew ? '<span class="tag nw">New</span>' : '') + (!P.elig ? '<span class="tag ne">Not eligible</span>' : '');
+  const tag = (P.parked ? '<span class="tag dc">Parked</span>' : '') + (P.disc ? '<span class="tag dc">Discontinued</span>' : '') + (P.isNew ? '<span class="tag nw">New</span>' : '') + (!P.elig ? '<span class="tag ne">Not eligible</span>' : '');
   const arm = armed.has(pid);
   const worst = ['red','orange','yellow','green'].find(l => g.rows.some(r => r.level === l)) || 'grey';
   const btns = (cls) => `<button class="disc ${cls}${arm?' arm':''}" data-disc="${esc(pid)}" data-to="${P.disc?0:1}" title="${P.disc ? 'Put this product back into restocking' : 'Stop restocking this product and mark it discontinued in Shopify'}">${P.disc ? 'Reinstate' : arm ? 'Confirm discontinue?' : 'Discontinue'}</button>` +
+    `<button class="disc ${cls}" data-park="${esc(pid)}" data-to="${P.parked?0:1}" title="${P.parked ? 'Bring this product back into the list' : 'Park: can\'t restock right now. Hidden here only, nothing changes on the website'}">${P.parked ? 'Unpark' : 'Park'}</button>` +
     (P.disc ? '' : `<button class="disc ${cls}" data-psave="${esc(pid)}" title="Save the quantity of every variant of this product that has one to order">Save all</button>`);
   const rows = g.rows.map(rowHtml);
   return `<section class="card w-${worst}${isOpen?' open':''}" data-gid="${esc(g.id)}">
@@ -1253,7 +1259,7 @@ function render(){
   setTimeout(() => { try { saveLabel(); } catch (e) {} }, 0);
   indexOrders();
   const {prods, entries} = compute();
-  const supSel = $('supplier').value, colSel = $('collection').value, eligSel = $('elig').value, dSel = $('discf').value;
+  const supSel = $('supplier').value, colSel = $('collection').value, eligSel = $('elig').value, dSel = $('discf').value, pkSel = $('parkf').value;
   const vSel = $('vsel').value, onlyNeed = vSel === 'need' || (vSel === '' && mode === 'priority'), onlyElig = $('onlyElig').checked;
   const live = prods.filter(r => !r.disc);
   const activeElig = live.filter(r=>r.eligible && !getDone(r.p.id)).length;
@@ -1270,6 +1276,7 @@ function render(){
     (!colSel || (r.P.p.cols || []).includes(colSel)) &&
     (!eligSel || (eligSel === 'y' ? r.P.elig : !r.P.elig)) &&
     (dSel === 'all' || (dSel === 'only' ? r.P.disc : !r.P.disc)) &&
+    (pkSel === 'all' || (pkSel === 'only' ? r.P.parked : !r.P.parked)) &&
     (!onlyElig || (r.P.eligible && !getDone(r.P.p.id)));
   const passBase = r => dateOk(r) && passCore(r);
   const hideOrd = $('hideOrd').checked && !tf && vSel !== 'all';          // "All variants" means all: nothing is hidden
@@ -1369,7 +1376,7 @@ $('scanClr').addEventListener('click', scanClear);
 /* ---------------- events ---------------- */
 const reset = () => { limit = PAGE; render(); };
 $('len').addEventListener('input', reset);
-['vsel','onlyElig','supplier','collection','elig','discf','hideOrd'].forEach(id => $(id).addEventListener('change', reset));
+['vsel','onlyElig','supplier','collection','elig','discf','parkf','hideOrd'].forEach(id => $(id).addEventListener('change', reset));
 const syncNew = () => { $('newRow').hidden = $('order').value !== 'date'; };
 $('order').addEventListener('change', () => { mode = $('order').value; syncNew(); state.clear(); reset(); });
 $('newOnly').addEventListener('change', () => { if ($('newOnly').checked) { $('sinceDate').value = ''; $('sinceX').hidden = true; } reset(); });
@@ -1463,6 +1470,14 @@ $('list').addEventListener('click', async e => {
   if (t.id === 'more') { limit += PAGE; render(); return; }
   const ps = t.closest('[data-psave]');
   if (ps) { e.stopPropagation(); const list = pending(ps.getAttribute('data-psave')); if (!list.length) { notify('Nothing to save for this product'); return; } ps.disabled = true; await saveItems(list); return; }
+  const pk = t.closest('[data-park]');
+  if (pk) {
+    const pid = pk.getAttribute('data-park'), to = pk.getAttribute('data-to') === '1';
+    pk.disabled = true;
+    try { await Store.park(pid, to); parkMap.set(pid, to); notify(to ? 'Parked. Hidden from the list (app only). Use the Parked filter to see it.' : 'Unparked. Back in the list.', true); }
+    catch (err) { notify('Could not update: ' + err.message); }
+    render(); return;
+  }
   const dc = t.closest('[data-disc]');
   if (dc) {
     e.stopPropagation();
@@ -1544,7 +1559,7 @@ function buildSuppliers(){
 let applyingFilters = false;
 function collectFilters(){
   return {order: $('order').value, vsel: $('vsel').value, len: $('len').value, collection: $('collection').value, supplier: $('supplier').value, elig: $('elig').value,
-    discf: $('discf').value, onlyElig: $('onlyElig').checked, newOnly: $('newOnly').checked, sinceDate: $('sinceDate').value, hideOrd: $('hideOrd').checked};
+    discf: $('discf').value, parkf: $('parkf').value, onlyElig: $('onlyElig').checked, newOnly: $('newOnly').checked, sinceDate: $('sinceDate').value, hideOrd: $('hideOrd').checked};
 }
 function saveFilters(){ if (applyingFilters) return; try { parent.postMessage({type: 'restock-plan', action: 'filters', filters: collectFilters()}, '*'); } catch (e) {} }
 function applyFilters(f){
@@ -1555,7 +1570,7 @@ function applyFilters(f){
     setSel('order', f.order); mode = $('order').value; syncNew();
     if (f.vsel === 'need' || f.vsel === 'all') { $('vsel').value = f.vsel; document.querySelectorAll('#vseg button').forEach(x => x.classList.toggle('on', x.dataset.v === f.vsel)); }
     if (f.len != null && +f.len >= 1 && +f.len <= 10) $('len').value = String(+f.len);
-    setSel('supplier', f.supplier); setSel('collection', f.collection); setSel('discf', f.discf);
+    setSel('supplier', f.supplier); setSel('collection', f.collection); setSel('discf', f.discf); setSel('parkf', f.parkf);
     if (typeof f.onlyElig === 'boolean') $('onlyElig').checked = f.onlyElig;
     // "Hide already ordered" is deliberately not restored: it starts ticked every time
     if (typeof f.newOnly === 'boolean') $('newOnly').checked = f.newOnly;
@@ -1601,11 +1616,12 @@ function liveStock(o){
 let lastSig = '';
 async function refresh(){
   try {
-    const [rows, disc, bx, dreq] = await Promise.all([Store.list(), Store.discList().catch(() => null), Store.boxes().catch(() => null), Store.discReq().catch(() => null)]);
+    const [rows, disc, bx, dreq, pks] = await Promise.all([Store.list(), Store.discList().catch(() => null), Store.boxes().catch(() => null), Store.discReq().catch(() => null), Store.parkList().catch(() => null)]);
     if (dreq) discReqs = dreq;
     if (bx) boxesData = bx;
     orders = new Map(rows.map(r => [r.id, r]));
     if (disc) disc.forEach(d => discMap.set(String(d.product_id), !!d.discontinued));
+    if (pks) pks.forEach(d => parkMap.set(String(d.product_id), !!d.parked));
     indexOrders();
     // stock on the website has risen by what was shipped: the restock has landed, stop the timer.
     // Several shipments of one variant are matched in shipping order (cumulative), so a later top-up is not marked early.
@@ -1620,7 +1636,7 @@ async function refresh(){
     if (landed.length) {
       try { await Store.received(landed.map(o => o.id)); landed.forEach(o => { o.status = 'received'; o.received_at = new Date().toISOString(); }); } catch (e) { /* manual Received buttons still work */ }
     }
-    const sig = JSON.stringify([[...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty, o.box_no, o.supplier, o.wrong_pick, o.wrong_ack]), [...discMap.entries()], boxesData.map(x => [x.box_no, x.status, x.tracking_no, x.tracking_url]), discReqs.map(r => r.product_id)]);
+    const sig = JSON.stringify([[...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty, o.box_no, o.supplier, o.wrong_pick, o.wrong_ack]), [...discMap.entries()], [...parkMap.entries()], boxesData.map(x => [x.box_no, x.status, x.tracking_no, x.tracking_url]), discReqs.map(r => r.product_id)]);
     if (sig !== lastSig) { lastSig = sig; render(); }
     updateQueue(); if (!$('viewSup').hidden) renderSv();
   } catch (err) { $('sub').textContent = 'Could not load supplier status: ' + err.message; }
@@ -1671,13 +1687,15 @@ async function loadAccounts(){
     const users = await Store.users();
     const sup = [...new Set(data.products.map(p => p.supplier).filter(Boolean))].sort();
     box.innerHTML = `<b>Supplier accounts</b>
-      <div class="sub" style="margin:2px 0 8px">1) Create the login in Report Access and tick “Supplier Portal” for it. 2) Optional, for later: link it to a supplier name here. Until a login is linked it sees all items; once linked it only sees that supplier's items.</div>
+      <div class="sub" style="margin:2px 0 8px">1) Create the login in Report Access and tick “Supplier Portal” for it. 2) Optional, for later: link it to a supplier name here. Until a login is linked it sees all items; once linked it only sees that supplier's items. Optional: add a collection (e.g. Footwear) and that login only sees items from that collection; blank = all collections.</div>
+      <datalist id="svCols">${[...new Set(data.products.flatMap(p => p.cols || []))].sort().map(n => `<option value="${esc(n)}">`).join('')}</datalist>
       <datalist id="svNames">${sup.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
-      <table><thead><tr><th>Person</th><th>Supplier Portal access</th><th>Supplier name</th><th></th></tr></thead><tbody>
+      <table><thead><tr><th>Person</th><th>Supplier Portal access</th><th>Supplier name</th><th>Collection (optional)</th><th></th></tr></thead><tbody>
       ${users.map(u => `<tr><td>${esc(u.display_name || u.username || u.email || '')}<div class="sub">${esc(u.email || '')}</div></td>
         <td>${u.has_grant ? '<span class="badge c-green">Yes</span>' : '<span class="badge c-grey">Not yet</span>'}</td>
         <td><input list="svNames" value="${esc(u.supplier || '')}" data-u="${esc(u.user_id)}" placeholder="e.g. Pankaj"></td>
-        <td><button data-setu="${esc(u.user_id)}">Save</button></td></tr>`).join('') || '<tr><td colspan="4" class="sub">No supplier accounts yet. Create one in Report Access.</td></tr>'}
+        <td><input list="svCols" value="${esc(u.collection || '')}" data-uc="${esc(u.user_id)}" placeholder="All collections"></td>
+        <td><button data-setu="${esc(u.user_id)}">Save</button></td></tr>`).join('') || '<tr><td colspan="5" class="sub">No supplier accounts yet. Create one in Report Access.</td></tr>'}
       </tbody></table>`;
   } catch (err) { box.innerHTML = '<div class="sub">Could not load accounts: ' + esc(err.message) + '</div>'; }
 }
@@ -1701,7 +1719,8 @@ $('svAccounts').addEventListener('click', async e => {
   const b = e.target.closest('[data-setu]'); if (!b) return;
   const id = b.getAttribute('data-setu'), inp = [...document.querySelectorAll('#svAccounts input[data-u]')].find(x => x.getAttribute('data-u') === id);
   b.disabled = true; b.textContent = 'Saving…';
-  try { await Store.setUser(id, inp ? inp.value : ''); b.textContent = 'Saved ✓'; } catch (err) { b.textContent = 'Save'; notify('Could not save: ' + err.message); }
+  const ci = [...document.querySelectorAll('#svAccounts input[data-uc]')].find(x => x.getAttribute('data-uc') === id);
+  try { await Store.setUser(id, inp ? inp.value : '', ci ? ci.value : ''); b.textContent = 'Saved ✓'; } catch (err) { b.textContent = 'Save'; notify('Could not save: ' + err.message); }
   b.disabled = false;
 });
 
