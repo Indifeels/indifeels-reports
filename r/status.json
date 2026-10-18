@@ -81,10 +81,10 @@
   "reason": ""
  },
  "restock-plan": {
-  "at": "2026-10-18T11:48+11:00",
-  "code_sha": "e6f4d6ce0de5cf252e4684e357d3dd310fb6a238",
+  "at": "2026-10-18T11:49+11:00",
+  "code_sha": "da62ec3f42f0d7aa82907c5d05978641b4344288",
   "data_through": null,
-  "last_ok": "2026-10-18T11:48+11:00",
+  "last_ok": "2026-10-18T11:49+11:00",
   "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
