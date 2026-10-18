@@ -63,10 +63,10 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-10-18T20:00+11:00",
-  "code_sha": "edd5def17f98cca11b6cdda00e4f680a3eb802e7",
+  "at": "2026-10-19T06:00+11:00",
+  "code_sha": "b9d289dacbd7e218a70096733be7716a9e1afb02",
   "data_through": null,
-  "last_ok": "2026-10-18T20:00+11:00",
+  "last_ok": "2026-10-19T06:00+11:00",
   "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
