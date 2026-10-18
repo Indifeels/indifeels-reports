@@ -1532,6 +1532,7 @@ function applyFilters(f){
     if (typeof f.newOnly === 'boolean') $('newOnly').checked = f.newOnly;
     if (typeof f.sinceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f.sinceDate)) { $('sinceDate').value = f.sinceDate; $('sinceX').hidden = false; $('newOnly').checked = false; }
     colOpts(); state.clear(); limit = PAGE; render();
+    document.getElementById('fwrap').dispatchEvent(new Event('change'));        // refresh the Filters bar summary text
   } finally { applyingFilters = false; }
 }
 document.getElementById('fwrap').addEventListener('change', () => setTimeout(saveFilters, 0));
