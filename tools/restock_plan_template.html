@@ -1119,7 +1119,7 @@ function rowHtml(r){
 }
 const plink = P => /^https:\/\//.test(P.p.url || '') ? esc(P.p.url) : '';
 function cardHtml(g){
-  const P = g.P, isOpen = state.has(g.id) ? state.get(g.id) : (defaultOpen || (!touched && g.first)), pid = String(P.p.id);
+  const P = g.P, isOpen = state.has(g.id) ? state.get(g.id) : defaultOpen, pid = String(P.p.id);
   const dtsCls = P.pDTS === Infinity ? 't-info' : P.pDTS < 20 ? 't-green' : P.pDTS < 50 ? 't-amber' : 't-red';
   const ordCls = P.units === 0 ? 't-green' : P.worst === 'red' ? 't-red' : 't-amber';
   const thumb = P.p.thumb || P.p.image;
