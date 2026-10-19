@@ -291,20 +291,51 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx-right a.bx-trkl{background:rgba(88,166,255,.18);border:1px solid rgba(88,166,255,.5);border-radius:999px;padding:3px 12px;color:#9ccfff;text-decoration:none;font-weight:700}
 .bx-body>.bx-trk{margin:0 0 12px}
 
-.sc{border-radius:14px;margin:0 0 16px;overflow:hidden;border:1px solid #05070a;box-shadow:0 8px 18px rgba(0,0,0,.38),0 2px 0 rgba(0,0,0,.35)}
-.sc-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:16px 18px;cursor:pointer;user-select:none;color:#f4f5f7;background:linear-gradient(180deg,#4a5159 0%,#2a2e34 50%,#0f1114 100%);border-top:1px solid rgba(255,255,255,.28);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 -4px 8px rgba(0,0,0,.55)}
-.sc-h:hover{filter:brightness(1.12)}
-.sc-h .chev{width:16px;color:#c3c9d0;transition:transform .15s;flex:none;font-size:13px}
+.sc{--ac:#58a6ff;--g1:#2f6fe0;--g2:#16357a;--g3:#0b1b40;border-radius:16px;margin:0 0 16px;overflow:hidden;border:1px solid rgba(0,0,0,.6);box-shadow:0 8px 18px rgba(0,0,0,.38),0 2px 0 rgba(0,0,0,.35)}
+.sc.sc-pack{--ac:#f0b429;--g1:#d98a14;--g2:#8a5208;--g3:#3d2403}
+.sc.sc-ship{--ac:#3fb950;--g1:#2ea043;--g2:#17622a;--g3:#08290f}
+.sc-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;min-height:92px;box-sizing:border-box;padding:20px 20px;cursor:pointer;user-select:none;color:#fff;background:linear-gradient(180deg,var(--g1) 0%,var(--g2) 55%,var(--g3) 100%);border-top:1px solid rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 -4px 8px rgba(0,0,0,.45)}
+.sc-h:hover{filter:brightness(1.1)}
+.sc-h .chev{width:18px;color:#fff;transition:transform .15s;flex:none;font-size:16px}
 .sc.open>.sc-h .chev{transform:rotate(90deg)}
-.sc-t{font-size:21px;font-weight:800;letter-spacing:.02em}
-.sc-n{font-size:14px;font-weight:700;background:rgba(255,255,255,.14);border-radius:999px;padding:2px 12px}
-.sc-hint{margin-left:auto;font-size:13px;color:#aeb6bf;font-style:normal}
-.sc-hint i{font-style:normal}.sc-hint .h-o{display:none}.sc.open>.sc-h .sc-hint .h-c{display:none}.sc.open>.sc-h .sc-hint .h-o{display:inline}
+.sc-t{font-size:25px;font-weight:800;letter-spacing:.01em}
+.sc-n{font-size:16px;font-weight:700;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:4px 14px;white-space:nowrap}
+.sc-hint{margin-left:auto}
+.sc-hint i{font-style:normal;display:inline-block;font-size:14px;font-weight:800;color:#06130a;background:var(--ac);border-radius:999px;padding:6px 16px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.sc-hint .h-o{display:none}.sc.open>.sc-h .sc-hint .h-c{display:none}.sc.open>.sc-h .sc-hint .h-o{display:inline-block}
 .sc-body{display:none;padding:12px;background:var(--bg)}
 .sc.open>.sc-body{display:block}
 .sc-body>.bx:last-child{margin-bottom:0}
-@media (max-width:700px){.sc-h{padding:13px 14px}.sc-t{font-size:18px}.sc-body{padding:8px}}
+@media (max-width:700px){.sc-h{min-height:88px;padding:16px 16px;gap:8px 10px}.sc-t{font-size:23px}.sc-n{font-size:15px;padding:3px 12px}.sc-hint i{font-size:13px;padding:6px 14px}.sc-body{padding:8px}}
 /*BXCSS_END*/
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
+.bx .pnrow{display:flex;gap:10px 14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}.bx .pnrow .pn{margin:0}
+.bx .pmv{display:inline-flex;gap:10px;align-items:center}.bx .pmv .ck{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;color:var(--muted);font-weight:600}
+.bx .bx-mvbox{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pact{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:2px 0 10px;padding:8px 10px;border-radius:10px;background:var(--grey-bg,rgba(128,128,128,.12))}
+.pact .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600}
+.pact select{font-size:14px;padding:6px 8px}
+.dq{display:inline-block;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px;background:#b7791f;color:#fff}
+.pact button.danger,.mc button.danger{color:var(--red);border-color:var(--red);font-weight:600}
+.pact button.dsc{margin-left:auto;font-size:12px;padding:3px 10px;min-height:0;line-height:1.3;opacity:.85;max-width:230px;white-space:normal;text-align:center}
+.pact button.dsc.arm{opacity:1}
+.pact button.danger.arm,.mc button.danger.arm{background:var(--red);color:#fff}
+
+@media (max-width:700px){
+  .pact{flex-direction:column;align-items:stretch;gap:8px;grid-column:1/-1;width:100%;box-sizing:border-box}
+  .pact .bx-mvto{display:flex;flex-direction:column;align-items:stretch;gap:4px}
+  .pact select,.pact button{width:100%;box-sizing:border-box;min-height:42px}
+}
+@media (max-width:700px){
+  .pact button.dsc{width:auto;min-height:0;align-self:flex-end;margin-left:auto}
+}
+.mc .pact{background:none;padding:0;margin:0 0 2px}
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 
@@ -1049,12 +1080,12 @@ function bxTile(b, lines, o) {
 /* Collapsible section tile: Order list / Packing / Shipped. Click the bar to open. */
 const bxSecOpen = new Map();
 const bxSec = (key, title, count, body, o) => { const open = bxSecOpen.has(key) ? bxSecOpen.get(key) : !!(o && o.open);
-  return `<section class="sc${open ? ' open' : ''}" data-sc="${bxEsc(key)}"><div class="sc-h" data-sct="${bxEsc(key)}"><span class="chev">▶</span><span class="sc-t">${title}</span><span class="sc-n">${count}</span><span class="sc-hint"><i class="h-c">Click to open</i><i class="h-o">Click to close</i></span></div><div class="sc-body">${body}</div></section>`; };
+  return `<section class="sc sc-${bxEsc(String(key).replace(/^(sv|my)-/, ''))}${open ? ' open' : ''}" data-sc="${bxEsc(key)}"><div class="sc-h" data-sct="${bxEsc(key)}"><span class="chev">▶</span><span class="sc-t">${title}</span><span class="sc-n">${count}</span><span class="sc-hint"><i class="h-c">Click to open</i><i class="h-o">Click to close</i></span></div><div class="sc-body">${body}</div></section>`; };
 document.addEventListener('click', e => {
   const h = e.target.closest('[data-sct]'); if (!h || e.target.closest('a, input, select, button, label')) return;
   const sc = h.closest('.sc'); sc.classList.toggle('open'); bxSecOpen.set(h.getAttribute('data-sct'), sc.classList.contains('open'));
 });
-const bxPlural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+const bxPlural = (n, w) => n + ' ' + (n === 1 ? w : w === 'box' ? 'boxes' : w + 's');
 /*BXJS_END*/
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = n => (n === Infinity || n == null) ? '—' : (n >= 100 ? Math.round(n) : Math.round(n * 10) / 10);
