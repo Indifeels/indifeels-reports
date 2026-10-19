@@ -288,7 +288,37 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx-prod td.q .low{font-size:11.5px;padding:1px 8px}
 @media (max-width:700px){.bx-body{padding:10px}.bx-prod{padding:10px;gap:10px}.bx-prod table{width:100%;table-layout:auto}.bx-prod th{padding:4px 4px;font-size:11px}.bx-prod td{padding:6px 4px;font-size:14.5px}.bx-prod td.q{font-size:16px}.bx-prod img,.bx-prod .ph{width:72px;height:72px}.bx-h{padding:12px 14px;gap:6px 10px}.bx-title{font-size:18px}.bx-sum,.bx-right{font-size:14px}.bx-prod td.st button{padding:4px 8px;font-size:13px}}
 .bx button.arm{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important}
+.bx-right a.bx-trkl{background:rgba(88,166,255,.18);border:1px solid rgba(88,166,255,.5);border-radius:999px;padding:3px 12px;color:#9ccfff;text-decoration:none;font-weight:700}
+.bx-body>.bx-trk{margin:0 0 12px}
 /*BXCSS_END*/
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
+.bx .pnrow{display:flex;gap:10px 14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}.bx .pnrow .pn{margin:0}
+.bx .pmv{display:inline-flex;gap:10px;align-items:center}.bx .pmv .ck{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;color:var(--muted);font-weight:600}
+.bx .bx-mvbox{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pact{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:2px 0 10px;padding:8px 10px;border-radius:10px;background:var(--grey-bg,rgba(128,128,128,.12))}
+.pact .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600}
+.pact select{font-size:14px;padding:6px 8px}
+.dq{display:inline-block;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px;background:#b7791f;color:#fff}
+.pact button.danger,.mc button.danger{color:var(--red);border-color:var(--red);font-weight:600}
+.pact button.dsc{margin-left:auto;font-size:12px;padding:3px 10px;min-height:0;line-height:1.3;opacity:.85;max-width:230px;white-space:normal;text-align:center}
+.pact button.dsc.arm{opacity:1}
+.pact button.danger.arm,.mc button.danger.arm{background:var(--red);color:#fff}
+
+@media (max-width:700px){
+  .pact{flex-direction:column;align-items:stretch;gap:8px;grid-column:1/-1;width:100%;box-sizing:border-box}
+  .pact .bx-mvto{display:flex;flex-direction:column;align-items:stretch;gap:4px}
+  .pact select,.pact button{width:100%;box-sizing:border-box;min-height:42px}
+}
+@media (max-width:700px){
+  .pact button.dsc{width:auto;min-height:0;align-self:flex-end;margin-left:auto}
+}
+.mc .pact{background:none;padding:0;margin:0 0 2px}
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 
@@ -944,7 +974,7 @@ function bxTile(b, lines, o) {
     <span class="bx-title">${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
     <span class="bx-pill ${shipped ? 'sh' : 'op'}">${shipped ? 'Shipped' : 'Open'}</span>
     <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}</span>
-    <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : ''}${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track</a>' : ''}</span></div>`;
+    <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${url ? '<a class="bx-trkl" href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track parcel' + (b.tracking_no ? ' · ' + bxEsc(b.tracking_no) : '') + ' ↗</a>' : (b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : '')}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
   const mvSel = (key, label) => `<select data-mvg="${bxEsc(key)}"><option value="">${label}</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select>`;
   const selN = o.selP ? [...o.selP].filter(k => k.startsWith(b.box_no + '|')).length : 0;
@@ -964,11 +994,13 @@ function bxTile(b, lines, o) {
       ${bxDel(b, n, others, o)}
       <span class="bx-note">When shipped, the next item you add starts the next box.</span></div>`;
   }
+  let trkHtml = '';
   if (shipped) {
-    body += o.ro ? ((url || b.tracking_no) ? `<div class="bx-trk"><span><b>Tracking</b> ${b.tracking_no ? bxEsc(b.tracking_no) : ''} ${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">' + bxEsc(url.length > 60 ? url.slice(0, 57) + '…' : url) + '</a>' : ''}</span></div>` : '')
+    trkHtml = o.ro ? ((url || b.tracking_no) ? `<div class="bx-trk"><span><b>Tracking</b> ${b.tracking_no ? bxEsc(b.tracking_no) : ''} ${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">' + bxEsc(url.length > 60 ? url.slice(0, 57) + '…' : url) + '</a>' : ''}</span></div>` : '')
       : `<div class="bx-trk" data-trkbox="${bxEsc(b.box_no)}"><label>Tracking link<input type="text" class="bx-url u" value="${bxEsc(b.tracking_url || '')}" placeholder="https://…" maxlength="500"></label>
       <label>Tracking number<input type="text" class="bx-no" value="${bxEsc(b.tracking_no || '')}" maxlength="80"></label><button data-trk="${bxEsc(b.box_no)}">Save tracking</button></div>`;
   }
+  if (trkHtml) body = trkHtml + body;
   return `<section class="bx${o.open ? ' open' : ''}" data-bx="${bxEsc(b.box_no)}">${head}<div class="bx-body">${body}</div></section>`;
 }
 /*BXJS_END*/

@@ -41,7 +41,7 @@ function bxTile(b, lines, o) {
     <span class="bx-title">${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
     <span class="bx-pill ${shipped ? 'sh' : 'op'}">${shipped ? 'Shipped' : 'Open'}</span>
     <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}</span>
-    <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : ''}${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track</a>' : ''}</span></div>`;
+    <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${url ? '<a class="bx-trkl" href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track parcel' + (b.tracking_no ? ' · ' + bxEsc(b.tracking_no) : '') + ' ↗</a>' : (b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : '')}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
   const mvSel = (key, label) => `<select data-mvg="${bxEsc(key)}"><option value="">${label}</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select>`;
   const selN = o.selP ? [...o.selP].filter(k => k.startsWith(b.box_no + '|')).length : 0;
@@ -61,11 +61,13 @@ function bxTile(b, lines, o) {
       ${bxDel(b, n, others, o)}
       <span class="bx-note">When shipped, the next item you add starts the next box.</span></div>`;
   }
+  let trkHtml = '';
   if (shipped) {
-    body += o.ro ? ((url || b.tracking_no) ? `<div class="bx-trk"><span><b>Tracking</b> ${b.tracking_no ? bxEsc(b.tracking_no) : ''} ${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">' + bxEsc(url.length > 60 ? url.slice(0, 57) + '…' : url) + '</a>' : ''}</span></div>` : '')
+    trkHtml = o.ro ? ((url || b.tracking_no) ? `<div class="bx-trk"><span><b>Tracking</b> ${b.tracking_no ? bxEsc(b.tracking_no) : ''} ${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">' + bxEsc(url.length > 60 ? url.slice(0, 57) + '…' : url) + '</a>' : ''}</span></div>` : '')
       : `<div class="bx-trk" data-trkbox="${bxEsc(b.box_no)}"><label>Tracking link<input type="text" class="bx-url u" value="${bxEsc(b.tracking_url || '')}" placeholder="https://…" maxlength="500"></label>
       <label>Tracking number<input type="text" class="bx-no" value="${bxEsc(b.tracking_no || '')}" maxlength="80"></label><button data-trk="${bxEsc(b.box_no)}">Save tracking</button></div>`;
   }
+  if (trkHtml) body = trkHtml + body;
   return `<section class="bx${o.open ? ' open' : ''}" data-bx="${bxEsc(b.box_no)}">${head}<div class="bx-body">${body}</div></section>`;
 }
 /*BXJS_END*/
