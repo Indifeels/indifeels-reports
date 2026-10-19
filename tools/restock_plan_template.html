@@ -554,8 +554,13 @@ select.sel{appearance:none;-webkit-appearance:none}
 .pv .pipes .ln{margin:2px 0}
 /* desktop (computer): original table + header tiles, only the filters are new */
 @media(min-width:800px){
-  .dtable{display:block}.ptable{display:none}
-  .card-h .hbtn{display:inline-block}.card-h .tiles{display:flex}.card-h .hnum{display:none}.pbar{display:none}
+  .dtable{display:none}.ptable{display:block}
+  .card-h .hbtn{display:none}.card-h .tiles{display:none}.card-h .hnum{display:block}.pbar{display:flex}
+  #viewMine,#viewBulk{max-width:980px;margin-left:auto;margin-right:auto}
+  #viewMine .card-h{flex-wrap:nowrap!important}
+  #viewMine .card-h .ttl{flex:1 1 auto!important;min-width:0}
+  #viewMine .card-h .thumb{width:44px;height:44px}
+  #viewMine .card-h .ttl .meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ov .stats{grid-template-columns:repeat(8,1fr)}.ot b{font-size:24px}.ot span{font-size:12px}
   #fbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   #fbar .seg{margin:0;width:330px}#fbar .row2{flex:1;max-width:560px}#fbar .lenrow{margin:0;flex:1 1 260px}
@@ -675,6 +680,40 @@ select.sel{appearance:none;-webkit-appearance:none}
 .stka{display:flex;gap:10px;margin-top:14px}.stka button{flex:1;height:46px;border-radius:12px;border:1px solid #4a4b50;background:#26272b;color:#fff;font-size:16px;font-weight:700}
 .stka .go{background:#4da3ff;border-color:#4da3ff;color:#06203d}.stka button:disabled{opacity:.45}
 .stkm .msg{min-height:18px;margin-top:10px;font-size:13px;color:#ff8a8a}.stkm .msg.ok{color:#7ee08c}
+
+/* ---------------- bulk transfer ---------------- */
+#viewBulk .bk{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin:8px 0}
+#viewBulk .bk h3{margin:0 0 8px;font-size:15px}
+#viewBulk .bkloc{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+#viewBulk .bkloc label{flex:1 1 150px;display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);font-weight:600}
+#viewBulk select,#viewBulk input[type=text]{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font:inherit;font-size:15px;min-width:0}
+#viewBulk .bkloc .sw{flex:none;height:42px;width:42px;padding:0;font-size:18px}
+#viewBulk .bkscan{display:flex;gap:8px;margin-top:10px}
+#viewBulk .bkscan input{flex:1}
+#viewBulk .bkscan button{padding:0 16px;font-weight:700}
+#viewBulk .bkmsg{min-height:18px;margin-top:6px;font-size:13px;color:var(--muted)}#viewBulk .bkmsg.bad{color:var(--red)}#viewBulk .bkmsg.ok{color:var(--green)}
+#viewBulk .bkhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#viewBulk .bkhead b{font-size:15px;flex:1}
+#viewBulk .bkit{display:flex;gap:10px;align-items:center;padding:8px;margin:6px 0;border-radius:12px;background:var(--bg);border:1px solid var(--border)}
+#viewBulk .bkit.flash{box-shadow:0 0 0 2px #2ea043;transition:box-shadow .3s}
+#viewBulk .bkit.err{border-color:#7a2a2d}
+#viewBulk .bkit .im{flex:none;width:52px;height:52px;border-radius:10px;background:#26272b;overflow:hidden}
+#viewBulk .bkit .im img{width:100%;height:100%;object-fit:cover;display:block}
+#viewBulk .bkit .nm{flex:1;min-width:0}
+#viewBulk .bkit .nm b{display:block;font-size:14px;line-height:1.25}
+#viewBulk .bkit .nm span{display:inline-block;margin-top:3px;font-size:12px;font-weight:700;padding:1px 9px;border-radius:999px;background:#1c2a40;color:#9cc4ff}
+#viewBulk .bkit .nm small{display:block;margin-top:3px;font-size:11.5px;color:var(--muted)}#viewBulk .bkit .nm small.bad{color:var(--red);font-weight:700}
+#viewBulk .bkit .stp{display:flex;align-items:center;gap:6px;flex:none}
+#viewBulk .bkit .stp button{width:34px;height:34px;padding:0;font-size:18px;border-radius:9px}
+#viewBulk .bkit .stp b{min-width:28px;text-align:center;font-size:20px;color:var(--text)}
+#viewBulk .bkit .rm{flex:none;width:34px;height:34px;padding:0;border-radius:9px}
+#viewBulk .bkfoot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+#viewBulk .bkfoot .sum{flex:1;font-size:14px;font-weight:700}
+#viewBulk button.fin{padding:12px 20px;font-size:16px;font-weight:800;background:var(--blue);color:#06101c;border-color:var(--blue)}
+#viewBulk button.fin.arm{background:#e3b341;border-color:#e3b341}
+#viewBulk button.fin:disabled{opacity:.45}
+#viewBulk .bkempty{padding:18px;text-align:center;color:var(--muted);font-size:14px}
+#viewBulk .bkdone{border-color:#1f5c33;background:var(--green-bg);color:var(--green);font-weight:700}
 </style>
 </head>
 <body>
@@ -684,7 +723,7 @@ select.sel{appearance:none;-webkit-appearance:none}
     <button id="theme" title="Light / dark">◐</button>
   </header>
 
-  <nav class="tabs"><button id="tabMine" class="on">My view</button><button id="tabSup">Supplier view</button></nav>
+  <nav class="tabs"><button id="tabMine" class="on">My view</button><button id="tabSup">Supplier view</button><button id="tabBulk">Bulk transfer</button></nav>
 <div id="viewMine">
 <div class="fwrap" id="fwrap"><button type="button" class="fhead" id="fhead"><span class="ft">Filters</span><span class="fs" id="fsum"></span><span class="chev2">▾</span></button><div class="fbody" id="fbody">
   <div class="scan" id="scanBox">
@@ -754,6 +793,24 @@ select.sel{appearance:none;-webkit-appearance:none}
     “Stock More Variants” = on market ≥ 3 months, product days-to-sell &lt; 50, ≥ 3 units sold.</p>
   </details>
 </div>
+<div id="viewBulk" hidden>
+  <div class="bk"><h3>1 · Locations</h3>
+    <div class="bkloc">
+      <label>Transfer from<select id="bkFrom"><option value="">Loading…</option></select></label>
+      <button type="button" class="sw" id="bkSwap" title="Swap">⇄</button>
+      <label>Transfer to<select id="bkTo"><option value="">Loading…</option></select></label>
+    </div>
+  </div>
+  <div class="bk"><h3>2 · Scan barcodes</h3>
+    <div class="bkscan"><input id="bkIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode, then Enter" disabled><button id="bkAdd" disabled>Add</button><button id="bkCam" type="button" title="Scan with camera" disabled>📷</button></div>
+    <div class="bkmsg" id="bkMsg">Pick both locations to start scanning.</div>
+  </div>
+  <div class="bk"><div class="bkhead"><b id="bkTitle">Scanned items</b><button type="button" id="bkClear" hidden>Clear list</button></div>
+    <div id="bkList"><div class="bkempty">Nothing scanned yet.</div></div>
+    <div class="bkfoot"><span class="sum" id="bkSum"></span><button type="button" class="fin" id="bkFin" disabled>Finalize transfer</button></div>
+    <div class="bkmsg" id="bkRes"></div>
+  </div>
+</div>
 <div id="viewSup" hidden>
   <div class="controls">
     <label class="o">Supplier <select id="svSup"></select></label>
@@ -779,9 +836,9 @@ const DATA = __DATA__;
 function notify(msg, ok){ let b = document.getElementById('toast'); if (!b) { b = document.createElement('div'); b.id = 'toast'; b.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;z-index:99;max-width:90%'; document.body.appendChild(b); } b.style.background = ok ? '#1a7f37' : '#8e2b25'; b.textContent = msg; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 6000); }
 /* ---------------- hub bridge (the hub app talks to Supabase; this page never holds credentials) ---------------- */
 const pendingCalls = new Map(); let reqId = 0;
-function call(action, payload) {
+function call(action, payload, ms) {
   return new Promise((res, rej) => {
-    const req = ++reqId, t = setTimeout(() => { pendingCalls.delete(req); rej(new Error('No answer from the hub')); }, 25000);
+    const req = ++reqId, t = setTimeout(() => { pendingCalls.delete(req); rej(new Error('No answer from the hub')); }, ms || 25000);
     pendingCalls.set(req, { res, rej, t });
     try { parent.postMessage(Object.assign({ type: 'restock-plan', action, req }, payload || {}), '*'); } catch (e) { clearTimeout(t); rej(e); }
   });
@@ -790,7 +847,8 @@ window.addEventListener('message', e => {
   const d = e.data || {};
   if (d.type === 'restock-plan-state') { (d.state && d.state.done || []).forEach(k => { memDone[k] = true; }); render(); }
   else if (d.type === 'restock-plan-scan') {
-    if (d.code) { $('scanIn').value = d.code; scanLookup(d.code); }
+    if (d.target === 'bulk') { if (d.code) window.bulkAdd && window.bulkAdd(d.code); else if (d.error) window.bulkMsg && window.bulkMsg(d.error, 'bad'); }
+    else if (d.code) { $('scanIn').value = d.code; scanLookup(d.code); }
     else if (d.error) scanMsg(d.error, true);
   }
   else if (d.type === 'restock-plan-filters') { try { applyFilters(d.filters); } catch (e) {} }
@@ -820,6 +878,9 @@ const Store = {
   parkList: () => call('parklist'),
   stockGet: vid => call('stockget', { vid }),
   stockAdjust: (vid, dShop, dBackup) => call('stockadjust', { vid, dShop, dBackup }),
+  bulkLocs: () => call('bulklocs'),
+  bulkLookup: (code, from, to) => call('bulklookup', { code, from, to }),
+  bulkTransfer: (from, to, items) => call('bulktransfer', { from, to, items }, 90000),
 };
 
 /* ---------------- calculations ---------------- */
@@ -1677,13 +1738,16 @@ $('svShipped').addEventListener('click', e => {
   const h = e.target.closest('[data-bxt]'); if (!h) return;
   const s = h.closest('.bx'); s.classList.toggle('open'); svOpen.set(h.getAttribute('data-bxt'), s.classList.contains('open'));
 });
-function showTab(sup){
-  $('viewMine').hidden = sup; $('viewSup').hidden = !sup;
-  $('tabMine').classList.toggle('on', !sup); $('tabSup').classList.toggle('on', sup);
-  if (sup) { renderSv(); refresh(); }
+function showTab(v){
+  v = v === true ? 'sup' : v === false || !v ? 'mine' : v;
+  $('viewMine').hidden = v !== 'mine'; $('viewSup').hidden = v !== 'sup'; $('viewBulk').hidden = v !== 'bulk';
+  $('tabMine').classList.toggle('on', v === 'mine'); $('tabSup').classList.toggle('on', v === 'sup'); $('tabBulk').classList.toggle('on', v === 'bulk');
+  if (v === 'sup') { renderSv(); refresh(); }
+  if (v === 'bulk' && window.bulkOpen) window.bulkOpen();
 }
-$('tabMine').addEventListener('click', () => showTab(false));
-$('tabSup').addEventListener('click', () => showTab(true));
+$('tabMine').addEventListener('click', () => showTab('mine'));
+$('tabSup').addEventListener('click', () => showTab('sup'));
+$('tabBulk').addEventListener('click', () => showTab('bulk'));
 $('svSup').addEventListener('change', renderSv);
 $('svRefresh').addEventListener('click', () => refresh());
 async function loadAccounts(){
@@ -1810,6 +1874,108 @@ try { parent.postMessage({ type: 'restock-plan', action: 'ready' }, '*'); } catc
       data.products.forEach(p => p.variants.forEach(v => { if (v[6] && v[6].includes(vid)) v[1] = (Number(v[1]) || 0) + dS + dB; }));
       close(); try { render(); } catch (e) {}
     } catch (e) { busy = false; msg(String(e.message || e)); shown(); }
+  });
+})();
+</script>
+<script>
+/* Bulk transfer: choose From + To, scan barcodes (scanner, typing or camera), Finalize moves the stock in Shopify and the website ST numbers. */
+(function(){
+  const $ = id => document.getElementById(id);
+  const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const norm = x => String(x || '').replace(/\D/g, '').replace(/^0+/, '') || String(x || '').trim();
+  let locs = [], items = [], armed = false, busy = false, loaded = false;
+  const beep = ok => { try { const C = window.AudioContext || window.webkitAudioContext, a = new C(), o = a.createOscillator(), g = a.createGain(); o.frequency.value = ok ? 880 : 220; g.gain.value = 0.08; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + (ok ? 0.08 : 0.25)); setTimeout(() => a.close(), 400); } catch (e) {} };
+  const msg = (t, k) => { const m = $('bkMsg'); m.textContent = t || ''; m.className = 'bkmsg' + (k ? ' ' + k : ''); };
+  window.bulkMsg = msg;
+  const nameOf = id => (locs.find(l => l.id === id) || {}).name || '';
+  const ready = () => !!($('bkFrom').value && $('bkTo').value && $('bkFrom').value !== $('bkTo').value);
+  function fillSel(){
+    const f = $('bkFrom').value, t = $('bkTo').value, opts = '<option value="">Choose…</option>' + locs.map(l => `<option value="${E(l.id)}">${E(l.name)}</option>`).join('');
+    $('bkFrom').innerHTML = opts; $('bkTo').innerHTML = opts;
+    if (f) $('bkFrom').value = f; if (t) $('bkTo').value = t;
+  }
+  function gate(){
+    const ok = ready(), lock = items.length > 0;
+    $('bkFrom').disabled = lock || busy; $('bkTo').disabled = lock || busy; $('bkSwap').disabled = lock || busy;
+    ['bkIn', 'bkAdd', 'bkCam'].forEach(i => { $(i).disabled = !ok || busy; });
+    if (!ok) msg($('bkFrom').value && $('bkFrom').value === $('bkTo').value ? 'From and To must be different.' : 'Pick both locations to start scanning.', $('bkFrom').value && $('bkFrom').value === $('bkTo').value ? 'bad' : '');
+    else if ($('bkMsg').textContent.startsWith('Pick both') || $('bkMsg').textContent.startsWith('From and To')) msg('Ready. Scan a barcode.', '');
+  }
+  const units = () => items.reduce((a, i) => a + (i.state === 'ok' ? i.qty : 0), 0);
+  const bad = i => i.state === 'err' || (i.state === 'ok' && i.qty > i.from);
+  function draw(flashCode){
+    const el = $('bkList');
+    $('bkClear').hidden = !items.length;
+    $('bkTitle').textContent = items.length ? `Scanned items (${items.length})` : 'Scanned items';
+    el.innerHTML = items.length ? items.map(i => {
+      const img = i.image ? `<img src="${E(i.image)}${i.image.includes('?') ? '&' : '?'}width=120" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
+      const nm = i.state === 'wait' ? `<b>Looking up…</b><small>${E(i.code)}</small>` : i.state === 'err' ? `<b>Barcode ${E(i.code)}</b><small class="bad">${E(i.err || 'Not found in Shopify')}</small>`
+        : `<b>${E(i.product)}</b><span>${E(i.variant)}</span><small class="${i.qty > i.from ? 'bad' : ''}">${E(nameOf($('bkFrom').value))}: ${i.from} available${i.qty > i.from ? ' · not enough' : ''} · ${E(nameOf($('bkTo').value))}: ${i.to}</small>`;
+      return `<div class="bkit${i.state === 'err' ? ' err' : ''}${flashCode === i.key ? ' flash' : ''}" data-k="${E(i.key)}"><div class="im">${img}</div><div class="nm">${nm}</div>${i.state === 'err' ? '' : `<div class="stp"><button data-d="-1">−</button><b>${i.qty}</b><button data-d="1">+</button></div>`}<button class="rm" data-rm="1" title="Remove">✕</button></div>`;
+    }).join('') : '<div class="bkempty">Nothing scanned yet.</div>';
+    const n = items.filter(i => i.state === 'ok').length;
+    $('bkSum').textContent = n ? `${n} variant${n === 1 ? '' : 's'} · ${units()} unit${units() === 1 ? '' : 's'}: ${nameOf($('bkFrom').value)} → ${nameOf($('bkTo').value)}` : '';
+    const blocked = busy || !n || items.some(bad) || items.some(i => i.state === 'wait');
+    $('bkFin').disabled = blocked;
+    $('bkFin').classList.toggle('arm', armed && !blocked);
+    $('bkFin').textContent = busy ? 'Moving stock…' : armed && !blocked ? `Tap again: move ${units()} unit${units() === 1 ? '' : 's'}` : 'Finalize transfer';
+    gate();
+  }
+  async function add(code){
+    code = String(code || '').trim(); if (!code || !ready()) return;
+    $('bkRes').textContent = ''; $('bkRes').className = 'bkmsg'; armed = false;
+    const key = norm(code), ex = items.find(i => i.key === key);
+    if (ex) { if (ex.state === 'ok') { ex.qty++; beep(true); } else if (ex.state === 'err') { beep(false); } else ex.qty++; items.splice(items.indexOf(ex), 1); items.unshift(ex); draw(key); return; }
+    const it = {key, code, qty: 1, state: 'wait', product: '', variant: '', image: '', vid: '', from: 0, to: 0};
+    items.unshift(it); draw(key);
+    try {
+      const r = await Store.bulkLookup(code, $('bkFrom').value, $('bkTo').value);
+      if (!items.includes(it)) return;
+      if (!r.found) { it.state = 'err'; it.err = 'Not found in Shopify. Check the barcode on the variant.'; beep(false); }
+      else {
+        it.state = 'ok'; it.product = r.product; it.variant = r.variant; it.image = r.image; it.vid = r.vid; it.from = r.from; it.to = r.to;
+        const dup = items.find(x => x !== it && x.state === 'ok' && x.vid === it.vid);
+        if (dup) { dup.qty += it.qty; items.splice(items.indexOf(it), 1); }
+        beep(true);
+      }
+    } catch (e) { it.state = 'err'; it.err = String(e.message || e); beep(false); }
+    draw(key);
+  }
+  window.bulkAdd = add;
+  window.bulkOpen = async function(){
+    if (!loaded) {
+      try { const r = await Store.bulkLocs(); locs = r.locations || []; loaded = true; fillSel();
+      } catch (e) { msg('Could not load locations: ' + e.message, 'bad'); return; }
+    }
+    draw(); if (ready()) setTimeout(() => { try { $('bkIn').focus(); } catch (e) {} }, 50);
+  };
+  ['bkFrom', 'bkTo'].forEach(id => $(id).addEventListener('change', () => { draw(); if (ready()) $('bkIn').focus(); }));
+  $('bkSwap').addEventListener('click', () => { const f = $('bkFrom').value; $('bkFrom').value = $('bkTo').value; $('bkTo').value = f; draw(); });
+  $('bkIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = $('bkIn').value; $('bkIn').value = ''; add(v); } });
+  $('bkAdd').addEventListener('click', () => { const v = $('bkIn').value; $('bkIn').value = ''; add(v); $('bkIn').focus(); });
+  $('bkCam').addEventListener('click', () => { try { parent.postMessage({type: 'restock-plan', action: 'camera', target: 'bulk'}, '*'); } catch (e) {} });
+  $('bkList').addEventListener('click', e => {
+    const row = e.target.closest('.bkit'); if (!row) return;
+    const it = items.find(i => i.key === row.getAttribute('data-k')); if (!it) return;
+    armed = false;
+    if (e.target.closest('[data-rm]')) items.splice(items.indexOf(it), 1);
+    else { const b = e.target.closest('[data-d]'); if (!b) return; it.qty = Math.max(1, it.qty + Number(b.getAttribute('data-d'))); }
+    draw();
+    try { $('bkIn').focus(); } catch (x) {}
+  });
+  $('bkClear').addEventListener('click', () => { items = []; armed = false; $('bkRes').textContent = ''; draw(); });
+  $('bkFin').addEventListener('click', async () => {
+    if (busy || $('bkFin').disabled) return;
+    if (!armed) { armed = true; draw(); setTimeout(() => { if (armed && !busy) { armed = false; draw(); } }, 6000); return; }
+    armed = false; busy = true; draw();
+    const f = $('bkFrom').value, t = $('bkTo').value, list = items.filter(i => i.state === 'ok').map(i => ({vid: i.vid, qty: i.qty}));
+    const sumTxt = `${list.length} variant${list.length === 1 ? '' : 's'}, ${units()} unit${units() === 1 ? '' : 's'}`;
+    try {
+      const r = await Store.bulkTransfer(f, t, list);
+      items = []; busy = false; draw();
+      const el = $('bkRes'); el.className = 'bkmsg bkdone'; el.textContent = `Done: ${sumTxt} moved ${nameOf(f)} → ${nameOf(t)}. Shopify stock and the website ST numbers are updated.` + (r.warn ? ' ' + r.warn : '');
+      beep(true);
+    } catch (e) { busy = false; draw(); const el = $('bkRes'); el.className = 'bkmsg bad'; el.textContent = String(e.message || e); beep(false); }
   });
 })();
 </script>

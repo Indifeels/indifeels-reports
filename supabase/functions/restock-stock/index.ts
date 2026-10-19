@@ -48,6 +48,103 @@ async function read(vid: string) {
   return { v, item: v.inventoryItem.id as string, shop: q(v.inventoryItem.s), backup: q(v.inventoryItem.b), hasShop: !!v.inventoryItem.s, hasBackup: !!v.inventoryItem.b };
 }
 
+/* ---------------- bulk transfer between Shopify locations ---------------- */
+const LOCID = /^gid:\/\/shopify\/Location\/\d{1,20}$/;
+const toLoc = (x: unknown) => { const s = String(x || ""); return /^\d{1,20}$/.test(s) ? `gid://shopify/Location/${s}` : s; };
+const chunk = <T,>(a: T[], n: number) => { const o: T[][] = []; for (let i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; };
+
+async function bulk(body: any) {
+  if (body.action === "locations") {
+    let list: { id: string; name: string }[] = [];
+    try {
+      const d = await gql(`query{ locations(first:50){ nodes{ id name isActive } } }`, {});
+      list = d.locations.nodes.filter((l: any) => l.isActive).map((l: any) => ({ id: l.id, name: l.name }));
+    } catch (_) { /* token may lack read_locations: fall back to the two known ones */ }
+    if (!list.length) list = [{ id: SHOPLOC, name: "Shop location" }, { id: BACKUP, name: "Backup" }];
+    return json({ ok: true, locations: list.map((l) => ({ id: l.id.split("/").pop(), name: l.name })) });
+  }
+
+  const from = toLoc(body.from), to = toLoc(body.to);
+  if (!LOCID.test(from) || !LOCID.test(to)) return json({ error: "Pick both locations" }, 400);
+  if (from === to) return json({ error: "From and To must be different locations" }, 400);
+
+  if (body.action === "lookup") {
+    const raw = String(body.code || "").trim();
+    if (!/^[0-9A-Za-z._-]{3,40}$/.test(raw)) return json({ error: "Bad barcode" }, 400);
+    const Q = `query($q:String!,$from:ID!,$to:ID!){ productVariants(first:3, query:$q){ nodes{ id title barcode image{ url } product{ title featuredMedia{ preview{ image{ url } } } }
+      inventoryItem{ id f: inventoryLevel(locationId:$from){ quantities(names:["available"]){ quantity } } t: inventoryLevel(locationId:$to){ quantities(names:["available"]){ quantity } } } } } }`;
+    const tries = [raw]; if (/^0+\d/.test(raw)) tries.push(raw.replace(/^0+/, ""));
+    for (const c of tries) {
+      const d = await gql(Q, { q: `barcode:${c}`, from, to });
+      const norm = (s: string) => String(s || "").replace(/\D/g, "").replace(/^0+/, "");
+      const n = d.productVariants.nodes.find((v: any) => norm(v.barcode) === norm(c) || v.barcode === c) || d.productVariants.nodes[0];
+      if (n) {
+        const img = n.image?.url || n.product?.featuredMedia?.preview?.image?.url || "";
+        return json({ ok: true, found: true, vid: n.id.split("/").pop(), product: n.product?.title || "", variant: n.title || "", image: img,
+          from: q(n.inventoryItem.f), to: q(n.inventoryItem.t), fromStocked: !!n.inventoryItem.f });
+      }
+    }
+    return json({ ok: true, found: false });
+  }
+
+  // transfer
+  const merged = new Map<string, number>();
+  for (const it of Array.isArray(body.items) ? body.items.slice(0, 500) : []) {
+    const v = String(it?.vid || ""), n = Math.trunc(Number(it?.qty) || 0);
+    if (!/^\d{1,20}$/.test(v) || n < 1 || n > 1000) return json({ error: "Bad item in the list" }, 400);
+    merged.set(v, (merged.get(v) || 0) + n);
+  }
+  if (!merged.size) return json({ error: "Nothing to transfer" }, 400);
+
+  const READ = `query($ids:[ID!]!,$from:ID!,$to:ID!){ nodes(ids:$ids){ ... on ProductVariant{ id title product{ title } inventoryItem{ id
+    f: inventoryLevel(locationId:$from){ quantities(names:["available"]){ quantity } } t: inventoryLevel(locationId:$to){ quantities(names:["available"]){ quantity } } } } } }`;
+  const rows: { vid: string; item: string; title: string; fq: number; tq: number; hasTo: boolean; qty: number }[] = [];
+  for (const ids of chunk([...merged.keys()], 50)) {
+    const d = await gql(READ, { ids: ids.map((i) => `gid://shopify/ProductVariant/${i}`), from, to });
+    d.nodes.forEach((n: any, i: number) => {
+      if (!n) throw new Error("A variant in the list no longer exists");
+      const vid = n.id.split("/").pop();
+      rows.push({ vid, item: n.inventoryItem.id, title: `${n.product?.title || ""} ${n.title || ""}`.trim(), fq: q(n.inventoryItem.f), tq: q(n.inventoryItem.t), hasTo: !!n.inventoryItem.t, qty: merged.get(vid)! });
+    });
+  }
+  // check everything BEFORE moving anything
+  const short = rows.filter((r) => r.qty > r.fq);
+  if (short.length) return json({ error: "Not enough stock at the From location for: " + short.slice(0, 5).map((r) => `${r.title} (has ${r.fq}, scanned ${r.qty})`).join("; ") + (short.length > 5 ? ` and ${short.length - 5} more` : ""), short: short.map((r) => r.vid) }, 400);
+
+  for (const r of rows) if (!r.hasTo) {
+    const a = await gql(`mutation($i:ID!,$l:ID!){ inventoryActivate(inventoryItemId:$i, locationId:$l){ userErrors{ message } } }`, { i: r.item, l: to });
+    const e = a.inventoryActivate.userErrors; if (e?.length) throw new Error(`${r.title}: ${e[0].message}`);
+  }
+  const key = crypto.randomUUID();
+  let done = 0;
+  for (const part of chunk(rows, 100)) {
+    const changes: unknown[] = [];
+    part.forEach((r) => { changes.push({ inventoryItemId: r.item, locationId: from, delta: -r.qty, changeFromQuantity: r.fq }); changes.push({ inventoryItemId: r.item, locationId: to, delta: r.qty, changeFromQuantity: r.hasTo ? r.tq : 0 }); });
+    const m = await gql(`mutation($input: InventoryAdjustQuantitiesInput!, $key: String!){ inventoryAdjustQuantities(input:$input) @idempotent(key:$key){ inventoryAdjustmentGroup{ id } userErrors{ message } } }`,
+      { key: crypto.randomUUID(), input: { name: "available", reason: "correction", referenceDocumentUri: "indifeels://restock/bulk-transfer/" + key, changes } });
+    const ue = m.inventoryAdjustQuantities.userErrors;
+    if (ue?.length) return json({ error: `Moved ${done} of ${rows.length} variants, then Shopify stopped: ${ue[0].message}. Check the list and finalize the rest again.`, moved: done }, 500);
+    done += part.length;
+  }
+
+  // website ST numbers: custom.melbourne_stock = Shop location, custom.storage_stock = Backup
+  const mfs: unknown[] = [];
+  rows.forEach((r) => {
+    const set = (loc: string, val: number) => {
+      const k = loc === SHOPLOC ? "melbourne_stock" : loc === BACKUP ? "storage_stock" : "";
+      if (k) mfs.push({ ownerId: `gid://shopify/ProductVariant/${r.vid}`, namespace: "custom", key: k, type: "number_integer", value: String(Math.max(0, val)) });
+    };
+    set(from, r.fq - r.qty); set(to, (r.hasTo ? r.tq : 0) + r.qty);
+  });
+  let warn = "";
+  for (const part of chunk(mfs, 25)) {
+    const mf = await gql(`mutation($m:[MetafieldsSetInput!]!){ metafieldsSet(metafields:$m){ userErrors{ message } } }`, { m: part });
+    const me = mf.metafieldsSet.userErrors;
+    if (me?.length) { warn = "Stock moved, but the website ST number didn't update for some items: " + me[0].message; break; }
+  }
+  return json({ ok: true, variants: rows.length, units: rows.reduce((a, r) => a + r.qty, 0), ...(warn ? { warn } : {}) });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Use POST" }, 405);
@@ -61,6 +158,9 @@ Deno.serve(async (req: Request) => {
 
   let body: any = {};
   try { body = await req.json(); } catch { return json({ error: "Bad request" }, 400); }
+  if (body.action === "locations" || body.action === "lookup" || body.action === "transfer") {
+    try { return await bulk(body); } catch (e) { return json({ error: String((e as Error)?.message || e).slice(0, 300) }, 500); }
+  }
   const vid = String(body.vid || "");
   if (!/^\d{1,20}$/.test(vid)) return json({ error: "Bad variant" }, 400);
 

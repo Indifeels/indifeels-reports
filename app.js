@@ -1569,15 +1569,15 @@
   // The report pages never hold credentials: every read/write goes through here, to RLS tables / security-definer functions.
   const RP_DONE = "ir-restock-plan-done";
   const rpText = (v, n) => String(v == null ? "" : v).slice(0, n);
-  function rpScanCamera(done) {
+  function rpScanCamera(done, multi) {
     if (document.getElementById("rp-cam")) return;
     const ov = document.createElement("div");
     ov.id = "rp-cam";
     ov.style.cssText = "position:fixed;inset:0;z-index:99999;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px";
-    ov.innerHTML = '<video playsinline muted style="width:100%;max-width:520px;max-height:60vh;object-fit:cover;border-radius:14px;border:2px solid #14b8a6;background:#111"></video><div class="rpmsg" style="color:#e6edf3;font:600 15px system-ui,sans-serif;text-align:center">Point the camera at the barcode</div><button style="height:46px;padding:0 28px;border-radius:12px;border:1px solid #38424d;background:#232b34;color:#e6edf3;font:700 15px system-ui,sans-serif">Cancel</button>';
+    ov.innerHTML = '<video playsinline muted style="width:100%;max-width:520px;max-height:60vh;object-fit:cover;border-radius:14px;border:2px solid #14b8a6;background:#111"></video><div class="rpmsg" style="color:#e6edf3;font:600 15px system-ui,sans-serif;text-align:center">Point the camera at the barcode</div><button style="height:46px;padding:0 28px;border-radius:12px;border:1px solid #38424d;background:#232b34;color:#e6edf3;font:700 15px system-ui,sans-serif">' + (multi ? 'Done' : 'Cancel') + '</button>';
     document.body.appendChild(ov);
     const vid = ov.querySelector("video"), msg = ov.querySelector(".rpmsg");
-    let stream = null, timer = null, finished = false;
+    let stream = null, timer = null, finished = false, lastCode = "", lastAt = 0, n = 0;
     const finish = (code, error) => {
       if (finished) return; finished = true;
       if (timer) clearInterval(timer);
@@ -1594,7 +1594,19 @@
       vid.srcObject = stream; try { await vid.play(); } catch (_) {}
       const det = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf"] });
       timer = setInterval(async () => {
-        try { const r = await det.detect(vid); if (r && r.length && r[0].rawValue) finish(String(r[0].rawValue), ""); } catch (_) {}
+        try {
+          const r = await det.detect(vid);
+          if (r && r.length && r[0].rawValue) {
+            const code = String(r[0].rawValue);
+            if (!multi) return finish(code, "");
+            const now = Date.now();
+            if (code === lastCode && now - lastAt < 2000) { lastAt = now; return; }
+            lastCode = code; lastAt = now; n++;
+            try { navigator.vibrate && navigator.vibrate(30); } catch (_) {}
+            msg.textContent = "Scanned " + n + " · keep scanning, tap Done when finished";
+            done(code, "");
+          }
+        } catch (_) {}
       }, 300);
     })();
   }
@@ -1622,7 +1634,7 @@
       }
       if (d.action === "camera" && kind === "restock-plan") {
         // The report frame is sandboxed (no real origin), so it cannot ask for the camera itself: scan here, send only the number back.
-        rpScanCamera((code, error) => reply({ type: "restock-plan-scan", code, error }));
+        rpScanCamera((code, error) => reply({ type: "restock-plan-scan", code, error, target: d.target === "bulk" ? "bulk" : "" }), d.target === "bulk");
         return;
       }
       if (d.action === "state" && kind === "restock-plan") {
@@ -1636,6 +1648,11 @@
     });
   }
   const rpOk = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
+  async function rpStockCall(body, fallback) {
+    const { data, error } = await sb.functions.invoke("restock-stock", { body });
+    if (error || !data?.ok) { let m = data?.error; try { if (!m && error?.context) m = (await error.context.json()).error; } catch (_) {} throw new Error(m || error?.message || fallback); }
+    return data;
+  }
   rpBridge("restock-plan", {
     list: async () => {
       const out = [];
@@ -1662,6 +1679,9 @@
       if (error || !data?.ok) { let m = data?.error; try { if (!m && error?.context) m = (await error.context.json()).error; } catch (_) {} throw new Error(m || error?.message || "Couldn't save stock"); }
       return data;
     },
+    bulklocs: async () => rpStockCall({ action: "locations" }, "Couldn't load locations"),
+    bulklookup: async (d) => rpStockCall({ action: "lookup", code: rpText(d.code, 40), from: rpText(d.from, 40), to: rpText(d.to, 40) }, "Couldn't look up the barcode"),
+    bulktransfer: async (d) => rpStockCall({ action: "transfer", from: rpText(d.from, 40), to: rpText(d.to, 40), items: (Array.isArray(d.items) ? d.items : []).slice(0, 500).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && i.qty) || 0) })) }, "Couldn't finalize the transfer"),
     cancel: async (d) => rpOk(await sb.rpc("restock_owner_cancel", { p_id: rpText(d.id, 140) })),
     release: async (d) => rpOk(await sb.rpc("restock_owner_release", { p_id: rpText(d.id, 140) })),
     ackwrong: async (d) => rpOk(await sb.rpc("restock_owner_ack_wrong", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 100).map((x) => rpText(x, 140)) })),
