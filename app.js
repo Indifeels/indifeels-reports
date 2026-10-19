@@ -80,8 +80,10 @@
     try {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
-      b.textContent = sub ? "Phone notifications on" : "Enable phone notifications";
-      b.disabled = !!sub;
+      // Browser subscription alone does not guarantee the server still has an
+      // active record or that the current phone can display a push.
+      b.textContent = sub ? "Reconnect phone notifications" : "Enable phone notifications";
+      b.disabled = false;
     } catch (_) {
       b.textContent = "Enable phone notifications"; b.disabled = false;
     }
@@ -95,13 +97,15 @@
     if (p !== "granted") { await phonePushState(); return toast("Phone notifications weren't enabled."); }
     try {
       const reg = await navigator.serviceWorker.ready;
-      let sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        const kr = await fetch(`${CFG.url}/functions/v1/report-phone-push?action=public-key`, { cache:"no-store" });
-        if (!kr.ok) throw new Error("Could not get push key.");
-        const { publicKey } = await kr.json();
-        sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64urlBytes(publicKey) });
-      }
+      // Force a fresh browser subscription on a deliberate reconnect, since
+      // the previous endpoint may still be marked active server-side while no
+      // longer belonging to the phone being used.
+      const oldSub = await reg.pushManager.getSubscription();
+      if (oldSub) await oldSub.unsubscribe();
+      const kr = await fetch(`${CFG.url}/functions/v1/report-phone-push?action=public-key`, { cache:"no-store" });
+      if (!kr.ok) throw new Error("Could not get push key.");
+      const { publicKey } = await kr.json();
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64urlBytes(publicKey) });
       const j = sub.toJSON();
       const { error } = await sb.from("push_subscriptions").upsert({
         user_id: me.id,
@@ -113,7 +117,14 @@
         updated_at: new Date().toISOString()
       }, { onConflict:"endpoint" });
       if (error) throw error;
-      toast("Phone report notifications enabled");
+      // Retire the prior endpoint after saving the new one. Failure to update
+      // the old row must not undo the working replacement subscription.
+      if (oldSub && oldSub.endpoint !== sub.endpoint) {
+        await sb.from("push_subscriptions").update({
+          enabled: false, updated_at: new Date().toISOString()
+        }).eq("endpoint", oldSub.endpoint).eq("user_id", me.id);
+      }
+      toast("Phone notifications reconnected");
     } catch (e) {
       toast(e?.message || "Could not enable phone notifications.");
     }
