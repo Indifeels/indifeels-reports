@@ -92,6 +92,10 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .demo code{cursor:pointer;background:#0003;padding:1px 6px;border-radius:6px;margin:2px;display:inline-block}
 [hidden]{display:none!important}
 @media(max-width:520px){.tl{min-width:40px}.vr{gap:4px;padding:7px 8px}}
+.go{background:var(--green-bg);border-color:var(--green);color:var(--green);font-weight:700}
+.pushbox{margin-top:10px;padding:12px;border:1px solid var(--green);border-radius:12px;background:var(--card2);font-size:14px;line-height:1.5}
+.pushbox label{display:flex;gap:10px;align-items:center;margin:10px 0;color:var(--text)}.pushbox input[type=checkbox]{width:22px;height:22px}
+.pushbox .pm{margin-top:8px;font-size:14px}.pushbox .pm.bad{color:var(--red)}.pushbox .pm.ok{color:var(--green);font-weight:700}
 @media(max-width:640px){
  body{font-size:16px}
  .wrap{padding:0 8px 60px}
@@ -167,6 +171,8 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
         <div class="scan" style="margin-top:10px"><input id="tkIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode, then Enter"><button id="tkAdd">Add</button><button id="tkCam" type="button" title="Scan with camera">📷</button></div>
         <div class="msg" id="tkMsg"></div>
         <div class="actions"><button id="tkSave">Save</button><button id="tkPause">Save &amp; pause</button><span class="sp"></span><button class="pri" id="tkEnd">End stock take</button></div>
+        <div class="actions" style="margin-top:8px"><button class="go" id="tkPush" style="flex:1">⬆ Push to website</button></div>
+        <div class="pushbox" id="pushBox" hidden></div>
       </div>
       <div class="seg" id="tkSeg"><button data-f="all" class="on">All</button><button data-f="left">Remaining</button><button data-f="done">Done</button><button data-f="extra">Extra</button></div>
       <div id="tkList" class="cards"></div>
@@ -177,6 +183,8 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
       <div class="bk"><h3 id="rsTitle">Stock take finished</h3><div class="sub" id="rsSub" style="color:var(--muted)"></div>
         <div class="res"><div><b id="rsE">0</b><span>Stock</span></div><div class="c"><b id="rsC">0</b><span>Counted</span></div><div class="m"><b id="rsM">0</b><span>Missing</span></div><div class="x"><b id="rsX">0</b><span>Extra</span></div></div>
         <div id="rsList"></div>
+        <div class="actions" style="margin-top:10px"><button class="go" id="rsPush" style="flex:1">⬆ Push to website</button></div>
+        <div class="pushbox" id="pushBox2" hidden></div>
         <div class="foot"><span class="sum"></span><button class="pri" id="rsBack">Back to stock take</button></div>
       </div>
     </div>
@@ -224,6 +232,7 @@ const Store = PREVIEW ? {
   locs: async () => ({locations: [{id: '1', name: 'Shop location'}, {id: '2', name: 'Backup'}]}),
   lookup: async (code, from, to) => { const v = byBc.get(bcn(code)); if (!v) return {found: false}; await new Promise(r => setTimeout(r, 250)); return {found: true, vid: v.vid, product: v.pt, variant: v.t, image: v.image, from: v.q[from] || 0, to: v.q[to] || 0}; },
   transfer: async (from, to, items) => { await new Promise(r => setTimeout(r, 600)); items.forEach(i => { const v = byVid.get(i.vid); v.q[from] = (v.q[from] || 0) - i.qty; v.q[to] = (v.q[to] || 0) + i.qty; }); return {ok: true}; },
+  takePush: async (loc, items, dry) => ({ok: true, dry: !!dry, variants: items.length, changed: items.length, same: 0, up: items.length, down: 0, unitsUp: items.reduce((a, i) => a + i.qty, 0), unitsDown: 0, toZero: 0}),
   takeList: async () => LS.get('st-demo-takes') || [],
   takeSave: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
   takeEnd: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {status: 'ended', updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
@@ -231,6 +240,7 @@ const Store = PREVIEW ? {
   locs: () => call('bulklocs').catch(() => ({locations: DATA.locations || []})),   // the report data carries the locations too
   lookup: (code, from, to) => call('bulklookup', {code, from, to}),
   transfer: (from, to, items) => call('bulktransfer', {from, to, items}, 90000),
+  takePush: (loc, items, dry) => call('takepush', {loc, items, dry}, 120000),
   takeList: () => call('takelist'),
   takeSave: s => call('takesave', {session: s}),
   takeEnd: s => call('takeend', {session: s}),
@@ -428,7 +438,7 @@ $('tkStart').onclick = () => {
 };
 function begin(s) {
   take = s; take.dirty = false; filt = 'all'; endArmed = false;
-  $('tkSetup').hidden = true; $('tkResult').hidden = true; $('tkRun').hidden = false;
+  $('tkSetup').hidden = true; $('tkResult').hidden = true; $('tkRun').hidden = false; $('pushBox').hidden = true;
   $('tkTitle').textContent = s.name; $('tkSub').textContent = 'Counting at ' + s.locName;
   document.querySelectorAll('#tkSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === 'all'));
   tkMsg('Scan a barcode to count it.'); drawTake(); setTimeout(() => { try { $('tkIn').focus(); } catch (e) {} }, 50);
@@ -499,7 +509,7 @@ $('tkEnd').onclick = async () => {
   try {
     await Store.takeEnd({id: take.id, name: take.name, loc: take.loc, locName: take.locName, filters: take.filters, vids: take.vids, counts: take.counts, outside: take.outside, startedAt: take.startedAt, endedAt: new Date().toISOString(), summary: {expected: t.e, counted: t.s, missing: t.miss, extra: t.extra}});
   } catch (e) { tkMsg('Could not end: ' + e.message, 'bad'); drawTake(); return; }
-  const s = take; take = null;
+  const s = take; take = null; lastEnded = s; $('pushBox').hidden = true; $('pushBox2').hidden = true;
   $('tkRun').hidden = true; $('tkResult').hidden = false;
   $('rsTitle').textContent = 'Stock take finished'; $('rsSub').textContent = s.name + ' · ' + s.locName;
   $('rsE').textContent = t.e; $('rsC').textContent = t.s; $('rsM').textContent = t.miss; $('rsX').textContent = t.extra;
@@ -509,7 +519,51 @@ $('tkEnd').onclick = async () => {
   Object.entries(s.outside || {}).forEach(([k, o]) => { if (o.n > 0) rows.push({v: {pt: o.pt, t: o.t}, ex: 0, n: o.n, out: true}); });
   $('rsList').innerHTML = rows.length ? rows.sort((a, b) => a.v.pt.localeCompare(b.v.pt)).map(r => { const d = r.n - r.ex; return `<div class="sess"><div class="nm"><b>${E(r.v.pt)}</b><span class="tag">${E(r.v.t)}</span>${r.out ? '<small>outside the filter</small>' : ''}</div><span class="pill cards" style="padding:2px 10px;border-radius:99px;font-weight:800;background:${d < 0 ? 'var(--red-bg)' : 'var(--orange-bg)'};color:${d < 0 ? 'var(--red)' : 'var(--orange)'}">${d < 0 ? 'missing ' + (-d) : 'extra +' + d}</span></div>`; }).join('') : '<div class="empty">Everything matched. 🎉</div>';
 };
-$('rsBack').onclick = () => { $('tkResult').hidden = true; takeOpen(); };
+
+/* ---------- push counts to the website ---------- */
+function pushItems(s, withZero) {
+  const o = new Map();
+  (s.vids || []).forEach(([vid]) => { const n = s.counts[vid] || 0; if (n > 0 || withZero) o.set(vid, n); });
+  Object.entries(s.counts || {}).forEach(([k, n]) => { if (n > 0) o.set(k, n); });
+  Object.entries(s.outside || {}).forEach(([k, x]) => { if (x && x.n > 0 && /^\d+$/.test(k)) o.set(k, x.n); });
+  return [...o].map(([vid, qty]) => ({vid, qty}));
+}
+let pushBusy = false;
+async function openPush(s, box, keepZero) {
+  if (!s) return;
+  box.hidden = false;
+  const withZero = !!keepZero, items = pushItems(s, withZero);
+  const head = '<b>Push counts to the website</b>';
+  if (!items.length) { box.innerHTML = head + '<div class="pm">Nothing scanned yet.</div>'; return; }
+  box.innerHTML = head + '<div class="pm">Checking current stock…</div>';
+  let r;
+  try { r = await Store.takePush(s.loc, items, true); } catch (e) { box.innerHTML = head + '<div class="pm bad">Could not check: ' + E(e.message) + '</div>'; return; }
+  if (!r || r.error) { box.innerHTML = head + '<div class="pm bad">' + E((r && r.error) || 'Could not check') + '</div>'; return; }
+  box.innerHTML = head +
+    `<div>Sets <b>${E(s.locName)}</b> stock (and the website ST number) to the counted numbers for <b>${r.variants}</b> variants.</div>` +
+    `<div>▲ ${r.up} go up (+${r.unitsUp}) · ▼ ${r.down} go down (−${r.unitsDown}) · ${r.same} unchanged${r.toZero ? ' · <b style="color:var(--red)">' + r.toZero + ' go to 0</b>' : ''}</div>` +
+    `<label><input type="checkbox" class="pz"${withZero ? ' checked' : ''}> Also set variants I haven't scanned to 0</label>` +
+    `<div class="actions"><button class="pri pgo"${r.changed ? '' : ' disabled'}>${r.changed ? 'Confirm: update ' + r.changed + ' variants' : 'Nothing to change'}</button><button class="pcx">Cancel</button></div><div class="pm"></div>`;
+  box.querySelector('.pz').onchange = e => openPush(s, box, e.target.checked);
+  box.querySelector('.pcx').onclick = () => { box.hidden = true; };
+  box.querySelector('.pgo').onclick = async () => {
+    if (pushBusy) return; pushBusy = true;
+    const pm = box.querySelector('.pm'), go = box.querySelector('.pgo');
+    go.disabled = true; pm.className = 'pm'; pm.textContent = 'Updating Shopify… keep this open.';
+    try {
+      if (take && take === s && take.dirty) await save(false);
+      const res = await Store.takePush(s.loc, pushItems(s, box.querySelector('.pz').checked), false);
+      if (!res || res.error) throw new Error((res && res.error) || 'Failed');
+      pm.className = 'pm ok'; pm.textContent = `Done: ${res.changed} variants updated (${res.up} up, ${res.down} down).` + (res.warn ? ' ' + res.warn : '');
+      box.querySelector('.pcx').textContent = 'Close';
+    } catch (e) { pm.className = 'pm bad'; pm.textContent = 'Not finished: ' + e.message; go.disabled = false; }
+    pushBusy = false;
+  };
+}
+$('tkPush').onclick = () => openPush(take, $('pushBox'));
+let lastEnded = null;
+$('rsPush').onclick = () => openPush(lastEnded, $('pushBox2'));
+$('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden = true; takeOpen(); };
 
 /* ---------- start ---------- */
 (async function init() {

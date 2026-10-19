@@ -1741,6 +1741,7 @@
     bulklocs: async () => rpStockCall({ action: "locations" }, "Couldn't load locations"),
     bulklookup: async (d) => rpStockCall({ action: "lookup", code: rpText(d.code, 40), from: rpText(d.from, 40), to: rpText(d.to, 40) }, "Couldn't look up the barcode"),
     bulktransfer: async (d) => rpStockCall({ action: "transfer", from: rpText(d.from, 40), to: rpText(d.to, 40), items: (Array.isArray(d.items) ? d.items : []).slice(0, 500).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && i.qty) || 0) })) }, "Couldn't finalize the transfer"),
+    takepush: async (d) => rpStockCall({ action: "setcounts", loc: rpText(d.loc, 40), dry: !!d.dry, items: (Array.isArray(d.items) ? d.items : []).slice(0, 2500).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && i.qty) || 0) })) }, "Couldn't push to the website"),
     takelist: async () => (rpOk(await sb.from("stock_takes").select("id,name,loc,loc_name,status,filters,vids,counts,outside,summary,started_at,ended_at,updated_at").order("updated_at", { ascending: false }).limit(40)) || []).map(stRow),
     takesave: async (d) => stSave(d.session, false),
     takeend: async (d) => stSave(d.session, true),

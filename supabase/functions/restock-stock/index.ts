@@ -64,6 +64,64 @@ async function bulk(body: any) {
     return json({ ok: true, locations: list.map((l) => ({ id: l.id.split("/").pop(), name: l.name })) });
   }
 
+  if (body.action === "setcounts") {
+    // Stock take -> website: set available stock at ONE location to the counted numbers
+    const loc = toLoc(body.loc);
+    if (!LOCID.test(loc)) return json({ error: "Pick the location" }, 400);
+    const want = new Map<string, number>();
+    for (const it of Array.isArray(body.items) ? body.items.slice(0, 2500) : []) {
+      const v = String(it?.vid || ""), n = Math.trunc(Number(it?.qty));
+      if (!/^\d{1,20}$/.test(v) || !Number.isFinite(n) || n < 0 || n > 100000) return json({ error: "Bad item in the list" }, 400);
+      want.set(v, n);
+    }
+    if (!want.size) return json({ error: "Nothing to push" }, 400);
+    const READ1 = `query($ids:[ID!]!,$l:ID!){ nodes(ids:$ids){ ... on ProductVariant{ id title product{ title } inventoryItem{ id
+      f: inventoryLevel(locationId:$l){ quantities(names:["available"]){ quantity } } } } } }`;
+    const rows: { vid: string; item: string; title: string; cur: number; has: boolean; qty: number }[] = [];
+    for (const ids of chunk([...want.keys()], 50)) {
+      const d = await gql(READ1, { ids: ids.map((i) => `gid://shopify/ProductVariant/${i}`), l: loc });
+      d.nodes.forEach((n: any) => {
+        if (!n) return; // variant deleted since the count: skip it
+        const vid = n.id.split("/").pop();
+        rows.push({ vid, item: n.inventoryItem.id, title: `${n.product?.title || ""} ${n.title || ""}`.trim(), cur: q(n.inventoryItem.f), has: !!n.inventoryItem.f, qty: want.get(vid)! });
+      });
+    }
+    const chg = rows.filter((r) => r.qty !== r.cur);
+    const up = chg.filter((r) => r.qty > r.cur), down = chg.filter((r) => r.qty < r.cur);
+    const summary = {
+      variants: rows.length, changed: chg.length, same: rows.length - chg.length,
+      up: up.length, down: down.length,
+      unitsUp: up.reduce((a, r) => a + r.qty - r.cur, 0), unitsDown: down.reduce((a, r) => a + r.cur - r.qty, 0),
+      toZero: down.filter((r) => r.qty === 0).length,
+    };
+    if (body.dry) return json({ ok: true, dry: true, ...summary });
+    for (const r of chg) if (!r.has) {
+      const a = await gql(`mutation($i:ID!,$l:ID!){ inventoryActivate(inventoryItemId:$i, locationId:$l){ userErrors{ message } } }`, { i: r.item, l: loc });
+      const e = a.inventoryActivate.userErrors; if (e?.length) throw new Error(`${r.title}: ${e[0].message}`);
+    }
+    const ref = "indifeels://stock-take/" + crypto.randomUUID();
+    let done = 0;
+    for (const part of chunk(chg, 100)) {
+      const m = await gql(`mutation($input: InventorySetQuantitiesInput!, $key: String!){ inventorySetQuantities(input:$input) @idempotent(key:$key){ inventoryAdjustmentGroup{ id } userErrors{ message } } }`,
+        { key: crypto.randomUUID(), input: { name: "available", reason: "correction", ignoreCompareQuantity: true, referenceDocumentUri: ref,
+          quantities: part.map((r) => ({ inventoryItemId: r.item, locationId: loc, quantity: r.qty })) } });
+      const ue = m.inventorySetQuantities.userErrors;
+      if (ue?.length) return json({ error: `Updated ${done} of ${chg.length} variants, then Shopify stopped: ${ue[0].message}. Push again to finish the rest.`, updated: done }, 500);
+      done += part.length;
+    }
+    const k = loc === SHOPLOC ? "melbourne_stock" : loc === BACKUP ? "storage_stock" : "";
+    let warn = "";
+    if (k) {
+      const mfs = chg.map((r) => ({ ownerId: `gid://shopify/ProductVariant/${r.vid}`, namespace: "custom", key: k, type: "number_integer", value: String(r.qty) }));
+      for (const part of chunk(mfs, 25)) {
+        const mf = await gql(`mutation($m:[MetafieldsSetInput!]!){ metafieldsSet(metafields:$m){ userErrors{ message } } }`, { m: part });
+        const me = mf.metafieldsSet.userErrors;
+        if (me?.length) { warn = "Stock updated, but the website ST number didn't update for some items: " + me[0].message; break; }
+      }
+    }
+    return json({ ok: true, ...summary, ...(warn ? { warn } : {}) });
+  }
+
   const from = toLoc(body.from), to = toLoc(body.to);
   if (!LOCID.test(from) || !LOCID.test(to)) return json({ error: "Pick both locations" }, 400);
   if (from === to) return json({ error: "From and To must be different locations" }, 400);
@@ -158,7 +216,7 @@ Deno.serve(async (req: Request) => {
 
   let body: any = {};
   try { body = await req.json(); } catch { return json({ error: "Bad request" }, 400); }
-  if (body.action === "locations" || body.action === "lookup" || body.action === "transfer") {
+  if (body.action === "locations" || body.action === "lookup" || body.action === "transfer" || body.action === "setcounts") {
     try { return await bulk(body); } catch (e) { return json({ error: String((e as Error)?.message || e).slice(0, 300) }, 500); }
   }
   const vid = String(body.vid || "");
