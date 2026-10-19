@@ -858,7 +858,7 @@ select.sel{appearance:none;-webkit-appearance:none}
 .stka{display:flex;gap:10px;margin-top:14px}.stka button{flex:1;height:46px;border-radius:12px;border:1px solid #4a4b50;background:#26272b;color:#fff;font-size:16px;font-weight:700}
 .stka .go{background:#4da3ff;border-color:#4da3ff;color:#06203d}.stka button:disabled{opacity:.45}
 .stkm .msg{min-height:18px;margin-top:10px;font-size:13px;color:#ff8a8a}.stkm .msg.ok{color:#7ee08c}
-.svtag .btn{padding:8px 14px;border-radius:10px;border:0;background:#3a6fd8;color:#fff;font-weight:600;margin:0 6px 10px 0;cursor:pointer}.svsup{font-size:13px;opacity:.8;margin:-4px 0 8px}.svtc{font-size:13px;margin:0 0 8px}.svpn{font-weight:700;margin:2px 0 8px;font-size:15px}.svtag select{width:100%;margin:0 0 10px;padding:9px;border-radius:10px;border:1px solid #d9822b;background:var(--card);color:inherit;font-size:14px}
+.svtag .btn{padding:8px 14px;border-radius:10px;border:0;background:#3a6fd8;color:#fff;font-weight:600;margin:0 6px 10px 0;cursor:pointer}.svsup{font-size:13px;opacity:.8;margin:-4px 0 8px}.svtc{font-size:13px;margin:0 0 8px}.svpn{font-weight:700;margin:2px 0 8px;font-size:15px}.svtag select:not(.warn){border-color:#3a4a66}.svtag select{width:100%;margin:0 0 10px;padding:9px;border-radius:10px;border:1px solid #d9822b;background:var(--card);color:inherit;font-size:14px}
 </style>
 </head>
 <body>
@@ -1888,9 +1888,13 @@ function renderSv(){
   const master = all.filter(r => r.status === 'saved' && !r.claimed);
   $('svCount').textContent = master.length + ' on the order list';
   const supNames = [...new Set(names.concat(data.products.map(p => p.supplier).filter(Boolean)).concat(svUsers.map(u => u.supplier).filter(Boolean)))].filter(n => !/^unassigned$/i.test(n)).sort((a, b) => a.localeCompare(b));
-  const tagSel = g => /^\d+$/.test(String(g[0].product_id || '')) && g.every(r => !String(r.supplier || '').trim() || /^unassigned$/i.test(String(r.supplier).trim()))
-    ? `<div class="svtag"><select data-tagp="${esc(g[0].product_id)}"><option value="">⚠ No supplier — pick one…</option>${supNames.map(n => `<option>${esc(n)}</option>`).join('')}</select></div>` : '';
-  const mTable = master.length ? bxGroup(master).map(g => `<div class="bx-prod" style="background:var(--card);margin-bottom:10px">${bxImg(g[0])}<div class="svpn">${esc(g[0].product_title || '')}</div>${tagSel(g) || `<div class="svsup">Supplier: <b>${esc([...new Set(g.map(r => String(r.supplier || '').trim()).filter(Boolean))].join(', '))}</b></div>`}<table><thead><tr><th>Variant</th><th style="text-align:center">Qty wanted</th><th>Requested</th></tr></thead><tbody>
+  const tagSel = g => {
+    if (!/^\d+$/.test(String(g[0].product_id || ''))) return `<div class="svsup">Supplier: <b>${esc(g[0].supplier || '')}</b></div>`;
+    const cur = [...new Set(g.map(r => String(r.supplier || '').trim()).filter(n => n && !/^unassigned$/i.test(n)))];
+    const opts = supNames.concat(cur.filter(n => !supNames.includes(n)));
+    return `<div class="svtag"><select data-tagp="${esc(g[0].product_id)}" data-cur="${esc(cur.join('|'))}"${cur.length ? '' : ' class="warn"'}><option value="">${cur.length ? (cur.length > 1 ? 'Mixed suppliers — pick one…' : 'Supplier: ' + esc(cur[0])) : '⚠ No supplier — pick one…'}</option>${opts.filter(n => n !== cur[0] || cur.length > 1).map(n => `<option>${esc(n)}</option>`).join('')}</select></div>`;
+  };
+  const mTable = master.length ? bxGroup(master).map(g => `<div class="bx-prod" style="background:var(--card);margin-bottom:10px">${bxImg(g[0])}<div class="svpn">${esc(g[0].product_title || '')}</div>${tagSel(g)}<table><thead><tr><th>Variant</th><th style="text-align:center">Qty wanted</th><th>Requested</th></tr></thead><tbody>
       ${g.slice().sort(bxByVariant).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td><td>${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</td></tr>`).join('')}</tbody></table></div>`).join('') : '<div class="empty">Nothing waiting on the order list.</div>';
   $('svList').innerHTML = bxSec('sv-order', '📋 Order list', bxPlural(master.length, 'item') + ' waiting', '<p class="sub" style="margin:0 0 10px">Every supplier sees these until one adds them to a box.</p>' + mTable);
   const boxes = boxesFor(who);
@@ -1918,7 +1922,7 @@ $('svSup').addEventListener('change', renderSv);
 $('svList').addEventListener('change', e => {
   const el = e.target.closest('select[data-tagp]'); if (!el || !el.value) return;
   const w = el.closest('.svtag'), sup = el.value, pid = el.getAttribute('data-tagp');
-  w.innerHTML = `<div class="svtc">Tag this product to <b>${esc(sup)}</b>? It is also saved on the product in Shopify.</div><button class="btn" data-tagok="${esc(pid)}" data-sup="${esc(sup)}">Yes, tag to ${esc(sup)}</button> <button class="btn" data-tagno="1">Cancel</button>`;
+  w.innerHTML = `<div class="svtc">${w.querySelector('select').dataset.cur ? 'Change this product to' : 'Tag this product to'} <b>${esc(sup)}</b>? It is also saved on the product in Shopify (next planner build).</div><button class="btn" data-tagok="${esc(pid)}" data-sup="${esc(sup)}">Yes, tag to ${esc(sup)}</button> <button class="btn" data-tagno="1">Cancel</button>`;
 });
 $('svList').addEventListener('click', async e => {
   if (e.target.closest('[data-tagno]')) { renderSv(); return; }
@@ -1927,7 +1931,7 @@ $('svList').addEventListener('click', async e => {
   b.disabled = true; b.textContent = 'Saving…';
   try {
     await Store.setTag(pid, sup);
-    for (const r of orders.values()) if (r.product_id === pid && r.status === 'saved' && !r.claimed && (!String(r.supplier || '').trim() || /^unassigned$/i.test(r.supplier))) r.supplier = sup;
+    for (const r of orders.values()) if (r.product_id === pid && r.status === 'saved' && !r.claimed && true) r.supplier = sup;
     const pr = data.products.find(p => String(p.id) === pid); if (pr) pr.supplier = sup;
     renderSv(); refresh();
   } catch (err) { b.parentElement.innerHTML = '<div class="svtc" style="color:#e66">Could not save: ' + esc(err.message) + '</div>'; }

@@ -177,9 +177,13 @@ def sync_supplier_tags(prod_lines):
             continue
         cur = ((l.get("supplier") or {}).get("value") or "").strip()
         val = full.get(t["supplier"].strip().lower(), t["supplier"].strip())
-        if cur:
+        force = bool(t.get("override"))
+        if cur and not (force and not t["synced"]):
             if not t["synced"]:
                 done.append(pid)          # somebody tagged it in Shopify meanwhile: Shopify wins
+            continue
+        if cur and re.sub(r"^\s*\d+\s*:\s*", "", cur).strip().lower() == t["supplier"].strip().lower():
+            done.append(pid)              # Shopify already has this supplier
             continue
         l["supplier"] = {"value": val}    # show it on this build either way
         if t["synced"]:
