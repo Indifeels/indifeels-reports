@@ -713,6 +713,11 @@ select.sel{appearance:none;-webkit-appearance:none}
 .pbar .pbtn{flex:none;padding:6px 12px;font-size:13px;font-weight:700}
 .pbar .pbtn[data-psave]{background:var(--blue);color:#06101c;border-color:var(--blue);margin-left:auto}
 .pbar .pbtn[data-disc]{color:var(--muted)}
+.addsz{display:flex;gap:8px;align-items:center;margin:0 0 6px}.addsz[hidden]{display:none}
+.addsz .asz{flex:1 1 90px;min-width:0;max-width:160px}.addsz .aqt{flex:none;width:64px}
+.addsz input{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:14px}
+.xrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 6px}
+.xsz{font-size:12.5px;color:var(--muted)}
 .card-h .hbtn{display:none}
 .card-h .tiles{display:none}
 .dtable{display:none}
@@ -1479,7 +1484,7 @@ function cardHtml(g){
         <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
       </div>
       <div class="hnum ${P.units ? '' : 'zero'}"><div class="prow">${pTag(g)}</div><div class="pnum"><b>${P.units}</b><span>to order</span></div><div class="psd" title="Total units sold, all variants"><b>${P.total}</b> sold</div></div></div>
-    <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>
+    <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>${P.disc ? '' : addSizeHtml(P)}
       <div class="scroll dtable"><table>
       <thead><tr><th>Priority</th><th>Variant</th><th>Sold</th><th>Days / 1 sold</th><th>Days left</th><th class="g1">Current stock</th><th class="g2">Required stock</th><th class="g3">To order</th><th>Supplier</th><th>Status</th></tr></thead>
       <tbody>${rows.map(x => x.tr).join('')}</tbody></table></div>
@@ -1572,6 +1577,14 @@ $('boxes').addEventListener('click', e => {
   const h = e.target.closest('[data-bxt]'); if (!h) return;
   const s = h.closest('.bx'); s.classList.toggle('open'); myOpen.set(h.getAttribute('data-bxt'), s.classList.contains('open'));
 });
+/* order a size the product doesn't have yet: a normal order line (supplier sees it on the Order list), just under a new size name */
+function addSizeHtml(P){
+  const pid = String(P.p.id), have = new Set((P.rows || []).map(r => keyOf(P.p.id, r.title)));
+  const ex = new Map();
+  orders.forEach(o => { if (String(o.product_id) === pid && isLive(o) && !have.has(o.vkey)) ex.set(o.variant_title, (ex.get(o.variant_title) || 0) + eff(o)); });
+  const chip = ex.size ? `<span class="xsz">Extra sizes on order: ${[...ex].map(([t, q]) => esc(t) + ' ×' + q).join(' · ')}</span>` : '';
+  return `<div class="xrow"><button class="disc" data-paddsz="${esc(pid)}" title="Order a size this product doesn't have yet (e.g. one the supplier has but you haven't stocked)">+ Add size</button>${chip}</div>` + `<div class="addsz" data-addsz="${esc(pid)}" hidden><input type="text" class="asz" maxlength="40" placeholder="Size, e.g. 34" aria-label="Size"><input type="number" class="aqt" min="1" max="1000" value="1" aria-label="Quantity"><button class="btn" data-addok="${esc(pid)}">Order</button><button class="btn" data-addno="${esc(pid)}">Cancel</button></div>`;
+}
 function alignPbars(){
   document.querySelectorAll('#list .card.open').forEach(card => {
     const bar = card.querySelector('.pbar'), step = [...card.querySelectorAll('.step')].find(x => x.getBoundingClientRect().width > 0);
@@ -1820,6 +1833,28 @@ $('list').addEventListener('click', async e => {
     const list = infos.filter(x => String(x.r.P.p.id) === String(pid) && !x.r.P.disc).map(x => ({r: x.r, key: x.key, qty: 1, set: true}));
     if (!list.length) { notify('No sizes to add'); return; }
     pset.disabled = true; await saveItems(list); notify('Full set added: 1 of each of ' + list.length + ' sizes', true); return;
+  }
+  const asz = t.closest('[data-paddsz]');
+  if (asz) { e.stopPropagation(); const f = asz.closest('.card').querySelector('.addsz'); if (f) { f.hidden = !f.hidden; if (!f.hidden) f.querySelector('.asz').focus(); } return; }
+  const ano = t.closest('[data-addno]');
+  if (ano) { e.stopPropagation(); ano.closest('.addsz').hidden = true; return; }
+  const aok = t.closest('[data-addok]');
+  if (aok) {
+    e.stopPropagation(); const pid = aok.getAttribute('data-addok'), f = aok.closest('.addsz');
+    const size = f.querySelector('.asz').value.trim().replace(/\s+/g, ' '), qty = Math.floor(Number(f.querySelector('.aqt').value) || 0);
+    if (!size) { notify('Type the size first'); return; }
+    if (qty < 1) { notify('Quantity must be at least 1'); return; }
+    const x = infos.find(z => String(z.r.P.p.id) === pid); if (!x) { notify('Open the product list again and retry'); return; }
+    const same = x.r.P.rows.find(r => String(r.title).trim().toLowerCase() === size.toLowerCase());
+    aok.disabled = true;
+    try {
+      if (same) { await saveItems([{r: same, key: keyOf(pid, same.title), qty}]); notify(same.title + ' already exists, so ' + qty + ' added to its order', true); return; }
+      const P = x.r.P, key = keyOf(pid, size);
+      const row = await Store.order({ vkey: key, product_id: P.p.id, product_title: P.p.title, product_url: P.p.url || '', image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''), variant_title: size, supplier: P.supplier || 'Unassigned', qty, set: false, stock_base: 0 });
+      if (row && row.id) orders.set(row.id, row);
+      indexOrders(); notify('Size ' + size + ' × ' + qty + ' added to the order list', true); render();
+    } catch (err) { aok.disabled = false; notify('Could not add: ' + err.message); }
+    return;
   }
   const ps = t.closest('[data-psave]');
   if (ps) { e.stopPropagation(); const list = pending(ps.getAttribute('data-psave')); if (!list.length) { notify('Nothing to save for this product'); return; } ps.disabled = true; await saveItems(list); return; }
