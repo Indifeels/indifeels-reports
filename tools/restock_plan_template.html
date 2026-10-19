@@ -1007,7 +1007,7 @@ select.sel{appearance:none;-webkit-appearance:none}
   </details>
 </div>
 <div id="viewBox" hidden>
-  <div class="sub" style="margin:2px 2px 10px">Boxes by supplier. Open a supplier to see what is being packed and what has shipped.</div>
+  <div class="controls"><label class="o">Supplier <select id="bxSup"></select></label><span class="grow"></span><span class="sub" id="bxCount"></span></div>
   <div id="boxes"></div>
 </div>
 <div id="viewSup" hidden>
@@ -1591,19 +1591,18 @@ function boxesFor(who){
   return boxes;
 }
 function renderBoxes(){
-  const el = $('boxes'), list = boxesFor('').filter(x => x.lines.some(r => r.status === 'added' || r.status === 'shipped'));
-  if (!list.length) { el.innerHTML = '<div class="empty">No boxes yet. They appear when a supplier adds an item to a box.</div>'; return; }
-  const tile = ({b, lines}) => bxTile(b, lines, {ro: true, recv: true, rem: remOf, open: myOpen.get(b.box_no) === true, who: ''});
-  const names = [...new Set(list.map(x => x.b.supplier || '(unknown supplier)'))].sort();
-  el.innerHTML = names.map(n => {
-    const mine = list.filter(x => (x.b.supplier || '(unknown supplier)') === n);
-    const pk = mine.filter(x => x.b.status !== 'shipped'), sh = mine.filter(x => x.b.status === 'shipped');
-    const k = 'bx-' + n.replace(/[^a-z0-9]/gi, '_');
-    const inner = bxSec(k + '-pack', '📦 Packing', bxPlural(pk.length, 'box') + (pk.length ? ' · ' + bxPlural(pk.reduce((t, x) => t + x.lines.length, 0), 'item') : ''), pk.length ? pk.map(tile).join('') : '<div class="empty">Nothing is being packed right now.</div>', {cls: 'pack'})
-      + bxSec(k + '-ship', '🚚 Shipped', bxPlural(sh.length, 'box'), sh.length ? sh.map(tile).join('') : '<div class="empty">No shipped boxes waiting to be received.</div>', {cls: 'ship'});
-    return bxSec(k, '🏭 ' + esc(n), pk.length + ' packing · ' + sh.length + ' shipped', inner, {cls: 'sup'});
-  }).join('');
+  const el = $('boxes'), all = boxesFor('').filter(x => x.lines.some(r => r.status === 'added' || r.status === 'shipped'));
+  const sel = $('bxSup'), cur = sel.value, names = [...new Set(all.map(x => x.b.supplier || '(unknown supplier)'))].sort();
+  sel.innerHTML = '<option value="">All suppliers</option>' + names.map(n => `<option>${esc(n)}</option>`).join('');
+  if (names.includes(cur)) sel.value = cur;
+  const who = sel.value, list = who ? all.filter(x => (x.b.supplier || '(unknown supplier)') === who) : all;
+  const pk = list.filter(x => x.b.status !== 'shipped'), sh = list.filter(x => x.b.status === 'shipped');
+  $('bxCount').textContent = bxPlural(pk.length, 'box') + ' packing · ' + bxPlural(sh.length, 'box') + ' shipped';
+  const tile = ({b, lines}) => bxTile(b, lines, {ro: true, recv: true, rem: remOf, open: myOpen.get(b.box_no) === true, who: b.supplier});
+  el.innerHTML = bxSec('bx-pack', '📦 Packing', bxPlural(pk.length, 'box') + (pk.length ? ' · ' + bxPlural(pk.reduce((t, x) => t + x.lines.length, 0), 'item') : ''), pk.length ? pk.map(tile).join('') : '<div class="empty">Nothing is being packed. Boxes appear when a supplier adds an item.</div>')
+    + bxSec('bx-ship', '🚚 Shipped', bxPlural(sh.length, 'box'), sh.length ? sh.map(tile).join('') : '<div class="empty">No shipped boxes yet.</div>');
 }
+$('bxSup').addEventListener('change', renderBoxes);
 $('boxes').addEventListener('click', e => {
   if (e.target.closest('a, input, select, button')) return;
   const h = e.target.closest('[data-bxt]'); if (!h) return;
