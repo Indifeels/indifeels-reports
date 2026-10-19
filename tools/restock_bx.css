@@ -74,6 +74,8 @@
 :root[data-theme=light] .sc-body .mc tr.mt,:root[data-theme=light] .sc-body .bx-prod table{background:#e3ebf7!important}
 :root[data-theme=light] .sc-body .bx-prod th{color:#51627d}
 .sc-n:empty{display:none}
+.low.addl{background:#4a2f7a!important;color:#e6d9ff!important;border:0!important}
+:root[data-theme=light] .low.addl{background:#e9defa!important;color:#4a2f7a!important}
 /*BXCSS_END*/
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
