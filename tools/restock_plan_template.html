@@ -719,6 +719,9 @@ select.sel{appearance:none;-webkit-appearance:none}
 .addsz .btn{padding:4px 10px;font-size:13px}
 .xsz{font-size:12.5px;color:var(--muted);margin:0 0 6px}
 .pv .vh b.szt{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+@media all{.suprow{margin:0 0 6px}.supsel{max-width:100%;min-width:190px;padding:5px 10px;font-size:13px;font-weight:700;border-radius:8px;border:1px solid transparent;color:#fff}
+.supsel.none{background:#7a1018;border-color:#a3262e}.supsel.has{background:#1d7a3b;border-color:#2c9a4d}.supsel option{background:var(--bg);color:var(--text);font-weight:400}
+.supconf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}}
 #szmenu{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
 #szmenu[hidden]{display:none}
 #szmenu .m{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:14px;width:min(360px,100%);box-shadow:0 20px 50px rgba(0,0,0,.6)}
@@ -1507,7 +1510,7 @@ function cardHtml(g){
         <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
       </div>
       <div class="hnum ${P.units ? '' : 'zero'}"><div class="prow">${pTag(g)}</div><div class="pnum"><b>${P.units}</b><span>to order</span></div><div class="psd" title="Total units sold, all variants"><b>${P.total}</b> sold</div></div></div>
-    <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>${P.disc ? '' : addSizeHtml(P)}
+    <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}${supRowHtml(P)}<div class="pbar">${btns('pbtn')}</div>${P.disc ? '' : addSizeHtml(P)}
       <div class="scroll dtable"><table>
       <thead><tr><th>Priority</th><th>Variant</th><th>Sold</th><th>Days / 1 sold</th><th>Days left</th><th class="g1">Current stock</th><th class="g2">Required stock</th><th class="g3">To order</th><th>Supplier</th><th>Status</th></tr></thead>
       <tbody>${rows.map(x => x.tr).join('')}</tbody></table></div>
@@ -1600,6 +1603,18 @@ $('boxes').addEventListener('click', e => {
   const h = e.target.closest('[data-bxt]'); if (!h) return;
   const s = h.closest('.bx'); s.classList.toggle('open'); myOpen.set(h.getAttribute('data-bxt'), s.classList.contains('open'));
 });
+/* Supplier picker on each product: red = no supplier yet, green = has one. Names come from the Shopify supplier list (plus names already in use). */
+const supName = v => String(v || '').replace(/^\s*\d+\s*:\s*/, '').trim();
+function supplierNames(){
+  const set = new Set();
+  [].concat(data.suppliers || [], data.products.map(p => supName(p.supplier)), (typeof svUsers !== 'undefined' ? svUsers : []).map(u => supName(u.supplier)), [...orders.values()].filter(o => o.claimed).map(o => supName(o.supplier))).forEach(n => { if (n && !/^unassigned$/i.test(n)) set.add(n); });
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+function supRowHtml(P){
+  const pid = String(P.p.id), cur = supName(P.supplier), names = supplierNames();
+  if (cur && !names.includes(cur)) names.push(cur);
+  return `<div class="suprow" data-suprow="${esc(pid)}"><select class="supsel ${cur ? 'has' : 'none'}" data-supsel="${esc(pid)}" data-cur="${esc(cur)}" aria-label="Supplier" title="Supplier for this product (saved to Shopify too)">${cur ? '' : '<option value="">No supplier: pick one</option>'}${names.map(n => `<option value="${esc(n)}"${n === cur ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></div>`;
+}
 /* Add size: order a size this product doesn't have yet. Options are only sizes already defined in Shopify for products of the same category
    (taken verbatim from their variant titles, dashes and all), minus the ones this product already has. A normal order line, just under that size's name. */
 let _catSizes = null;
@@ -1909,6 +1924,23 @@ $('wrong').addEventListener('click', async e => {
     else return;
   } catch (err) { notify('Could not update: ' + err.message); }
   render();
+});
+$('list').addEventListener('change', async e => {
+  const el = e.target.closest('select[data-supsel]'); if (!el || !el.value) return;
+  const pid = el.getAttribute('data-supsel'), sup = el.value, cur = el.getAttribute('data-cur'), row = el.closest('.suprow');
+  const apply = async () => {
+    row.innerHTML = '<span class="supconf">Saving…</span>';
+    try {
+      await Store.setTag(pid, sup);
+      const pr = data.products.find(p => String(p.id) === pid); if (pr) pr.supplier = sup;
+      for (const o of orders.values()) if (String(o.product_id) === pid && o.status === 'saved' && !o.claimed && (!o.supplier || /^unassigned$/i.test(o.supplier))) o.supplier = sup;
+      notify('Supplier set to ' + sup + '. It is saved to Shopify on the next refresh (after the next order, or at midnight).', true);
+    } catch (err) { notify('Could not save supplier: ' + err.message); }
+    render();
+  };
+  if (!cur) { await apply(); return; }
+  row.innerHTML = `<span class="supconf">Change supplier from <b>${esc(cur)}</b> to <b>${esc(sup)}</b>? <button class="btn" data-supok>Yes, change</button> <button class="btn" data-supno>Cancel</button></span>`;
+  row.querySelector('[data-supok]').onclick = apply; row.querySelector('[data-supno]').onclick = () => render();
 });
 $('list').addEventListener('click', async e => {
   const t = e.target;
