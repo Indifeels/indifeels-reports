@@ -73,6 +73,15 @@ jobs:
           path: build.log
           if-no-files-found: ignore
 
+      - name: Push build log to debug branch
+        if: failure() && steps.gate.outputs.go == '1'
+        run: |
+          git config user.name "stock take bot"
+          git config user.email "actions@users.noreply.github.com"
+          git checkout -q --orphan st-debug
+          git rm -rfq . >/dev/null 2>&1 || true
+          git add -f build.log && git commit -qm "stock take build log" && git push -qf origin st-debug || true
+
       - name: Verify report files
         if: steps.gate.outputs.go == '1'
         run: |
