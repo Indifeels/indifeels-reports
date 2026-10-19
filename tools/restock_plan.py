@@ -207,7 +207,7 @@ SUP_DEF_SET = """mutation($d:MetafieldDefinitionUpdateInput!){ metafieldDefiniti
 def supplier_choices():
     """Supplier names allowed on Shopify's custom.supplier_name (its 'choices' list). Never raises."""
     try:
-        for n in pv.gql(SUP_DEF)["data"]["metafieldDefinitions"]["nodes"][:1]:
+        for n in pv.gql(SUP_DEF, {})["data"]["metafieldDefinitions"]["nodes"][:1]:
             for v in n["validations"]:
                 if v["name"] == "choices":
                     return [str(x) for x in json.loads(v["value"])]
@@ -218,6 +218,9 @@ def supplier_choices():
 
 def add_supplier_choice(name, choices):
     """Add a brand-new supplier name to the Shopify choices list so it can be set on products (and then shows in every dropdown)."""
+    if not choices:
+        print("supplier choice add skipped: could not read the current list")   # never overwrite the list blind
+        return False
     if any(c.strip().lower() == name.strip().lower() for c in choices):
         return True
     try:
