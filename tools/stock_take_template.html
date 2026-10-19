@@ -96,6 +96,9 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .pushbox{margin-top:10px;padding:12px;border:1px solid var(--green);border-radius:12px;background:var(--card2);font-size:14px;line-height:1.5}
 .pushbox label{display:flex;gap:10px;align-items:center;margin:10px 0;color:var(--text)}.pushbox input[type=checkbox]{width:22px;height:22px}
 .pushbox .pm{margin-top:8px;font-size:14px}.pushbox .pm.bad{color:var(--red)}.pushbox .pm.ok{color:var(--green);font-weight:700}
+.ssx{flex:none;margin-left:auto;padding:2px 8px;border-radius:8px;color:var(--muted);font-size:16px;line-height:1}.ssx:hover{background:var(--grey-bg);color:var(--text)}
+.sso div{align-items:center}.sso .th{flex:none;width:40px;height:40px;border-radius:8px;background:var(--grey-bg);overflow:hidden}.sso .th img{width:100%;height:100%;object-fit:cover;display:block}.sso .tx{flex:1;min-width:0}
+.ssb .ssl{flex:1;min-width:0}
 @media(max-width:640px){
  body{font-size:16px}
  .wrap{padding:0 8px 60px}
@@ -157,6 +160,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
           <div class="fld">Size / variant (optional)<div class="ss" id="ssSize"></div></div>
           <div class="fld">Design (optional)<div class="ss" id="ssDes"></div></div>
         </div>
+        <div style="margin-top:8px"><button type="button" id="tkClearAll" hidden>✕ Clear selection</button></div>
         <div class="foot"><span class="sum" id="tkScope">Pick a collection to begin.</span><button class="pri" id="tkStart" disabled>Start stock take</button></div>
       </div>
       <div class="bk" id="tkOpenBox" hidden><h3>Paused stock takes</h3><div id="tkOpen"></div></div>
@@ -261,18 +265,22 @@ const locName = id => (locs.find(l => l.id === String(id)) || {}).name || '';
 const loadLocs = () => locsP || (locsP = Store.locs().then(r => { locs = r.locations || []; return locs; }).catch(e => { locsP = null; throw e; }));
 
 /* ---------- searchable select ---------- */
-function Sel(root, ph) {
-  root.innerHTML = `<button type="button" class="ssb"><span class="ssl">${E(ph)}</span><i>▾</i></button><div class="ssp"><input type="text" placeholder="Search…" autocomplete="off"><div class="sso"></div></div>`;
+const pidImg = new Map(V.map(v => [v.pid, v.image]));
+function Sel(root, ph, thumb) {
+  root.innerHTML = `<button type="button" class="ssb"><span class="ssl">${E(ph)}</span><span class="ssx" role="button" aria-label="Clear" hidden>✕</span><i>▾</i></button><div class="ssp"><input type="text" placeholder="Search…" autocomplete="off"><div class="sso"></div></div>`;
   const b = root.querySelector('.ssb'), inp = root.querySelector('input'), box = root.querySelector('.sso');
+  const xb = root.querySelector('.ssx');
   let opts = [], cur = {v: '', l: ph}, onpick = () => {};
+  const sync = () => { xb.hidden = !cur.v; };
+  xb.onclick = e => { e.stopPropagation(); cur = {v: '', l: ph}; root.querySelector('.ssl').textContent = ph; sync(); root.classList.remove('open'); onpick(cur); };
   const draw = () => {
     const q = inp.value.trim().toLowerCase(), list = opts.filter(o => !q || o.l.toLowerCase().includes(q)).slice(0, 200);
-    box.innerHTML = list.length ? list.map((o, i) => `<div data-i="${opts.indexOf(o)}">${E(o.l)}${o.s ? `<small>${E(o.s)}</small>` : ''}</div>`).join('') : '<div class="none">No match</div>';
+    box.innerHTML = list.length ? list.map((o, i) => { const im = thumb && o.v ? pidImg.get(o.v) : ''; return `<div data-i="${opts.indexOf(o)}">${thumb && o.v ? `<span class="th">${im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}</span>` : ''}<span class="tx">${E(o.l)}</span>${o.s ? `<small>${E(o.s)}</small>` : ''}</div>`; }).join('') : '<div class="none">No match</div>';
   };
   b.onclick = e => { e.stopPropagation(); const was = root.classList.contains('open'); document.querySelectorAll('.ss.open').forEach(x => x.classList.remove('open')); if (!was) { root.classList.add('open'); inp.value = ''; draw(); inp.focus(); } };
-  box.onclick = e => { const d = e.target.closest('[data-i]'); if (!d) return; cur = opts[+d.getAttribute('data-i')]; root.querySelector('.ssl').textContent = cur.l; root.classList.remove('open'); onpick(cur); };
+  box.onclick = e => { const d = e.target.closest('[data-i]'); if (!d) return; cur = opts[+d.getAttribute('data-i')]; root.querySelector('.ssl').textContent = cur.l; sync(); root.classList.remove('open'); onpick(cur); };
   inp.oninput = draw; root.querySelector('.ssp').onclick = e => e.stopPropagation();
-  return {set: (o, keep) => { opts = o; if (!keep) { cur = {v: '', l: ph}; root.querySelector('.ssl').textContent = ph; } }, get: () => cur.v, label: () => cur.l, disable: x => b.classList.toggle('dis', !!x), onpick: f => { onpick = f; }, reset: () => { cur = {v: '', l: ph}; root.querySelector('.ssl').textContent = ph; }};
+  return {set: (o, keep) => { opts = o; if (!keep) { cur = {v: '', l: ph}; root.querySelector('.ssl').textContent = ph; sync(); } }, get: () => cur.v, label: () => cur.l, disable: x => b.classList.toggle('dis', !!x), onpick: f => { onpick = f; }, reset: () => { cur = {v: '', l: ph}; root.querySelector('.ssl').textContent = ph; sync(); }};
 }
 document.addEventListener('click', () => document.querySelectorAll('.ss.open').forEach(x => x.classList.remove('open')));
 
@@ -371,7 +379,7 @@ document.addEventListener('click', () => document.querySelectorAll('.ss.open').f
    STOCK TAKE
    ===================================================================== */
 let take = null, filt = 'all', endArmed = false, setupReady = false;
-const ssCol = Sel($('ssCol'), 'Choose a collection…'), ssSize = Sel($('ssSize'), 'All sizes'), ssDes = Sel($('ssDes'), 'All designs');
+const ssCol = Sel($('ssCol'), 'Choose a collection…'), ssSize = Sel($('ssSize'), 'All sizes'), ssDes = Sel($('ssDes'), 'All designs', true);
 const tkMsg = (t, k) => { const m = $('tkMsg'); m.textContent = t || ''; m.className = 'msg' + (k ? ' ' + k : ''); };
 const uid = () => 'st' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const expOf = v => (v.q[take.loc] || 0);
@@ -381,6 +389,7 @@ function scopeVars(f, loc) {
 }
 function setupScope() {
   const loc = $('tkLoc').value, f = {col: ssCol.get(), size: ssSize.get(), pid: ssDes.get()};
+  $('tkClearAll').hidden = !(f.col || f.size || f.pid);
   if (!f.col) { $('tkScope').textContent = 'Pick a collection to begin.'; $('tkStart').disabled = true; return null; }
   const vs = scopeVars(f).filter(v => (v.q[loc] || 0) > 0), pcs = vs.reduce((a, v) => a + (v.q[loc] || 0), 0);
   $('tkScope').textContent = vs.length ? `${pcs} piece${pcs === 1 ? '' : 's'} across ${vs.length} variant${vs.length === 1 ? '' : 's'}` : 'No stock at this location for that filter.';
@@ -397,6 +406,7 @@ function refreshSetupLists() {
 ssCol.onpick(() => { ssSize.reset(); ssDes.reset(); refreshSetupLists(); setupScope(); });
 ssSize.onpick(() => { ssDes.reset(); const col = ssCol.get(), ds = new Map(); V.filter(v => (!col || v.cols.includes(col)) && (!ssSize.get() || v.t === ssSize.get())).forEach(v => ds.set(v.pid, v.pt)); ssDes.set([{v: '', l: 'All designs'}].concat([...ds.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t})))); setupScope(); });
 ssDes.onpick(setupScope);
+$('tkClearAll').onclick = () => { ssCol.reset(); ssSize.reset(); ssDes.reset(); refreshSetupLists(); setupScope(); };
 $('tkLoc').onchange = setupScope;
 
 async function takeOpen() {
