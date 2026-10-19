@@ -84,7 +84,41 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .stp{display:inline-flex;align-items:center;gap:6px}.stp b{min-width:30px;text-align:center;font-size:18px}.stp button{padding:2px 12px;font-weight:700;font-size:17px}
 .low{display:inline-block;background:var(--amber-bg);color:var(--amber);border-radius:999px;padding:1px 10px;font-size:12.5px;font-weight:700;margin-left:6px}
 @media (max-width:700px){.bx-prod{flex-direction:column}.bx-right{margin-left:0}}
+
+.bx-right button.recvbox{background:rgba(63,185,80,.18);color:#7ee787;border:1px solid rgba(63,185,80,.5);border-radius:999px;padding:3px 12px;font-weight:700;font-size:13px}
+.bx-prod td.st{text-align:right;white-space:nowrap}
+.bx-prod .low{display:block;margin:3px 0 0;text-align:center;white-space:normal}
+.bx-prod td.q .low{font-size:11.5px;padding:1px 8px}
+@media (max-width:700px){.bx-body{padding:10px}.bx-prod{padding:10px;gap:10px}.bx-prod table{width:100%;table-layout:auto}.bx-prod th{padding:4px 4px;font-size:11px}.bx-prod td{padding:6px 4px;font-size:14.5px}.bx-prod td.q{font-size:16px}.bx-prod img,.bx-prod .ph{width:72px;height:72px}.bx-h{padding:12px 14px;gap:6px 10px}.bx-title{font-size:18px}.bx-sum,.bx-right{font-size:14px}.bx-prod td.st button{padding:4px 8px;font-size:13px}}
 /*BXCSS_END*/
+
+.bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
+
+.bx .pl{display:block;flex:none;line-height:0}
+.bx .pn{font-weight:800;font-size:16.5px;margin:2px 0 6px}.bx .pn a{color:var(--text);text-decoration:none}.bx .pn a:hover{color:var(--blue);text-decoration:underline}
+.bx-prod .pc{flex:1;min-width:0}.bx-prod .pc table{width:100%}
+
+.bx .pnrow{display:flex;gap:10px 14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}.bx .pnrow .pn{margin:0}
+.bx .pmv{display:inline-flex;gap:10px;align-items:center}.bx .pmv .ck{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;color:var(--muted);font-weight:600}
+.bx .bx-mvbox{display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pact{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:2px 0 10px;padding:8px 10px;border-radius:10px;background:var(--grey-bg,rgba(128,128,128,.12))}
+.pact .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600}
+.pact select{font-size:14px;padding:6px 8px}
+.dq{display:inline-block;font-size:12.5px;font-weight:700;padding:4px 12px;border-radius:999px;background:#b7791f;color:#fff}
+.pact button.danger,.mc button.danger{color:var(--red);border-color:var(--red);font-weight:600}
+.pact button.dsc{margin-left:auto;font-size:12px;padding:3px 10px;min-height:0;line-height:1.3;opacity:.85;max-width:230px;white-space:normal;text-align:center}
+.pact button.dsc.arm{opacity:1}
+.pact button.danger.arm,.mc button.danger.arm{background:var(--red);color:#fff}
+
+@media (max-width:700px){
+  .pact{flex-direction:column;align-items:stretch;gap:8px;grid-column:1/-1;width:100%;box-sizing:border-box}
+  .pact .bx-mvto{display:flex;flex-direction:column;align-items:stretch;gap:4px}
+  .pact select,.pact button{width:100%;box-sizing:border-box;min-height:42px}
+}
+@media (max-width:700px){
+  .pact button.dsc{width:auto;min-height:0;align-self:flex-end;margin-left:auto}
+}
+.mc .pact{background:none;padding:0;margin:0 0 2px}
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
 
@@ -434,18 +468,20 @@ const bxDisc = (pid, o) => {
 function bxTile(b, lines, o) {
   const shipped = b.status === 'shipped', units = lines.reduce((a, r) => a + bxEff(r), 0), n = lines.length;
   const d = shipped ? bxShipDate(b) : null, url = bxUrl(b.tracking_url);
+  const live = lines.filter(r => r.status === 'shipped').length, rem = o.rem || (() => 0);
   const head = `<div class="bx-h" data-bxt="${bxEsc(b.box_no)}"><span class="chev">▶</span>
     <span class="bx-title">${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
     <span class="bx-pill ${shipped ? 'sh' : 'op'}">${shipped ? 'Shipped' : 'Open'}</span>
     <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}</span>
-    <span class="bx-right">${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : ''}${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track</a>' : ''}</span></div>`;
+    <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : ''}${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track</a>' : ''}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
   const mvSel = (key, label) => `<select data-mvg="${bxEsc(key)}"><option value="">${label}</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select>`;
   const selN = o.selP ? [...o.selP].filter(k => k.startsWith(b.box_no + '|')).length : 0;
-  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${(!o.ro && !shipped) ? `<div class="pnrow">${bxName(g[0]) || '<div class="pn"></div>'}<span class="pmv"><label class="ck"><input type="checkbox" data-selp="${bxEsc(b.box_no + '|' + g[0].product_id)}" ${(o.selP && o.selP.has(b.box_no + '|' + g[0].product_id)) ? 'checked' : ''}> Select</label></span></div><div class="pact"><label class="bx-mvto">Move whole product (${g.length} variant${g.length === 1 ? '' : 's'}) to<select data-mvg="${bxEsc('p:' + b.box_no + '|' + g[0].product_id)}"><option value="">Choose box…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select></label>${bxDisc(g[0].product_id, o)}</div>` : bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Shipped' : 'Shipping'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
-    ${g.slice().sort(bxByVariant).map(r => `<tr><td>${bxEsc(r.variant_title)}${r.wrong_pick ? '<span class="wp" title="Tagged to another supplier">⚠ wrong pick</span>' : ''}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td>
+  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${(!o.ro && !shipped) ? `<div class="pnrow">${bxName(g[0]) || '<div class="pn"></div>'}<span class="pmv"><label class="ck"><input type="checkbox" data-selp="${bxEsc(b.box_no + '|' + g[0].product_id)}" ${(o.selP && o.selP.has(b.box_no + '|' + g[0].product_id)) ? 'checked' : ''}> Select</label></span></div><div class="pact"><label class="bx-mvto">Move whole product (${g.length} variant${g.length === 1 ? '' : 's'}) to<select data-mvg="${bxEsc('p:' + b.box_no + '|' + g[0].product_id)}"><option value="">Choose box…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select></label>${bxDisc(g[0].product_id, o)}</div>` : bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Packed' : 'Packed'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
+    ${g.slice().sort(bxByVariant).map(r => { const more = rem(r), recvd = r.status === 'received', canRecv = o.recv && r.status === 'shipped';
+      return `<tr><td>${bxEsc(r.variant_title)}${r.wrong_pick ? '<span class="wp" title="Tagged to another supplier">⚠ wrong pick</span>' : ''}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}${more > 0 ? '<span class="low" title="Still on the master list, not in this box">+' + more + ' more ordered</span>' : ''}</td>
       <td class="q">${(!o.ro && !shipped) ? `<span class="stp"><button data-q="-1" data-id="${bxEsc(r.id)}" ${bxEff(r) <= 0 ? 'disabled' : ''}>−</button><b>${bxEff(r)}</b><button data-q="1" data-id="${bxEsc(r.id)}" ${bxEff(r) >= r.qty ? 'disabled' : ''}>+</button></span>` : bxEff(r)}${bxEff(r) < r.qty ? '<span class="low">short ' + (r.qty - bxEff(r)) + '</span>' : ''}</td>
-      <td>${(!o.ro && !shipped) ? `<span style="display:inline-flex;gap:8px;align-items:center"><select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select><button class="x" data-rm="${bxEsc(r.id)}" title="Remove from this box (back to the master list)">✕</button></span>` : (r.status === 'received' ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Restocked</span>' : shipped ? '<span class="low" style="background:var(--green-bg);color:var(--green)">🚚 On the way</span>' : '')}</td></tr>`).join('')}
+      <td class="st">${(!o.ro && !shipped) ? `<span style="display:inline-flex;gap:8px;align-items:center"><select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select><button class="x" data-rm="${bxEsc(r.id)}" title="Remove from this box (back to the master list)">✕</button></span>` : recvd ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Received</span>' : canRecv ? `<button class="recv" data-recv="${bxEsc(r.id)}">Received</button>` : ''}</td></tr>`; }).join('')}
     </tbody></table></div></div>`;
   let body = n ? bxGroup(lines).map(rows).join('') : `<div class="bx-empty">Nothing in this box yet. Pick items from the master list and press “Add to box”.</div>`;
   if (!o.ro && !shipped) {
@@ -515,7 +551,7 @@ function render(){
   html += order.map(b => {
     const lines = S.orders.filter(r => r.box_no === b.box_no && ['added', 'shipped', 'received'].includes(r.status));
     const isOpen = openState.has(b.box_no) ? openState.get(b.box_no) : b.status === 'open';
-    return bxTile(b, lines, {ro: false, open: isOpen, openBoxes: openNos, armDel, delTo, selP, lastOpen: openNos[0], canDisc: true, discPend: discSet(), armDisc});
+    return bxTile(b, lines, {rem: remOf, ro: false, open: isOpen, openBoxes: openNos, armDel, delTo, selP, lastOpen: openNos[0], canDisc: true, discPend: discSet(), armDisc});
   }).join('');
   // shipped lines from before boxes existed (no box row): show them as shipped tiles
   const known = new Set(S.boxes.map(b => b.box_no)), legacy = new Map();
@@ -524,6 +560,7 @@ function render(){
   $('boxes').innerHTML = html || '<div class="empty">No boxes yet.</div>';
 }
 
+const remOf = r => S.orders.filter(x => x.status === 'saved' && !x.claimed && x.vkey === r.vkey).reduce((a, x) => a + x.qty, 0);
 let busy = false;
 async function load(){
   if (busy) return;
@@ -580,7 +617,7 @@ $('boxes').addEventListener('click', e => {
   if (q) {
     const r = S.orders.find(x => x.id === q.getAttribute('data-id')); if (!r) return;
     const n = Math.max(0, Math.min(r.qty, bxEff(r) + (+q.getAttribute('data-q'))));
-    r.ship_qty = n >= r.qty ? null : n; render();                       // instant feedback, then save
+    if (n >= r.qty) r.ship_qty = null; else if (n > 0) { r.qty = n; r.ship_qty = null; } render();                       // instant feedback, then save
     act(() => Store.setQty(r.id, n)); return;
   }
   const rm = t.closest('[data-rm]');
