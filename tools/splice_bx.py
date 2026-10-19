@@ -2,7 +2,7 @@
 (the templates are shipped as single self-contained pages)."""
 import os, re, sys
 T = os.path.dirname(os.path.abspath(__file__))
-css = open(os.path.join(T, "restock_bx.css"), encoding="utf-8").read().strip()
+css = open(os.path.join(T, "restock_bx.css"), encoding="utf-8").read(); css = css[css.index("/*BXCSS_START*/"):css.index("/*BXCSS_END*/") + len("/*BXCSS_END*/")]  # only the marked block (anything after it stays out of the templates)
 js = open(os.path.join(T, "restock_bx.js"), encoding="utf-8").read().strip()
 for f in ("restock_supplier_template.html", "restock_plan_template.html"):
     p = os.path.join(T, f); s = open(p, encoding="utf-8").read()
