@@ -45,13 +45,13 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-10-19T14:00+11:00",
-  "code_sha": "5e567dfd629fd4a862af2f0459ccf00b667b4706",
+  "at": "2026-10-19T20:00+11:00",
+  "code_sha": "5885b2f1db51ae672b27e5e4eb2596fecd9f29bd",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-10-19T06:00+11:00",
+  "last_ok": "2026-10-19T20:00+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
-  "ok": false,
-  "reason": "Google tracked refresh failed; check GitHub Actions"
+  "ok": true,
+  "reason": ""
  },
  "monthly": {
   "at": "2026-10-19T14:05+11:00",
