@@ -57,7 +57,7 @@ def build():
         if "/InventoryItem/" in l.get("id", "") and l.get("__parentId") in variants:
             items[l["id"]] = variants[l["__parentId"]]
     for l in lines:
-        if "/InventoryLevel/" not in l.get("id", ""):
+        if "location" not in l or "quantities" not in l:
             continue
         v = variants.get(l.get("__parentId")) or items.get(l.get("__parentId"))
         loc = l.get("location") or {}
