@@ -595,7 +595,10 @@ const bxImg0 = r => { const s = r.image ? bxEsc(r.image) + (r.image.includes('?'
 const bxImg = r => { const u = bxLink(r.product_url); return u ? `<a class="pl" href="${u}" target="_blank" rel="noopener noreferrer" title="Open product page">${bxImg0(r)}</a>` : bxImg0(r); };
 /* product name, linked the same way */
 const bxName = r => { if (!r.product_title) return ''; const u = bxLink(r.product_url), t = bxEsc(r.product_title); return `<div class="pn">${u ? `<a href="${u}" target="_blank" rel="noopener noreferrer" title="Open product page">${t} ↗</a>` : t}</div>`; };
-const bxByVariant = (a, b) => String(a.variant_title).localeCompare(String(b.variant_title), undefined, {numeric: true});
+const bxSizeRank = t => { const v = String(t || '').split('-')[0].trim().toUpperCase().replace(/\s+/g, ''); const f = {XXS: 0, XS: 1, S: 2, M: 3, L: 4, XL: 5}; if (v in f) return f[v];
+  let m = /^(\d+)XL$/.exec(v); if (m) return 4 + +m[1]; m = /^(X{2,})L$/.exec(v); if (m) return 4 + m[1].length; return 99; };
+const bxChest = t => { const m = /-\s*(\d+)/.exec(String(t || '')); return m ? +m[1] : 999; };
+const bxByVariant = (a, b) => (bxChest(a.variant_title) - bxChest(b.variant_title)) || (bxSizeRank(a.variant_title) - bxSizeRank(b.variant_title)) || String(a.variant_title).localeCompare(String(b.variant_title), undefined, {numeric: true});
 function bxGroup(list) { const m = new Map(); list.forEach(r => { if (!m.has(r.product_id)) m.set(r.product_id, []); m.get(r.product_id).push(r); }); return [...m.values()]; }
 const bxToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
