@@ -1490,6 +1490,21 @@ $('boxes').addEventListener('click', e => {
   const h = e.target.closest('[data-bxt]'); if (!h) return;
   const s = h.closest('.bx'); s.classList.toggle('open'); myOpen.set(h.getAttribute('data-bxt'), s.classList.contains('open'));
 });
+function alignPbars(){
+  document.querySelectorAll('#list .card.open').forEach(card => {
+    const bar = card.querySelector('.pbar'), step = card.querySelector('.step');
+    if (!bar || !step) return;
+    const set = bar.querySelector('[data-pset]'), all = bar.querySelector('[data-psave]'); if (!set || !all) return;
+    const sv = step.nextElementSibling && step.nextElementSibling.tagName === 'BUTTON' ? step.nextElementSibling : null;
+    [set, all].forEach(b => { b.style.marginLeft = ''; b.style.width = ''; });
+    all.style.marginLeft = '0';
+    const sr = step.getBoundingClientRect(), pr = (set.previousElementSibling || bar).getBoundingClientRect();
+    set.style.marginLeft = Math.max(8, sr.left - pr.right) + 'px'; set.style.width = sr.width + 'px'; set.style.padding = '6px 2px'; set.style.whiteSpace = 'nowrap';
+    if (sv) { const vr = sv.getBoundingClientRect(); all.style.marginLeft = Math.max(8, vr.left - sr.right) + 'px'; all.style.width = vr.width + 'px'; all.style.padding = '6px 2px'; }
+  });
+}
+window.addEventListener('resize', () => requestAnimationFrame(alignPbars));
+new MutationObserver(() => requestAnimationFrame(alignPbars)).observe(document.getElementById('list'), {childList: true, subtree: true, attributes: true, attributeFilter: ['class']});
 function render(){
   setTimeout(() => { try { saveLabel(); } catch (e) {} }, 0);
   indexOrders();
