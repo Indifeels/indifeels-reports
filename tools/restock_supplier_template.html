@@ -513,16 +513,17 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
   .mbar #boxsel{grid-column:1/-1;grid-row:3;width:100%;min-width:0;flex:none;padding:10px 12px;font-weight:700}
   .mbar #addsel{grid-column:1/-1;grid-row:4;width:100%;flex:none}
 }
+
+header .hrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+header .hbtns{display:flex;gap:8px;flex:none}
+header .hd .who{font-size:18px;font-weight:700;padding:8px 18px;margin-top:10px;border-radius:999px}
+header .hd h1{flex:1;min-width:0}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="hd"><h1>Indifeels Restock</h1><div class="portal">Supplier Portal</div><div class="who" id="who"></div></div>
-    <a id="guide" class="gbtn" target="_blank" rel="noopener noreferrer" hidden>📘 How it works</a>
-    <a id="guidepdf" class="gbtn" target="_blank" rel="noopener noreferrer" hidden>⬇ PDF</a>
-    <button id="refresh">Refresh</button>
-    <button id="theme" title="Light / dark">◐</button>
+    <div class="hd"><div class="hrow"><h1>Indifeels Restock</h1><div class="hbtns"><button id="refresh">↻ Refresh</button><button id="theme" title="Light / dark">◐</button></div></div><div class="portal">Supplier Portal</div><div class="who" id="who"></div></div>
   </header>
 
   <section class="sc sc-order" id="sc-order"><div class="sc-h" data-sct="order"><span class="chev">▶</span><span class="sc-t">📋 Order list</span><span class="sc-n" id="mcount"></span><span class="sc-hint"><i class="h-c">Click to open</i><i class="h-o">Click to close</i></span></div>
@@ -776,7 +777,6 @@ $('addsel').addEventListener('click', () => {
 });
 $('newbox').addEventListener('click', () => act(() => Store.newBox(), b => 'Ready: ' + b));
 $('refresh').addEventListener('click', load);
-call('guide').then(g => { if (g && g.page) { $('guide').href = g.page; $('guide').hidden = false; $('guidepdf').href = g.pdf; $('guidepdf').hidden = false; } }).catch(() => {});
 $('boxes').addEventListener('click', e => {
   if (onDisc(e)) return;
   const t = e.target;
