@@ -713,11 +713,13 @@ select.sel{appearance:none;-webkit-appearance:none}
 .pbar .pbtn{flex:none;padding:6px 12px;font-size:13px;font-weight:700}
 .pbar .pbtn[data-psave]{background:var(--blue);color:#06101c;border-color:var(--blue);margin-left:auto}
 .pbar .pbtn[data-disc]{color:var(--muted)}
-.addsz{display:flex;gap:8px;align-items:center;margin:0 0 6px}.addsz[hidden]{display:none}
-.addsz .asz{flex:1 1 90px;min-width:0;max-width:160px}.addsz .aqt{flex:none;width:64px}
-.addsz input{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:14px}
-.xrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 6px}
-.xsz{font-size:12.5px;color:var(--muted)}
+.addsz{display:flex;gap:6px;align-items:center;margin:0 0 6px}.addsz[hidden]{display:none}
+.addsz .asz{flex:0 1 150px;min-width:0}.addsz .aqt{flex:none;width:58px}
+.addsz select,.addsz input{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:13px}
+.addsz .btn{padding:4px 10px;font-size:13px}
+.xsz{font-size:12.5px;color:var(--muted);margin:0 0 6px}
+.pbtn .sm{display:none}
+@media(max-width:799px){.pbar{gap:4px}.pbar .pbtn{padding:6px 5px;font-size:12px}.pbtn .lg{display:none}.pbtn .sm{display:inline}}
 .card-h .hbtn{display:none}
 .card-h .tiles{display:none}
 .dtable{display:none}
@@ -747,7 +749,7 @@ select.sel{appearance:none;-webkit-appearance:none}
   .dtable{display:none}.ptable{display:block}
   .card-h .hbtn{display:none}.card-h .tiles{display:none}.card-h .hnum{display:block}.pbar{display:flex}
   #viewMine{max-width:980px;margin-left:auto;margin-right:auto}
-  .pbar .pbtn[data-disc],.pbar .pbtn[data-park]{min-width:112px;text-align:center}
+  .pbar .pbtn[data-disc],.pbar .pbtn[data-park],.pbar .pbtn[data-paddsz]{min-width:112px;text-align:center}
   #viewMine .card-h{flex-wrap:nowrap!important}
   #viewMine .card-h .ttl{flex:1 1 auto!important;min-width:0}
   #viewMine .card-h .thumb{width:44px;height:44px}
@@ -1467,7 +1469,7 @@ function cardHtml(g){
   const tag = (P.parked ? '<span class="tag dc">Parked</span>' : '') + (P.disc ? '<span class="tag dc">Discontinued</span>' : '') + (P.isNew ? '<span class="tag nw">New</span>' : '') + (!P.elig ? '<span class="tag ne">Not eligible</span>' : '');
   const arm = armed.has(pid);
   const worst = ['red','orange','yellow','green'].find(l => g.rows.some(r => r.level === l)) || 'grey';
-  const btns = (cls) => `<button class="disc ${cls}${arm?' arm':''}" data-disc="${esc(pid)}" data-to="${P.disc?0:1}" title="${P.disc ? 'Put this product back into restocking' : 'Stop restocking this product and mark it discontinued in Shopify'}">${P.disc ? 'Reinstate' : arm ? 'Confirm discontinue?' : 'Discontinue'}</button>` +
+  const btns = (cls) => (P.disc ? '' : `<button class="disc ${cls}" data-paddsz="${esc(pid)}" title="Order a size this product doesn't have yet, picked from the sizes already used in its category"><span class="lg">Add size</span><span class="sm">+ Size</span></button>`) + `<button class="disc ${cls}${arm?' arm':''}" data-disc="${esc(pid)}" data-to="${P.disc?0:1}" title="${P.disc ? 'Put this product back into restocking' : 'Stop restocking this product and mark it discontinued in Shopify'}">${P.disc ? 'Reinstate' : arm ? 'Confirm discontinue?' : 'Discontinue'}</button>` +
     `<button class="disc ${cls}" data-park="${esc(pid)}" data-to="${P.parked?0:1}" title="${P.parked ? 'Bring this product back into the list' : 'Park: can\'t restock right now. Hidden here only, nothing changes on the website'}">${P.parked ? 'Unpark' : 'Park'}</button>` +
     (P.disc ? '' : `<button class="disc ${cls}${armed.has('set' + pid) ? ' arm' : ''}" data-pset="${esc(pid)}" title="Order 1 piece of every size of this product">${armed.has('set' + pid) ? 'Tap again: 1 of each size' : 'Add full set'}</button>`) +
     (P.disc ? '' : `<button class="disc ${cls}" data-psave="${esc(pid)}" title="Save the quantity of every variant of this product that has one to order">Save all</button>`);
@@ -1577,13 +1579,31 @@ $('boxes').addEventListener('click', e => {
   const h = e.target.closest('[data-bxt]'); if (!h) return;
   const s = h.closest('.bx'); s.classList.toggle('open'); myOpen.set(h.getAttribute('data-bxt'), s.classList.contains('open'));
 });
-/* order a size the product doesn't have yet: a normal order line (supplier sees it on the Order list), just under a new size name */
+/* Add size: order a size this product doesn't have yet. Options are only sizes already defined in Shopify for products of the same category
+   (taken verbatim from their variant titles, dashes and all), minus the ones this product already has. A normal order line, just under that size's name. */
+let _catSizes = null;
+function catSizes(){
+  if (_catSizes) return _catSizes; _catSizes = new Map();
+  data.products.forEach(p => { const c = catOf(p); if (!_catSizes.has(c)) _catSizes.set(c, new Map()); const m = _catSizes.get(c);
+    p.variants.forEach(v => { const t = String(v[0] || '').trim(); if (!t || /default title/i.test(t) || t.includes('/')) return; const k = t.toLowerCase(); m.set(k, {t, n: (m.has(k) ? m.get(k).n : 0) + 1}); }); });
+  return _catSizes;
+}
+const sizeId = t => { const m = /-\s*(\d+)\s*$/.exec(t); return m ? m[1] : String(t).trim().toLowerCase(); };
+const sizeNum = t => { const m = /-\s*(\d+)\s*$/.exec(t); return m ? Number(m[1]) : (parseFloat(t) || 0); };
+function sizeOptions(P){
+  const have = new Set((P.rows || []).map(r => sizeId(r.title))), m = catSizes().get(P.cat) || new Map(), best = new Map();
+  [...m.values()].forEach(({t, n}) => { const id = sizeId(t), c = best.get(id); if (!c || n > c.n || (n === c.n && t.localeCompare(c.t) < 0)) best.set(id, {t, n}); });   // same size spelled two ways: the one used most wins
+  return [...best.entries()].filter(([id]) => !have.has(id)).map(([, v]) => v.t).sort((x, y) => sizeNum(x) - sizeNum(y) || x.localeCompare(y, undefined, {numeric: true}));
+}
 function addSizeHtml(P){
   const pid = String(P.p.id), have = new Set((P.rows || []).map(r => keyOf(P.p.id, r.title)));
   const ex = new Map();
   orders.forEach(o => { if (String(o.product_id) === pid && isLive(o) && !have.has(o.vkey)) ex.set(o.variant_title, (ex.get(o.variant_title) || 0) + eff(o)); });
-  const chip = ex.size ? `<span class="xsz">Extra sizes on order: ${[...ex].map(([t, q]) => esc(t) + ' ×' + q).join(' · ')}</span>` : '';
-  return `<div class="xrow"><button class="disc" data-paddsz="${esc(pid)}" title="Order a size this product doesn't have yet (e.g. one the supplier has but you haven't stocked)">+ Add size</button>${chip}</div>` + `<div class="addsz" data-addsz="${esc(pid)}" hidden><input type="text" class="asz" maxlength="40" placeholder="Size, e.g. 34" aria-label="Size"><input type="number" class="aqt" min="1" max="1000" value="1" aria-label="Quantity"><button class="btn" data-addok="${esc(pid)}">Order</button><button class="btn" data-addno="${esc(pid)}">Cancel</button></div>`;
+  const chip = ex.size ? `<div class="xsz">Extra sizes on order: ${[...ex].map(([t, q]) => esc(t) + ' ×' + q).join(' · ')}</div>` : '';
+  const opts = sizeOptions(P);
+  return chip + `<div class="addsz" data-addsz="${esc(pid)}" hidden>${opts.length
+    ? `<select class="asz" aria-label="Size">${opts.map(t => `<option>${esc(t)}</option>`).join('')}</select><input type="number" class="aqt" min="1" max="1000" value="1" aria-label="Quantity"><button class="btn" data-addok="${esc(pid)}">Order</button><button class="btn" data-addno="${esc(pid)}">Cancel</button>`
+    : `<span class="xsz">No other sizes are defined for this category.</span><button class="btn" data-addno="${esc(pid)}">Close</button>`}</div>`;
 }
 function alignPbars(){
   document.querySelectorAll('#list .card.open').forEach(card => {
@@ -1841,14 +1861,12 @@ $('list').addEventListener('click', async e => {
   const aok = t.closest('[data-addok]');
   if (aok) {
     e.stopPropagation(); const pid = aok.getAttribute('data-addok'), f = aok.closest('.addsz');
-    const size = f.querySelector('.asz').value.trim().replace(/\s+/g, ' '), qty = Math.floor(Number(f.querySelector('.aqt').value) || 0);
-    if (!size) { notify('Type the size first'); return; }
+    const size = f.querySelector('.asz').value, qty = Math.floor(Number(f.querySelector('.aqt').value) || 0);
+    if (!size) { notify('Pick a size first'); return; }
     if (qty < 1) { notify('Quantity must be at least 1'); return; }
     const x = infos.find(z => String(z.r.P.p.id) === pid); if (!x) { notify('Open the product list again and retry'); return; }
-    const same = x.r.P.rows.find(r => String(r.title).trim().toLowerCase() === size.toLowerCase());
     aok.disabled = true;
     try {
-      if (same) { await saveItems([{r: same, key: keyOf(pid, same.title), qty}]); notify(same.title + ' already exists, so ' + qty + ' added to its order', true); return; }
       const P = x.r.P, key = keyOf(pid, size);
       const row = await Store.order({ vkey: key, product_id: P.p.id, product_title: P.p.title, product_url: P.p.url || '', image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''), variant_title: size, supplier: P.supplier || 'Unassigned', qty, set: false, stock_base: 0 });
       if (row && row.id) orders.set(row.id, row);
