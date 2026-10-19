@@ -72,11 +72,11 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-10-19T07:00+11:00",
-  "code_sha": "1711a36161790dc48971b447b5a79ecfcac6d9e7",
+  "at": "2026-10-19T20:00+11:00",
+  "code_sha": "916b32c658b7cf2d4efe5449343fe7893956c33b",
   "data_through": null,
-  "last_ok": "2026-10-19T07:00+11:00",
-  "manifest_version": "2026-10-16.google-scorecard.1",
+  "last_ok": "2026-10-19T20:00+11:00",
+  "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
  },
