@@ -200,6 +200,10 @@ def sync_size_deletes(prod_lines):
     print(f"size delete sync: {len(gone)} of {len(pending)} deleted in Shopify")
 
 
+BAD_BACKFILL_TAGS = {"9699978019173", "9699978084709", "9699978674533", "9700037460325", "9700038213989", "9700053778789",
+                     "9700053844325", "9700056039781", "9700056138085", "9720955568485"}
+
+
 def sync_supplier_tags(prod_lines):
     """Suppliers who picked an untagged product become its supplier. Push to Shopify custom.supplier_name
     (copying the existing "id : Name" spelling when known) and overlay on this build. Never raises."""
@@ -220,6 +224,8 @@ def sync_supplier_tags(prod_lines):
     done = []
     for t in tags:
         pid = str(t["product_id"])
+        if pid in BAD_BACKFILL_TAGS and not t["synced"]:
+            continue                      # bulk back-fill from old order claims (wrong names, never confirmed by the owner): ignore
         l = prods.get(pid)
         if not l:
             continue
