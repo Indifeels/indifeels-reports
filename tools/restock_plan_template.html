@@ -1976,12 +1976,13 @@ $('tabBox').addEventListener('click', () => showTab('box'));
 $('svSup').addEventListener('change', renderSv);
 $('svList').addEventListener('change', e => {
   const el = e.target.closest('select[data-tagp]'); if (!el || !el.value) return;
-  const w = el.closest('.svtag'), sup = el.value, pid = el.getAttribute('data-tagp');
+  const w = el.closest('.svtag'), sup = el.value, pid = el.getAttribute('data-tagp'); w.dataset.t = Date.now();
   w.innerHTML = `<div class="svtc">${w.querySelector('select').dataset.cur ? 'Change this product to' : 'Tag this product to'} <b>${esc(sup)}</b>? It is also saved on the product in Shopify (next planner build).</div><button class="btn" data-tagok="${esc(pid)}" data-sup="${esc(sup)}">Yes, tag to ${esc(sup)}</button> <button class="btn" data-tagno="1">Cancel</button>`;
 });
 $('svList').addEventListener('click', async e => {
   if (e.target.closest('[data-tagno]')) { renderSv(); return; }
   const b = e.target.closest('[data-tagok]'); if (!b) return;
+  const tw = b.closest('.svtag'); if (tw && Date.now() - +(tw.dataset.t || 0) < 1500) return;   // a double-tap on the dropdown must never confirm by accident
   const pid = b.getAttribute('data-tagok'), sup = b.getAttribute('data-sup');
   b.disabled = true; b.textContent = 'Saving…';
   try {
