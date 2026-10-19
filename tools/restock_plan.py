@@ -152,6 +152,54 @@ def sync_discontinued():
     return len(done)
 
 
+DEL_VARIANT = """mutation($p:ID!,$v:[ID!]!){ productVariantsBulkDelete(productId:$p, variantsIds:$v){ userErrors{ field message } } }"""
+
+
+def sync_size_deletes(prod_lines):
+    """Sizes removed with "Remove from dashboard and Shopify": delete the variant in Shopify. Safety rails: only when its stock is 0,
+    never the last variant of a product. Anything refused stays hidden in the app only and the reason is stored. Never raises."""
+    token = os.environ.get("SYNC_READ_TOKEN")
+    if not token:
+        return
+    try:
+        pending = sb_rpc("sync_get_restock_size_deletes", {"p_token": token})
+    except Exception as exc:  # the migration may not be applied yet
+        print("size delete sync skipped:", str(exc)[:120])
+        return
+    results, gone = [], set()
+    for r in pending:
+        pid, title = str(r["product_id"]), (r["variant_title"] or "").strip().lower()
+        mine = [l for l in prod_lines if "/ProductVariant/" in l.get("id", "") and num(l.get("__parentId", "")) == pid]
+        hit = [l for l in mine if (l.get("title") or "").strip().lower() == title]
+        err = None
+        if not hit:
+            pass                                    # already gone from Shopify: nothing to delete
+        elif len(mine) < 2:
+            err = "last size of the product: can't be deleted"
+        elif int(hit[0].get("inventoryQuantity") or 0) > 0:
+            err = f"still has {int(hit[0].get('inventoryQuantity') or 0)} in stock: set it to 0 first"
+        else:
+            try:
+                res = pv.gql(DEL_VARIANT, {"p": f"gid://shopify/Product/{pid}", "v": [hit[0]["id"]]})["data"]["productVariantsBulkDelete"]
+                if res["userErrors"]:
+                    err = json.dumps(res["userErrors"])[:200]
+                else:
+                    gone.add(hit[0]["id"])
+            except Exception as exc:
+                err = str(exc)[:200]
+        if err:
+            print("size delete sync: not deleted", r["vkey"], err)
+        results.append({"vkey": r["vkey"], "ok": err is None, "error": err})
+    if gone:
+        prod_lines[:] = [l for l in prod_lines if l.get("id") not in gone]     # this build already reflects it
+    if results:
+        try:
+            sb_rpc("sync_mark_restock_size_deletes", {"p_token": token, "p_rows": results})
+        except Exception as exc:
+            print("size delete sync: could not mark done:", str(exc)[:120])
+    print(f"size delete sync: {len(gone)} of {len(pending)} deleted in Shopify")
+
+
 def sync_supplier_tags(prod_lines):
     """Suppliers who picked an untagged product become its supplier. Push to Shopify custom.supplier_name
     (copying the existing "id : Name" spelling when known) and overlay on this build. Never raises."""
@@ -221,6 +269,7 @@ def build():
     sync_discontinued()          # before reading products, so this build already carries the new value
     prod_lines = bulk(PRODUCTS, "products")
     sync_supplier_tags(prod_lines)
+    sync_size_deletes(prod_lines)
     order_lines = bulk(ORDERS, "orders")
 
     # orders: bulk output is one JSON object per line; line items point at their order by __parentId

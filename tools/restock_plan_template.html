@@ -718,8 +718,15 @@ select.sel{appearance:none;-webkit-appearance:none}
 .addsz select,.addsz input{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:13px}
 .addsz .btn{padding:4px 10px;font-size:13px}
 .xsz{font-size:12.5px;color:var(--muted);margin:0 0 6px}
-.pv .rmz{flex:none;margin-left:6px;padding:0 7px;font-size:12px;line-height:1.5;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px}
-.pv .rmz.arm{background:#ffebe9;color:#cf222e;border-color:#cf222e}
+.pv .vh b.szt{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#szmenu{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+#szmenu[hidden]{display:none}
+#szmenu .m{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:14px;width:min(360px,100%);box-shadow:0 20px 50px rgba(0,0,0,.6)}
+#szmenu h3{margin:0 0 2px;font-size:17px}#szmenu .pt{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+#szmenu .note{font-size:12.5px;color:var(--muted);margin:0 0 8px}
+#szmenu button{display:block;width:100%;margin:6px 0 0;padding:10px 12px;font-size:14px;font-weight:600;border-radius:10px;text-align:left}
+#szmenu button[disabled]{opacity:.45;cursor:not-allowed}
+#szmenu button.danger2.arm{background:#ffebe9;color:#cf222e;border-color:#cf222e}
 .pbtn .sm{display:none}
 @media(max-width:799px){.pbar{gap:4px}.pbar .pbtn{padding:6px 5px;font-size:12px}.pbtn .lg{display:none}.pbtn .sm{display:inline}}
 .card-h .hbtn{display:none}
@@ -1062,7 +1069,7 @@ const Store = {
   park: (product, value) => call('park', { product, value }),
   parkList: () => call('parklist'),
   hideList: () => call('hidelist'),
-  hideSize: (vkey, product, title, hidden) => call('hidesize', { vkey, product, title, hidden }),
+  hideSize: (vkey, product, title, hidden, shopify) => call('hidesize', { vkey, product, title, hidden, shopify: !!shopify }),
   setTag: (product, supplier) => call('settag', { product, supplier }),
   stockGet: vid => call('stockget', { vid }),
   stockAdjust: (vid, dShop, dBackup) => call('stockadjust', { vid, dShop, dBackup }),
@@ -1469,7 +1476,7 @@ function rowHtml(r){
   const dl = r.sales > 0 && isFinite(r.left) ? Math.ceil(r.left) : 0, dTxt = dl + (dl === 1 ? ' day' : ' days');
   const stTxt = r.level === 'red' ? 'Out of stock' : (r.level === 'orange' || r.level === 'yellow') ? 'Low stock · ' + dTxt : r.level === 'green' ? 'OK · ' + dTxt : 'No sales';
   const needC = needClr(r);
-  const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span>${vTag(r)}<div class="pipes" data-sup="${i}">${supMv(i)}</div>${(r.P.disc || !(r.extra || hiddenOk)) ? '' : `<button class="rmz${armed.has('rm' + keyOf(r.P.p.id, r.title)) ? ' arm' : ''}" data-rmz="${i}" title="Remove this size from the list${r.extra ? ' (cancels its order)' : ''}">${armed.has('rm' + keyOf(r.P.p.id, r.title)) ? 'Sure? Tap again' : 'Remove'}</button>`}</div>
+  const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b class="szt" data-sz="${i}" title="${r.P.disc ? '' : 'Hold to remove this size'}">${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span>${vTag(r)}<div class="pipes" data-sup="${i}">${supMv(i)}</div></div>
     <div class="rw"><div class="mc mc-${sc}" data-stk="${esc((r.vids || []).join(','))}" data-pt="${esc(r.P.p.title)}" data-vt="${esc(r.title)}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><div class="udt c-${r.cDts}"><b>${fmt2(r.dts)}</b><span>D.U</span></div><small class="sld" title="Total units sold"><b>${r.sales}</b> sold</small></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
   return {tr, mv};
 }
@@ -1771,6 +1778,56 @@ async function receive(ids, label){
   render();
 }
 
+
+/* ---------------- remove a size: hold the size name (or right-click) ---------------- */
+let szTimer = null, szDown = null, szMenu = null;
+function szClear(){ clearTimeout(szTimer); szTimer = null; szDown = null; }
+$('list').addEventListener('pointerdown', e => {
+  const b = e.target.closest('.szt'); if (!b || e.button > 0) return;
+  szDown = {x: e.clientX, y: e.clientY}; clearTimeout(szTimer);
+  szTimer = setTimeout(() => { const i = Number(b.getAttribute('data-sz')); szClear(); try { navigator.vibrate && navigator.vibrate(15); } catch (_) {} openSizeMenu(i); }, 550);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => $('list').addEventListener(ev, szClear));
+$('list').addEventListener('pointermove', e => { if (szDown && Math.hypot(e.clientX - szDown.x, e.clientY - szDown.y) > 10) szClear(); });
+window.addEventListener('scroll', szClear, true);
+$('list').addEventListener('contextmenu', e => { const b = e.target.closest('.szt'); if (!b) return; e.preventDefault(); szClear(); openSizeMenu(Number(b.getAttribute('data-sz'))); });
+function closeSizeMenu(){ if (szMenu) szMenu.hidden = true; }
+function openSizeMenu(i){
+  const x = infos[i]; if (!x || x.r.P.disc) return;
+  const r = x.r, key = x.key, pid = String(r.P.p.id), live = pipeline(key).live;
+  if (!szMenu) { szMenu = document.createElement('div'); szMenu.id = 'szmenu'; szMenu.hidden = true; document.body.appendChild(szMenu); szMenu.addEventListener('click', e => { if (e.target === szMenu) closeSizeMenu(); }); }
+  let note = '', can1 = true, can2 = !r.extra;
+  if (r.extra) { if (live.some(o => o.status !== 'saved' || o.claimed)) { can1 = false; note = 'A supplier already has this size in a box, so it can\'t be removed here.'; } note = note || 'This size is only on your order list (not in Shopify). Removing it cancels its order.'; }
+  else {
+    if (live.length) { can1 = can2 = false; note = 'This size has an order in progress. Cancel that order first.'; }
+    else if (!hiddenOk) { can1 = can2 = false; note = 'Removing Shopify sizes needs the restock_hidden_sizes table in Supabase (not added yet).'; }
+    else if (r.stock > 0) { can2 = false; note = 'It has ' + r.stock + ' in stock, so it can\'t be deleted from Shopify. Set the stock to 0 first, or remove it from the dashboard only.'; }
+    else note = 'Dashboard only hides it here. Dashboard and Shopify deletes the size from the product in Shopify (can\'t be undone).';
+  }
+  szMenu.innerHTML = `<div class="m"><h3>${esc(r.title)}</h3><p class="pt">${esc(r.P.p.title)}</p><p class="note">${esc(note)}</p>
+    <button class="btn" data-m="dash" ${can1 ? '' : 'disabled'}>Remove from dashboard</button>
+    <button class="btn danger2" data-m="shop" ${can2 ? '' : 'disabled'}>Remove from dashboard and Shopify</button>
+    <button class="btn" data-m="no">Cancel</button></div>`;
+  szMenu.hidden = false;
+  szMenu.querySelector('.m').onclick = async ev => {
+    const bt = ev.target.closest('button[data-m]'); if (!bt || bt.disabled) return;
+    const m = bt.getAttribute('data-m');
+    if (m === 'no') { closeSizeMenu(); return; }
+    if (m === 'shop' && !bt.classList.contains('arm')) { bt.classList.add('arm'); bt.textContent = 'Delete from Shopify? Tap again'; return; }
+    szMenu.querySelectorAll('button').forEach(b => { b.disabled = true; });
+    try {
+      if (r.extra) {
+        for (const o of live) { await Store.cancel(o.id); orders.delete(o.id); }
+        indexOrders(); notify('Size ' + r.title + ' removed (its order was cancelled)', true);
+      } else {
+        await Store.hideSize(key, pid, r.title, true, m === 'shop'); hiddenSizes.add(key);
+        notify(m === 'shop' ? r.title + ' removed. It is deleted in Shopify on the next refresh (after the next order, or at midnight).' : r.title + ' removed from this list. Bring it back with Add size.', true);
+      }
+    } catch (err) { notify('Could not remove: ' + err.message); }
+    closeSizeMenu(); render();
+  };
+}
+
 /* ---------------- saving: one line, a whole product, everything shown, or auto ---------------- */
 let autoOn = false; // manual Save only
 const autoT = new Map();
@@ -1864,26 +1921,6 @@ $('list').addEventListener('click', async e => {
     const list = infos.filter(x => String(x.r.P.p.id) === String(pid) && !x.r.P.disc).map(x => ({r: x.r, key: x.key, qty: 1, set: true}));
     if (!list.length) { notify('No sizes to add'); return; }
     pset.disabled = true; await saveItems(list); notify('Full set added: 1 of each of ' + list.length + ' sizes', true); return;
-  }
-  const rmz = t.closest('[data-rmz]');
-  if (rmz) {
-    e.stopPropagation(); const x = infos[Number(rmz.getAttribute('data-rmz'))]; if (!x) return;
-    const r = x.r, key = x.key, ak = 'rm' + key, pid = String(r.P.p.id);
-    if (!armed.has(ak)) { armed.add(ak); render(); setTimeout(() => { if (armed.delete(ak)) render(); }, 5000); return; }
-    armed.delete(ak); rmz.disabled = true;
-    try {
-      const live = pipeline(key).live;
-      if (r.extra) {
-        if (live.some(o => o.status !== 'saved' || o.claimed)) { notify('A supplier already has this size in a box. It can\'t be removed here.'); render(); return; }
-        for (const o of live) { await Store.cancel(o.id); orders.delete(o.id); }
-        indexOrders(); notify('Size ' + r.title + ' removed (its order was cancelled)', true);
-      } else {
-        if (live.length) { notify(r.title + ' has an order in progress. Cancel that order first, then remove the size.'); render(); return; }
-        await Store.hideSize(key, pid, r.title, true); hiddenSizes.add(key);
-        notify('Size ' + r.title + ' removed from this list. Bring it back with Add size.', true);
-      }
-    } catch (err) { notify('Could not remove: ' + err.message); }
-    render(); return;
   }
   const asz = t.closest('[data-paddsz]');
   if (asz) { e.stopPropagation(); const f = asz.closest('.card').querySelector('.addsz'); if (f) { f.hidden = !f.hidden; if (!f.hidden) f.querySelector('.asz').focus(); } return; }
