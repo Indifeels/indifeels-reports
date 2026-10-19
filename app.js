@@ -1633,6 +1633,10 @@
         try { if (d.theme === "dark" || d.theme === "light") localStorage.setItem("ir-restock-theme", d.theme); } catch (_) {}
         return;
       }
+      if (d.action === "ui" && kind === "restock-plan") {
+        try { if (d.ui && typeof d.ui === "object") localStorage.setItem("ir-restock-ui", JSON.stringify(d.ui).slice(0, 20000)); } catch (_) {}
+        return;
+      }
       if (d.action === "filters" && kind === "restock-plan") {
         try { if (d.filters && typeof d.filters === "object") localStorage.setItem("ir-restock-filters", JSON.stringify(d.filters).slice(0, 2000)); } catch (_) {}
         return;
@@ -1641,6 +1645,7 @@
         let th = "dark"; try { th = localStorage.getItem("ir-restock-theme") === "light" ? "light" : "dark"; } catch (_) {}
         reply({ type: kind + "-theme", theme: th });
         if (kind === "restock-plan") { try { const f = JSON.parse(localStorage.getItem("ir-restock-filters") || "null"); if (f && typeof f === "object") reply({ type: "restock-plan-filters", filters: f }); } catch (_) {} }
+        if (kind === "restock-plan") { try { const u = JSON.parse(localStorage.getItem("ir-restock-ui") || "null"); if (u && typeof u === "object") reply({ type: "restock-plan-ui", ui: u }); } catch (_) {} }
         if (kind === "restock-plan") { try { const done = JSON.parse(localStorage.getItem(RP_DONE) || "[]"); if (Array.isArray(done) && done.length) reply({ type: "restock-plan-state", state: { done: done.slice(0, 5000).map(String) } }); } catch (_) {} }
         return;
       }

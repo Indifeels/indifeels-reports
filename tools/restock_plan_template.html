@@ -981,6 +981,7 @@ window.addEventListener('message', e => {
     else if (d.error) scanMsg(d.error, true);
   }
   else if (d.type === 'restock-plan-filters') { try { applyFilters(d.filters); } catch (e) {} }
+  else if (d.type === 'restock-plan-ui') { try { applyUi(d.ui); } catch (e) {} }
   else if (d.type === 'restock-plan-theme') { document.documentElement.dataset.theme = d.theme === 'light' ? 'light' : 'dark'; }
   else if (d.type === 'restock-plan-result') {
     const p = pendingCalls.get(d.req); if (!p) return;
@@ -1908,8 +1909,27 @@ $('svShipped').addEventListener('click', e => {
   const h = e.target.closest('[data-bxt]'); if (!h) return;
   const s = h.closest('.bx'); s.classList.toggle('open'); svOpen.set(h.getAttribute('data-bxt'), s.classList.contains('open'));
 });
+let curTab = 'mine', uiApplying = false;
+function saveUi(){
+  if (uiApplying) return;
+  const pick = m => [...m].filter(([k, v]) => v).map(([k]) => k).slice(0, 150);
+  try { parent.postMessage({type: 'restock-plan', action: 'ui', ui: {tab: curTab, sec: pick(bxSecOpen), sv: pick(svOpen), my: pick(myOpen)}}, '*'); } catch (e) {}
+}
+function applyUi(u){
+  if (!u) return;
+  uiApplying = true;
+  try {
+    (u.sec || []).forEach(k => bxSecOpen.set(String(k), true));
+    (u.sv || []).forEach(k => svOpen.set(String(k), true));
+    (u.my || []).forEach(k => myOpen.set(String(k), true));
+    if (['mine', 'sup', 'box'].includes(u.tab)) showTab(u.tab);
+    if (u.tab === 'mine') render();
+  } finally { uiApplying = false; }
+}
+document.addEventListener('click', () => setTimeout(saveUi, 50));
 function showTab(v){
   v = v === true ? 'sup' : v === false ? 'mine' : v;
+  curTab = v;
   $('viewMine').hidden = v !== 'mine'; $('viewSup').hidden = v !== 'sup'; $('viewBox').hidden = v !== 'box';
   $('tabMine').classList.toggle('on', v === 'mine'); $('tabSup').classList.toggle('on', v === 'sup'); $('tabBox').classList.toggle('on', v === 'box');
   if (v === 'sup') { renderSv(); refresh(); }
