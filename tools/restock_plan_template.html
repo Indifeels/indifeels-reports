@@ -297,6 +297,9 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .sc.sc-ship{--ac:#3fb950;--g1:#2ea043;--g2:#17622a;--g3:#08290f}
 .sc-h{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:'chev title hint' '. count hint';align-items:center;column-gap:12px;row-gap:6px;min-height:92px;box-sizing:border-box;padding:20px 20px;cursor:pointer;user-select:none;color:#fff;background:linear-gradient(180deg,var(--g1) 0%,var(--g2) 55%,var(--g3) 100%);border-top:1px solid rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 -4px 8px rgba(0,0,0,.45)}
 .sc-h:hover{filter:brightness(1.1)}
+.sc{display:block;padding:0;gap:0}
+.bx-prod th{position:static}
+.bx-prod>.suprow{align-self:flex-start;margin-top:2px}
 .sc-h .chev{grid-area:chev;width:18px;color:#fff;transition:transform .15s;flex:none;font-size:16px}
 .sc.open>.sc-h .chev{transform:rotate(90deg)}
 .sc-t{grid-area:title;font-size:25px;font-weight:800;letter-spacing:.01em}
@@ -1932,16 +1935,18 @@ $('wrong').addEventListener('click', async e => {
 /* ---------------- supplier: tap = searchable picker, hold / right-click = add new supplier or remove ---------------- */
 let spTimer = null, spDown = null, spLongAt = 0, spModal = null;
 function spClear(){ clearTimeout(spTimer); spTimer = null; spDown = null; }
-$('list').addEventListener('pointerdown', e => {
+[$('list'), $('svList')].forEach(L => {
+L.addEventListener('pointerdown', e => {
   const b = e.target.closest('[data-supbtn]'); if (!b || e.button > 0) return;
   spDown = {x: e.clientX, y: e.clientY}; clearTimeout(spTimer);
   spTimer = setTimeout(() => { spClear(); spLongAt = Date.now(); try { navigator.vibrate && navigator.vibrate(15); } catch (_) {} supModal(b.getAttribute('data-supbtn'), 'menu'); }, 550);
 });
-['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => $('list').addEventListener(ev, spClear));
-$('list').addEventListener('pointermove', e => { if (spDown && Math.hypot(e.clientX - spDown.x, e.clientY - spDown.y) > 10) spClear(); });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => L.addEventListener(ev, spClear));
+L.addEventListener('pointermove', e => { if (spDown && Math.hypot(e.clientX - spDown.x, e.clientY - spDown.y) > 10) spClear(); });
 window.addEventListener('scroll', spClear, true);
-$('list').addEventListener('contextmenu', e => { const b = e.target.closest('[data-supbtn]'); if (!b) return; e.preventDefault(); spClear(); spLongAt = Date.now(); supModal(b.getAttribute('data-supbtn'), 'menu'); });
-$('list').addEventListener('click', e => { const b = e.target.closest('[data-supbtn]'); if (!b) return; if (Date.now() - spLongAt < 700) return; supModal(b.getAttribute('data-supbtn'), 'pick'); });
+L.addEventListener('contextmenu', e => { const b = e.target.closest('[data-supbtn]'); if (!b) return; e.preventDefault(); spClear(); spLongAt = Date.now(); supModal(b.getAttribute('data-supbtn'), 'menu'); });
+L.addEventListener('click', e => { const b = e.target.closest('[data-supbtn]'); if (!b) return; if (Date.now() - spLongAt < 700) return; supModal(b.getAttribute('data-supbtn'), 'pick'); });
+});
 function supClose(){ if (spModal) spModal.hidden = true; }
 async function supSave(pid, sup){
   const m = spModal.querySelector('.m'); m.innerHTML = '<p class="pt">Saving…</p>';
@@ -1952,7 +1957,7 @@ async function supSave(pid, sup){
     for (const o of orders.values()) if (String(o.product_id) === pid && o.status === 'saved' && !o.claimed && (!o.supplier || /^unassigned$/i.test(o.supplier) || sup === '')) o.supplier = sup || 'Unassigned';
     notify((sup ? 'Supplier set to ' + sup : 'Supplier removed') + '. It is saved to Shopify on the next refresh (after the next order, or at midnight).', true);
   } catch (err) { notify('Could not save supplier: ' + err.message); }
-  supClose(); render();
+  supClose(); render(); if (curTab === 'sup') renderSv();
 }
 function supModal(pid, mode){
   if (!spModal) { spModal = document.createElement('div'); spModal.id = 'supmodal'; spModal.hidden = true; document.body.appendChild(spModal); spModal.addEventListener('click', e => { if (e.target === spModal) supClose(); }); }
@@ -2207,6 +2212,8 @@ function renderSv(){
   const supNames = [...new Set(names.concat(data.products.map(p => p.supplier).filter(Boolean)).concat(svUsers.map(u => u.supplier).filter(Boolean)))].filter(n => !/^unassigned$/i.test(n)).sort((a, b) => a.localeCompare(b));
   const tagSel = g => {
     if (!/^\d+$/.test(String(g[0].product_id || ''))) return `<div class="svsup">Supplier: <b>${esc(g[0].supplier || '')}</b></div>`;
+    const pr = data.products.find(p => String(p.id) === String(g[0].product_id));
+    if (pr) { const t = supName(pr.supplier); return supRowHtml({p: pr, supplier: t}); }
     const cur = [...new Set(g.map(r => String(r.supplier || '').trim()).filter(n => n && !/^unassigned$/i.test(n)))];
     const opts = supNames.concat(cur.filter(n => !supNames.includes(n)));
     return `<div class="svtag"><select data-tagp="${esc(g[0].product_id)}" data-cur="${esc(cur.join('|'))}"${cur.length ? '' : ' class="warn"'}><option value="">${cur.length ? (cur.length > 1 ? 'Mixed suppliers — pick one…' : 'Supplier: ' + esc(cur[0])) : '⚠ No supplier — pick one…'}</option>${opts.filter(n => n !== cur[0] || cur.length > 1).map(n => `<option>${esc(n)}</option>`).join('')}</select></div>`;
