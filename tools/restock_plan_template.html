@@ -719,9 +719,12 @@ select.sel{appearance:none;-webkit-appearance:none}
 .addsz .btn{padding:4px 10px;font-size:13px}
 .xsz{font-size:12.5px;color:var(--muted);margin:0 0 6px}
 .pv .vh b.szt{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-@media all{.suprow{margin:0 0 6px}.supsel{max-width:100%;min-width:190px;padding:5px 10px;font-size:13px;font-weight:700;border-radius:8px;border:1px solid transparent;color:#fff}
-.supsel.none{background:#7a1018;border-color:#a3262e}.supsel.has{background:#1d7a3b;border-color:#2c9a4d}.supsel option{background:var(--bg);color:var(--text);font-weight:400}
-.supconf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}}
+#viewMine .card-h .ttl .meta.mrow{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;white-space:normal;overflow:visible;text-overflow:clip}
+.suprow{display:inline-flex}.supsel{max-width:170px;min-width:0;width:auto;padding:1px 6px;font-size:11.5px;font-weight:700;border-radius:999px;border:1px solid transparent;color:#fff;cursor:pointer}
+.supsel.none{background:#7a1018;border-color:#a3262e}.supsel.has{background:#5f3aa8;border-color:#7a57c4}.supsel option{background:var(--bg);color:var(--text);font-weight:400}
+.mp{font-size:11px;font-weight:700;padding:1px 9px;border-radius:999px;white-space:nowrap}
+.mp-age{background:#16304f;color:#9cc4f5}.mp-cat{background:#1c3b3a;color:#8fd8cd}
+.supconf{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:#fff}.supconf .btn{padding:1px 8px;font-size:11.5px}
 #szmenu{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
 #szmenu[hidden]{display:none}
 #szmenu .m{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:14px;width:min(360px,100%);box-shadow:0 20px 50px rgba(0,0,0,.6)}
@@ -1362,6 +1365,8 @@ function drawHealth(prods){
 
 const BADGE = {red:'🔴 Out of stock',orange:'🟠 Urgent',yellow:'🟡 Soon',green:'🟢 OK',grey:'⚪ No sales'};
 const initials = t => t.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const ageTxt = d => { const y = Math.floor(d / 365), m = Math.floor((d - y * 365) / 30.4); const yy = y + ' Year' + (y === 1 ? '' : 's'), mm = m + ' month' + (m === 1 ? '' : 's');
+  return y > 0 ? (m > 0 ? yy + ' ' + mm : yy) : (d >= 30 ? Math.floor(d / 30.4) + ' month' + (Math.floor(d / 30.4) === 1 ? '' : 's') : d + ' day' + (d === 1 ? '' : 's')); };
 const years = d => d >= 365 ? (Math.round(d/36.5)/10) + ' yrs' : d >= 60 ? Math.round(d/30) + ' mo' : d + ' d';
 const FLAT = new Set(['priority','date','vdts']);
 
@@ -1501,7 +1506,7 @@ function cardHtml(g){
   return `<section class="card w-${worst}${isOpen?' open':''}" data-gid="${esc(g.id)}">
     <div class="card-h" data-toggle="1"><span class="chev">▶</span>
       <div class="thumb">${plink(P) ? `<a class="tl" href="${plink(P)}" target="_blank" rel="noopener noreferrer" title="Open product page" style="position:absolute;inset:0;z-index:2"></a>` : ''}<span>${esc(initials(P.p.title))}</span>${src ? `<img src="${src}" alt="" loading="lazy" referrerpolicy="no-referrer" style="position:absolute;inset:0;opacity:0" onload="this.style.opacity=1" onerror="this.remove()">` : ''}</div>
-      <div class="ttl"><h2>${plink(P) ? `<a class="pt" href="${plink(P)}" target="_blank" rel="noopener noreferrer" title="Open product page">${esc(P.p.title)} ↗</a>` : esc(P.p.title)}${tag}</h2><div class="meta">${g.rows.length} variant${g.rows.length===1?'':'s'} shown · ${P.supplier ? esc(P.supplier) : 'no supplier'} · ${P.days} days on market${P.cat !== 'other' ? ' · ' + esc(P.cat) : ''}${P.last ? ' · last sale ' + esc(ago(P.last).replace('sold ', '')) : ''}</div></div>
+      <div class="ttl"><h2>${plink(P) ? `<a class="pt" href="${plink(P)}" target="_blank" rel="noopener noreferrer" title="Open product page">${esc(P.p.title)} ↗</a>` : esc(P.p.title)}${tag}</h2><div class="meta mrow">${supRowHtml(P)}<span class="mp mp-age" title="Time on the market">${ageTxt(P.days)}</span>${P.cat !== 'other' ? `<span class="mp mp-cat">${esc(P.cat)}</span>` : ''}</div></div>
       ${btns('hbtn')}
       <div class="tiles">
         <div class="tile t-info"><b>${years(P.days)}</b><span>On market</span></div>
@@ -1510,7 +1515,7 @@ function cardHtml(g){
         <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
       </div>
       <div class="hnum ${P.units ? '' : 'zero'}"><div class="prow">${pTag(g)}</div><div class="pnum"><b>${P.units}</b><span>to order</span></div><div class="psd" title="Total units sold, all variants"><b>${P.total}</b> sold</div></div></div>
-    <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}${supRowHtml(P)}<div class="pbar">${btns('pbtn')}</div>${P.disc ? '' : addSizeHtml(P)}
+    <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>${P.disc ? '' : addSizeHtml(P)}
       <div class="scroll dtable"><table>
       <thead><tr><th>Priority</th><th>Variant</th><th>Sold</th><th>Days / 1 sold</th><th>Days left</th><th class="g1">Current stock</th><th class="g2">Required stock</th><th class="g3">To order</th><th>Supplier</th><th>Status</th></tr></thead>
       <tbody>${rows.map(x => x.tr).join('')}</tbody></table></div>
@@ -2019,7 +2024,7 @@ $('list').addEventListener('click', async e => {
     }
     return;
   }
-  if (t.closest('a[href]')) return;      // product links open in a new tab, they don't toggle the card
+  if (t.closest('a[href]') || t.closest('.suprow')) return;      // product links open in a new tab, the supplier picker doesn't toggle the card
   const h = t.closest('[data-toggle]');
   if (h) {
     const card = h.closest('.card'), id = card.getAttribute('data-gid'), was = card.classList.contains('open'), y0 = h.getBoundingClientRect().top;
