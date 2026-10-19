@@ -36,10 +36,10 @@
   "reason": ""
  },
  "google-scorecard": {
-  "at": "2026-10-16T13:34+11:00",
-  "code_sha": "cae1ea57e0b565b1dbff5f091abfd00c6a2739aa",
+  "at": "2026-10-19T12:41+11:00",
+  "code_sha": "4be1678b918809d59c4c49d6576ea61b41f7d7a0",
   "data_through": null,
-  "last_ok": "2026-10-16T13:34+11:00",
+  "last_ok": "2026-10-19T12:41+11:00",
   "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
