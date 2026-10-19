@@ -867,6 +867,28 @@ select.sel{appearance:none;-webkit-appearance:none}
 .stkm .msg{min-height:18px;margin-top:10px;font-size:13px;color:#ff8a8a}.stkm .msg.ok{color:#7ee08c}
 .svtag .btn{padding:8px 14px;border-radius:10px;border:0;background:#3a6fd8;color:#fff;font-weight:600;margin:0 6px 10px 0;cursor:pointer}.svsup{font-size:13px;opacity:.8;margin:-4px 0 8px}.svtc{font-size:13px;margin:0 0 8px}.svpn{font-weight:700;margin:2px 0 8px;font-size:15px}.svtag select:not(.warn){border-color:#4a6fa5;background:#2a3850;color:#fff;font-weight:700}:root[data-theme=light] .svtag select:not(.warn){background:#e3ebf7;color:#14233f}.svtag select{width:100%;margin:0 0 10px;padding:9px;border-radius:10px;border:1px solid #d9822b;background:var(--card);color:inherit;font-size:14px}
 </style>
+<style>
+/* ---- Stock health gauge ---- */
+.hl{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 10px 9px;margin:6px 0 4px}
+.hl-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.hl-t{font-weight:700;font-size:12.5px}
+.hl-s{font-size:11px;font-weight:600}
+.hl-tg{margin-left:auto;font-size:10.5px;color:var(--muted)}
+.hl-bar{position:relative;margin-top:30px}
+.hl-seg{display:flex;gap:2px;border-radius:999px;overflow:hidden;height:22px}
+.hl-seg i{flex:1;font-style:normal;font-size:9.5px;font-weight:600;color:#fff;display:flex;align-items:center;justify-content:center;letter-spacing:.2px;opacity:.55;transition:opacity .2s}
+.hl-seg i.on{opacity:1}
+.hl-seg i:nth-child(1){background:#2f9e4f}.hl-seg i:nth-child(2){background:#8cb30f}.hl-seg i:nth-child(3){background:#d9a514}.hl-seg i:nth-child(4){background:#e0742a}.hl-seg i:nth-child(5){background:#d1403f}
+.hl-pin{position:absolute;top:-27px;bottom:-3px;width:0;transition:left .5s ease}
+.hl-pin b{position:absolute;left:0;top:0;transform:translateX(-50%);padding:1px 8px;border-radius:6px;font-size:12px;color:#fff;background:#2f9e4f;white-space:nowrap}
+.hl-pin::after{content:"";position:absolute;left:-1px;top:19px;bottom:0;width:2px;background:var(--text);border-radius:2px}
+.hl-tick{position:absolute;top:-4px;bottom:-4px;width:0;border-left:2px dashed var(--muted);opacity:.9}
+.hl-tiles{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.hl-tile{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:10.5px;color:var(--muted);display:flex;gap:5px;align-items:baseline}
+.hl-tile b{font-size:12px;color:var(--text)}
+.hl-tile.g b{color:var(--green)}.hl-tile.a b{color:var(--amber)}.hl-tile.r b{color:var(--red)}.hl-tile.i b{color:var(--info)}
+.hl-note{margin-top:6px;font-size:10px;color:var(--muted)}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -874,6 +896,13 @@ select.sel{appearance:none;-webkit-appearance:none}
     <div class="hd"><h1>Restock Planner</h1><div class="sub" id="sub"></div></div>
     <button id="theme" title="Light / dark">◐</button>
   </header>
+
+  <section class="hl" id="hl">
+    <div class="hl-top"><span class="hl-t">Stock health</span><span class="hl-s" id="hlState"></span><span class="hl-tg" id="hlTarget"></span></div>
+    <div class="hl-bar"><div class="hl-seg" id="hlSeg"><i>Healthy</i><i>Good</i><i>Fair</i><i>Poor</i><i>Critical</i></div><div class="hl-tick" id="hlTick"></div><div class="hl-pin" id="hlPin"><b id="hlPct">–</b></div></div>
+    <div class="hl-tiles" id="hlTiles"></div>
+    <div class="hl-note">Score = 70% cover for fast sellers + 15% no excess + 15% no dead stock. Ordered counts 25%, packed 50%, shipped 75%, in stock 100%.</div>
+  </section>
 
   <nav class="tabs"><button id="tabMine" class="on">My view</button><button id="tabSup">Supplier view</button><button id="tabBox">Boxes</button></nav>
 <div id="viewMine">
@@ -1255,6 +1284,52 @@ function compute(){
   return {prods, entries};
 }
 
+/* ---------------- stock health score ---------------- */
+const HEALTH = {TARGET: 90, W_COVER: 0.70, W_EXCESS: 0.15, W_DEAD: 0.15, CR_SAVED: 0.25, CR_BOX: 0.5, CR_WAY: 0.75, EXCESS_X: 2, DEAD_DAYS: 90};
+const HBAND = [['Healthy','#2f9e4f',80],['Good','#8cb30f',60],['Fair','#d9a514',40],['Poor','#e0742a',20],['Critical','#d1403f',0]];
+function stockHealth(prods){
+  let req = 0, cov = 0, oos = 0, nDemand = 0, excess = 0, dead = 0, base = 0, toOrder = 0, pSaved = 0, pBox = 0, pWay = 0, deadSku = 0;
+  const today = melToday();
+  prods.forEach(P => { if (P.disc) return; P.rows.forEach(r => {
+    const st = Math.max(0, r.stock); base += st;
+    const pp = pipeline(keyOf(P.p.id, r.title));
+    if (P.eligible && r.required > 0) {
+      nDemand++; req += r.required; if (st <= 0) oos++;
+      const credit = st + HEALTH.CR_SAVED * pp.saved + HEALTH.CR_BOX * pp.box + HEALTH.CR_WAY * pp.way;
+      cov += Math.min(r.required, credit);
+      if (st > HEALTH.EXCESS_X * r.required) excess += st - HEALTH.EXCESS_X * r.required;
+      toOrder += r.toOrder; pSaved += pp.saved; pBox += pp.box; pWay += pp.way;
+    }
+    const stale = r.sales > 0 ? (r.last && dayDiff(today, r.last) > HEALTH.DEAD_DAYS) : P.days >= HEALTH.DEAD_DAYS;
+    if (st > 0 && stale) { dead += st; deadSku++; }
+  }); });
+  const coverage = req ? cov / req : 1, exShare = base ? Math.min(1, excess / base) : 0, deShare = base ? Math.min(1, dead / base) : 0;
+  const score = Math.round(100 * (HEALTH.W_COVER * coverage + HEALTH.W_EXCESS * (1 - exShare) + HEALTH.W_DEAD * (1 - deShare)));
+  return {score, coverage, excess, dead, deadSku, oos, nDemand, toOrder, pSaved, pBox, pWay, exShare, deShare};
+}
+function drawHealth(prods){
+  if (!$('hl')) return;
+  const h = stockHealth(prods), sc = Math.max(0, Math.min(100, h.score));
+  const bi = HBAND.findIndex(b => sc >= b[2]), band = HBAND[bi];
+  const left = 100 - sc;                                   // bar runs 100% (left, green) to 0% (right, red)
+  $('hlPin').style.left = Math.min(96, Math.max(4, left)) + '%';
+  const pct = $('hlPct'); pct.textContent = sc + '%'; pct.style.background = band[1];
+  [...$('hlSeg').children].forEach((el, i) => el.classList.toggle('on', i === bi));
+  $('hlTick').style.left = (100 - HEALTH.TARGET) + '%';
+  const st = $('hlState'); st.textContent = band[0]; st.style.color = band[1];
+  const gap = HEALTH.TARGET - sc;
+  $('hlTarget').textContent = gap > 0 ? `Target ${HEALTH.TARGET}% · ${gap} pts to go` : `Target ${HEALTH.TARGET}% · reached`;
+  const cls = (v, g, a) => v >= g ? 'g' : v >= a ? 'a' : 'r';
+  const tile = (c, label, val) => `<span class="hl-tile ${c}">${label} <b>${val}</b></span>`;
+  $('hlTiles').innerHTML =
+    tile(cls(h.coverage, .9, .7), 'Covered', Math.round(h.coverage * 100) + '%') +
+    tile(h.oos ? 'r' : 'g', 'Out of stock', h.oos + ' / ' + h.nDemand) +
+    tile(h.toOrder ? 'a' : 'g', 'Still to order', h.toOrder + ' u') +
+    tile('i', 'Ordered / packed / shipped', h.pSaved + ' / ' + h.pBox + ' / ' + h.pWay) +
+    tile(h.exShare > .15 ? 'a' : 'g', 'Excess', h.excess + ' u') +
+    tile(h.deShare > .15 ? 'r' : h.dead ? 'a' : 'g', 'Dead', h.dead + ' u · ' + h.deadSku + ' sku');
+}
+
 const BADGE = {red:'🔴 Out of stock',orange:'🟠 Urgent',yellow:'🟡 Soon',green:'🟢 OK',grey:'⚪ No sales'};
 const initials = t => t.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
 const years = d => d >= 365 ? (Math.round(d/36.5)/10) + ' yrs' : d >= 60 ? Math.round(d/30) + ' mo' : d + ' d';
@@ -1517,6 +1592,7 @@ function render(){
   setTimeout(() => { try { saveLabel(); } catch (e) {} }, 0);
   indexOrders();
   const {prods, entries} = compute();
+  try { drawHealth(prods); } catch (e) {}
   const supSel = $('supplier').value, colSel = $('collection').value, eligSel = $('elig').value, dSel = $('discf').value, pkSel = $('parkf').value;
   const vSel = $('vsel').value, onlyNeed = vSel === 'need' || (vSel === '' && mode === 'priority'), onlyElig = $('onlyElig').checked;
   const live = prods.filter(r => !r.disc);
