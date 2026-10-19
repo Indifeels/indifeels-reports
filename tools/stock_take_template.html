@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stock Take</title>
+<style>
+:root{--bg:#111214;--card:#1a1b1e;--card2:#222326;--border:#3a3b3f;--muted:#9a9ea6;--text:#eceef1;--blue:#58a6ff;
+ --red:#ff8a84;--red-bg:#3d1519;--info:#79c0ff;--info-bg:#0f2a47;--green:#4cc364;--green-bg:#10301c;--orange:#ffab5e;--orange-bg:#3b2410;--grey-bg:#26272b}
+:root[data-theme="light"]{--bg:#f3f5f7;--card:#fff;--card2:#f6f8fa;--border:#d0d7de;--muted:#656d76;--text:#1f2328;--blue:#0969da;
+ --red:#cf222e;--red-bg:#ffebe9;--info:#0550ae;--info-bg:#ddf4ff;--green:#1a7f37;--green-bg:#dafbe1;--orange:#bc4c00;--orange-bg:#fff1e5;--grey-bg:#eaeef2}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:0 12px 60px}
+header{display:flex;align-items:center;gap:10px;padding:12px 0 4px}
+header h1{flex:1;margin:0;font-size:20px}
+button,select,input[type=text]{font:inherit;color:var(--text)}
+button{border:1px solid var(--border);background:var(--grey-bg);border-radius:10px;padding:7px 14px;cursor:pointer;font-weight:600}
+button:disabled{opacity:.45;cursor:default}
+button.pri{background:var(--blue);border-color:var(--blue);color:#06101c;font-weight:800}
+button.pri.arm{background:#e3b341;border-color:#e3b341}
+#theme{padding:4px 10px}
+.tabs{display:flex;gap:8px;margin:6px 0 10px}
+.tabs button{flex:1;padding:12px;font-size:16px;border-radius:14px;background:linear-gradient(135deg,#2d2e31,#151618 85%);color:#f5f5f6;border-color:#3c3d40;box-shadow:4px 6px 12px #0008,inset 1px 2px 1px #ffffff2e}
+:root[data-theme="light"] .tabs button{background:#fff;color:var(--text);box-shadow:0 4px 10px #0002}
+.tabs button.on{background:var(--blue);color:#06101c;border-color:var(--blue);box-shadow:0 0 0 2px #58a6ff55}
+.bk{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin:10px 0}
+.bk h3{margin:0 0 8px;font-size:15px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.fld{flex:1 1 170px;display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);font-weight:600;min-width:0}
+select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:15px;min-width:0;width:100%}
+.ss{position:relative}
+.ssb{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;font-weight:500;cursor:pointer}
+.ssb .ssl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ssb i{font-style:normal;color:var(--muted)}
+.ssb.dis{opacity:.5;pointer-events:none}
+.ssp{display:none;position:absolute;z-index:50;left:0;right:0;top:calc(100% + 4px);background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:0 12px 30px #000b}
+.ss.open .ssp{display:block}
+.ssp input{margin-bottom:6px}
+.sso{max-height:260px;overflow:auto}
+.sso div{padding:9px 10px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;gap:10px}
+.sso div:hover{background:var(--grey-bg)}.sso div small{color:var(--muted)}
+.sso .none{color:var(--muted);cursor:default}
+.msg{min-height:18px;margin-top:6px;font-size:13px;color:var(--muted)}.msg.bad{color:var(--red)}.msg.ok{color:var(--green)}
+.scan{display:flex;gap:8px}.scan input{flex:1}.scan button{padding:0 16px}
+.sw{flex:none;height:42px;width:42px;padding:0;font-size:18px}
+/* bulk list */
+.bkit{display:flex;gap:10px;align-items:center;padding:8px;margin:6px 0;border-radius:12px;background:var(--bg);border:1px solid var(--border)}
+.bkit.flash,.vr.flash{box-shadow:0 0 0 2px #2ea043;transition:box-shadow .3s}.bkit.err{border-color:#7a2a2d}
+.im{flex:none;width:52px;height:52px;border-radius:10px;background:var(--grey-bg);overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:700;font-size:12px}
+.im img{width:100%;height:100%;object-fit:cover;display:block}
+.nm{flex:1;min-width:0}.nm b{display:block;font-size:14px;line-height:1.25}
+.nm .tag{display:inline-block;margin-top:3px;font-size:12px;font-weight:700;padding:1px 9px;border-radius:999px;background:var(--info-bg);color:var(--info)}
+.nm small{display:block;margin-top:3px;font-size:11.5px;color:var(--muted)}.nm small.bad{color:var(--red);font-weight:700}
+.stp{display:flex;align-items:center;gap:6px;flex:none}.stp button{width:34px;height:34px;padding:0;font-size:18px;border-radius:9px}
+.stp b{min-width:28px;text-align:center;font-size:20px}
+.rm{flex:none;width:34px;height:34px;padding:0;border-radius:9px}
+.foot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.foot .sum{flex:1;font-weight:700}
+.empty{padding:18px;text-align:center;color:var(--muted)}
+.done{border-color:#1f5c33!important;background:var(--green-bg);color:var(--green);font-weight:700;padding:8px 10px;border-radius:10px;border:1px solid}
+/* stock take */
+.bar{position:sticky;top:0;z-index:30;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 12px;margin:8px 0;box-shadow:0 8px 18px #0006}
+.bar h2{margin:0;font-size:16px}.bar .sub{color:var(--muted);font-size:12px}
+.nums{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0 6px}
+.nums div{border-radius:10px;padding:5px 4px;text-align:center;background:var(--grey-bg)}
+.nums b{display:block;font-size:20px;line-height:1.15}.nums span{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+.nums .e b{color:var(--info)}.nums .l b{color:var(--red)}.nums .x b{color:var(--orange)}.nums .s b{color:var(--green)}
+.pb{height:8px;border-radius:99px;background:var(--grey-bg);overflow:hidden;display:flex}.pb i{display:block;height:100%}
+.pb .g{background:var(--green)}.pb .o{background:var(--orange)}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.actions .sp{flex:1}
+.seg{display:flex;gap:6px;margin:8px 0}.seg button{flex:1;padding:6px 4px;font-size:13px}.seg button.on{background:var(--blue);border-color:var(--blue);color:#06101c}
+.pc{background:var(--card);border:1px solid var(--border);border-radius:14px;margin:8px 0;overflow:hidden}
+.ph{display:flex;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border)}
+.ph .im{width:44px;height:44px}.ph b{flex:1;min-width:0;font-size:14px;line-height:1.25}
+.vr{display:flex;align-items:center;gap:6px;padding:7px 10px;border-left:4px solid transparent}
+.vr+.vr{border-top:1px solid var(--border)}
+.vr .vt{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vr.red{border-left-color:var(--red);background:var(--red-bg)}.vr.blue{border-left-color:var(--info);background:var(--info-bg)}
+.vr.green{border-left-color:var(--green);background:var(--green-bg)}.vr.extra{border-left-color:var(--orange);background:var(--orange-bg)}
+.tl{flex:none;min-width:46px;padding:2px 4px;text-align:center;border-radius:8px;background:#0003}
+.tl b{display:block;font-size:17px;line-height:1.15}.tl span{display:block;font-size:9.5px;color:var(--muted);text-transform:uppercase}
+.vr.red .tl.l b{color:var(--red)}.vr.blue .tl.l b{color:var(--info)}.vr.green .tl.l b{color:var(--green)}.vr.extra .tl.l b{color:var(--orange)}
+.vr .st{flex:none;width:22px;text-align:center;font-size:17px;font-weight:800}
+.vr.green .st{color:var(--green)}.vr.extra .st{color:var(--orange)}
+.vr .stp button{width:30px;height:30px;font-size:16px}
+.cards .pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:700}
+.sess{display:flex;gap:10px;align-items:center;padding:10px;margin:6px 0;border-radius:12px;background:var(--bg);border:1px solid var(--border)}
+.sess .nm small{color:var(--muted)}
+.res{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
+.res div{border-radius:12px;padding:10px 4px;text-align:center;background:var(--grey-bg)}.res b{display:block;font-size:24px}.res span{font-size:11px;color:var(--muted);text-transform:uppercase}
+.res .m b{color:var(--red)}.res .x b{color:var(--orange)}.res .c b{color:var(--green)}
+.demo{background:var(--orange-bg);color:var(--orange);border-radius:10px;padding:8px 10px;margin:8px 0;font-size:12.5px}
+.demo code{cursor:pointer;background:#0003;padding:1px 6px;border-radius:6px;margin:2px;display:inline-block}
+[hidden]{display:none!important}
+@media(max-width:520px){.tl{min-width:40px}.vr{gap:4px;padding:7px 8px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>Stock Take</h1><button id="theme" title="Light / dark">◐</button></header>
+  <div class="demo" id="demo" hidden></div>
+  <nav class="tabs"><button id="tabBulk" class="on">Bulk transfer</button><button id="tabTake">Stock take</button></nav>
+
+  <!-- ============ BULK TRANSFER ============ -->
+  <div id="viewBulk">
+    <div class="bk"><h3>1 · Locations</h3>
+      <div class="row">
+        <label class="fld">Transfer from<select id="bkFrom"><option value="">Loading…</option></select></label>
+        <button type="button" class="sw" id="bkSwap" title="Swap">⇄</button>
+        <label class="fld">Transfer to<select id="bkTo"><option value="">Loading…</option></select></label>
+      </div>
+      <div class="msg" id="bkLocMsg"></div>
+    </div>
+    <div class="bk"><h3>2 · Scan barcodes</h3>
+      <div class="scan"><input id="bkIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode, then Enter" disabled><button id="bkAdd" disabled>Add</button><button id="bkCam" type="button" title="Scan with camera" disabled>📷</button></div>
+      <div class="msg" id="bkMsg">Pick both locations to start scanning.</div>
+    </div>
+    <div class="bk"><div class="row" style="align-items:center"><b id="bkTitle" style="flex:1">Scanned items</b><button type="button" id="bkClear" hidden>Clear list</button></div>
+      <div id="bkList"><div class="empty">Nothing scanned yet.</div></div>
+      <div class="foot"><span class="sum" id="bkSum"></span><button type="button" class="pri" id="bkFin" disabled>Finalize transfer</button></div>
+      <div class="msg" id="bkRes"></div>
+    </div>
+  </div>
+
+  <!-- ============ STOCK TAKE ============ -->
+  <div id="viewTake" hidden>
+    <div id="tkSetup">
+      <div class="bk"><h3>Start a stock take</h3>
+        <div class="row">
+          <label class="fld">Counting at<select id="tkLoc"></select></label>
+          <div class="fld">Collection<div class="ss" id="ssCol"></div></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div class="fld">Size / variant (optional)<div class="ss" id="ssSize"></div></div>
+          <div class="fld">Design (optional)<div class="ss" id="ssDes"></div></div>
+        </div>
+        <div class="foot"><span class="sum" id="tkScope">Pick a collection to begin.</span><button class="pri" id="tkStart" disabled>Start stock take</button></div>
+      </div>
+      <div class="bk" id="tkOpenBox" hidden><h3>Paused stock takes</h3><div id="tkOpen"></div></div>
+      <div class="bk" id="tkDoneBox" hidden><h3>Finished</h3><div id="tkDone"></div></div>
+    </div>
+
+    <div id="tkRun" hidden>
+      <div class="bar">
+        <h2 id="tkTitle"></h2><div class="sub" id="tkSub"></div>
+        <div class="nums"><div class="e"><b id="nE">0</b><span>Stock</span></div><div class="s"><b id="nS">0</b><span>Scanned</span></div><div class="l"><b id="nL">0</b><span>Remaining</span></div><div class="x"><b id="nX">0</b><span>Extra</span></div></div>
+        <div class="pb"><i class="g" id="pbG"></i><i class="o" id="pbO"></i></div>
+        <div class="scan" style="margin-top:10px"><input id="tkIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode, then Enter"><button id="tkAdd">Add</button><button id="tkCam" type="button" title="Scan with camera">📷</button></div>
+        <div class="msg" id="tkMsg"></div>
+        <div class="actions"><button id="tkSave">Save</button><button id="tkPause">Save &amp; pause</button><span class="sp"></span><button class="pri" id="tkEnd">End stock take</button></div>
+      </div>
+      <div class="seg" id="tkSeg"><button data-f="all" class="on">All</button><button data-f="left">Remaining</button><button data-f="done">Done</button><button data-f="extra">Extra</button></div>
+      <div id="tkList" class="cards"></div>
+      <div class="bk" id="tkOutBox" hidden><h3>Scanned but outside this filter</h3><div id="tkOut"></div></div>
+    </div>
+
+    <div id="tkResult" hidden>
+      <div class="bk"><h3 id="rsTitle">Stock take finished</h3><div class="sub" id="rsSub" style="color:var(--muted)"></div>
+        <div class="res"><div><b id="rsE">0</b><span>Stock</span></div><div class="c"><b id="rsC">0</b><span>Counted</span></div><div class="m"><b id="rsM">0</b><span>Missing</span></div><div class="x"><b id="rsX">0</b><span>Extra</span></div></div>
+        <div id="rsList"></div>
+        <div class="foot"><span class="sum"></span><button class="pri" id="rsBack">Back to stock take</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*DATA_START*/
+const DATA = __DATA__;
+/*DATA_END*/
+const $ = id => document.getElementById(id);
+const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const bcn = x => String(x || '').replace(/\D/g, '').replace(/^0+/, '') || String(x || '').trim();
+const PREVIEW = window.parent === window;      // opened on its own (not inside the hub): use demo data, no hub calls
+const beep = k => { try { const C = window.AudioContext || window.webkitAudioContext, a = new C(), o = a.createOscillator(), g = a.createGain(); o.frequency.value = k === 'ok' ? 880 : k === 'warn' ? 520 : 220; g.gain.value = 0.08; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + (k === 'ok' ? 0.08 : 0.25)); setTimeout(() => a.close(), 400); } catch (e) {} };
+
+/* ---------- variants index (from the website data) ---------- */
+const V = [], byBc = new Map(), byVid = new Map();
+DATA.products.forEach(p => p.variants.forEach(v => {
+  const r = {vid: String(v.vid), pid: String(p.id), pt: p.title, image: p.image || '', t: v.t, cols: p.cols || [], bc: v.bc || [], q: v.q || {}};
+  V.push(r); byVid.set(r.vid, r); r.bc.forEach(b => byBc.set(bcn(b), r));
+}));
+const theme = t => { document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark'; };
+
+/* ---------- hub bridge ---------- */
+const pend = new Map(); let reqId = 0;
+function call(action, payload, ms) {
+  return new Promise((res, rej) => {
+    const req = ++reqId, t = setTimeout(() => { pend.delete(req); rej(new Error('No answer from the hub. Close and reopen the app, then try again.')); }, ms || 25000);
+    pend.set(req, {res, rej, t});
+    try { parent.postMessage(Object.assign({type: 'stock-take', action, req}, payload || {}), '*'); } catch (e) { clearTimeout(t); rej(e); }
+  });
+}
+window.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.type === 'stock-take-theme') theme(d.theme);
+  else if (d.type === 'stock-take-scan') { if (d.code) (d.target === 'bulk' ? bulkAdd : takeScan)(d.code); else if (d.error) (d.target === 'bulk' ? bkMsg : tkMsg)(d.error, 'bad'); }
+  else if (d.type === 'stock-take-result') { const p = pend.get(d.req); if (!p) return; clearTimeout(p.t); pend.delete(d.req); d.ok ? p.res(d.data) : p.rej(new Error(d.error || 'Failed')); }
+});
+const camera = target => { if (PREVIEW) return (target === 'bulk' ? bkMsg : tkMsg)('Camera works inside the app. In this preview, type a barcode or tap a demo barcode above.', 'bad'); try { parent.postMessage({type: 'stock-take', action: 'camera', target}, '*'); } catch (e) {} };
+
+/* ---------- Store: hub in production, demo in preview ---------- */
+const LS = {get: k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
+const Store = PREVIEW ? {
+  locs: async () => ({locations: [{id: '1', name: 'Shop location'}, {id: '2', name: 'Backup'}]}),
+  lookup: async (code, from, to) => { const v = byBc.get(bcn(code)); if (!v) return {found: false}; await new Promise(r => setTimeout(r, 250)); return {found: true, vid: v.vid, product: v.pt, variant: v.t, image: v.image, from: v.q[from] || 0, to: v.q[to] || 0}; },
+  transfer: async (from, to, items) => { await new Promise(r => setTimeout(r, 600)); items.forEach(i => { const v = byVid.get(i.vid); v.q[from] = (v.q[from] || 0) - i.qty; v.q[to] = (v.q[to] || 0) + i.qty; }); return {ok: true}; },
+  takeList: async () => LS.get('st-demo-takes') || [],
+  takeSave: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
+  takeEnd: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {status: 'ended', updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
+} : {
+  locs: () => call('bulklocs').catch(() => ({locations: DATA.locations || []})),   // the report data carries the locations too
+  lookup: (code, from, to) => call('bulklookup', {code, from, to}),
+  transfer: (from, to, items) => call('bulktransfer', {from, to, items}, 90000),
+  takeList: () => call('takelist'),
+  takeSave: s => call('takesave', {session: s}),
+  takeEnd: s => call('takeend', {session: s}),
+};
+
+/* ---------- tabs ---------- */
+function show(v) {
+  $('viewBulk').hidden = v !== 'bulk'; $('viewTake').hidden = v !== 'take';
+  $('tabBulk').classList.toggle('on', v === 'bulk'); $('tabTake').classList.toggle('on', v === 'take');
+  if (v === 'take') takeOpen();
+}
+$('tabBulk').onclick = () => show('bulk'); $('tabTake').onclick = () => show('take');
+$('theme').onclick = () => { const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; theme(t); try { parent.postMessage({type: 'stock-take', action: 'theme', theme: t}, '*'); } catch (e) {} };
+
+/* ---------- locations (shared) ---------- */
+let locs = [], locsP = null;
+const locName = id => (locs.find(l => l.id === String(id)) || {}).name || '';
+const loadLocs = () => locsP || (locsP = Store.locs().then(r => { locs = r.locations || []; return locs; }).catch(e => { locsP = null; throw e; }));
+
+/* ---------- searchable select ---------- */
+function Sel(root, ph) {
+  root.innerHTML = `<button type="button" class="ssb"><span class="ssl">${E(ph)}</span><i>▾</i></button><div class="ssp"><input type="text" placeholder="Search…" autocomplete="off"><div class="sso"></div></div>`;
+  const b = root.querySelector('.ssb'), inp = root.querySelector('input'), box = root.querySelector('.sso');
+  let opts = [], cur = {v: '', l: ph}, onpick = () => {};
+  const draw = () => {
+    const q = inp.value.trim().toLowerCase(), list = opts.filter(o => !q || o.l.toLowerCase().includes(q)).slice(0, 200);
+    box.innerHTML = list.length ? list.map((o, i) => `<div data-i="${opts.indexOf(o)}">${E(o.l)}${o.s ? `<small>${E(o.s)}</small>` : ''}</div>`).join('') : '<div class="none">No match</div>';
+  };
+  b.onclick = e => { e.stopPropagation(); const was = root.classList.contains('open'); document.querySelectorAll('.ss.open').forEach(x => x.classList.remove('open')); if (!was) { root.classList.add('open'); inp.value = ''; draw(); inp.focus(); } };
+  box.onclick = e => { const d = e.target.closest('[data-i]'); if (!d) return; cur = opts[+d.getAttribute('data-i')]; root.querySelector('.ssl').textContent = cur.l; root.classList.remove('open'); onpick(cur); };
+  inp.oninput = draw; root.querySelector('.ssp').onclick = e => e.stopPropagation();
+  return {set: (o, keep) => { opts = o; if (!keep) { cur = {v: '', l: ph}; root.querySelector('.ssl').textContent = ph; } }, get: () => cur.v, label: () => cur.l, disable: x => b.classList.toggle('dis', !!x), onpick: f => { onpick = f; }, reset: () => { cur = {v: '', l: ph}; root.querySelector('.ssl').textContent = ph; }};
+}
+document.addEventListener('click', () => document.querySelectorAll('.ss.open').forEach(x => x.classList.remove('open')));
+
+/* =====================================================================
+   BULK TRANSFER
+   ===================================================================== */
+(function () {
+  let items = [], armed = false, busy = false;
+  const msg = (t, k) => { const m = $('bkMsg'); m.textContent = t || ''; m.className = 'msg' + (k ? ' ' + k : ''); };
+  window.bkMsg = msg;
+  const ready = () => !!($('bkFrom').value && $('bkTo').value && $('bkFrom').value !== $('bkTo').value);
+  const units = () => items.reduce((a, i) => a + (i.state === 'ok' ? i.qty : 0), 0);
+  const bad = i => i.state === 'err' || (i.state === 'ok' && i.qty > i.from);
+  function fill() {
+    const f = $('bkFrom').value, t = $('bkTo').value, o = '<option value="">Choose…</option>' + locs.map(l => `<option value="${E(l.id)}">${E(l.name)}</option>`).join('');
+    $('bkFrom').innerHTML = o; $('bkTo').innerHTML = o; if (f) $('bkFrom').value = f; if (t) $('bkTo').value = t;
+  }
+  function gate() {
+    const ok = ready(), lock = items.length > 0, same = $('bkFrom').value && $('bkFrom').value === $('bkTo').value;
+    ['bkFrom', 'bkTo', 'bkSwap'].forEach(i => { $(i).disabled = lock || busy || !locs.length; });
+    ['bkIn', 'bkAdd', 'bkCam'].forEach(i => { $(i).disabled = !ok || busy; });
+    const m = $('bkMsg').textContent;
+    if (!ok) msg(same ? 'From and To must be different.' : 'Pick both locations to start scanning.', same ? 'bad' : '');
+    else if (m.startsWith('Pick both') || m.startsWith('From and To')) msg('Ready. Scan a barcode.', '');
+  }
+  function draw(flash) {
+    $('bkClear').hidden = !items.length;
+    $('bkTitle').textContent = items.length ? `Scanned items (${items.length})` : 'Scanned items';
+    $('bkList').innerHTML = items.length ? items.map(i => {
+      const img = i.image ? `<img src="${E(i.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
+      const nm = i.state === 'wait' ? `<b>Looking up…</b><small>${E(i.code)}</small>` : i.state === 'err' ? `<b>Barcode ${E(i.code)}</b><small class="bad">${E(i.err || 'Not found')}</small>`
+        : `<b>${E(i.product)}</b><span class="tag">${E(i.variant)}</span><small class="${i.qty > i.from ? 'bad' : ''}">${E(locName($('bkFrom').value))}: ${i.from} available${i.qty > i.from ? ' · not enough' : ''} · ${E(locName($('bkTo').value))}: ${i.to}</small>`;
+      return `<div class="bkit${i.state === 'err' ? ' err' : ''}${flash === i.key ? ' flash' : ''}" data-k="${E(i.key)}"><div class="im">${img}</div><div class="nm">${nm}</div>${i.state === 'err' ? '' : `<div class="stp"><button data-d="-1">−</button><b>${i.qty}</b><button data-d="1">+</button></div>`}<button class="rm" data-rm="1" title="Remove">✕</button></div>`;
+    }).join('') : '<div class="empty">Nothing scanned yet.</div>';
+    const n = items.filter(i => i.state === 'ok').length;
+    $('bkSum').textContent = n ? `${n} variant${n === 1 ? '' : 's'} · ${units()} unit${units() === 1 ? '' : 's'}: ${locName($('bkFrom').value)} → ${locName($('bkTo').value)}` : '';
+    const blocked = busy || !n || items.some(bad) || items.some(i => i.state === 'wait');
+    $('bkFin').disabled = blocked; $('bkFin').classList.toggle('arm', armed && !blocked);
+    $('bkFin').textContent = busy ? 'Moving stock…' : armed && !blocked ? `Tap again: move ${units()} unit${units() === 1 ? '' : 's'}` : 'Finalize transfer';
+    gate();
+  }
+  async function add(code) {
+    code = String(code || '').trim(); if (!code || !ready()) return;
+    $('bkRes').textContent = ''; $('bkRes').className = 'msg'; armed = false;
+    const key = bcn(code), ex = items.find(i => i.key === key);
+    if (ex) { if (ex.state === 'err') beep('bad'); else { ex.qty++; beep('ok'); } items.splice(items.indexOf(ex), 1); items.unshift(ex); draw(key); return; }
+    const it = {key, code, qty: 1, state: 'wait', product: '', variant: '', image: '', vid: '', from: 0, to: 0};
+    items.unshift(it); draw(key);
+    try {
+      const r = await Store.lookup(code, $('bkFrom').value, $('bkTo').value);
+      if (!items.includes(it)) return;
+      if (!r.found) { it.state = 'err'; it.err = 'Not found in Shopify. Check the barcode on the variant.'; beep('bad'); }
+      else {
+        Object.assign(it, {state: 'ok', product: r.product, variant: r.variant, image: r.image, vid: r.vid, from: r.from, to: r.to});
+        const dup = items.find(x => x !== it && x.state === 'ok' && x.vid === it.vid);
+        if (dup) { dup.qty += it.qty; items.splice(items.indexOf(it), 1); }
+        beep('ok');
+      }
+    } catch (e) { it.state = 'err'; it.err = String(e.message || e); beep('bad'); }
+    draw(key);
+  }
+  window.bulkAdd = add;
+  ['bkFrom', 'bkTo'].forEach(id => $(id).addEventListener('change', () => { draw(); if (ready()) $('bkIn').focus(); }));
+  $('bkSwap').onclick = () => { const f = $('bkFrom').value; $('bkFrom').value = $('bkTo').value; $('bkTo').value = f; draw(); };
+  $('bkIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = $('bkIn').value; $('bkIn').value = ''; add(v); } });
+  $('bkAdd').onclick = () => { const v = $('bkIn').value; $('bkIn').value = ''; add(v); $('bkIn').focus(); };
+  $('bkCam').onclick = () => camera('bulk');
+  $('bkList').onclick = e => {
+    const row = e.target.closest('.bkit'); if (!row) return;
+    const it = items.find(i => i.key === row.getAttribute('data-k')); if (!it) return; armed = false;
+    if (e.target.closest('[data-rm]')) items.splice(items.indexOf(it), 1);
+    else { const b = e.target.closest('[data-d]'); if (!b) return; it.qty = Math.max(1, it.qty + Number(b.getAttribute('data-d'))); }
+    draw(); try { $('bkIn').focus(); } catch (x) {}
+  };
+  $('bkClear').onclick = () => { items = []; armed = false; $('bkRes').textContent = ''; draw(); };
+  $('bkFin').onclick = async () => {
+    if (busy || $('bkFin').disabled) return;
+    if (!armed) { armed = true; draw(); setTimeout(() => { if (armed && !busy) { armed = false; draw(); } }, 6000); return; }
+    armed = false; busy = true; draw();
+    const f = $('bkFrom').value, t = $('bkTo').value, list = items.filter(i => i.state === 'ok').map(i => ({vid: i.vid, qty: i.qty})), n = list.length, u = units();
+    try {
+      const r = await Store.transfer(f, t, list);
+      items = []; busy = false; draw();
+      const el = $('bkRes'); el.className = 'msg done'; el.textContent = `Done: ${n} variant${n === 1 ? '' : 's'}, ${u} unit${u === 1 ? '' : 's'} moved ${locName(f)} → ${locName(t)}. Shopify stock and the ST meta field are updated.` + (r && r.warn ? ' ' + r.warn : '');
+      beep('ok');
+    } catch (e) { busy = false; draw(); const el = $('bkRes'); el.className = 'msg bad'; el.textContent = String(e.message || e); beep('bad'); }
+  };
+  window.bulkInit = async () => {
+    try { await loadLocs(); fill(); $('bkLocMsg').textContent = ''; }
+    catch (e) { $('bkLocMsg').textContent = 'Could not load locations: ' + e.message; $('bkLocMsg').className = 'msg bad'; $('bkFrom').innerHTML = $('bkTo').innerHTML = '<option value="">Unavailable</option>'; return; }
+    draw();
+  };
+})();
+
+/* =====================================================================
+   STOCK TAKE
+   ===================================================================== */
+let take = null, filt = 'all', endArmed = false, setupReady = false;
+const ssCol = Sel($('ssCol'), 'Choose a collection…'), ssSize = Sel($('ssSize'), 'All sizes'), ssDes = Sel($('ssDes'), 'All designs');
+const tkMsg = (t, k) => { const m = $('tkMsg'); m.textContent = t || ''; m.className = 'msg' + (k ? ' ' + k : ''); };
+const uid = () => 'st' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const expOf = v => (v.q[take.loc] || 0);
+
+function scopeVars(f, loc) {
+  return V.filter(v => (!f.col || v.cols.includes(f.col)) && (!f.size || v.t === f.size) && (!f.pid || v.pid === f.pid));
+}
+function setupScope() {
+  const loc = $('tkLoc').value, f = {col: ssCol.get(), size: ssSize.get(), pid: ssDes.get()};
+  if (!f.col) { $('tkScope').textContent = 'Pick a collection to begin.'; $('tkStart').disabled = true; return null; }
+  const vs = scopeVars(f).filter(v => (v.q[loc] || 0) > 0), pcs = vs.reduce((a, v) => a + (v.q[loc] || 0), 0);
+  $('tkScope').textContent = vs.length ? `${pcs} piece${pcs === 1 ? '' : 's'} across ${vs.length} variant${vs.length === 1 ? '' : 's'}` : 'No stock at this location for that filter.';
+  $('tkStart').disabled = !vs.length; return f;
+}
+function refreshSetupLists() {
+  const col = ssCol.get(), inCol = V.filter(v => !col || v.cols.includes(col));
+  const sz = new Map(); inCol.forEach(v => sz.set(v.t, (sz.get(v.t) || 0) + 1));
+  ssSize.set([{v: '', l: 'All sizes'}].concat([...sz.keys()].sort((a, b) => a.localeCompare(b, undefined, {numeric: true})).map(t => ({v: t, l: t, s: sz.get(t) + ' design' + (sz.get(t) === 1 ? '' : 's')}))));
+  const ds = new Map(); inCol.filter(v => !ssSize.get() || v.t === ssSize.get()).forEach(v => ds.set(v.pid, v.pt));
+  ssDes.set([{v: '', l: 'All designs'}].concat([...ds.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t}))));
+  ssSize.disable(!col); ssDes.disable(!col);
+}
+ssCol.onpick(() => { ssSize.reset(); ssDes.reset(); refreshSetupLists(); setupScope(); });
+ssSize.onpick(() => { ssDes.reset(); const col = ssCol.get(), ds = new Map(); V.filter(v => (!col || v.cols.includes(col)) && (!ssSize.get() || v.t === ssSize.get())).forEach(v => ds.set(v.pid, v.pt)); ssDes.set([{v: '', l: 'All designs'}].concat([...ds.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t})))); setupScope(); });
+ssDes.onpick(setupScope);
+$('tkLoc').onchange = setupScope;
+
+async function takeOpen() {
+  if (take) return;
+  try { await loadLocs(); } catch (e) { $('tkScope').textContent = 'Could not load locations: ' + e.message; return; }
+  if (!setupReady) {
+    $('tkLoc').innerHTML = locs.map(l => `<option value="${E(l.id)}">${E(l.name)}</option>`).join('');
+    const shop = locs.find(l => /shop/i.test(l.name)); if (shop) $('tkLoc').value = shop.id;
+    const cc = new Map(); V.forEach(v => v.cols.forEach(c => cc.set(c, (cc.get(c) || 0) + 1)));
+    ssCol.set([...cc.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, n]) => ({v: c, l: c, s: n + ' variants'})));
+    refreshSetupLists(); setupReady = true;
+  }
+  $('tkSetup').hidden = false; $('tkRun').hidden = true; $('tkResult').hidden = true;
+  try {
+    const list = await Store.takeList();
+    const open = list.filter(s => s.status !== 'ended'), done = list.filter(s => s.status === 'ended').slice(0, 8);
+    $('tkOpenBox').hidden = !open.length; $('tkDoneBox').hidden = !done.length;
+    const when = s => s.updated ? new Date(s.updated).toLocaleString(undefined, {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'}) : '';
+    const cnt = s => { const t = tally(s); return t; };
+    $('tkOpen').innerHTML = open.map(s => { const t = cnt(s); return `<div class="sess"><div class="nm"><b>${E(s.name)}</b><small>${E(s.locName)} · ${t.s} of ${t.e} counted · saved ${E(when(s))}</small></div><button class="pri" data-resume="${E(s.id)}">Resume</button></div>`; }).join('');
+    $('tkDone').innerHTML = done.map(s => { const t = cnt(s); return `<div class="sess"><div class="nm"><b>${E(s.name)}</b><small>${E(s.locName)} · ended ${E(when(s))}</small></div><span class="cards"><span class="pill" style="background:var(--red-bg);color:var(--red)">${t.miss} missing</span> <span class="pill" style="background:var(--orange-bg);color:var(--orange)">${t.extra} extra</span></span></div>`; }).join('');
+    window.__takes = list;
+  } catch (e) { /* history is optional */ }
+}
+$('tkOpen').onclick = e => { const b = e.target.closest('[data-resume]'); if (!b) return; const s = (window.__takes || []).find(x => x.id === b.getAttribute('data-resume')); if (s) begin(JSON.parse(JSON.stringify(s))); };
+
+function tally(s) {
+  const vs = (s.vids || []), c = s.counts || {};
+  let e = 0, sc = 0, miss = 0, extra = 0;
+  vs.forEach(([vid, ex]) => { const n = c[vid] || 0; e += ex; sc += Math.min(n, ex); miss += Math.max(0, ex - n); extra += Math.max(0, n - ex); });
+  Object.values(s.outside || {}).forEach(o => { extra += o.n; });
+  return {e, s: sc, miss, extra};
+}
+$('tkStart').onclick = () => {
+  const f = setupScope(); if (!f) return;
+  const loc = $('tkLoc').value, vs = scopeVars(f).filter(v => (v.q[loc] || 0) > 0);
+  const parts = [f.col]; if (f.size) parts.push('size ' + f.size); if (f.pid) parts.push(ssDes.label());
+  begin({id: uid(), name: parts.join(' · '), loc, locName: locName(loc), filters: f, vids: vs.map(v => [v.vid, v.q[loc] || 0]), counts: {}, outside: {}, startedAt: new Date().toISOString(), status: 'open'});
+};
+function begin(s) {
+  take = s; take.dirty = false; filt = 'all'; endArmed = false;
+  $('tkSetup').hidden = true; $('tkResult').hidden = true; $('tkRun').hidden = false;
+  $('tkTitle').textContent = s.name; $('tkSub').textContent = 'Counting at ' + s.locName;
+  document.querySelectorAll('#tkSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === 'all'));
+  tkMsg('Scan a barcode to count it.'); drawTake(); setTimeout(() => { try { $('tkIn').focus(); } catch (e) {} }, 50);
+}
+const expMap = () => new Map(take.vids);
+function status(e, c) { return c > e ? 'extra' : c === 0 ? 'red' : c < e ? 'blue' : 'green'; }
+function drawTake(flash) {
+  const em = expMap(), c = take.counts;
+  const ids = new Set(take.vids.map(x => x[0])); Object.keys(c).forEach(k => { if (c[k] > 0) ids.add(k); });
+  let E_ = 0, S = 0, L = 0, X = 0, ok = 0;
+  take.vids.forEach(([vid, ex]) => { const n = c[vid] || 0; E_ += ex; S += n; L += Math.max(0, ex - n); X += Math.max(0, n - ex); ok += Math.min(n, ex); });
+  const out = Object.entries(take.outside).filter(([k, o]) => o.n > 0), outN = out.reduce((a, [k, o]) => a + o.n, 0);
+  $('nE').textContent = E_; $('nS').textContent = S; $('nL').textContent = L; $('nX').textContent = X + outN;
+  const tot = Math.max(E_ + X, 1); $('pbG').style.width = (ok / tot * 100) + '%'; $('pbO').style.width = (X / tot * 100) + '%';
+  const groups = new Map();
+  [...ids].map(k => byVid.get(k)).filter(Boolean).forEach(v => { const ex = em.get(v.vid) || 0, n = c[v.vid] || 0, st = status(ex, n); if (filt === 'left' && !(st === 'red' || st === 'blue')) return; if (filt === 'done' && st !== 'green') return; if (filt === 'extra' && st !== 'extra') return; if (!groups.has(v.pid)) groups.set(v.pid, []); groups.get(v.pid).push({v, ex, n, st}); });
+  const icon = {red: '', blue: '', green: '✓', extra: '!'};
+  $('tkList').innerHTML = groups.size ? [...groups.values()].sort((a, b) => a[0].v.pt.localeCompare(b[0].v.pt)).map(g => {
+    const p = g[0].v, img = p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase());
+    return `<div class="pc"><div class="ph"><div class="im">${img}</div><b>${E(p.pt)}</b></div>` + g.sort((a, b) => a.v.t.localeCompare(b.v.t, undefined, {numeric: true})).map(r => `<div class="vr ${r.st}${flash === r.v.vid ? ' flash' : ''}" data-vid="${E(r.v.vid)}"><div class="vt">${E(r.v.t)}</div><div class="tl"><b>${r.ex}</b><span>Stock</span></div><div class="tl"><b>${r.n}</b><span>Scanned</span></div><div class="tl l"><b>${r.n > r.ex ? '+' + (r.n - r.ex) : r.ex - r.n}</b><span>${r.n > r.ex ? 'Extra' : 'Left'}</span></div><div class="stp"><button data-d="-1" ${r.n <= 0 ? 'disabled' : ''}>−</button><button data-d="1">+</button></div><div class="st">${icon[r.st]}</div></div>`).join('') + '</div>';
+  }).join('') : `<div class="empty">${filt === 'all' ? 'Nothing here.' : 'Nothing in this view.'}</div>`;
+  $('tkOutBox').hidden = !out.length;
+  $('tkOut').innerHTML = out.map(([k, o]) => `<div class="sess" data-ov="${E(k)}"><div class="nm"><b>${E(o.pt)}</b><span class="tag">${E(o.t)}</span></div><div class="stp"><button data-od="-1">−</button><b>${o.n}</b><button data-od="1">+</button></div></div>`).join('');
+  $('tkSave').textContent = take.dirty ? 'Save ●' : 'Saved ✓'; $('tkSave').disabled = !take.dirty;
+  $('tkEnd').classList.toggle('arm', endArmed); $('tkEnd').textContent = endArmed ? `Tap again: end (${L} left, ${X + outN} extra)` : 'End stock take';
+}
+function takeScan(code) {
+  if (!take) return;
+  const v = byBc.get(bcn(code)); endArmed = false;
+  if (!v) { tkMsg('Barcode ' + code + ' is not in the website data.', 'bad'); beep('bad'); return; }
+  const em = expMap();
+  if (em.has(v.vid) || take.counts[v.vid]) {
+    const ex = em.get(v.vid) || 0; take.counts[v.vid] = (take.counts[v.vid] || 0) + 1; take.dirty = true;
+    const over = take.counts[v.vid] > ex;
+    tkMsg(`${v.pt} · ${v.t}: ${take.counts[v.vid]} of ${ex}${over ? ' · EXTRA' : ''}`, over ? 'bad' : 'ok'); beep(over ? 'warn' : 'ok');
+    drawTake(v.vid);
+    const el = document.querySelector(`.vr[data-vid="${v.vid}"]`); if (el) el.scrollIntoView({block: 'center', behavior: 'smooth'});
+  } else {
+    const o = take.outside[v.vid] || (take.outside[v.vid] = {pt: v.pt, t: v.t, n: 0}); o.n++; take.dirty = true;
+    tkMsg(`${v.pt} · ${v.t} is not in this filter. Added to "outside this filter".`, 'bad'); beep('warn'); drawTake();
+  }
+}
+window.takeScan = takeScan;
+$('tkIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = $('tkIn').value; $('tkIn').value = ''; takeScan(v.trim()); } });
+$('tkAdd').onclick = () => { const v = $('tkIn').value; $('tkIn').value = ''; if (v.trim()) takeScan(v.trim()); $('tkIn').focus(); };
+$('tkCam').onclick = () => camera('take');
+$('tkSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; filt = b.dataset.f; document.querySelectorAll('#tkSeg button').forEach(x => x.classList.toggle('on', x === b)); drawTake(); };
+$('tkList').onclick = e => {
+  const b = e.target.closest('[data-d]'), row = e.target.closest('.vr'); if (!b || !row || !take) return;
+  const vid = row.getAttribute('data-vid'); take.counts[vid] = Math.max(0, (take.counts[vid] || 0) + Number(b.getAttribute('data-d'))); take.dirty = true; endArmed = false; drawTake(vid);
+};
+$('tkOut').onclick = e => { const b = e.target.closest('[data-od]'), row = e.target.closest('[data-ov]'); if (!b || !row) return; const o = take.outside[row.getAttribute('data-ov')]; o.n = Math.max(0, o.n + Number(b.getAttribute('data-od'))); take.dirty = true; drawTake(); };
+async function save(pause) {
+  if (!take) return true;
+  $('tkSave').disabled = true; tkMsg('Saving…');
+  try {
+    await Store.takeSave({id: take.id, name: take.name, loc: take.loc, locName: take.locName, filters: take.filters, vids: take.vids, counts: take.counts, outside: take.outside, startedAt: take.startedAt, status: 'open'});
+    take.dirty = false; tkMsg('Saved.', 'ok');
+    if (pause) { take = null; takeOpen(); } else drawTake();
+    return true;
+  } catch (e) { tkMsg('Could not save: ' + e.message, 'bad'); $('tkSave').disabled = false; return false; }
+}
+$('tkSave').onclick = () => save(false); $('tkPause').onclick = () => save(true);
+$('tkEnd').onclick = async () => {
+  if (!take) return;
+  if (!endArmed) { endArmed = true; drawTake(); setTimeout(() => { if (endArmed) { endArmed = false; if (take) drawTake(); } }, 6000); return; }
+  endArmed = false; const t = tally(take);
+  try {
+    await Store.takeEnd({id: take.id, name: take.name, loc: take.loc, locName: take.locName, filters: take.filters, vids: take.vids, counts: take.counts, outside: take.outside, startedAt: take.startedAt, endedAt: new Date().toISOString(), summary: {expected: t.e, counted: t.s, missing: t.miss, extra: t.extra}});
+  } catch (e) { tkMsg('Could not end: ' + e.message, 'bad'); drawTake(); return; }
+  const s = take; take = null;
+  $('tkRun').hidden = true; $('tkResult').hidden = false;
+  $('rsTitle').textContent = 'Stock take finished'; $('rsSub').textContent = s.name + ' · ' + s.locName;
+  $('rsE').textContent = t.e; $('rsC').textContent = t.s; $('rsM').textContent = t.miss; $('rsX').textContent = t.extra;
+  const em = new Map(s.vids), rows = [];
+  s.vids.forEach(([vid, ex]) => { const n = s.counts[vid] || 0, v = byVid.get(vid); if (v && n !== ex) rows.push({v, ex, n}); });
+  Object.keys(s.counts).forEach(k => { if (!em.has(k) && s.counts[k] > 0 && byVid.get(k)) rows.push({v: byVid.get(k), ex: 0, n: s.counts[k]}); });
+  Object.entries(s.outside || {}).forEach(([k, o]) => { if (o.n > 0) rows.push({v: {pt: o.pt, t: o.t}, ex: 0, n: o.n, out: true}); });
+  $('rsList').innerHTML = rows.length ? rows.sort((a, b) => a.v.pt.localeCompare(b.v.pt)).map(r => { const d = r.n - r.ex; return `<div class="sess"><div class="nm"><b>${E(r.v.pt)}</b><span class="tag">${E(r.v.t)}</span>${r.out ? '<small>outside the filter</small>' : ''}</div><span class="pill cards" style="padding:2px 10px;border-radius:99px;font-weight:800;background:${d < 0 ? 'var(--red-bg)' : 'var(--orange-bg)'};color:${d < 0 ? 'var(--red)' : 'var(--orange)'}">${d < 0 ? 'missing ' + (-d) : 'extra +' + d}</span></div>`; }).join('') : '<div class="empty">Everything matched. 🎉</div>';
+};
+$('rsBack').onclick = () => { $('tkResult').hidden = true; takeOpen(); };
+
+/* ---------- start ---------- */
+(async function init() {
+  if (PREVIEW) {
+    const dm = $('demo'); dm.hidden = false;
+    const some = V.filter(v => v.bc.length).filter((v, i) => i % 7 === 0).slice(0, 6);
+    dm.innerHTML = '<b>Preview with sample data.</b> Tap a demo barcode to scan it: ' + some.map(v => `<code data-bc="${E(v.bc[0])}" title="${E(v.pt + ' · ' + v.t)}">${E(v.bc[0])}</code>`).join('');
+    dm.onclick = e => { const c = e.target.closest('[data-bc]'); if (!c) return; if (!$('viewTake').hidden) { if (take) takeScan(c.dataset.bc); } else bulkAdd(c.dataset.bc); };
+  }
+  bulkInit();
+  try { parent.postMessage({type: 'stock-take', action: 'ready'}, '*'); } catch (e) {}
+})();
+</script>
+</body>
+</html>

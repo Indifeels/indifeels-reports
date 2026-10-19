@@ -216,6 +216,7 @@
     "product-visibility": { c: "purple", icon: "eye", stat: ["eye", "tag", "alert"], line: ["purple", "teal", "rose"] },
     "restock-plan": { c: "orange", icon: "box", stat: ["box", "alert"], line: [] },
     "restock-supplier": { c: "teal", icon: "box", stat: [], line: [] },
+    "stock-take": { c: "teal", icon: "box", stat: ["box", "tag"], line: [] },
     footwear: { c: "rose", icon: "search", stat: ["search", "bars", "trend"], line: ["rose", "purple", "green"] },
     "facebook-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
     "google-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
@@ -259,7 +260,7 @@
     {name:"Sales Analysis",color:"#568F8C",ids:["order-source","order-attribution"]},
     {name:"Facebook",color:"#986D7E",ids:["facebook-tracked","daily","monthly"]},
     {name:"Google",color:"#AD915A",ids:["google-tracked","google-non-tracked"]},
-    {name:"Stock Management",color:"#708C74",ids:["restock-plan","stock","product-visibility"]},
+    {name:"Stock Management",color:"#708C74",ids:["restock-plan","stock-take","stock","product-visibility"]},
     {name:"SEO",color:"#927CA2",ids:["footwear"]},
     {name:"Admin Panel",color:"#838099",ids:["schedule-panel","tech-availability","project-board"]}
   ];
@@ -1632,9 +1633,9 @@
         if (kind === "restock-plan") { try { const done = JSON.parse(localStorage.getItem(RP_DONE) || "[]"); if (Array.isArray(done) && done.length) reply({ type: "restock-plan-state", state: { done: done.slice(0, 5000).map(String) } }); } catch (_) {} }
         return;
       }
-      if (d.action === "camera" && kind === "restock-plan") {
+      if (d.action === "camera" && (kind === "restock-plan" || kind === "stock-take")) {
         // The report frame is sandboxed (no real origin), so it cannot ask for the camera itself: scan here, send only the number back.
-        rpScanCamera((code, error) => reply({ type: "restock-plan-scan", code, error, target: d.target === "bulk" ? "bulk" : "" }), d.target === "bulk");
+        rpScanCamera((code, error) => reply({ type: kind + "-scan", code, error, target: d.target === "bulk" ? "bulk" : "take" }), d.target === "bulk" || d.target === "take");
         return;
       }
       if (d.action === "state" && kind === "restock-plan") {
@@ -1679,9 +1680,6 @@
       if (error || !data?.ok) { let m = data?.error; try { if (!m && error?.context) m = (await error.context.json()).error; } catch (_) {} throw new Error(m || error?.message || "Couldn't save stock"); }
       return data;
     },
-    bulklocs: async () => rpStockCall({ action: "locations" }, "Couldn't load locations"),
-    bulklookup: async (d) => rpStockCall({ action: "lookup", code: rpText(d.code, 40), from: rpText(d.from, 40), to: rpText(d.to, 40) }, "Couldn't look up the barcode"),
-    bulktransfer: async (d) => rpStockCall({ action: "transfer", from: rpText(d.from, 40), to: rpText(d.to, 40), items: (Array.isArray(d.items) ? d.items : []).slice(0, 500).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && i.qty) || 0) })) }, "Couldn't finalize the transfer"),
     cancel: async (d) => rpOk(await sb.rpc("restock_owner_cancel", { p_id: rpText(d.id, 140) })),
     release: async (d) => rpOk(await sb.rpc("restock_owner_release", { p_id: rpText(d.id, 140) })),
     ackwrong: async (d) => rpOk(await sb.rpc("restock_owner_ack_wrong", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 100).map((x) => rpText(x, 140)) })),
@@ -1712,6 +1710,29 @@
     discontinue: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); return rpOk(await sb.rpc("restock_supplier_discontinue", { p_product: String(d.product) })); },
     discpending: async () => rpOk(await sb.rpc("restock_supplier_disc_pending")) || [],
     tracking: async (d) => { rpOk(await sb.rpc("restock_supplier_tracking", { p_box: rpText(d.box, 40), p_url: rpText(d.url, 500), p_no: rpText(d.no, 80) })); return true; },
+  });
+
+  const stJson = (v, max) => { const t = JSON.stringify(v == null ? null : v); if (t && t.length > max) throw new Error("Too much data to save"); return v == null ? null : v; };
+  const stRow = (r) => ({ id: r.id, name: r.name, loc: r.loc, locName: r.loc_name, status: r.status, filters: r.filters, vids: r.vids, counts: r.counts, outside: r.outside, summary: r.summary, startedAt: r.started_at, endedAt: r.ended_at, updated: r.updated_at });
+  async function stSave(sess, ended) {
+    const x = sess || {};
+    if (!/^[A-Za-z0-9_-]{4,40}$/.test(String(x.id || ""))) throw new Error("Bad stock take id");
+    const row = { id: x.id, name: rpText(x.name, 200), loc: rpText(x.loc, 30), loc_name: rpText(x.locName, 100), status: ended ? "ended" : "open",
+      filters: stJson(x.filters || {}, 5000), vids: stJson(Array.isArray(x.vids) ? x.vids.slice(0, 20000) : [], 800000), counts: stJson(x.counts || {}, 800000), outside: stJson(x.outside || {}, 100000),
+      started_at: x.startedAt || new Date().toISOString(), updated_at: new Date().toISOString() };
+    if (ended) { row.summary = stJson(x.summary || null, 2000); row.ended_at = x.endedAt || new Date().toISOString(); }
+    if (!row.name || !row.loc) throw new Error("Missing name or location");
+    if (!ended) { const cur = rpOk(await sb.from("stock_takes").select("status").eq("id", row.id).maybeSingle()); if (cur && cur.status === "ended") throw new Error("This stock take has already ended"); }
+    rpOk(await sb.from("stock_takes").upsert(row, { onConflict: "id" }));
+    return { ok: true };
+  }
+  rpBridge("stock-take", {
+    bulklocs: async () => rpStockCall({ action: "locations" }, "Couldn't load locations"),
+    bulklookup: async (d) => rpStockCall({ action: "lookup", code: rpText(d.code, 40), from: rpText(d.from, 40), to: rpText(d.to, 40) }, "Couldn't look up the barcode"),
+    bulktransfer: async (d) => rpStockCall({ action: "transfer", from: rpText(d.from, 40), to: rpText(d.to, 40), items: (Array.isArray(d.items) ? d.items : []).slice(0, 500).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && i.qty) || 0) })) }, "Couldn't finalize the transfer"),
+    takelist: async () => (rpOk(await sb.from("stock_takes").select("id,name,loc,loc_name,status,filters,vids,counts,outside,summary,started_at,ended_at,updated_at").order("updated_at", { ascending: false }).limit(40)) || []).map(stRow),
+    takesave: async (d) => stSave(d.session, false),
+    takeend: async (d) => stSave(d.session, true),
   });
 
   // ---------- colour tagging game ----------

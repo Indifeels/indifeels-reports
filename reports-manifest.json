@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-16.google-scorecard.1",
+  "manifest_version": "2026-10-19.stock-take.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -360,6 +360,28 @@
       ],
       "supabase_sync": false,
       "schedule_control": "none"
+    },
+    {
+      "id": "stock-take",
+      "title": "Stock Take and Transfer",
+      "workflow": "stock-take.yml",
+      "refresh_times": [
+        "on code change, schedule panel"
+      ],
+      "required_env": [
+        "SHOPIFY_TOKEN",
+        "STOCK_KEY"
+      ],
+      "builders": [
+        "tools/stock_take.py",
+        "tools/stock_take_template.html"
+      ],
+      "outputs": [
+        "r/stock-take.bin",
+        "r/stock-take.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "report_schedules"
     }
   ]
 }

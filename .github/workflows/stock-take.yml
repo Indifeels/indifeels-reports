@@ -1,0 +1,90 @@
+name: Stock Take and Transfer
+
+# Stock Take and Transfer: every active product with its collections, barcodes and stock per Shopify location.
+# Runs on code change, from the Schedule Panel, or by hand. Saved counts live in Supabase (stock_takes), not in this build.
+run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - tools/stock_take.py
+      - tools/stock_take_template.html
+      - .github/workflows/stock-take.yml
+  repository_dispatch:
+    types: [report-schedule]
+  workflow_dispatch:
+
+concurrency:
+  # Per-workflow lock: prevents duplicate runs of this workflow from cancelling unrelated report refreshes.
+  group: ${{ github.event.action == 'report-schedule' && !(contains(github.event.client_payload.report_ids, 'stock-take')) && format('ignored-{0}', github.event.client_payload.schedule_group) || 'indifeels-stock-take' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: (github.event.action != 'report-schedule' || (contains(github.event.client_payload.report_ids, 'stock-take')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Schedule Panel dispatch gate
+        id: gate
+        run: |
+          echo "go=1" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.go == '1'
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.go == '1'
+        with:
+          python-version: "3.12"
+
+      - name: Install report dependency
+        if: steps.gate.outputs.go == '1'
+        run: pip install cryptography
+
+      - name: Validate report contract
+        if: steps.gate.outputs.go == '1'
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          STOCK_KEY: ${{ secrets.STOCK_KEY }}
+        run: python3 tools/report_preflight.py --phase pre stock-take
+
+      - name: Build Stock Take and Transfer
+        if: steps.gate.outputs.go == '1'
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
+          STOCK_KEY: ${{ secrets.STOCK_KEY }}
+        run: python3 tools/stock_take.py
+
+      - name: Verify report files
+        if: steps.gate.outputs.go == '1'
+        run: |
+          test -s r/stock-take.bin
+          test -s r/stock-take.meta.bin
+          grep -q '"stock-take"' r/status.json
+
+      - name: Publish report
+        if: always() && steps.gate.outputs.go == '1'
+        run: |
+          python3 tools/report_preflight.py --phase post stock-take
+          git config user.name "Indifeels Indifeels stock take bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add r/status.json
+          [ -f r/stock-take.bin ] && git add r/stock-take.bin || true
+          [ -f r/stock-take.meta.bin ] && git add r/stock-take.meta.bin || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh Stock Take and Transfer (${{ github.event.client_payload.order || github.event_name }})"
+          for i in 1 2 3; do
+            git pull --rebase -q origin main
+            git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
+
