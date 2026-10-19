@@ -106,5 +106,14 @@
   "manifest_version": "2026-10-16.google-scorecard.1",
   "ok": true,
   "reason": ""
+ },
+ "stock-take": {
+  "at": "2026-10-19T13:39+11:00",
+  "code_sha": "981c885542502e82e2f2e556f6636461aadd1219",
+  "data_through": null,
+  "last_ok": "2026-10-19T13:39+11:00",
+  "manifest_version": "2026-10-19.stock-take.1",
+  "ok": true,
+  "reason": ""
  }
 }
