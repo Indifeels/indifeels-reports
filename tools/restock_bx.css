@@ -78,6 +78,8 @@
 :root[data-theme=light] .low.addl{background:#e9defa!important;color:#4a2f7a!important}
 .bx-prod table.shp tbody td:nth-child(3)::before{content:"SHIPPED"!important}
 .bx-prod table.pkd tbody td:nth-child(3)::before{content:"PACKED"!important}
+.setrow{margin:0 0 8px}.setpill{display:inline-block;padding:4px 12px;border-radius:999px;background:#17624f;color:#d6fff1;font-weight:800;font-size:13px}
+:root[data-theme=light] .setpill{background:#d3f2e7;color:#0b5a45}
 /*BXCSS_END*/
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}

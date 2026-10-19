@@ -324,6 +324,8 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 :root[data-theme=light] .low.addl{background:#e9defa!important;color:#4a2f7a!important}
 .bx-prod table.shp tbody td:nth-child(3)::before{content:"SHIPPED"!important}
 .bx-prod table.pkd tbody td:nth-child(3)::before{content:"PACKED"!important}
+.setrow{margin:0 0 8px}.setpill{display:inline-block;padding:4px 12px;border-radius:999px;background:#17624f;color:#d6fff1;font-weight:800;font-size:13px}
+:root[data-theme=light] .setpill{background:#d3f2e7;color:#0b5a45}
 /*BXCSS_END*/
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
@@ -1044,6 +1046,7 @@ const bxSizeRank = t => { const v = String(t || '').split('-')[0].trim().toUpper
   let m = /^(\d+)XL$/.exec(v); if (m) return 4 + +m[1]; m = /^(X{2,})L$/.exec(v); if (m) return 4 + m[1].length; return 99; };
 const bxChest = t => { const m = /-\s*(\d+)/.exec(String(t || '')); return m ? +m[1] : 999; };
 const bxByVariant = (a, b) => (bxChest(a.variant_title) - bxChest(b.variant_title)) || (bxSizeRank(a.variant_title) - bxSizeRank(b.variant_title)) || String(a.variant_title).localeCompare(String(b.variant_title), undefined, {numeric: true});
+const bxSetTag = g => { const q = g.map(r => r.qty); return (g.length < 3 || q.some(x => x !== q[0])) ? '' : `<div class="setrow"><span class="setpill">${q[0]} set${q[0] > 1 ? 's' : ''}</span></div>`; };
 function bxGroup(list) { const m = new Map(); list.forEach(r => { if (!m.has(r.product_id)) m.set(r.product_id, []); m.get(r.product_id).push(r); }); return [...m.values()]; }
 const bxToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
@@ -1379,6 +1382,7 @@ function cardHtml(g){
   const worst = ['red','orange','yellow','green'].find(l => g.rows.some(r => r.level === l)) || 'grey';
   const btns = (cls) => `<button class="disc ${cls}${arm?' arm':''}" data-disc="${esc(pid)}" data-to="${P.disc?0:1}" title="${P.disc ? 'Put this product back into restocking' : 'Stop restocking this product and mark it discontinued in Shopify'}">${P.disc ? 'Reinstate' : arm ? 'Confirm discontinue?' : 'Discontinue'}</button>` +
     `<button class="disc ${cls}" data-park="${esc(pid)}" data-to="${P.parked?0:1}" title="${P.parked ? 'Bring this product back into the list' : 'Park: can\'t restock right now. Hidden here only, nothing changes on the website'}">${P.parked ? 'Unpark' : 'Park'}</button>` +
+    (P.disc ? '' : `<button class="disc ${cls}${armed.has('set' + pid) ? ' arm' : ''}" data-pset="${esc(pid)}" title="Order 1 piece of every size of this product">${armed.has('set' + pid) ? 'Tap again: 1 of each size' : 'Add full set'}</button>`) +
     (P.disc ? '' : `<button class="disc ${cls}" data-psave="${esc(pid)}" title="Save the quantity of every variant of this product that has one to order">Save all</button>`);
   const rows = g.rows.map(rowHtml);
   return `<section class="card w-${worst}${isOpen?' open':''}" data-gid="${esc(g.id)}">
@@ -1708,6 +1712,15 @@ $('wrong').addEventListener('click', async e => {
 $('list').addEventListener('click', async e => {
   const t = e.target;
   if (t.id === 'more') { limit += PAGE; render(); return; }
+  const pset = t.closest('[data-pset]');
+  if (pset) {
+    e.stopPropagation(); const pid = pset.getAttribute('data-pset'), k = 'set' + pid;
+    if (!armed.has(k)) { armed.add(k); render(); setTimeout(() => { if (armed.delete(k)) render(); }, 5000); return; }
+    armed.delete(k);
+    const list = infos.filter(x => String(x.r.P.p.id) === String(pid) && !x.r.P.disc).map(x => ({r: x.r, key: x.key, qty: 1}));
+    if (!list.length) { notify('No sizes to add'); return; }
+    pset.disabled = true; await saveItems(list); notify('Full set added: 1 of each of ' + list.length + ' sizes', true); return;
+  }
   const ps = t.closest('[data-psave]');
   if (ps) { e.stopPropagation(); const list = pending(ps.getAttribute('data-psave')); if (!list.length) { notify('Nothing to save for this product'); return; } ps.disabled = true; await saveItems(list); return; }
   const pk = t.closest('[data-park]');
@@ -1902,7 +1915,7 @@ function renderSv(){
     const opts = supNames.concat(cur.filter(n => !supNames.includes(n)));
     return `<div class="svtag"><select data-tagp="${esc(g[0].product_id)}" data-cur="${esc(cur.join('|'))}"${cur.length ? '' : ' class="warn"'}><option value="">${cur.length ? (cur.length > 1 ? 'Mixed suppliers — pick one…' : 'Supplier: ' + esc(cur[0])) : '⚠ No supplier — pick one…'}</option>${opts.filter(n => n !== cur[0] || cur.length > 1).map(n => `<option>${esc(n)}</option>`).join('')}</select></div>`;
   };
-  const mTable = master.length ? bxGroup(master).map(g => `<div class="bx-prod" style="background:var(--card);margin-bottom:10px">${bxImg(g[0])}<div class="svpn">${esc(g[0].product_title || '')}</div>${tagSel(g)}<table><thead><tr><th>Variant</th><th style="text-align:center">Qty wanted</th><th>Requested</th></tr></thead><tbody>
+  const mTable = master.length ? bxGroup(master).map(g => `<div class="bx-prod" style="background:var(--card);margin-bottom:10px">${bxImg(g[0])}<div class="svpn">${esc(g[0].product_title || '')}</div>${bxSetTag(g)}${tagSel(g)}<table><thead><tr><th>Variant</th><th style="text-align:center">Qty wanted</th><th>Requested</th></tr></thead><tbody>
       ${g.slice().sort(bxByVariant).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td><td>${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</td></tr>`).join('')}</tbody></table></div>`).join('') : '<div class="empty">Nothing waiting on the order list.</div>';
   $('svList').innerHTML = bxSec('sv-order', '📋 Order list', bxPlural(master.length, 'item') + ' waiting', '<p class="sub" style="margin:0 0 10px">Every supplier sees these until one adds them to a box.</p>' + mTable);
   const boxes = boxesFor(who);
