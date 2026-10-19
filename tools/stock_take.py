@@ -27,11 +27,33 @@ PRODUCTS = """{ products(query:"status:active"){ edges{ node{
   variants{ edges{ node{ id title barcode inventoryItem{ id inventoryLevels{ edges{ node{ location{ id name } quantities(names:["available"]){ quantity } } } } } } } } } } } }"""
 
 
+MENUS = """{ menus(first:20){ nodes{ handle items{ type resourceId items{ type resourceId items{ type resourceId items{ type resourceId } } } } } } }"""
+
+
+def menu_collections():
+    """Collection ids linked from the store's navigation menus = the real shopper-facing collections
+    (tag-driven SEO/city collections that no menu links to are left out)."""
+    ids = set()
+
+    def walk(items):
+        for it in items or []:
+            if it.get("type") == "COLLECTION" and it.get("resourceId"):
+                ids.add(it["resourceId"])
+            walk(it.get("items"))
+    for m in pv.gql(MENUS, {})["data"]["menus"]["nodes"]:
+        walk(m.get("items"))
+    return ids
+
+
 def num(gid):
     return gid.rsplit("/", 1)[-1] if gid else ""
 
 
 def build():
+    main_cols = menu_collections()
+    print("menu collections:", len(main_cols))
+    if len(main_cols) < 10:
+        raise RuntimeError(f"Only {len(main_cols)} menu collections found: refusing to guess which collections are main ones")
     lines = rp.bulk(PRODUCTS, "stock take products")
     products, variants, items, locations = {}, {}, {}, {}
     for l in lines:
@@ -42,7 +64,7 @@ def build():
     for l in lines:
         gid = l.get("id", "")
         par = l.get("__parentId")
-        if "/Collection/" in gid and par in products:
+        if "/Collection/" in gid and par in products and gid in main_cols:
             t = (l.get("title") or "").strip()
             if t and not any(n in t.lower() for n in NOISE) and t not in products[par]["cols"]:
                 products[par]["cols"].append(t)
