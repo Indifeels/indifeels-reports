@@ -61,7 +61,17 @@ jobs:
           SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
           SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
           STOCK_KEY: ${{ secrets.STOCK_KEY }}
-        run: python3 tools/stock_take.py
+        run: |
+          set -o pipefail
+          python3 -X faulthandler tools/stock_take.py 2>&1 | tee build.log
+
+      - name: Keep build log
+        if: always() && steps.gate.outputs.go == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-take-build-log
+          path: build.log
+          if-no-files-found: ignore
 
       - name: Verify report files
         if: steps.gate.outputs.go == '1'
