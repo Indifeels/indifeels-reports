@@ -15,11 +15,11 @@ const bxByVariant = (a, b) => String(a.variant_title).localeCompare(String(b.var
 function bxGroup(list) { const m = new Map(); list.forEach(r => { if (!m.has(r.product_id)) m.set(r.product_id, []); m.get(r.product_id).push(r); }); return [...m.values()]; }
 const bxToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
-/* Delete-box control: only the newest open box can be deleted; its items move to another open box or back to the master list. */
+/* Delete-box control: only the newest open box can be deleted; its items move to another open box or back to the order list. */
 function bxDel(b, n, others, o) {
   if (o.lastOpen && o.lastOpen !== b.box_no) return `<span class="bx-note">To delete this box, delete ${bxEsc(o.lastOpen)} first.</span>`;
   const armed = o.armDel === b.box_no, sel = o.delTo || (others.length ? others[0] : '__master');
-  const pick = (n && others.length) ? `<label class="bx-mvto">Move its ${n} item${n === 1 ? '' : 's'} to<select data-delto>${others.map(x => `<option value="${bxEsc(x)}"${sel === x ? ' selected' : ''}>${bxEsc(x)}</option>`).join('')}<option value="__master"${sel === '__master' ? ' selected' : ''}>↩ Master list</option></select></label>` : '';
+  const pick = (n && others.length) ? `<label class="bx-mvto">Move its ${n} item${n === 1 ? '' : 's'} to<select data-delto>${others.map(x => `<option value="${bxEsc(x)}"${sel === x ? ' selected' : ''}>${bxEsc(x)}</option>`).join('')}<option value="__master"${sel === '__master' ? ' selected' : ''}>↩ Order list</option></select></label>` : '';
   return pick + `<button class="danger${armed ? ' arm' : ''}" data-delbox="${bxEsc(b.box_no)}">${armed ? 'Tap again to delete' : 'Delete box'}</button>`;
 }
 
@@ -39,19 +39,19 @@ function bxTile(b, lines, o) {
   const live = lines.filter(r => r.status === 'shipped').length, rem = o.rem || (() => 0);
   const head = `<div class="bx-h" data-bxt="${bxEsc(b.box_no)}"><span class="chev">▶</span>
     <span class="bx-title">${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
-    <span class="bx-pill ${shipped ? 'sh' : 'op'}">${shipped ? 'Shipped' : 'Open'}</span>
+    <span class="bx-pill ${shipped ? 'sh' : 'op'}">${shipped ? 'Shipped' : 'Packing'}</span>
     <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}</span>
     <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${url ? '<a class="bx-trkl" href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track parcel' + (b.tracking_no ? ' · ' + bxEsc(b.tracking_no) : '') + ' ↗</a>' : (b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : '')}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
-  const mvSel = (key, label) => `<select data-mvg="${bxEsc(key)}"><option value="">${label}</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select>`;
+  const mvSel = (key, label) => `<select data-mvg="${bxEsc(key)}"><option value="">${label}</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to order list</option></select>`;
   const selN = o.selP ? [...o.selP].filter(k => k.startsWith(b.box_no + '|')).length : 0;
-  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${(!o.ro && !shipped) ? `<div class="pnrow">${bxName(g[0]) || '<div class="pn"></div>'}<span class="pmv"><label class="ck"><input type="checkbox" data-selp="${bxEsc(b.box_no + '|' + g[0].product_id)}" ${(o.selP && o.selP.has(b.box_no + '|' + g[0].product_id)) ? 'checked' : ''}> Select</label></span></div><div class="pact"><label class="bx-mvto">Move whole product (${g.length} variant${g.length === 1 ? '' : 's'}) to<select data-mvg="${bxEsc('p:' + b.box_no + '|' + g[0].product_id)}"><option value="">Choose box…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select></label>${bxDisc(g[0].product_id, o)}</div>` : bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Packed' : 'Packed'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
+  const rows = g => `<div class="bx-prod">${bxImg(g[0])}<div class="pc">${(!o.ro && !shipped) ? `<div class="pnrow">${bxName(g[0]) || '<div class="pn"></div>'}<span class="pmv"><label class="ck"><input type="checkbox" data-selp="${bxEsc(b.box_no + '|' + g[0].product_id)}" ${(o.selP && o.selP.has(b.box_no + '|' + g[0].product_id)) ? 'checked' : ''}> Select</label></span></div><div class="pact"><label class="bx-mvto">Move whole product (${g.length} variant${g.length === 1 ? '' : 's'}) to<select data-mvg="${bxEsc('p:' + b.box_no + '|' + g[0].product_id)}"><option value="">Choose box…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to order list</option></select></label>${bxDisc(g[0].product_id, o)}</div>` : bxName(g[0])}<table><thead><tr><th>Variant</th><th style="text-align:center">Ordered</th><th style="text-align:center">${shipped ? 'Packed' : 'Packed'}</th>${(!o.ro && !shipped) ? '<th>Move / remove</th>' : '<th></th>'}</tr></thead><tbody>
     ${g.slice().sort(bxByVariant).map(r => { const more = rem(r), recvd = r.status === 'received', canRecv = o.recv && r.status === 'shipped';
-      return `<tr><td>${bxEsc(r.variant_title)}${r.wrong_pick ? '<span class="wp" title="Tagged to another supplier">⚠ wrong pick</span>' : ''}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}${more > 0 ? '<span class="low" title="Still on the master list, not in this box">+' + more + ' more ordered</span>' : ''}</td>
+      return `<tr><td>${bxEsc(r.variant_title)}${r.wrong_pick ? '<span class="wp" title="Tagged to another supplier">⚠ wrong pick</span>' : ''}<span class="sub">Ordered ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}${more > 0 ? '<span class="low" title="Still on the order list, not in this box">+' + more + ' more ordered</span>' : ''}</td>
       <td class="q">${(!o.ro && !shipped) ? `<span class="stp"><button data-q="-1" data-id="${bxEsc(r.id)}" ${bxEff(r) <= 0 ? 'disabled' : ''}>−</button><b>${bxEff(r)}</b><button data-q="1" data-id="${bxEsc(r.id)}" ${bxEff(r) >= r.qty ? 'disabled' : ''}>+</button></span>` : bxEff(r)}${bxEff(r) < r.qty ? '<span class="low">short ' + (r.qty - bxEff(r)) + '</span>' : ''}</td>
-      <td class="st">${(!o.ro && !shipped) ? `<span style="display:inline-flex;gap:8px;align-items:center"><select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to master list</option></select><button class="x" data-rm="${bxEsc(r.id)}" title="Remove from this box (back to the master list)">✕</button></span>` : recvd ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Received</span>' : canRecv ? `<button class="recv" data-recv="${bxEsc(r.id)}">Received</button>` : ''}</td></tr>`; }).join('')}
+      <td class="st">${(!o.ro && !shipped) ? `<span style="display:inline-flex;gap:8px;align-items:center"><select data-mv="${bxEsc(r.id)}"><option value="">Move to…</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to order list</option></select><button class="x" data-rm="${bxEsc(r.id)}" title="Remove from this box (back to the order list)">✕</button></span>` : recvd ? '<span class="low" style="background:var(--green-bg);color:var(--green)">✅ Received</span>' : canRecv ? `<button class="recv" data-recv="${bxEsc(r.id)}">Received</button>` : ''}</td></tr>`; }).join('')}
     </tbody></table></div></div>`;
-  let body = n ? bxGroup(lines).map(rows).join('') : `<div class="bx-empty">Nothing in this box yet. Pick items from the master list and press “Add to box”.</div>`;
+  let body = n ? bxGroup(lines).map(rows).join('') : `<div class="bx-empty">Nothing in this box yet. Pick items from the order list and press “Add to box”.</div>`;
   if (!o.ro && !shipped) {
     body += `<div class="bx-ship" data-shipbox="${bxEsc(b.box_no)}"><label>Ship date<input type="date" class="bx-date" value="${bxToday()}"></label>
       <label>Tracking link (optional)<input type="text" class="bx-url u" placeholder="https://…" maxlength="500"></label>
@@ -70,4 +70,14 @@ function bxTile(b, lines, o) {
   if (trkHtml) body = trkHtml + body;
   return `<section class="bx${o.open ? ' open' : ''}" data-bx="${bxEsc(b.box_no)}">${head}<div class="bx-body">${body}</div></section>`;
 }
+
+/* Collapsible section tile: Order list / Packing / Shipped. Click the bar to open. */
+const bxSecOpen = new Map();
+const bxSec = (key, title, count, body, o) => { const open = bxSecOpen.has(key) ? bxSecOpen.get(key) : !!(o && o.open);
+  return `<section class="sc${open ? ' open' : ''}" data-sc="${bxEsc(key)}"><div class="sc-h" data-sct="${bxEsc(key)}"><span class="chev">▶</span><span class="sc-t">${title}</span><span class="sc-n">${count}</span><span class="sc-hint"><i class="h-c">Click to open</i><i class="h-o">Click to close</i></span></div><div class="sc-body">${body}</div></section>`; };
+document.addEventListener('click', e => {
+  const h = e.target.closest('[data-sct]'); if (!h || e.target.closest('a, input, select, button, label')) return;
+  const sc = h.closest('.sc'); sc.classList.toggle('open'); bxSecOpen.set(h.getAttribute('data-sct'), sc.classList.contains('open'));
+});
+const bxPlural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 /*BXJS_END*/
