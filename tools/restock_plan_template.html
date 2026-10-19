@@ -742,6 +742,7 @@ select.sel{appearance:none;-webkit-appearance:none}
   .dtable{display:none}.ptable{display:block}
   .card-h .hbtn{display:none}.card-h .tiles{display:none}.card-h .hnum{display:block}.pbar{display:flex}
   #viewMine{max-width:980px;margin-left:auto;margin-right:auto}
+  .pbar .pbtn[data-disc],.pbar .pbtn[data-park]{min-width:112px;text-align:center}
   #viewMine .card-h{flex-wrap:nowrap!important}
   #viewMine .card-h .ttl{flex:1 1 auto!important;min-width:0}
   #viewMine .card-h .thumb{width:44px;height:44px}
@@ -1573,11 +1574,11 @@ $('boxes').addEventListener('click', e => {
 });
 function alignPbars(){
   document.querySelectorAll('#list .card.open').forEach(card => {
-    const bar = card.querySelector('.pbar'), step = card.querySelector('.step');
-    if (!bar || !step) return;
+    const bar = card.querySelector('.pbar'), step = [...card.querySelectorAll('.step')].find(x => x.getBoundingClientRect().width > 0);
+    if (!bar || !step) return;   // the hidden desktop table also holds .step buttons: measuring those gave 0 width and squashed Add full set / Save all
     const set = bar.querySelector('[data-pset]'), all = bar.querySelector('[data-psave]'); if (!set || !all) return;
     const sv = step.nextElementSibling && step.nextElementSibling.tagName === 'BUTTON' ? step.nextElementSibling : null;
-    [set, all].forEach(b => { b.style.marginLeft = ''; b.style.width = ''; });
+    [set, all].forEach(b => { b.style.marginLeft = ''; b.style.width = ''; b.style.padding = ''; });
     all.style.marginLeft = '0';
     const sr = step.getBoundingClientRect(), pr = (set.previousElementSibling || bar).getBoundingClientRect();
     set.style.marginLeft = Math.max(8, sr.left - pr.right) + 'px'; set.style.width = sr.width + 'px'; set.style.padding = '6px 2px'; set.style.whiteSpace = 'nowrap';
