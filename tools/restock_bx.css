@@ -62,12 +62,13 @@
 .sc-body>.bx:last-child{margin-bottom:0}
 @media (max-width:700px){.sc-h{min-height:88px;padding:16px 16px;column-gap:10px}.sc-t{font-size:23px}.sc-n{font-size:15px;padding:3px 12px}.sc-hint i{font-size:13px;padding:6px 14px}.sc-body{padding:8px}}
 
-/* product blocks: no borders, soft transparent-blue background on every other product so each product's variants read as one group */
-.sc-body .mc,.sc-body .bx-prod{background:rgba(88,166,255,.16)!important;border:0!important;border-radius:14px;margin-bottom:14px;box-shadow:none}
-.sc-body .mc:nth-child(even),.sc-body .bx-prod:nth-child(even){background:rgba(255,255,255,.04)!important}
+/* product blocks: every product card is the same charcoal, no borders; its variant tiles are blue */
+.sc-body .mc,.sc-body .bx-prod{background:#23272e!important;border:0!important;border-radius:14px;margin-bottom:14px;box-shadow:none}
 .sc-body .mc .pn,.sc-body .bx-prod .pn,.sc-body .mc .pn a,.sc-body .bx-prod .pn a{font-size:18px}
-.sc-body .mc tr.mt{background:rgba(0,0,0,.25)!important;border:0!important}
-.sc-body .bx-prod table{background:rgba(0,0,0,.18);border-radius:10px}
+.sc-body .mc tr.mt{background:rgba(48,125,255,.42)!important;border:0!important}
+.sc-body .bx-prod table{background:rgba(48,125,255,.42);border-radius:10px;padding:2px 6px}
+.sc-body .bx-prod tbody tr:not(:last-child) td{border-bottom:1px solid rgba(255,255,255,.18)}
+.sc-body .bx-prod th{color:#cfe2ff}
 .sc-n:empty{display:none}
 /*BXCSS_END*/
 
