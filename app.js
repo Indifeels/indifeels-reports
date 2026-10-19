@@ -1704,6 +1704,7 @@
     discdecide: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); return rpOk(await sb.rpc("restock_owner_disc_decide", { p_product: String(d.product), p_approve: !!d.approve })); },
     setuser: async (d) => { rpOk(await sb.rpc("restock_supplier_user_set", { p_user: rpText(d.user_id, 40), p_supplier: rpText(d.supplier, 100), p_collection: rpText(d.collection, 100) || null })); return true; },
     park: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); rpOk(await sb.rpc("restock_owner_set_parked", { p_product: String(d.product), p_value: !!d.value })); return true; },
+    settag: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); return rpOk(await sb.rpc("restock_owner_set_tag", { p_product: String(d.product), p_supplier: rpText(d.supplier, 100) })); },
     parklist: async () => rpOk(await sb.from("restock_parked").select("product_id,parked")) || [],
   });
   rpBridge("restock-supplier", {
