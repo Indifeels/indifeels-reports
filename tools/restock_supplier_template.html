@@ -96,6 +96,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 
 .sc{--ac:#58a6ff;--g1:#2f6fe0;--g2:#16357a;--g3:#0b1b40;border-radius:16px;margin:0 0 16px;overflow:hidden;border:1px solid rgba(0,0,0,.6);box-shadow:0 8px 18px rgba(0,0,0,.38),0 2px 0 rgba(0,0,0,.35)}
 .sc.sc-pack{--ac:#f0b429;--g1:#d98a14;--g2:#8a5208;--g3:#3d2403}
+.sc.sc-sup{--ac:#5eead4;--g1:#2c8f86;--g2:#175650;--g3:#092a27}
 .sc.sc-ship{--ac:#3fb950;--g1:#2ea043;--g2:#17622a;--g3:#08290f}
 .sc-h{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:'chev title hint' '. count hint';align-items:center;column-gap:12px;row-gap:6px;min-height:92px;box-sizing:border-box;padding:20px 20px;cursor:pointer;user-select:none;color:#fff;background:linear-gradient(180deg,var(--g1) 0%,var(--g2) 55%,var(--g3) 100%);border-top:1px solid rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 -4px 8px rgba(0,0,0,.45)}
 .sc-h:hover{filter:brightness(1.1)}
@@ -109,6 +110,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .sc-body{display:none;padding:12px;background:var(--bg)}
 .sc.open>.sc-body{display:block}
 .sc-body>.bx:last-child{margin-bottom:0}
+.sc-body>.sc:last-child{margin-bottom:0}
 @media (max-width:700px){.sc-h{min-height:88px;padding:16px 16px;column-gap:10px}.sc-t{font-size:23px}.sc-n{font-size:15px;padding:3px 12px}.sc-hint i{font-size:13px;padding:6px 14px}.sc-body{padding:8px}}
 
 /* product blocks: every product card is the same charcoal, no borders; its variant tiles are a calm slate blue */
@@ -656,7 +658,7 @@ function bxTile(b, lines, o) {
 /* Collapsible section tile: Order list / Packing / Shipped. Click the bar to open. */
 const bxSecOpen = new Map();
 const bxSec = (key, title, count, body, o) => { const open = bxSecOpen.has(key) ? bxSecOpen.get(key) : !!(o && o.open);
-  return `<section class="sc sc-${bxEsc(String(key).replace(/^(sv|my)-/, ''))}${open ? ' open' : ''}" data-sc="${bxEsc(key)}"><div class="sc-h" data-sct="${bxEsc(key)}"><span class="chev">▶</span><span class="sc-t">${title}</span><span class="sc-n">${count}</span><span class="sc-hint"><i class="h-c">Click to open</i><i class="h-o">Click to close</i></span></div><div class="sc-body">${body}</div></section>`; };
+  return `<section class="sc sc-${bxEsc((o && o.cls) || String(key).replace(/^(sv|my)-/, ''))}${open ? ' open' : ''}" data-sc="${bxEsc(key)}"><div class="sc-h" data-sct="${bxEsc(key)}"><span class="chev">▶</span><span class="sc-t">${title}</span><span class="sc-n">${count}</span><span class="sc-hint"><i class="h-c">Click to open</i><i class="h-o">Click to close</i></span></div><div class="sc-body">${body}</div></section>`; };
 document.addEventListener('click', e => {
   const h = e.target.closest('[data-sct]'); if (!h || e.target.closest('a, input, select, button, label')) return;
   const sc = h.closest('.sc'); sc.classList.toggle('open'); bxSecOpen.set(h.getAttribute('data-sct'), sc.classList.contains('open'));

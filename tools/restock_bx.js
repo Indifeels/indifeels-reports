@@ -74,7 +74,7 @@ function bxTile(b, lines, o) {
 /* Collapsible section tile: Order list / Packing / Shipped. Click the bar to open. */
 const bxSecOpen = new Map();
 const bxSec = (key, title, count, body, o) => { const open = bxSecOpen.has(key) ? bxSecOpen.get(key) : !!(o && o.open);
-  return `<section class="sc sc-${bxEsc(String(key).replace(/^(sv|my)-/, ''))}${open ? ' open' : ''}" data-sc="${bxEsc(key)}"><div class="sc-h" data-sct="${bxEsc(key)}"><span class="chev">▶</span><span class="sc-t">${title}</span><span class="sc-n">${count}</span><span class="sc-hint"><i class="h-c">Click to open</i><i class="h-o">Click to close</i></span></div><div class="sc-body">${body}</div></section>`; };
+  return `<section class="sc sc-${bxEsc((o && o.cls) || String(key).replace(/^(sv|my)-/, ''))}${open ? ' open' : ''}" data-sc="${bxEsc(key)}"><div class="sc-h" data-sct="${bxEsc(key)}"><span class="chev">▶</span><span class="sc-t">${title}</span><span class="sc-n">${count}</span><span class="sc-hint"><i class="h-c">Click to open</i><i class="h-o">Click to close</i></span></div><div class="sc-body">${body}</div></section>`; };
 document.addEventListener('click', e => {
   const h = e.target.closest('[data-sct]'); if (!h || e.target.closest('a, input, select, button, label')) return;
   const sc = h.closest('.sc'); sc.classList.toggle('open'); bxSecOpen.set(h.getAttribute('data-sct'), sc.classList.contains('open'));
