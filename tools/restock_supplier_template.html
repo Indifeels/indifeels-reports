@@ -111,13 +111,15 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .sc-body>.bx:last-child{margin-bottom:0}
 @media (max-width:700px){.sc-h{min-height:88px;padding:16px 16px;column-gap:10px}.sc-t{font-size:23px}.sc-n{font-size:15px;padding:3px 12px}.sc-hint i{font-size:13px;padding:6px 14px}.sc-body{padding:8px}}
 
-/* product blocks: every product card is the same charcoal, no borders; its variant tiles are blue */
-.sc-body .mc,.sc-body .bx-prod{background:#23272e!important;border:0!important;border-radius:14px;margin-bottom:14px;box-shadow:none}
+/* product blocks: every product card is the same charcoal, no borders; its variant tiles are a calm slate blue */
+.sc-body .mc,.sc-body .bx-prod{background:var(--card)!important;border:0!important;border-radius:14px;margin-bottom:14px;box-shadow:none}
 .sc-body .mc .pn,.sc-body .bx-prod .pn,.sc-body .mc .pn a,.sc-body .bx-prod .pn a{font-size:18px}
-.sc-body .mc tr.mt{background:rgba(48,125,255,.42)!important;border:0!important}
-.sc-body .bx-prod table{background:rgba(48,125,255,.42);border-radius:10px;padding:2px 6px}
-.sc-body .bx-prod tbody tr:not(:last-child) td{border-bottom:1px solid rgba(255,255,255,.18)}
-.sc-body .bx-prod th{color:#cfe2ff}
+.sc-body .mc tr.mt{background:#2a3850!important;border:0!important}
+.sc-body .bx-prod table{background:#2a3850;border-radius:10px;padding:2px 6px}
+.sc-body .bx-prod tbody tr:not(:last-child) td{border-bottom:1px solid rgba(255,255,255,.1)}
+.sc-body .bx-prod th{color:#a9bad3}
+:root[data-theme=light] .sc-body .mc tr.mt,:root[data-theme=light] .sc-body .bx-prod table{background:#e3ebf7!important}
+:root[data-theme=light] .sc-body .bx-prod th{color:#51627d}
 .sc-n:empty{display:none}
 /*BXCSS_END*/
 
