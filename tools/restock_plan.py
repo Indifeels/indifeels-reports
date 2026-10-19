@@ -301,8 +301,15 @@ def build():
 
     now = dt.datetime.now(SYD)
     updated = now.strftime("%d %b %Y, %H:%M")
+    try:  # supplier names allowed by the Shopify custom.supplier_name definition (so new suppliers show before any product is tagged)
+        defs = pv.gql('{ metafieldDefinitions(first: 1, ownerType: PRODUCT, namespace: "custom", key: "supplier_name") { nodes { validations { name value } } } }', {})["data"]["metafieldDefinitions"]["nodes"]
+        shop_suppliers = [s for v in (defs[0]["validations"] if defs else []) if v["name"] == "choices" for s in json.loads(v["value"])]
+    except Exception as e:
+        print("supplier list lookup failed:", str(e)[:160])
+        shop_suppliers = []
     data = {"generatedAt": now.isoformat(),
             "source": f"Shopify · {len(products)} active products ({len(out)} with sales) · {lines:,} order lines, full history",
+            "suppliers": shop_suppliers,
             "products": out}
     page = open(os.path.join(pv.ROOT, "tools", "restock_plan_template.html"), encoding="utf-8").read()
     assert page.count("__DATA__") == 1

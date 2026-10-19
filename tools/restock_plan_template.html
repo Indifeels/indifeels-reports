@@ -1004,7 +1004,7 @@ const Store = {
   disc: (product, value) => call('disc', { product, value }),
   discList: () => call('disclist'),
   users: () => call('users'),
-  setUser: (user_id, supplier, collection) => call('setuser', { user_id, supplier, collection }),
+  setUser: (user_id, supplier, collections) => call('setuser', { user_id, supplier, collections }),
   events: () => call('events'),
   boxes: () => call('boxes'),
   release: id => call('release', { id }),
@@ -2005,16 +2005,17 @@ async function loadAccounts(){
   box.innerHTML = '<div class="sub">Loading…</div>';
   try {
     const users = await Store.users();
-    const sup = [...new Set(data.products.map(p => p.supplier).filter(Boolean))].sort();
+    const sup = [...new Set([...(data.suppliers || []), ...data.products.map(p => p.supplier), ...users.map(u => u.supplier)].filter(Boolean))].sort();
+    const allCols = [...new Set(data.products.flatMap(p => p.cols || []))].sort();
     box.innerHTML = `<b>Supplier accounts</b>
-      <div class="sub" style="margin:2px 0 8px">1) Create the login in Report Access and tick “Supplier Portal” for it. 2) Optional, for later: link it to a supplier name here. Until a login is linked it sees all items; once linked it only sees that supplier's items. Optional: add a collection (e.g. Footwear) and that login only sees items from that collection; blank = all collections.</div>
-      <datalist id="svCols">${[...new Set(data.products.flatMap(p => p.cols || []))].sort().map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      <div class="sub" style="margin:2px 0 8px">1) Create the login in Report Access and tick “Supplier Portal” for it. 2) Optional, for later: link it to a supplier name here. Until a login is linked it sees all items; once linked it only sees that supplier's items. Optional: tick one or more collections (e.g. Footwear, Jutti) and that login only sees items from those collections; none ticked = all collections.</div>
       <datalist id="svNames">${sup.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
-      <table><thead><tr><th>Person</th><th>Supplier Portal access</th><th>Supplier name</th><th>Collection (optional)</th><th></th></tr></thead><tbody>
+      <table><thead><tr><th>Person</th><th>Supplier Portal access</th><th>Supplier name</th><th>Collections (optional, any number)</th><th></th></tr></thead><tbody>
       ${users.map(u => `<tr><td>${esc(u.display_name || u.username || u.email || '')}<div class="sub">${esc(u.email || '')}</div></td>
         <td>${u.has_grant ? '<span class="badge c-green">Yes</span>' : '<span class="badge c-grey">Not yet</span>'}</td>
         <td><input list="svNames" value="${esc(u.supplier || '')}" data-u="${esc(u.user_id)}" placeholder="e.g. Pankaj"></td>
-        <td><input list="svCols" value="${esc(u.collection || '')}" data-uc="${esc(u.user_id)}" placeholder="All collections"></td>
+        <td data-uc="${esc(u.user_id)}"><details><summary>${(u.collections || []).length ? esc((u.collections || []).join(', ')) : 'All collections'}</summary>
+          <div style="max-height:160px;overflow:auto;margin-top:4px">${[...new Set([...allCols, ...(u.collections || [])])].sort().map(n => `<label style="display:block"><input type="checkbox" value="${esc(n)}"${(u.collections || []).includes(n) ? ' checked' : ''}> ${esc(n)}</label>`).join('')}</div></details></td>
         <td><button data-setu="${esc(u.user_id)}">Save</button></td></tr>`).join('') || '<tr><td colspan="5" class="sub">No supplier accounts yet. Create one in Report Access.</td></tr>'}
       </tbody></table>`;
   } catch (err) { box.innerHTML = '<div class="sub">Could not load accounts: ' + esc(err.message) + '</div>'; }
@@ -2039,8 +2040,9 @@ $('svAccounts').addEventListener('click', async e => {
   const b = e.target.closest('[data-setu]'); if (!b) return;
   const id = b.getAttribute('data-setu'), inp = [...document.querySelectorAll('#svAccounts input[data-u]')].find(x => x.getAttribute('data-u') === id);
   b.disabled = true; b.textContent = 'Saving…';
-  const ci = [...document.querySelectorAll('#svAccounts input[data-uc]')].find(x => x.getAttribute('data-uc') === id);
-  try { await Store.setUser(id, inp ? inp.value : '', ci ? ci.value : ''); b.textContent = 'Saved ✓'; } catch (err) { b.textContent = 'Save'; notify('Could not save: ' + err.message); }
+  const ci = [...document.querySelectorAll('#svAccounts td[data-uc]')].find(x => x.getAttribute('data-uc') === id);
+  const cols = ci ? [...ci.querySelectorAll('input[type=checkbox]:checked')].map(x => x.value) : [];
+  try { await Store.setUser(id, inp ? inp.value : '', cols); if (ci) ci.querySelector('summary').textContent = cols.length ? cols.join(', ') : 'All collections'; b.textContent = 'Saved ✓'; } catch (err) { b.textContent = 'Save'; notify('Could not save: ' + err.message); }
   b.disabled = false;
 });
 
