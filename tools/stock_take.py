@@ -74,6 +74,15 @@ def build():
     if len(out) < 20 or nvar < 50:
         raise RuntimeError(f"Only {len(out)} products / {nvar} variants came back: refusing to publish an incomplete stock list")
     if not locations:
+        from collections import Counter
+        kinds = Counter(l.get("id", "?").split("/")[3] if l.get("id", "").count("/") >= 3 else "?" for l in lines)
+        print("DIAG kinds:", dict(kinds))
+        seen = set()
+        for l in lines:
+            k = l.get("id", "?").split("/")[3] if l.get("id", "").count("/") >= 3 else "?"
+            if k not in seen and k != "Product":
+                seen.add(k)
+                print("DIAG sample", k, json.dumps(l)[:500])
         raise RuntimeError("No inventory locations came back (the token may need read_inventory / read_locations)")
     with_stock = sum(1 for p in out for v in p["variants"] if any(q > 0 for q in v["q"].values()))
     now = dt.datetime.now(MEL)
