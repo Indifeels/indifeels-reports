@@ -1711,6 +1711,8 @@
     park: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); rpOk(await sb.rpc("restock_owner_set_parked", { p_product: String(d.product), p_value: !!d.value })); return true; },
     settag: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); return rpOk(await sb.rpc("restock_owner_set_tag", { p_product: String(d.product), p_supplier: rpText(d.supplier, 100) })); },
     parklist: async () => rpOk(await sb.from("restock_parked").select("product_id,parked")) || [],
+    hidelist: async () => rpOk(await sb.from("restock_hidden_sizes").select("vkey")) || [],
+    hidesize: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); rpOk(await sb.rpc("restock_owner_set_size_hidden", { p_vkey: rpText(d.vkey, 100), p_product: String(d.product), p_title: rpText(d.title, 120), p_hidden: !!d.hidden })); return true; },
   });
   rpBridge("restock-supplier", {
     state: async () => rpOk(await sb.rpc("restock_supplier_state")),

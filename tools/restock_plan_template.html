@@ -718,6 +718,8 @@ select.sel{appearance:none;-webkit-appearance:none}
 .addsz select,.addsz input{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:13px}
 .addsz .btn{padding:4px 10px;font-size:13px}
 .xsz{font-size:12.5px;color:var(--muted);margin:0 0 6px}
+.pv .rmz{flex:none;margin-left:6px;padding:0 7px;font-size:12px;line-height:1.5;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px}
+.pv .rmz.arm{background:#ffebe9;color:#cf222e;border-color:#cf222e}
 .pbtn .sm{display:none}
 @media(max-width:799px){.pbar{gap:4px}.pbar .pbtn{padding:6px 5px;font-size:12px}.pbtn .lg{display:none}.pbtn .sm{display:inline}}
 .card-h .hbtn{display:none}
@@ -1059,6 +1061,8 @@ const Store = {
   discDecide: (product, approve) => call('discdecide', { product, approve }),
   park: (product, value) => call('park', { product, value }),
   parkList: () => call('parklist'),
+  hideList: () => call('hidelist'),
+  hideSize: (vkey, product, title, hidden) => call('hidesize', { vkey, product, title, hidden }),
   setTag: (product, supplier) => call('settag', { product, supplier }),
   stockGet: vid => call('stockget', { vid }),
   stockAdjust: (vid, dShop, dBackup) => call('stockadjust', { vid, dShop, dBackup }),
@@ -1068,6 +1072,7 @@ const Store = {
 const MULT = [null,1,1.2,1.4,1.6,1.8,2,2.5,3,4,5];
 const LEAD_DAYS = 28, MIN_MARKET_DAYS = 90, MAX_PRODUCT_DTS = 50, MIN_UNITS = 3, DAY = 86400000, PAGE = 120;
 let data = DATA, mode = 'priority', defaultOpen = false, limit = PAGE, tf = '', touched = false;
+let hiddenSizes = new Set(), hiddenOk = false;   // sizes removed from the list (needs the restock_hidden_sizes table; until it exists only added sizes can be removed)
 let parkMap = new Map();            // product id -> parked in the planner (app only, never sent to Shopify)
 let discMap = new Map();            // product id -> true/false chosen in the planner (wins over the Shopify value until the next build)
 const armed = new Set();
@@ -1230,6 +1235,15 @@ function pipeline(vk){
   return {saved, box, way, total: saved + box + way, live, all};
 }
 
+/* variants shown for a product: its Shopify variants minus removed sizes, plus sizes added through Add size (a live order line with no Shopify variant).
+   Added sizes are shown as normal rows until the order is received. */
+function variantsOf(p){
+  const pid = String(p.id), raw = new Set(p.variants.map(v => keyOf(p.id, v[0])));
+  const base = p.variants.filter(v => !hiddenSizes.has(keyOf(p.id, v[0])));
+  const ex = new Map();
+  orders.forEach(o => { if (String(o.product_id) === pid && isLive(o) && o.vkey && !raw.has(o.vkey) && !ex.has(o.vkey)) ex.set(o.vkey, [o.variant_title, 0, 0, '', 0, [], [], true]); });
+  return base.concat([...ex.values()]);
+}
 function compute(){
   const lvl = +$('len').value, mult = MULT[lvl], now = new Date(); now.setHours(0,0,0,0);
   $('lenv').textContent = lvl + ' · ' + mult + '×';
@@ -1247,7 +1261,7 @@ function compute(){
     const newSlow = days < 60 && total < 5;     // launched under 2 months ago and under 5 sold: never ranked high
     const P = {parked: parkOf(p), p, days, total, pDTS, newSlow, isNew: days < 60, elig: pDTS < MAX_PRODUCT_DTS, eligible: !disc && days >= MIN_MARKET_DAYS && pDTS < MAX_PRODUCT_DTS && total >= MIN_UNITS, disc, cat, catW, supplier: p.supplier || ''};
     const maxSales = Math.max(0, ...p.variants.map(v=>v[2]));
-    P.rows = p.variants.map(([title,stock,sales,last,s30,bc,vids]) => {
+    P.rows = variantsOf(p).map(([title,stock,sales,last,s30,bc,vids,extra]) => {
       last = last || ''; s30 = s30 || 0;
       const dts = sales > 0 ? days / sales : Infinity;
       const required = sales > 0 && !disc ? Math.ceil(Math.ceil(LEAD_DAYS / dts) * mult - 1e-9) : 0;
@@ -1266,7 +1280,7 @@ function compute(){
         if (s30 >= 5 && ratio > 2) damp = Math.max(0.35, 1 / (1 + (ratio - 2) * (SEASONAL.has(cat) ? 0.5 : 0.2)));
         score = Math.round(short * conf * catW * damp * (P.newSlow ? 0.25 : 1) * 10) / 10;
       }
-      return {P,title,bc: bc || [],vids: vids || [],stock,sales,last,s30,dts,required,toOrder,left,level,score,conf,damp,
+      return {P,title,extra: !!extra,bc: bc || [],vids: vids || [],stock,sales,last,s30,dts,required,toOrder,left,level,score,conf,damp,
         cSales: sales === 0 ? 'grey' : share >= .5 ? 'green' : share >= .2 ? 'amber' : 'red',
         cDts: sales === 0 ? 'grey' : dts < 20 ? 'green' : dts < 50 ? 'amber' : 'red',
         cStock: sales === 0 ? (stock > 0 ? 'info' : 'grey') : stock <= 0 ? 'red' : stock < required ? 'amber' : 'green',
@@ -1455,7 +1469,7 @@ function rowHtml(r){
   const dl = r.sales > 0 && isFinite(r.left) ? Math.ceil(r.left) : 0, dTxt = dl + (dl === 1 ? ' day' : ' days');
   const stTxt = r.level === 'red' ? 'Out of stock' : (r.level === 'orange' || r.level === 'yellow') ? 'Low stock · ' + dTxt : r.level === 'green' ? 'OK · ' + dTxt : 'No sales';
   const needC = needClr(r);
-  const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span>${vTag(r)}<div class="pipes" data-sup="${i}">${supMv(i)}</div></div>
+  const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b>${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span>${vTag(r)}<div class="pipes" data-sup="${i}">${supMv(i)}</div>${(r.P.disc || !(r.extra || hiddenOk)) ? '' : `<button class="rmz${armed.has('rm' + keyOf(r.P.p.id, r.title)) ? ' arm' : ''}" data-rmz="${i}" title="Remove this size from the list${r.extra ? ' (cancels its order)' : ''}">${armed.has('rm' + keyOf(r.P.p.id, r.title)) ? 'Sure? Tap again' : 'Remove'}</button>`}</div>
     <div class="rw"><div class="mc mc-${sc}" data-stk="${esc((r.vids || []).join(','))}" data-pt="${esc(r.P.p.title)}" data-vt="${esc(r.title)}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><div class="udt c-${r.cDts}"><b>${fmt2(r.dts)}</b><span>D.U</span></div><small class="sld" title="Total units sold"><b>${r.sales}</b> sold</small></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
   return {tr, mv};
 }
@@ -1596,12 +1610,9 @@ function sizeOptions(P){
   return [...best.entries()].filter(([id]) => !have.has(id)).map(([, v]) => v.t).sort((x, y) => sizeNum(x) - sizeNum(y) || x.localeCompare(y, undefined, {numeric: true}));
 }
 function addSizeHtml(P){
-  const pid = String(P.p.id), have = new Set((P.rows || []).map(r => keyOf(P.p.id, r.title)));
-  const ex = new Map();
-  orders.forEach(o => { if (String(o.product_id) === pid && isLive(o) && !have.has(o.vkey)) ex.set(o.variant_title, (ex.get(o.variant_title) || 0) + eff(o)); });
-  const chip = ex.size ? `<div class="xsz">Extra sizes on order: ${[...ex].map(([t, q]) => esc(t) + ' ×' + q).join(' · ')}</div>` : '';
+  const pid = String(P.p.id);
   const opts = sizeOptions(P);
-  return chip + `<div class="addsz" data-addsz="${esc(pid)}" hidden>${opts.length
+  return `<div class="addsz" data-addsz="${esc(pid)}" hidden>${opts.length
     ? `<select class="asz" aria-label="Size">${opts.map(t => `<option>${esc(t)}</option>`).join('')}</select><input type="number" class="aqt" min="1" max="1000" value="1" aria-label="Quantity"><button class="btn" data-addok="${esc(pid)}">Order</button><button class="btn" data-addno="${esc(pid)}">Cancel</button>`
     : `<span class="xsz">No other sizes are defined for this category.</span><button class="btn" data-addno="${esc(pid)}">Close</button>`}</div>`;
 }
@@ -1638,7 +1649,7 @@ function render(){
   const cut90 = ymd(new Date(Date.now() - 90 * DAY));
   const lastRecvDay = vk => { let m = ''; (byV.get(vk) || []).forEach(o => { if (o.status === 'received' && o.received_at && String(o.received_at) > m) m = String(o.received_at); }); return m ? ymd(new Date(m)) : ''; };
   const since = $('sinceDate').value;
-  const dateOk = r => { if (mode !== 'date') return true; if (!r.last) return false; if (since) return r.last >= since; if (!$('newOnly').checked) return r.last >= cut90; const d = lastRecvDay(keyOf(r.P.p.id, r.title)); return !d || r.last >= d; };
+  const dateOk = r => { if (r.extra || mode !== 'date') return true; if (!r.last) return false; if (since) return r.last >= since; if (!$('newOnly').checked) return r.last >= cut90; const d = lastRecvDay(keyOf(r.P.p.id, r.title)); return !d || r.last >= d; };
   const passCore = r => (!supSel || (r.P.supplier || '(none)') === supSel) &&
     (!colSel || (r.P.p.cols || []).includes(colSel)) &&
     (!eligSel || (eligSel === 'y' ? r.P.elig : !r.P.elig)) &&
@@ -1647,7 +1658,7 @@ function render(){
     (!onlyElig || (r.P.eligible && !getDone(r.P.p.id)));
   const passBase = r => dateOk(r) && passCore(r);
   const hideOrd = $('hideOrd').checked && !tf && vSel !== 'all';          // "All variants" means all: nothing is hidden
-  const covered = r => r.toOrder === 0 && pipeline(keyOf(r.P.p.id, r.title)).live.length > 0;      // fully handled by orders in progress
+  const covered = r => !r.extra && r.toOrder === 0 && pipeline(keyOf(r.P.p.id, r.title)).live.length > 0;      // fully handled by orders in progress
   const tail = r => (tf && TFP[tf] ? TFP[tf](r) : (!onlyNeed || r.toOrder > 0 || pipeline(keyOf(r.P.p.id, r.title)).live.length)) && !(hideOrd && covered(r));
   const pass = r => passBase(r) && tail(r);
   const passAnyDate = r => passCore(r) && tail(r);
@@ -1854,6 +1865,26 @@ $('list').addEventListener('click', async e => {
     if (!list.length) { notify('No sizes to add'); return; }
     pset.disabled = true; await saveItems(list); notify('Full set added: 1 of each of ' + list.length + ' sizes', true); return;
   }
+  const rmz = t.closest('[data-rmz]');
+  if (rmz) {
+    e.stopPropagation(); const x = infos[Number(rmz.getAttribute('data-rmz'))]; if (!x) return;
+    const r = x.r, key = x.key, ak = 'rm' + key, pid = String(r.P.p.id);
+    if (!armed.has(ak)) { armed.add(ak); render(); setTimeout(() => { if (armed.delete(ak)) render(); }, 5000); return; }
+    armed.delete(ak); rmz.disabled = true;
+    try {
+      const live = pipeline(key).live;
+      if (r.extra) {
+        if (live.some(o => o.status !== 'saved' || o.claimed)) { notify('A supplier already has this size in a box. It can\'t be removed here.'); render(); return; }
+        for (const o of live) { await Store.cancel(o.id); orders.delete(o.id); }
+        indexOrders(); notify('Size ' + r.title + ' removed (its order was cancelled)', true);
+      } else {
+        if (live.length) { notify(r.title + ' has an order in progress. Cancel that order first, then remove the size.'); render(); return; }
+        await Store.hideSize(key, pid, r.title, true); hiddenSizes.add(key);
+        notify('Size ' + r.title + ' removed from this list. Bring it back with Add size.', true);
+      }
+    } catch (err) { notify('Could not remove: ' + err.message); }
+    render(); return;
+  }
   const asz = t.closest('[data-paddsz]');
   if (asz) { e.stopPropagation(); const f = asz.closest('.card').querySelector('.addsz'); if (f) { f.hidden = !f.hidden; if (!f.hidden) f.querySelector('.asz').focus(); } return; }
   const ano = t.closest('[data-addno]');
@@ -1868,6 +1899,7 @@ $('list').addEventListener('click', async e => {
     aok.disabled = true;
     try {
       const P = x.r.P, key = keyOf(pid, size);
+      if (hiddenSizes.has(key)) { await Store.hideSize(key, String(P.p.id), size, false); hiddenSizes.delete(key); }
       const row = await Store.order({ vkey: key, product_id: P.p.id, product_title: P.p.title, product_url: P.p.url || '', image: P.p.image && !P.p.image.startsWith('data:') ? P.p.image : (P.p.imageUrl || ''), variant_title: size, supplier: P.supplier || 'Unassigned', qty, set: false, stock_base: 0 });
       if (row && row.id) orders.set(row.id, row);
       indexOrders(); notify('Size ' + size + ' × ' + qty + ' added to the order list', true); render();
@@ -2022,7 +2054,8 @@ function liveStock(o){
 let lastSig = '';
 async function refresh(){
   try {
-    const [rows, disc, bx, dreq, pks] = await Promise.all([Store.list(), Store.discList().catch(() => null), Store.boxes().catch(() => null), Store.discReq().catch(() => null), Store.parkList().catch(() => null)]);
+    const [rows, disc, bx, dreq, pks, hz] = await Promise.all([Store.list(), Store.discList().catch(() => null), Store.boxes().catch(() => null), Store.discReq().catch(() => null), Store.parkList().catch(() => null), Store.hideList().catch(() => null)]);
+    if (Array.isArray(hz)) { hiddenOk = true; hiddenSizes = new Set(hz.map(d => String(d.vkey))); }
     if (dreq) discReqs = dreq;
     if (bx) boxesData = bx;
     orders = new Map(rows.map(r => [r.id, r]));
@@ -2042,7 +2075,7 @@ async function refresh(){
     if (landed.length) {
       try { await Store.received(landed.map(o => o.id)); landed.forEach(o => { o.status = 'received'; o.received_at = new Date().toISOString(); }); } catch (e) { /* manual Received buttons still work */ }
     }
-    const sig = JSON.stringify([[...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty, o.box_no, o.supplier, o.wrong_pick, o.wrong_ack]), [...discMap.entries()], [...parkMap.entries()], boxesData.map(x => [x.box_no, x.status, x.tracking_no, x.tracking_url]), discReqs.map(r => r.product_id)]);
+    const sig = JSON.stringify([[...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty, o.box_no, o.supplier, o.wrong_pick, o.wrong_ack]), [...discMap.entries()], [...parkMap.entries()], [...hiddenSizes], hiddenOk, boxesData.map(x => [x.box_no, x.status, x.tracking_no, x.tracking_url]), discReqs.map(r => r.product_id)]);
     if (sig !== lastSig) { lastSig = sig; render(); }
     updateQueue(); if (!$('viewSup').hidden) renderSv();
   } catch (err) { $('sub').textContent = 'Could not load supplier status: ' + err.message; }
