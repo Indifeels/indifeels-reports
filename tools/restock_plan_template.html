@@ -308,14 +308,12 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .sc-body>.bx:last-child{margin-bottom:0}
 @media (max-width:700px){.sc-h{min-height:88px;padding:16px 16px;column-gap:10px}.sc-t{font-size:23px}.sc-n{font-size:15px;padding:3px 12px}.sc-hint i{font-size:13px;padding:6px 14px}.sc-body{padding:8px}}
 
-/* product blocks: each product is its own coloured card (alternating blue / violet) so a new product is easy to spot */
-.sc-body .mc,.sc-body .bx-prod{--pa:#58a6ff;--pbg:#15233b;background:linear-gradient(180deg,var(--pbg),#10151d)!important;border:1px solid var(--pa)!important;border-top:5px solid var(--pa)!important;border-left:6px solid var(--pa)!important;border-radius:14px;margin-bottom:20px;box-shadow:0 6px 14px rgba(0,0,0,.4)}
-.sc-body .mc:nth-child(even),.sc-body .bx-prod:nth-child(even){--pa:#b58cf7;--pbg:#271a3f}
-.sc-body .mc .pn,.sc-body .bx-prod .pn,.sc-body .mc .pn a,.sc-body .bx-prod .pn a{color:var(--pa);font-size:18px}
-.sc-body .mc tr.mt{background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.14)!important}
-.sc-body .bx-prod tbody tr:not(:last-child) td{border-bottom:1px solid rgba(255,255,255,.12)}
-.sc-body .bx-prod table{background:rgba(255,255,255,.05);border-radius:10px}
-.sc-body .bx-prod th{color:var(--pa)}
+/* product blocks: no borders, soft transparent-blue background on every other product so each product's variants read as one group */
+.sc-body .mc,.sc-body .bx-prod{background:rgba(88,166,255,.16)!important;border:0!important;border-radius:14px;margin-bottom:14px;box-shadow:none}
+.sc-body .mc:nth-child(even),.sc-body .bx-prod:nth-child(even){background:rgba(255,255,255,.04)!important}
+.sc-body .mc .pn,.sc-body .bx-prod .pn,.sc-body .mc .pn a,.sc-body .bx-prod .pn a{font-size:18px}
+.sc-body .mc tr.mt{background:rgba(0,0,0,.25)!important;border:0!important}
+.sc-body .bx-prod table{background:rgba(0,0,0,.18);border-radius:10px}
 .sc-n:empty{display:none}
 /*BXCSS_END*/
 
