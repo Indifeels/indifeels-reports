@@ -1228,14 +1228,6 @@ function catOf(p){
   for (const [name, re] of CAT_RULES) if (re.test(t)) return name;
   return 'other';
 }
-/* Pill label: the size-grouping category when known, otherwise the product's own most specific collection / title keyword, so every product gets one. */
-const PILL_WORDS = ['Bangles','Necklace','Earrings','Rings','Anklets','Sarees','Lehenga','Nehru Jacket','Mangalsutra','Dupatta','Gown','Leggings','Pants','Shirt','Hair','Rakhi','Pocket Square','Kamarbandh','Jewellery'];
-function catLabel(P){
-  if (P.cat !== 'other') return P.cat;
-  const t = (P.p.title + ' ' + (P.p.cols || []).join(' ')).toLowerCase();
-  const w = PILL_WORDS.find(x => t.includes(x.toLowerCase()));
-  return w ? w.toLowerCase() : '';
-}
 const melToday = () => { try { return new Intl.DateTimeFormat('en-CA', {timeZone: 'Australia/Melbourne'}).format(new Date()); } catch (e) { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); } };
 const dayDiff = (a, b) => { const f = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); }; return Math.round((f(a) - f(b)) / DAY); };
 const ago = day => { if (!day) return ''; const n = Math.max(0, dayDiff(melToday(), day)); return n === 0 ? 'sold today' : n === 1 ? 'sold yesterday' : 'sold ' + n + ' d ago'; };
@@ -1514,7 +1506,7 @@ function cardHtml(g){
   return `<section class="card w-${worst}${isOpen?' open':''}" data-gid="${esc(g.id)}">
     <div class="card-h" data-toggle="1"><span class="chev">▶</span>
       <div class="thumb">${plink(P) ? `<a class="tl" href="${plink(P)}" target="_blank" rel="noopener noreferrer" title="Open product page" style="position:absolute;inset:0;z-index:2"></a>` : ''}<span>${esc(initials(P.p.title))}</span>${src ? `<img src="${src}" alt="" loading="lazy" referrerpolicy="no-referrer" style="position:absolute;inset:0;opacity:0" onload="this.style.opacity=1" onerror="this.remove()">` : ''}</div>
-      <div class="ttl"><h2>${plink(P) ? `<a class="pt" href="${plink(P)}" target="_blank" rel="noopener noreferrer" title="Open product page">${esc(P.p.title)} ↗</a>` : esc(P.p.title)}${tag}</h2><div class="meta mrow">${supRowHtml(P)}<span class="mp mp-age" title="Time on the market">${ageTxt(P.days)}</span>${catLabel(P) ? `<span class="mp mp-cat">${esc(catLabel(P))}</span>` : ''}</div></div>
+      <div class="ttl"><h2>${plink(P) ? `<a class="pt" href="${plink(P)}" target="_blank" rel="noopener noreferrer" title="Open product page">${esc(P.p.title)} ↗</a>` : esc(P.p.title)}${tag}</h2><div class="meta mrow">${supRowHtml(P)}<span class="mp mp-age" title="Time on the market">${ageTxt(P.days)}</span></div></div>
       ${btns('hbtn')}
       <div class="tiles">
         <div class="tile t-info"><b>${years(P.days)}</b><span>On market</span></div>
