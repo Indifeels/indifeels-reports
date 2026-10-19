@@ -80,6 +80,7 @@
 .bx-prod table.pkd tbody td:nth-child(3)::before{content:"PACKED"!important}
 .setrow{margin:0 0 8px}.setpill{display:inline-block;padding:4px 12px;border-radius:999px;background:#17624f;color:#d6fff1;font-weight:800;font-size:13px}
 :root[data-theme=light] .setpill{background:#d3f2e7;color:#0b5a45}
+.setrow{cursor:pointer}.setpill i{font-style:normal;font-weight:600;opacity:.8;margin-left:6px;font-size:12px}.setbody.shut{display:none}
 /*BXCSS_END*/
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}

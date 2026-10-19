@@ -15,7 +15,14 @@ const bxSizeRank = t => { const v = String(t || '').split('-')[0].trim().toUpper
   let m = /^(\d+)XL$/.exec(v); if (m) return 4 + +m[1]; m = /^(X{2,})L$/.exec(v); if (m) return 4 + m[1].length; return 99; };
 const bxChest = t => { const m = /-\s*(\d+)/.exec(String(t || '')); return m ? +m[1] : 999; };
 const bxByVariant = (a, b) => (bxChest(a.variant_title) - bxChest(b.variant_title)) || (bxSizeRank(a.variant_title) - bxSizeRank(b.variant_title)) || String(a.variant_title).localeCompare(String(b.variant_title), undefined, {numeric: true});
-const bxSetTag = g => { const q = g.map(r => r.qty); return (g.length < 3 || q.some(x => x !== q[0])) ? '' : `<div class="setrow"><span class="setpill">${q[0]} set${q[0] > 1 ? 's' : ''}</span></div>`; };
+const bxSetOpen = new Map();
+const bxIsSet = g => g.length >= 2 && g.every(r => r.set_n > 0 && r.set_n === r.qty && r.set_n === g[0].set_n);
+const bxSetTag = g => { if (!bxIsSet(g)) return ''; const k = String(g[0].product_id), n = g[0].set_n, open = bxSetOpen.get(k) === true;
+  return `<div class="setrow" data-setk="${bxEsc(k)}"><span class="setpill">${n} set${n > 1 ? 's' : ''} <i>${g.length} sizes · ${open ? 'tap to hide' : 'tap to show'}</i></span></div>`; };
+const bxSetBody = (g, html) => bxIsSet(g) ? `<div class="setbody${bxSetOpen.get(String(g[0].product_id)) === true ? '' : ' shut'}" data-setb="${bxEsc(String(g[0].product_id))}">${html}</div>` : html;
+document.addEventListener('click', e => { const h = e.target.closest('[data-setk]'); if (!h) return; const k = h.getAttribute('data-setk'), open = !(bxSetOpen.get(k) === true); bxSetOpen.set(k, open);
+  h.querySelector('.setpill i').textContent = h.querySelector('.setpill i').textContent.replace(/tap to (show|hide)/, open ? 'tap to hide' : 'tap to show');
+  document.querySelectorAll('[data-setb]').forEach(b => { if (b.getAttribute('data-setb') === k) b.classList.toggle('shut', !open); }); });
 function bxGroup(list) { const m = new Map(); list.forEach(r => { if (!m.has(r.product_id)) m.set(r.product_id, []); m.get(r.product_id).push(r); }); return [...m.values()]; }
 const bxToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
