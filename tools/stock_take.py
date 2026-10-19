@@ -27,22 +27,11 @@ PRODUCTS = """{ products(query:"status:active"){ edges{ node{
   variants{ edges{ node{ id title barcode inventoryItem{ id inventoryLevels{ edges{ node{ location{ id name } quantities(names:["available"]){ quantity } } } } } } } } } } } }"""
 
 
-MENUS = """{ menus(first:20){ nodes{ handle items{ type resourceId items{ type resourceId items{ type resourceId items{ type resourceId } } } } } } }"""
-
-
 def menu_collections():
-    """Collection ids linked from the store's navigation menus = the real shopper-facing collections
-    (tag-driven SEO/city collections that no menu links to are left out)."""
-    ids = set()
-
-    def walk(items):
-        for it in items or []:
-            if it.get("type") == "COLLECTION" and it.get("resourceId"):
-                ids.add(it["resourceId"])
-            walk(it.get("items"))
-    for m in pv.gql(MENUS, {})["data"]["menus"]["nodes"]:
-        walk(m.get("items"))
-    return ids
+    """Main collection pages = the ones linked from the store menus (tools/stock_take_collections.json).
+    Tag-driven SEO/city collections that no menu links to are left out."""
+    with open(os.path.join(pv.ROOT, "tools", "stock_take_collections.json")) as f:
+        return set(json.load(f)["ids"])
 
 
 def num(gid):
