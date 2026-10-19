@@ -200,11 +200,44 @@ def sync_size_deletes(prod_lines):
     print(f"size delete sync: {len(gone)} of {len(pending)} deleted in Shopify")
 
 
+SUP_DEF = """{ metafieldDefinitions(first:1, ownerType:PRODUCT, namespace:"custom", key:"supplier_name"){ nodes{ validations{ name value } } } }"""
+SUP_DEF_SET = """mutation($d:MetafieldDefinitionUpdateInput!){ metafieldDefinitionUpdate(definition:$d){ updatedDefinition{ id } userErrors{ field message } } }"""
+
+
+def supplier_choices():
+    """Supplier names allowed on Shopify's custom.supplier_name (its 'choices' list). Never raises."""
+    try:
+        for n in pv.gql(SUP_DEF)["data"]["metafieldDefinitions"]["nodes"][:1]:
+            for v in n["validations"]:
+                if v["name"] == "choices":
+                    return [str(x) for x in json.loads(v["value"])]
+    except Exception as exc:
+        print("supplier choices unavailable:", str(exc)[:120])
+    return []
+
+
+def add_supplier_choice(name, choices):
+    """Add a brand-new supplier name to the Shopify choices list so it can be set on products (and then shows in every dropdown)."""
+    if any(c.strip().lower() == name.strip().lower() for c in choices):
+        return True
+    try:
+        res = pv.gql(SUP_DEF_SET, {"d": {"namespace": "custom", "key": "supplier_name", "ownerType": "PRODUCT",
+                                          "validations": [{"name": "choices", "value": json.dumps(choices + [name], ensure_ascii=False)}]}})["data"]["metafieldDefinitionUpdate"]
+        if res["userErrors"]:
+            print("supplier choice add refused:", json.dumps(res["userErrors"])[:160])
+            return False
+        choices.append(name)
+        return True
+    except Exception as exc:
+        print("supplier choice add failed:", str(exc)[:120])
+        return False
+
+
 BAD_BACKFILL_TAGS = {"9699978019173", "9699978084709", "9699978674533", "9700037460325", "9700038213989", "9700053778789",
                      "9700053844325", "9700056039781", "9700056138085", "9720955568485"}
 
 
-def sync_supplier_tags(prod_lines):
+def sync_supplier_tags(prod_lines, choices):
     """Suppliers who picked an untagged product become its supplier. Push to Shopify custom.supplier_name
     (copying the existing "id : Name" spelling when known) and overlay on this build. Never raises."""
     token = os.environ.get("SYNC_READ_TOKEN")
@@ -230,6 +263,20 @@ def sync_supplier_tags(prod_lines):
         if not l:
             continue
         cur = ((l.get("supplier") or {}).get("value") or "").strip()
+        if not t["supplier"].strip():     # owner removed the supplier: clear it on Shopify too
+            if t["synced"]:
+                continue
+            try:
+                if cur:
+                    res = pv.gql(DEL_META, {"m": [{"ownerId": l["id"], "namespace": "custom", "key": "supplier_name"}]})["data"]["metafieldsDelete"]
+                    if res["userErrors"]:
+                        print("supplier tag sync: Shopify refused delete", pid, json.dumps(res["userErrors"])[:160])
+                        continue
+                l["supplier"] = {"value": ""}
+                done.append(pid)
+            except Exception as exc:
+                print("supplier tag sync: delete failed for", pid, str(exc)[:120])
+            continue
         val = full.get(t["supplier"].strip().lower(), t["supplier"].strip())
         force = bool(t.get("override"))
         if cur and not (force and not t["synced"]):
@@ -243,6 +290,8 @@ def sync_supplier_tags(prod_lines):
         if t["synced"]:
             continue
         try:
+            if not re.match(r"^\s*\d+\s*:", val) and not add_supplier_choice(val, choices):
+                continue
             res = pv.gql(SET_META, {"m": [{"ownerId": l["id"], "namespace": "custom", "key": "supplier_name", "type": "single_line_text_field", "value": val}]})["data"]["metafieldsSet"]
             if res["userErrors"]:
                 print("supplier tag sync: Shopify refused", pid, json.dumps(res["userErrors"])[:160])
@@ -274,7 +323,8 @@ def build():
     require_scopes()
     sync_discontinued()          # before reading products, so this build already carries the new value
     prod_lines = bulk(PRODUCTS, "products")
-    sync_supplier_tags(prod_lines)
+    choices = supplier_choices()
+    sync_supplier_tags(prod_lines, choices)
     sync_size_deletes(prod_lines)
     order_lines = bulk(ORDERS, "orders")
 
@@ -358,7 +408,7 @@ def build():
     updated = now.strftime("%d %b %Y, %H:%M")
     data = {"generatedAt": now.isoformat(),
             "source": f"Shopify · {len(products)} active products ({len(out)} with sales) · {lines:,} order lines, full history",
-            "products": out}
+            "products": out, "suppliers": sorted(choices, key=str.lower)}
     page = open(os.path.join(pv.ROOT, "tools", "restock_plan_template.html"), encoding="utf-8").read()
     assert page.count("__DATA__") == 1
     page = page.replace("__DATA__", json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/"))

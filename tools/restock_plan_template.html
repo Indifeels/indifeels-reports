@@ -1618,7 +1618,7 @@ function supplierNames(){
 function supRowHtml(P){
   const pid = String(P.p.id), cur = supName(P.supplier), names = supplierNames();
   if (cur && !names.includes(cur)) names.push(cur);
-  return `<div class="suprow" data-suprow="${esc(pid)}"><select class="supsel ${cur ? 'has' : 'none'}" data-supsel="${esc(pid)}" data-cur="${esc(cur)}" aria-label="Supplier" title="Supplier for this product (saved to Shopify too)">${cur ? '' : '<option value="">No supplier: pick one</option>'}${names.map(n => `<option value="${esc(n)}"${n === cur ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></div>`;
+  return `<div class="suprow" data-suprow="${esc(pid)}"><select class="supsel ${cur ? 'has' : 'none'}" data-supsel="${esc(pid)}" data-cur="${esc(cur)}" aria-label="Supplier" title="Supplier for this product (saved to Shopify too)">${cur ? '' : '<option value="">No supplier: pick one</option>'}${names.map(n => `<option value="${esc(n)}"${n === cur ? ' selected' : ''}>${esc(n)}</option>`).join('')}<option value="__new__">+ Add new supplier…</option>${cur ? '<option value="__none__">✕ Remove supplier</option>' : ''}</select></div>`;
 }
 /* Add size: order a size this product doesn't have yet. Options are only sizes already defined in Shopify for products of the same category
    (taken verbatim from their variant titles, dashes and all), minus the ones this product already has. A normal order line, just under that size's name. */
@@ -1932,20 +1932,34 @@ $('wrong').addEventListener('click', async e => {
 });
 $('list').addEventListener('change', async e => {
   const el = e.target.closest('select[data-supsel]'); if (!el || !el.value) return;
-  const pid = el.getAttribute('data-supsel'), sup = el.value, cur = el.getAttribute('data-cur'), row = el.closest('.suprow');
-  const apply = async () => {
+  const pid = el.getAttribute('data-supsel'), pick = el.value, cur = el.getAttribute('data-cur'), row = el.closest('.suprow');
+  const save = async sup => {
     row.innerHTML = '<span class="supconf">Saving…</span>';
     try {
       await Store.setTag(pid, sup);
       const pr = data.products.find(p => String(p.id) === pid); if (pr) pr.supplier = sup;
-      for (const o of orders.values()) if (String(o.product_id) === pid && o.status === 'saved' && !o.claimed && (!o.supplier || /^unassigned$/i.test(o.supplier))) o.supplier = sup;
-      notify('Supplier set to ' + sup + '. It is saved to Shopify on the next refresh (after the next order, or at midnight).', true);
+      if (sup) { data.suppliers = data.suppliers || []; if (!data.suppliers.some(n => n.toLowerCase() === sup.toLowerCase())) data.suppliers.push(sup); }
+      for (const o of orders.values()) if (String(o.product_id) === pid && o.status === 'saved' && !o.claimed && (!o.supplier || /^unassigned$/i.test(o.supplier) || sup === '')) o.supplier = sup || 'Unassigned';
+      notify((sup ? 'Supplier set to ' + sup : 'Supplier removed') + '. It is saved to Shopify on the next refresh (after the next order, or at midnight).', true);
     } catch (err) { notify('Could not save supplier: ' + err.message); }
     render();
   };
-  if (!cur) { await apply(); return; }
-  row.innerHTML = `<span class="supconf">Change supplier from <b>${esc(cur)}</b> to <b>${esc(sup)}</b>? <button class="btn" data-supok>Yes, change</button> <button class="btn" data-supno>Cancel</button></span>`;
-  row.querySelector('[data-supok]').onclick = apply; row.querySelector('[data-supno]').onclick = () => render();
+  if (pick === '__new__') {
+    row.innerHTML = `<span class="supconf"><input class="supnew" type="text" maxlength="60" placeholder="New supplier name" style="padding:5px 8px;border-radius:6px;border:1px solid #888;background:#fff;color:#111;max-width:200px"> <button class="btn" data-supadd>Add</button> <button class="btn" data-supno>Cancel</button></span>`;
+    const inp = row.querySelector('input'); inp.focus();
+    const go = () => { const v = inp.value.replace(/^\s*\d+\s*:\s*/, '').trim().replace(/\s+/g, ' '); if (!v) { inp.focus(); return; } const ex = supplierNames().find(n => n.toLowerCase() === v.toLowerCase()); save(ex || v); };
+    row.querySelector('[data-supadd]').onclick = go; inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') go(); });
+    row.querySelector('[data-supno]').onclick = () => render();
+    return;
+  }
+  if (pick === '__none__') {
+    row.innerHTML = `<span class="supconf">Remove supplier <b>${esc(cur)}</b> from this product (and Shopify)? <button class="btn" data-supok>Yes, remove</button> <button class="btn" data-supno>Cancel</button></span>`;
+    row.querySelector('[data-supok]').onclick = () => save(''); row.querySelector('[data-supno]').onclick = () => render();
+    return;
+  }
+  if (!cur) { await save(pick); return; }
+  row.innerHTML = `<span class="supconf">Change supplier from <b>${esc(cur)}</b> to <b>${esc(pick)}</b>? <button class="btn" data-supok>Yes, change</button> <button class="btn" data-supno>Cancel</button></span>`;
+  row.querySelector('[data-supok]').onclick = () => save(pick); row.querySelector('[data-supno]').onclick = () => render();
 });
 $('list').addEventListener('click', async e => {
   const t = e.target;
