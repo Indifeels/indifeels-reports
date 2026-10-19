@@ -720,17 +720,18 @@ select.sel{appearance:none;-webkit-appearance:none}
 .xsz{font-size:12.5px;color:var(--muted);margin:0 0 6px}
 .pv .vh b.szt{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #viewMine .card-h .ttl .meta.mrow{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;white-space:normal;overflow:visible;text-overflow:clip}
-.suprow{display:inline-flex}.supsel{max-width:170px;min-width:0;width:auto;padding:1px 6px;font-size:11.5px;font-weight:700;border-radius:999px;border:1px solid transparent;color:#fff;cursor:pointer}
+.suprow{display:inline-flex}.supsel{max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:inherit;line-height:1.5;min-width:0;width:auto;padding:1px 6px;font-size:11.5px;font-weight:700;border-radius:999px;border:1px solid transparent;color:#fff;cursor:pointer}
 .supsel.none{background:#7a1018;border-color:#a3262e}.supsel.has{background:#5f3aa8;border-color:#7a57c4}.supsel option{background:var(--bg);color:var(--text);font-weight:400}
 .mp{font-size:11px;font-weight:700;padding:1px 9px;border-radius:999px;white-space:nowrap}
 .mp-age{background:#16304f;color:#9cc4f5}.mp-cat{background:#1c3b3a;color:#8fd8cd}
 .supconf{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:#fff}.supconf .btn{padding:1px 8px;font-size:11.5px}
-#szmenu{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
-#szmenu[hidden]{display:none}
-#szmenu .m{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:14px;width:min(360px,100%);box-shadow:0 20px 50px rgba(0,0,0,.6)}
-#szmenu h3{margin:0 0 2px;font-size:17px}#szmenu .pt{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+#szmenu,#supmodal{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+#szmenu[hidden],#supmodal[hidden]{display:none}
+#szmenu .m,#supmodal .m{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:14px;width:min(360px,100%);box-shadow:0 20px 50px rgba(0,0,0,.6)}
+#szmenu h3,#supmodal h3{margin:0 0 2px;font-size:17px}#szmenu .pt,#supmodal .pt{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+#supmodal input{width:100%;box-sizing:border-box;padding:9px 10px;font-size:14px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin:4px 0 4px}#supmodal .lst{max-height:46vh;overflow:auto;margin-top:4px}#supmodal button.cur{background:#5f3aa8;color:#fff;border-color:#5f3aa8}#supmodal .none{font-size:13px;color:var(--muted);padding:8px 2px}
 #szmenu .note{font-size:12.5px;color:var(--muted);margin:0 0 8px}
-#szmenu button{display:block;width:100%;margin:6px 0 0;padding:10px 12px;font-size:14px;font-weight:600;border-radius:10px;text-align:left}
+#szmenu button,#supmodal button{display:block;width:100%;margin:6px 0 0;padding:10px 12px;font-size:14px;font-weight:600;border-radius:10px;text-align:left}
 #szmenu button[disabled]{opacity:.45;cursor:not-allowed}
 #szmenu button.danger2.arm{background:#ffebe9;color:#cf222e;border-color:#cf222e}
 .pbtn .sm{display:none}
@@ -1616,9 +1617,8 @@ function supplierNames(){
   return [...set].sort((a, b) => a.localeCompare(b));
 }
 function supRowHtml(P){
-  const pid = String(P.p.id), cur = supName(P.supplier), names = supplierNames();
-  if (cur && !names.includes(cur)) names.push(cur);
-  return `<div class="suprow" data-suprow="${esc(pid)}"><select class="supsel ${cur ? 'has' : 'none'}" data-supsel="${esc(pid)}" data-cur="${esc(cur)}" aria-label="Supplier" title="Supplier for this product (saved to Shopify too)">${cur ? '' : '<option value="">No supplier: pick one</option>'}${names.map(n => `<option value="${esc(n)}"${n === cur ? ' selected' : ''}>${esc(n)}</option>`).join('')}<option value="__new__">+ Add new supplier…</option>${cur ? '<option value="__none__">✕ Remove supplier</option>' : ''}</select></div>`;
+  const pid = String(P.p.id), cur = supName(P.supplier);
+  return `<div class="suprow" data-suprow="${esc(pid)}"><button type="button" class="supsel ${cur ? 'has' : 'none'}" data-supbtn="${esc(pid)}" data-cur="${esc(cur)}" title="Tap to pick a supplier (search). Hold to add a new supplier or remove this one.">${esc(cur || 'No supplier: pick one')} ▾</button></div>`;
 }
 /* Add size: order a size this product doesn't have yet. Options are only sizes already defined in Shopify for products of the same category
    (taken verbatim from their variant titles, dashes and all), minus the ones this product already has. A normal order line, just under that size's name. */
@@ -1930,37 +1930,60 @@ $('wrong').addEventListener('click', async e => {
   } catch (err) { notify('Could not update: ' + err.message); }
   render();
 });
-$('list').addEventListener('change', async e => {
-  const el = e.target.closest('select[data-supsel]'); if (!el || !el.value) return;
-  const pid = el.getAttribute('data-supsel'), pick = el.value, cur = el.getAttribute('data-cur'), row = el.closest('.suprow');
-  const save = async sup => {
-    row.innerHTML = '<span class="supconf">Saving…</span>';
-    try {
-      await Store.setTag(pid, sup);
-      const pr = data.products.find(p => String(p.id) === pid); if (pr) pr.supplier = sup;
-      if (sup) { data.suppliers = data.suppliers || []; if (!data.suppliers.some(n => n.toLowerCase() === sup.toLowerCase())) data.suppliers.push(sup); }
-      for (const o of orders.values()) if (String(o.product_id) === pid && o.status === 'saved' && !o.claimed && (!o.supplier || /^unassigned$/i.test(o.supplier) || sup === '')) o.supplier = sup || 'Unassigned';
-      notify((sup ? 'Supplier set to ' + sup : 'Supplier removed') + '. It is saved to Shopify on the next refresh (after the next order, or at midnight).', true);
-    } catch (err) { notify('Could not save supplier: ' + err.message); }
-    render();
-  };
-  if (pick === '__new__') {
-    row.innerHTML = `<span class="supconf"><input class="supnew" type="text" maxlength="60" placeholder="New supplier name" style="padding:5px 8px;border-radius:6px;border:1px solid #888;background:#fff;color:#111;max-width:200px"> <button class="btn" data-supadd>Add</button> <button class="btn" data-supno>Cancel</button></span>`;
-    const inp = row.querySelector('input'); inp.focus();
-    const go = () => { const v = inp.value.replace(/^\s*\d+\s*:\s*/, '').trim().replace(/\s+/g, ' '); if (!v) { inp.focus(); return; } const ex = supplierNames().find(n => n.toLowerCase() === v.toLowerCase()); save(ex || v); };
-    row.querySelector('[data-supadd]').onclick = go; inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') go(); });
-    row.querySelector('[data-supno]').onclick = () => render();
-    return;
-  }
-  if (pick === '__none__') {
-    row.innerHTML = `<span class="supconf">Remove supplier <b>${esc(cur)}</b> from this product (and Shopify)? <button class="btn" data-supok>Yes, remove</button> <button class="btn" data-supno>Cancel</button></span>`;
-    row.querySelector('[data-supok]').onclick = () => save(''); row.querySelector('[data-supno]').onclick = () => render();
-    return;
-  }
-  if (!cur) { await save(pick); return; }
-  row.innerHTML = `<span class="supconf">Change supplier from <b>${esc(cur)}</b> to <b>${esc(pick)}</b>? <button class="btn" data-supok>Yes, change</button> <button class="btn" data-supno>Cancel</button></span>`;
-  row.querySelector('[data-supok]').onclick = () => save(pick); row.querySelector('[data-supno]').onclick = () => render();
+/* ---------------- supplier: tap = searchable picker, hold / right-click = add new supplier or remove ---------------- */
+let spTimer = null, spDown = null, spLongAt = 0, spModal = null;
+function spClear(){ clearTimeout(spTimer); spTimer = null; spDown = null; }
+$('list').addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-supbtn]'); if (!b || e.button > 0) return;
+  spDown = {x: e.clientX, y: e.clientY}; clearTimeout(spTimer);
+  spTimer = setTimeout(() => { spClear(); spLongAt = Date.now(); try { navigator.vibrate && navigator.vibrate(15); } catch (_) {} supModal(b.getAttribute('data-supbtn'), 'menu'); }, 550);
 });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => $('list').addEventListener(ev, spClear));
+$('list').addEventListener('pointermove', e => { if (spDown && Math.hypot(e.clientX - spDown.x, e.clientY - spDown.y) > 10) spClear(); });
+window.addEventListener('scroll', spClear, true);
+$('list').addEventListener('contextmenu', e => { const b = e.target.closest('[data-supbtn]'); if (!b) return; e.preventDefault(); spClear(); spLongAt = Date.now(); supModal(b.getAttribute('data-supbtn'), 'menu'); });
+$('list').addEventListener('click', e => { const b = e.target.closest('[data-supbtn]'); if (!b) return; if (Date.now() - spLongAt < 700) return; supModal(b.getAttribute('data-supbtn'), 'pick'); });
+function supClose(){ if (spModal) spModal.hidden = true; }
+async function supSave(pid, sup){
+  const m = spModal.querySelector('.m'); m.innerHTML = '<p class="pt">Saving…</p>';
+  try {
+    await Store.setTag(pid, sup);
+    const pr = data.products.find(p => String(p.id) === pid); if (pr) pr.supplier = sup;
+    if (sup) { data.suppliers = data.suppliers || []; if (!data.suppliers.some(n => n.toLowerCase() === sup.toLowerCase())) data.suppliers.push(sup); }
+    for (const o of orders.values()) if (String(o.product_id) === pid && o.status === 'saved' && !o.claimed && (!o.supplier || /^unassigned$/i.test(o.supplier) || sup === '')) o.supplier = sup || 'Unassigned';
+    notify((sup ? 'Supplier set to ' + sup : 'Supplier removed') + '. It is saved to Shopify on the next refresh (after the next order, or at midnight).', true);
+  } catch (err) { notify('Could not save supplier: ' + err.message); }
+  supClose(); render();
+}
+function supModal(pid, mode){
+  if (!spModal) { spModal = document.createElement('div'); spModal.id = 'supmodal'; spModal.hidden = true; document.body.appendChild(spModal); spModal.addEventListener('click', e => { if (e.target === spModal) supClose(); }); }
+  const pr = data.products.find(p => String(p.id) === pid); if (!pr) return;
+  const cur = supName(pr.supplier), m = h => { spModal.innerHTML = `<div class="m">${h}</div>`; spModal.hidden = false; return spModal.querySelector('.m'); };
+  const head = `<h3>Supplier</h3><p class="pt">${esc(pr.title)}${cur ? ' · now ' + esc(cur) : ' · none yet'}</p>`;
+  const confirmChange = sup => { const el = m(head + `<p class="note">Change supplier from <b>${esc(cur)}</b> to <b>${esc(sup)}</b>?</p><button data-y>Yes, change</button><button data-n>Cancel</button>`); el.querySelector('[data-y]').onclick = () => supSave(pid, sup); el.querySelector('[data-n]').onclick = supClose; };
+  const chosen = sup => { if (cur && sup.toLowerCase() !== cur.toLowerCase()) confirmChange(sup); else if (!cur) supSave(pid, sup); else supClose(); };
+  if (mode === 'menu') {
+    const el = m(head + `<button data-add>+ Add new supplier</button>${cur ? '<button data-rm class="danger2">✕ Remove supplier</button>' : ''}<button data-n>Cancel</button>`);
+    el.querySelector('[data-n]').onclick = supClose;
+    el.querySelector('[data-add]').onclick = () => {
+      const e2 = m(head + `<p class="note">New supplier name. It is added to Shopify's supplier list and set on this product.</p><input type="text" maxlength="60" placeholder="Supplier name"><button data-go>Add and set</button><button data-n>Cancel</button>`);
+      const inp = e2.querySelector('input'); inp.focus();
+      const go = () => { const v = inp.value.replace(/^\s*\d+\s*:\s*/, '').trim().replace(/\s+/g, ' '); if (!v) { inp.focus(); return; } const ex = supplierNames().find(n => n.toLowerCase() === v.toLowerCase()); chosen(ex || v); };
+      e2.querySelector('[data-go]').onclick = go; inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') go(); }); e2.querySelector('[data-n]').onclick = supClose;
+    };
+    const rm = el.querySelector('[data-rm]');
+    if (rm) rm.onclick = () => { const e3 = m(head + `<p class="note">Remove <b>${esc(cur)}</b> from this product and from Shopify?</p><button data-y class="danger2">Yes, remove</button><button data-n>Cancel</button>`); e3.querySelector('[data-y]').onclick = () => supSave(pid, ''); e3.querySelector('[data-n]').onclick = supClose; };
+    return;
+  }
+  const names = supplierNames();
+  const el = m(head + `<input type="search" placeholder="Search suppliers" autocomplete="off"><div class="lst"></div><button data-n>Cancel</button>`);
+  const inp = el.querySelector('input'), lst = el.querySelector('.lst');
+  const draw = () => { const q = inp.value.trim().toLowerCase(), hit = names.filter(n => n.toLowerCase().includes(q));
+    lst.innerHTML = hit.length ? hit.map(n => `<button data-n2="${esc(n)}"${n === cur ? ' class="cur"' : ''}>${esc(n)}</button>`).join('') : '<div class="none">No match. Hold the supplier pill to add a new one.</div>';
+    lst.querySelectorAll('[data-n2]').forEach(b => b.onclick = () => chosen(b.getAttribute('data-n2'))); };
+  inp.addEventListener('input', draw); draw(); el.querySelector('[data-n]').onclick = supClose;
+  if (window.matchMedia && matchMedia('(hover:hover)').matches) inp.focus();
+}
 $('list').addEventListener('click', async e => {
   const t = e.target;
   if (t.id === 'more') { limit += PAGE; render(); return; }
