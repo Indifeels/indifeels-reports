@@ -181,6 +181,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
     </div>
     <div class="bk"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0">Barcode labels for the next print run</h3><button type="button" id="lqCopy" hidden>Copy list</button><button type="button" id="lqDone" hidden>Mark printed</button></div>
       <div id="lqList"><div class="empty">Nothing waiting.</div></div>
+      <div class="foot" id="lqFoot" hidden><label class="fld" style="flex:none;width:170px">Start at slot (1 to 65)<input type="text" id="lqSlot" value="1" inputmode="numeric" autocomplete="off"></label><span class="sum"></span><button type="button" class="pri" id="lqPrint">Print labels</button></div>
       <div class="msg" id="lqMsg"></div>
     </div>
   </div>
@@ -277,6 +278,7 @@ const Store = PREVIEW ? {
   takePush: async (loc, items, dry, mode) => ({ok: true, dry: !!dry, variants: items.length, changed: items.length, same: 0, up: items.length, down: 0, unitsUp: items.reduce((a, i) => a + i.qty, 0), unitsDown: 0, toZero: 0}),
   adjust: async (loc, mode, items, dry) => { await new Promise(r => setTimeout(r, 400)); if (!dry) items.forEach(i => { const v = byVid.get(i.vid); v.q[loc] = Math.max(0, (v.q[loc] || 0) + (mode === 'remove' ? -i.qty : i.qty)); }); return {ok: true, variants: items.length, units: items.reduce((a, i) => a + i.qty, 0)}; },
   setBarcode: async (vid, barcode) => ({ok: true, vid, barcode}),
+  printLabels: async () => { throw new Error('Printing works inside the app, not in this preview.'); },
   labels: async (op, items) => { let q = LS.get('st-demo-labels') || []; if (op === 'add') { items.forEach(i => { const v = byVid.get(i.vid); q.push({id: uid(), vid: i.vid, product: v.pt, variant: v.t, barcode: v.bc[0] || '', copies: i.qty}); }); LS.set('st-demo-labels', q); } if (op === 'done') { q = []; LS.set('st-demo-labels', q); } return {ok: true, rows: q}; },
   takeList: async () => LS.get('st-demo-takes') || [],
   takeSave: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
@@ -288,6 +290,7 @@ const Store = PREVIEW ? {
   takePush: (loc, items, dry, mode) => call('takepush', {loc, items, dry, mode}, 120000),
   adjust: (loc, mode, items, dry) => call('adjustlist', {loc, mode, items, dry}, 120000),
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
+  printLabels: (labels, start) => call('printlabels', {labels: labels.map(r => ({product: r.product, variant: r.variant, barcode: r.barcode, copies: r.copies})), start}, 30000),
   labels: (op, items) => call('labelqueue', {op, items}),
   takeList: () => call('takelist'),
   takeSave: s => call('takesave', {session: s}),
@@ -556,9 +559,15 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   function drawLabels() {
     const n = labelRows.reduce((a, r) => a + r.copies, 0);
     $('lqList').innerHTML = labelRows.length ? labelRows.map(r => `<div class="lq"><span><b>${E(r.product)}</b> <small>${E(r.variant)} · ${E(r.barcode)}</small></span><b>× ${r.copies}</b></div>`).join('') + `<div class="msg">${n} label${n === 1 ? '' : 's'} waiting for the next print run.</div>` : '<div class="empty">Nothing waiting.</div>';
-    $('lqCopy').hidden = $('lqDone').hidden = !labelRows.length;
+    $('lqCopy').hidden = $('lqDone').hidden = $('lqFoot').hidden = !labelRows.length;
   }
   async function loadLabels() { try { const r = await Store.labels('list'); labelRows = r.rows || []; drawLabels(); } catch (e) { $('lqMsg').className = 'msg bad'; $('lqMsg').textContent = 'Could not load the label list: ' + e.message; } }
+  $('lqPrint').onclick = async () => {
+    const start = Math.max(1, Math.min(65, parseInt($('lqSlot').value, 10) || 1));
+    $('lqMsg').className = 'msg'; $('lqMsg').textContent = 'Opening the label sheet…';
+    try { const r = await Store.printLabels(labelRows, start); $('lqMsg').className = 'msg ok'; $('lqMsg').textContent = `Sheet opened: ${r.labels} labels on ${r.sheets} page${r.sheets === 1 ? '' : 's'}. Print it, then tap Mark printed.`; }
+    catch (e) { $('lqMsg').className = 'msg bad'; $('lqMsg').textContent = e.message; }
+  };
   $('lqCopy').onclick = () => {
     const ta = document.createElement('textarea'); ta.value = csv(); ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select();
     let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} ta.remove();
