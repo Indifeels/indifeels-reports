@@ -104,10 +104,10 @@ async function bulk(body: any) {
     const ref = "indifeels://stock-take/" + crypto.randomUUID();
     let done = 0;
     for (const part of chunk(chg, 100)) {
-      const m = await gql(`mutation($input: InventorySetQuantitiesInput!, $key: String!){ inventorySetQuantities(input:$input) @idempotent(key:$key){ inventoryAdjustmentGroup{ id } userErrors{ message } } }`,
-        { key: crypto.randomUUID(), input: { name: "available", reason: "correction", ignoreCompareQuantity: true, referenceDocumentUri: ref,
-          quantities: part.map((r) => ({ inventoryItemId: r.item, locationId: loc, quantity: r.qty })) } });
-      const ue = m.inventorySetQuantities.userErrors;
+      const m = await gql(`mutation($input: InventoryAdjustQuantitiesInput!, $key: String!){ inventoryAdjustQuantities(input:$input) @idempotent(key:$key){ inventoryAdjustmentGroup{ id } userErrors{ message } } }`,
+        { key: crypto.randomUUID(), input: { name: "available", reason: "correction", referenceDocumentUri: ref,
+          changes: part.map((r) => ({ inventoryItemId: r.item, locationId: loc, delta: r.qty - r.cur, changeFromQuantity: r.has ? r.cur : 0 })) } });
+      const ue = m.inventoryAdjustQuantities.userErrors;
       if (ue?.length) return json({ error: `Updated ${done} of ${chg.length} variants, then Shopify stopped: ${ue[0].message}. Push again to finish the rest.`, updated: done }, 500);
       done += part.length;
     }
