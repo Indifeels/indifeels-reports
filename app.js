@@ -1651,7 +1651,7 @@
       }
       if (d.action === "camera" && (kind === "restock-plan" || kind === "stock-take")) {
         // The report frame is sandboxed (no real origin), so it cannot ask for the camera itself: scan here, send only the number back.
-        rpScanCamera((code, error) => reply({ type: kind + "-scan", code, error, target: d.target === "bulk" ? "bulk" : "take" }), d.target === "bulk" || d.target === "take");
+        rpScanCamera((code, error) => reply({ type: kind + "-scan", code, error, target: d.target === "bulk" ? "bulk" : d.target === "adj" ? "adj" : "take" }), d.target === "bulk" || d.target === "take" || d.target === "adj");
         return;
       }
       if (d.action === "state" && kind === "restock-plan") {
@@ -1745,7 +1745,16 @@
     rpOk(await sb.from("stock_takes").upsert(row, { onConflict: "id" }));
     return { ok: true };
   }
+  async function rpAdjCall(body, fallback) {
+    const { data, error } = await sb.functions.invoke("stock-adjust", { body });
+    if (error || !data?.ok) { let m = data?.error; try { if (!m && error?.context) m = (await error.context.json()).error; } catch (_) {} throw new Error(m || error?.message || fallback); }
+    return data;
+  }
+  const rpVidQty = (a, max) => (Array.isArray(a) ? a : []).slice(0, max).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && (i.qty ?? i.copies)) || 0) }));
   rpBridge("stock-take", {
+    adjustlist: async (d) => rpAdjCall({ action: "adjustlist", loc: rpText(d.loc, 40), mode: d.mode === "remove" ? "remove" : "add", dry: !!d.dry, items: rpVidQty(d.items, 500) }, "Couldn't update the stock"),
+    setbarcode: async (d) => rpAdjCall({ action: "setbarcode", vid: rpText(d.vid, 20), barcode: rpText(d.barcode, 40) }, "Couldn't save the barcode"),
+    labelqueue: async (d) => rpAdjCall({ action: "labelqueue", op: ["add", "list", "done"].includes(d.op) ? d.op : "list", items: rpVidQty(d.items, 200) }, "Couldn't update the label list"),
     bulklocs: async () => rpStockCall({ action: "locations" }, "Couldn't load locations"),
     bulklookup: async (d) => rpStockCall({ action: "lookup", code: rpText(d.code, 40), from: rpText(d.from, 40), to: rpText(d.to, 40) }, "Couldn't look up the barcode"),
     bulktransfer: async (d) => rpStockCall({ action: "transfer", from: rpText(d.from, 40), to: rpText(d.to, 40), items: (Array.isArray(d.items) ? d.items : []).slice(0, 500).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && i.qty) || 0) })) }, "Couldn't finalize the transfer"),

@@ -45,7 +45,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .sw{flex:none;height:42px;width:42px;padding:0;font-size:18px}
 /* bulk list */
 .bkit{display:flex;gap:10px;align-items:center;padding:8px;margin:6px 0;border-radius:12px;background:var(--bg);border:1px solid var(--border)}
-.bkit.flash,.vr.flash{box-shadow:0 0 0 2px #2ea043;transition:box-shadow .3s}.bkit.err{border-color:#7a2a2d}
+.bkit.flash,.vr.flash,.adit.flash{box-shadow:0 0 0 2px #2ea043;transition:box-shadow .3s}.bkit.err{border-color:#7a2a2d}
 .im{flex:none;width:52px;height:52px;border-radius:10px;background:var(--grey-bg);overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:700;font-size:12px}
 .im img{width:100%;height:100%;object-fit:cover;display:block}
 .nm{flex:1;min-width:0}.nm b{display:block;font-size:14px;line-height:1.25}
@@ -96,6 +96,11 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .pushbox{margin-top:10px;padding:12px;border:1px solid var(--green);border-radius:12px;background:var(--card2);font-size:14px;line-height:1.5}
 .pushbox label{display:flex;gap:10px;align-items:center;margin:10px 0;color:var(--text)}.pushbox input[type=checkbox]{width:22px;height:22px}
 .pushbox .pm{margin-top:8px;font-size:14px}.pushbox .pm.bad{color:var(--red)}.pushbox .pm.ok{color:var(--green);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.chips button{padding:8px 12px;border-radius:10px;font-size:14px}.chips button small{display:block;font-size:10.5px;color:var(--muted);font-weight:600}.chips button.in{border-color:var(--green);background:var(--green-bg)}
+.adit{padding:8px;margin:6px 0;border-radius:12px;background:var(--bg);border:1px solid var(--border)}.adit .top{display:flex;gap:10px;align-items:center}.adit.err{border-color:#7a2a2d}
+.adit .ex{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12.5px;color:var(--muted)}.adit .ex label{display:flex;gap:6px;align-items:center;color:var(--text)}.adit .ex input[type=checkbox]{width:20px;height:20px}
+.adit .ex input[type=text]{flex:1;min-width:120px;padding:7px 9px;font-size:14px}.adit .ex button{padding:6px 12px}
+.lq{display:flex;gap:8px;align-items:center;padding:6px 2px;border-top:1px solid var(--border);font-size:13px}.lq:first-child{border-top:0}.lq span{flex:1;min-width:0}.lq b{flex:none}.lq small{color:var(--muted)}
 .ssx{flex:none;margin-left:auto;padding:2px 8px;border-radius:8px;color:var(--muted);font-size:16px;line-height:1}.ssx:hover{background:var(--grey-bg);color:var(--text)}
 .sso div{align-items:center}.sso .th{flex:none;width:40px;height:40px;border-radius:8px;background:var(--grey-bg);overflow:hidden}.sso .th img{width:100%;height:100%;object-fit:cover;display:block}.sso .tx{flex:1;min-width:0}
 .ssb .ssl{flex:1;min-width:0}
@@ -125,7 +130,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 <div class="wrap">
   <header><h1>Stock Take</h1><button id="theme" title="Light / dark">◐</button></header>
   <div class="demo" id="demo" hidden></div>
-  <nav class="tabs"><button id="tabBulk" class="on">Bulk transfer</button><button id="tabTake">Stock take</button></nav>
+  <nav class="tabs"><button id="tabBulk" class="on">Bulk transfer</button><button id="tabTake">Stock take</button><button id="tabAdj">Add / remove</button></nav>
 
   <!-- ============ BULK TRANSFER ============ -->
   <div id="viewBulk">
@@ -145,6 +150,29 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
       <div id="bkList"><div class="empty">Nothing scanned yet.</div></div>
       <div class="foot"><span class="sum" id="bkSum"></span><button type="button" class="pri" id="bkFin" disabled>Finalize transfer</button></div>
       <div class="msg" id="bkRes"></div>
+    </div>
+  </div>
+
+  <!-- ============ ADD / REMOVE STOCK ============ -->
+  <div id="viewAdj" hidden>
+    <div class="bk"><h3>Add or remove stock</h3>
+      <div class="seg" id="adMode"><button data-m="add" class="on">Add stock</button><button data-m="remove">Remove stock</button></div>
+      <div class="row">
+        <label class="fld">Location<select id="adLoc"></select></label>
+        <div class="fld">Find a product (no barcode needed)<div class="ss" id="adProd"></div></div>
+      </div>
+      <div class="chips" id="adSizes"></div>
+      <div class="scan" style="margin-top:10px"><input id="adIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Or scan / type a barcode, then Enter"><button id="adAddBtn">Add</button><button id="adCam" type="button" title="Scan with camera">📷</button></div>
+      <div class="msg" id="adMsg">Scan or pick any variant. Each scan or tap adds 1 to the list below.</div>
+    </div>
+    <div class="bk"><div class="row" style="align-items:center"><b id="adTitle" style="flex:1">List</b><button type="button" id="adClear" hidden>Clear list</button></div>
+      <div id="adList"><div class="empty">Nothing in the list yet.</div></div>
+      <div class="foot"><span class="sum" id="adSum"></span><button type="button" class="pri" id="adGo" disabled>Add stock</button></div>
+      <div class="msg" id="adRes"></div>
+    </div>
+    <div class="bk"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0">Barcode labels for the next print run</h3><button type="button" id="lqCopy" hidden>Copy list</button><button type="button" id="lqDone" hidden>Mark printed</button></div>
+      <div id="lqList"><div class="empty">Nothing waiting.</div></div>
+      <div class="msg" id="lqMsg"></div>
     </div>
   </div>
 
@@ -225,10 +253,10 @@ function call(action, payload, ms) {
 window.addEventListener('message', e => {
   const d = e.data || {};
   if (d.type === 'stock-take-theme') theme(d.theme);
-  else if (d.type === 'stock-take-scan') { if (d.code) (d.target === 'bulk' ? bulkAdd : takeScan)(d.code); else if (d.error) (d.target === 'bulk' ? bkMsg : tkMsg)(d.error, 'bad'); }
+  else if (d.type === 'stock-take-scan') { if (d.code) (d.target === 'bulk' ? bulkAdd : d.target === 'adj' ? adjScan : takeScan)(d.code); else if (d.error) (d.target === 'bulk' ? bkMsg : d.target === 'adj' ? adMsg : tkMsg)(d.error, 'bad'); }
   else if (d.type === 'stock-take-result') { const p = pend.get(d.req); if (!p) return; clearTimeout(p.t); pend.delete(d.req); d.ok ? p.res(d.data) : p.rej(new Error(d.error || 'Failed')); }
 });
-const camera = target => { if (PREVIEW) return (target === 'bulk' ? bkMsg : tkMsg)('Camera works inside the app. In this preview, type a barcode or tap a demo barcode above.', 'bad'); try { parent.postMessage({type: 'stock-take', action: 'camera', target}, '*'); } catch (e) {} };
+const camera = target => { if (PREVIEW) return (target === 'bulk' ? bkMsg : target === 'adj' ? adMsg : tkMsg)('Camera works inside the app. In this preview, type a barcode or tap a demo barcode above.', 'bad'); try { parent.postMessage({type: 'stock-take', action: 'camera', target}, '*'); } catch (e) {} };
 
 /* ---------- Store: hub in production, demo in preview ---------- */
 const LS = {get: k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
@@ -237,6 +265,9 @@ const Store = PREVIEW ? {
   lookup: async (code, from, to) => { const v = byBc.get(bcn(code)); if (!v) return {found: false}; await new Promise(r => setTimeout(r, 250)); return {found: true, vid: v.vid, product: v.pt, variant: v.t, image: v.image, from: v.q[from] || 0, to: v.q[to] || 0}; },
   transfer: async (from, to, items) => { await new Promise(r => setTimeout(r, 600)); items.forEach(i => { const v = byVid.get(i.vid); v.q[from] = (v.q[from] || 0) - i.qty; v.q[to] = (v.q[to] || 0) + i.qty; }); return {ok: true}; },
   takePush: async (loc, items, dry, mode) => ({ok: true, dry: !!dry, variants: items.length, changed: items.length, same: 0, up: items.length, down: 0, unitsUp: items.reduce((a, i) => a + i.qty, 0), unitsDown: 0, toZero: 0}),
+  adjust: async (loc, mode, items, dry) => { await new Promise(r => setTimeout(r, 400)); if (!dry) items.forEach(i => { const v = byVid.get(i.vid); v.q[loc] = Math.max(0, (v.q[loc] || 0) + (mode === 'remove' ? -i.qty : i.qty)); }); return {ok: true, variants: items.length, units: items.reduce((a, i) => a + i.qty, 0)}; },
+  setBarcode: async (vid, barcode) => ({ok: true, vid, barcode}),
+  labels: async (op, items) => { let q = LS.get('st-demo-labels') || []; if (op === 'add') { items.forEach(i => { const v = byVid.get(i.vid); q.push({id: uid(), vid: i.vid, product: v.pt, variant: v.t, barcode: v.bc[0] || '', copies: i.qty}); }); LS.set('st-demo-labels', q); } if (op === 'done') { q = []; LS.set('st-demo-labels', q); } return {ok: true, rows: q}; },
   takeList: async () => LS.get('st-demo-takes') || [],
   takeSave: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
   takeEnd: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {status: 'ended', updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
@@ -245,6 +276,9 @@ const Store = PREVIEW ? {
   lookup: (code, from, to) => call('bulklookup', {code, from, to}),
   transfer: (from, to, items) => call('bulktransfer', {from, to, items}, 90000),
   takePush: (loc, items, dry, mode) => call('takepush', {loc, items, dry, mode}, 120000),
+  adjust: (loc, mode, items, dry) => call('adjustlist', {loc, mode, items, dry}, 120000),
+  setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
+  labels: (op, items) => call('labelqueue', {op, items}),
   takeList: () => call('takelist'),
   takeSave: s => call('takesave', {session: s}),
   takeEnd: s => call('takeend', {session: s}),
@@ -252,11 +286,12 @@ const Store = PREVIEW ? {
 
 /* ---------- tabs ---------- */
 function show(v) {
-  $('viewBulk').hidden = v !== 'bulk'; $('viewTake').hidden = v !== 'take';
-  $('tabBulk').classList.toggle('on', v === 'bulk'); $('tabTake').classList.toggle('on', v === 'take');
+  $('viewBulk').hidden = v !== 'bulk'; $('viewTake').hidden = v !== 'take'; $('viewAdj').hidden = v !== 'adj';
+  $('tabBulk').classList.toggle('on', v === 'bulk'); $('tabTake').classList.toggle('on', v === 'take'); $('tabAdj').classList.toggle('on', v === 'adj');
   if (v === 'take') takeOpen();
+  if (v === 'adj') adjOpen();
 }
-$('tabBulk').onclick = () => show('bulk'); $('tabTake').onclick = () => show('take');
+$('tabBulk').onclick = () => show('bulk'); $('tabTake').onclick = () => show('take'); $('tabAdj').onclick = () => show('adj');
 $('theme').onclick = () => { const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; theme(t); try { parent.postMessage({type: 'stock-take', action: 'theme', theme: t}, '*'); } catch (e) {} };
 
 /* ---------- locations (shared) ---------- */
@@ -372,6 +407,123 @@ document.addEventListener('click', () => document.querySelectorAll('.ss.open').f
     try { await loadLocs(); fill(); $('bkLocMsg').textContent = ''; }
     catch (e) { $('bkLocMsg').textContent = 'Could not load locations: ' + e.message; $('bkLocMsg').className = 'msg bad'; $('bkFrom').innerHTML = $('bkTo').innerHTML = '<option value="">Unavailable</option>'; return; }
     draw();
+  };
+})();
+
+
+/* =====================================================================
+   ADD / REMOVE STOCK  (any variant: scan it, or pick it from the list)
+   ===================================================================== */
+const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.className = 'msg' + (k ? ' ' + k : ''); };
+(function () {
+  let mode = 'add', items = [], armed = false, busy = false, ready = false, labelRows = [];
+  const loc = () => $('adLoc').value;
+  const sizeCmp = (a, b) => a.t.localeCompare(b.t, undefined, {numeric: true});
+  const sel = Sel($('adProd'), 'Search product…', true);
+  const stock = v => v.q[loc()] || 0;
+  const total = () => items.reduce((a, i) => a + i.qty, 0);
+  const over = i => mode === 'remove' && i.qty > stock(byVid.get(i.vid));
+  function sizes() {
+    const pid = sel.get(); if (!pid) { $('adSizes').innerHTML = ''; return; }
+    const inList = new Map(items.map(i => [i.vid, i.qty]));
+    $('adSizes').innerHTML = V.filter(v => v.pid === pid).sort(sizeCmp).map(v => `<button type="button" data-v="${E(v.vid)}" class="${inList.has(v.vid) ? 'in' : ''}">${E(v.t)}${inList.has(v.vid) ? ' ×' + inList.get(v.vid) : ''}<small>stock ${stock(v)}</small></button>`).join('');
+  }
+  function draw() {
+    $('adTitle').textContent = (mode === 'add' ? 'To add' : 'To remove') + (items.length ? ' · ' + items.length + ' variant' + (items.length === 1 ? '' : 's') : '');
+    $('adClear').hidden = !items.length;
+    $('adList').innerHTML = items.length ? items.map(i => {
+      const v = byVid.get(i.vid), img = v.image ? `<img src="${E(v.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(v.pt.slice(0, 2).toUpperCase());
+      const nobc = !v.bc.length;
+      return `<div class="adit${over(i) ? ' err' : ''}" data-v="${E(i.vid)}"><div class="top"><div class="im">${img}</div><div class="nm"><b>${E(v.pt)}</b><span class="tag">${E(v.t)}</span><small${over(i) ? ' class="bad"' : ''}>${over(i) ? 'Only ' + stock(v) + ' here to remove' : 'Now ' + stock(v) + ' here → ' + (mode === 'add' ? stock(v) + i.qty : stock(v) - i.qty)}</small></div>` +
+        `<div class="stp"><button data-d="-1">−</button><b>${i.qty}</b><button data-d="1">+</button></div><button class="rm" data-x="1" title="Remove from list">✕</button></div>` +
+        (mode === 'add' ? `<div class="ex">${nobc ? `<input type="text" data-bc placeholder="No barcode yet: type or scan one (optional)"><button type="button" data-bcs>Save barcode</button>` : ''}<label><input type="checkbox" data-lb ${i.label ? 'checked' : ''}> Needs a barcode label (next print run)</label></div>` : '') + '</div>';
+    }).join('') : '<div class="empty">Nothing in the list yet.</div>';
+    const n = total(), bad = items.some(over);
+    $('adSum').textContent = items.length ? `${n} piece${n === 1 ? '' : 's'} to ${mode}` : '';
+    $('adGo').disabled = !items.length || busy || bad || !loc();
+    $('adGo').classList.toggle('arm', armed);
+    $('adGo').textContent = mode === 'add' ? 'Add stock' : (armed ? `Tap again: remove ${n} pieces` : 'Remove stock');
+    sizes();
+  }
+  function put(v, n) {
+    armed = false; $('adRes').textContent = '';
+    const it = items.find(i => i.vid === v.vid); if (it) it.qty = Math.min(1000, it.qty + n); else items.push({vid: v.vid, qty: n, label: false});
+    draw(); const el = document.querySelector(`.adit[data-v="${v.vid}"]`); if (el) { el.classList.add('flash'); el.scrollIntoView({block: 'nearest', behavior: 'smooth'}); setTimeout(() => el.classList.remove('flash'), 600); }
+  }
+  window.adjScan = code => {
+    const v = byBc.get(bcn(code)); if (!v) { adMsg('Barcode ' + code + ' is not in the website data. Find the product in the list instead.', 'bad'); beep('bad'); return; }
+    adMsg(`${v.pt} · ${v.t} added.`, 'ok'); beep('ok'); put(v, 1);
+  };
+  window.adjOpen = async () => {
+    if (!ready) {
+      try { await loadLocs(); } catch (e) { adMsg('Could not load locations: ' + e.message, 'bad'); return; }
+      $('adLoc').innerHTML = locs.map(l => `<option value="${E(l.id)}">${E(l.name)}</option>`).join('');
+      const shop = locs.find(l => /shop/i.test(l.name)); if (shop) $('adLoc').value = shop.id;
+      const seen = new Map(); V.forEach(v => seen.set(v.pid, v.pt));
+      sel.set([...seen.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t})));
+      ready = true; draw();
+    }
+    loadLabels();
+  };
+  sel.onpick(() => sizes());
+  $('adLoc').onchange = () => { armed = false; draw(); };
+  $('adMode').onclick = e => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.m; armed = false; $('adRes').textContent = ''; document.querySelectorAll('#adMode button').forEach(x => x.classList.toggle('on', x === b)); draw(); };
+  $('adSizes').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; put(byVid.get(b.dataset.v), 1); };
+  $('adIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = $('adIn').value.trim(); $('adIn').value = ''; if (v) adjScan(v); } });
+  $('adAddBtn').onclick = () => { const v = $('adIn').value.trim(); $('adIn').value = ''; if (v) adjScan(v); $('adIn').focus(); };
+  $('adCam').onclick = () => camera('adj');
+  $('adClear').onclick = () => { items = []; armed = false; draw(); };
+  $('adList').onclick = async e => {
+    const row = e.target.closest('.adit'); if (!row) return;
+    const it = items.find(i => i.vid === row.dataset.v); if (!it) return;
+    const d = e.target.closest('[data-d]'), x = e.target.closest('[data-x]'), sv = e.target.closest('[data-bcs]');
+    if (d) { it.qty = Math.max(1, Math.min(1000, it.qty + Number(d.dataset.d))); armed = false; draw(); }
+    else if (x) { items = items.filter(i => i !== it); armed = false; draw(); }
+    else if (sv) {
+      const inp = row.querySelector('[data-bc]'), code = (inp.value || '').trim(); if (!code) return;
+      sv.disabled = true;
+      try { const r = await Store.setBarcode(it.vid, code); const v = byVid.get(it.vid); v.bc = [r.barcode]; byBc.set(bcn(r.barcode), v); adMsg('Barcode saved on ' + v.pt + ' · ' + v.t, 'ok'); draw(); }
+      catch (err) { adMsg(err.message, 'bad'); sv.disabled = false; }
+    }
+  };
+  $('adList').onchange = e => { const c = e.target.closest('[data-lb]'); if (!c) return; const it = items.find(i => i.vid === c.closest('.adit').dataset.v); if (it) it.label = c.checked; };
+  $('adList').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('[data-bc]')) { e.preventDefault(); const b = e.target.closest('.ex').querySelector('[data-bcs]'); if (b) b.click(); } });
+  $('adGo').onclick = async () => {
+    if (busy || !items.length) return;
+    if (mode === 'remove' && !armed) { armed = true; draw(); setTimeout(() => { if (armed) { armed = false; draw(); } }, 6000); return; }
+    const labels = items.filter(i => i.label), nobc = labels.filter(i => !byVid.get(i.vid).bc.length);
+    if (nobc.length) { $('adRes').className = 'msg bad'; $('adRes').textContent = 'Add a barcode first (or untick the label box) for: ' + nobc.map(i => byVid.get(i.vid).pt + ' ' + byVid.get(i.vid).t).join(', '); armed = false; draw(); return; }
+    busy = true; armed = false; draw(); $('adRes').className = 'msg'; $('adRes').textContent = 'Updating Shopify… keep this open.';
+    const sent = items.map(i => ({vid: i.vid, qty: i.qty})), where = locName(loc());
+    try {
+      const r = await Store.adjust(loc(), mode, sent, false);
+      sent.forEach(i => { const v = byVid.get(i.vid); v.q[loc()] = Math.max(0, (v.q[loc()] || 0) + (mode === 'remove' ? -i.qty : i.qty)); });
+      let extra = '';
+      if (labels.length) { try { await Store.labels('add', labels.map(i => ({vid: i.vid, qty: i.qty}))); extra = ` ${labels.length} label${labels.length === 1 ? '' : 's'} queued for printing.`; loadLabels(); } catch (err) { extra = ' Stock updated, but the labels were not queued: ' + err.message; } }
+      $('adRes').className = 'msg ok'; $('adRes').textContent = `Done: ${mode === 'add' ? 'added' : 'removed'} ${r.units} piece${r.units === 1 ? '' : 's'} on ${r.variants} variant${r.variants === 1 ? '' : 's'} at ${where}.` + (r.warn ? ' ' + r.warn : '') + extra;
+      items = [];
+    } catch (err) { $('adRes').className = 'msg bad'; $('adRes').textContent = 'Not finished: ' + err.message; }
+    busy = false; draw();
+  };
+
+  /* ----- barcode label queue ----- */
+  const csv = () => ['Product,Size,Barcode,Copies'].concat(labelRows.map(r => [r.product, r.variant, r.barcode, r.copies].map(x => '"' + String(x).replace(/"/g, '""') + '"').join(','))).join('\n');
+  function drawLabels() {
+    const n = labelRows.reduce((a, r) => a + r.copies, 0);
+    $('lqList').innerHTML = labelRows.length ? labelRows.map(r => `<div class="lq"><span><b>${E(r.product)}</b> <small>${E(r.variant)} · ${E(r.barcode)}</small></span><b>× ${r.copies}</b></div>`).join('') + `<div class="msg">${n} label${n === 1 ? '' : 's'} waiting for the next print run.</div>` : '<div class="empty">Nothing waiting.</div>';
+    $('lqCopy').hidden = $('lqDone').hidden = !labelRows.length;
+  }
+  async function loadLabels() { try { const r = await Store.labels('list'); labelRows = r.rows || []; drawLabels(); } catch (e) { $('lqMsg').className = 'msg bad'; $('lqMsg').textContent = 'Could not load the label list: ' + e.message; } }
+  $('lqCopy').onclick = () => {
+    const ta = document.createElement('textarea'); ta.value = csv(); ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} ta.remove();
+    $('lqMsg').className = 'msg ' + (ok ? 'ok' : 'bad'); $('lqMsg').textContent = ok ? 'Copied (Product, Size, Barcode, Copies). Paste it into your label sheet.' : 'Copy was blocked here. Use the list above.';
+  };
+  let doneArmed = false;
+  $('lqDone').onclick = async () => {
+    if (!doneArmed) { doneArmed = true; $('lqDone').textContent = 'Tap again: mark printed'; setTimeout(() => { doneArmed = false; $('lqDone').textContent = 'Mark printed'; }, 6000); return; }
+    doneArmed = false; $('lqDone').textContent = 'Mark printed';
+    try { await Store.labels('done'); labelRows = []; drawLabels(); $('lqMsg').className = 'msg ok'; $('lqMsg').textContent = 'Cleared. The next labels will start a new list.'; } catch (e) { $('lqMsg').className = 'msg bad'; $('lqMsg').textContent = e.message; }
   };
 })();
 
