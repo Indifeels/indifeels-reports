@@ -90,13 +90,13 @@
   "reason": ""
  },
  "seo-report": {
-  "at": "2026-10-16T08:02+11:00",
-  "code_sha": "58341f9b35bd0fcac4174be2ab73cb9112901829",
+  "at": "2026-10-21T07:55+11:00",
+  "code_sha": "ba1b9e345d4971cc025142ea6f9ae64806fbd77e",
   "data_through": null,
   "last_ok": "2026-10-16T08:02+11:00",
-  "manifest_version": "2026-10-16.seo-report.1",
-  "ok": true,
-  "reason": ""
+  "manifest_version": "2026-10-19.stock-take.1",
+  "ok": false,
+  "reason": "Semrush snapshot report cost 10000 API units (limit: snapshots 100 only); refresh stopped, nothing published"
  },
  "stock": {
   "at": "2026-10-21T07:01+11:00",
