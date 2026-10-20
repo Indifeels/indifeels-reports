@@ -616,7 +616,7 @@ function drawTake(flash) {
   let E_ = 0, S = 0, L = 0, X = 0, ok = 0;
   take.vids.forEach(([vid, ex]) => { const n = c[vid] || 0; E_ += ex; S += n; L += Math.max(0, ex - n); X += Math.max(0, n - ex); ok += Math.min(n, ex); });
   const out = Object.entries(take.outside).filter(([k, o]) => o.n > 0), outN = out.reduce((a, [k, o]) => a + o.n, 0);
-  $('nE').textContent = E_; $('nS').textContent = S; $('nL').textContent = L; $('nX').textContent = X + outN;
+  $('nE').textContent = E_; $('nS').textContent = S + outN; $('nL').textContent = L; $('nX').textContent = X + outN;
   const tot = Math.max(E_ + X, 1); $('pbG').style.width = (ok / tot * 100) + '%'; $('pbO').style.width = (X / tot * 100) + '%';
   const groups = new Map();
   [...ids].map(k => byVid.get(k)).filter(Boolean).forEach(v => { const ex = em.get(v.vid) || 0, n = c[v.vid] || 0, st = status(ex, n); if (filt === 'left' && !(st === 'red' || st === 'blue')) return; if (filt === 'done' && st !== 'green') return; if (filt === 'extra' && st !== 'extra') return; if (!groups.has(v.pid)) groups.set(v.pid, []); groups.get(v.pid).push({v, ex, n, st}); });
