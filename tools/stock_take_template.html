@@ -794,7 +794,7 @@ let pushBusy = false;
 async function openPush(s, box, keepZero) {
   if (!s) return;
   box.hidden = false;
-  const withZero = !!keepZero, items = pushItems(s, withZero);
+  const withZero = s.mode !== 'add', items = pushItems(s, withZero);
   const head = '<b>Push counts to the website</b>';
   if (!items.length) { box.innerHTML = head + '<div class="pm">Nothing scanned yet.</div>'; return; }
   box.innerHTML = head + '<div class="pm">Checking current stock…</div>';
@@ -804,7 +804,7 @@ async function openPush(s, box, keepZero) {
   box.innerHTML = head +
     (s.mode === 'add' ? `<div><b>Adds</b> the scanned numbers to <b>${E(s.locName)}</b> stock (and the website ST number) for <b>${r.variants}</b> variants.</div>` : `<div>Sets <b>${E(s.locName)}</b> stock (and the website ST number) to the counted numbers for <b>${r.variants}</b> variants.</div>`) +
     `<div>▲ ${r.up} go up (+${r.unitsUp}) · ▼ ${r.down} go down (−${r.unitsDown}) · ${r.same} unchanged${r.toZero ? ' · <b style="color:var(--red)">' + r.toZero + ' go to 0</b>' : ''}</div>` +
-    (s.mode === 'add' ? '<input type="checkbox" class="pz" hidden>' : `<label><input type="checkbox" class="pz"${withZero ? ' checked' : ''}> Also set variants I haven't scanned to 0</label>`) +
+    `<input type="checkbox" class="pz" hidden${withZero ? ' checked' : ''}>` + (withZero ? `<div style="color:var(--muted);font-size:13px;margin:6px 0">Sizes not scanned are set to 0.</div>` : '') +
     `<div class="actions"><button class="pri pgo"${r.changed ? '' : ' disabled'}>${r.changed ? 'Confirm: update ' + r.changed + ' variants' : 'Nothing to change'}</button><button class="pcx">Cancel</button></div><div class="pm"></div>`;
   box.querySelector('.pz').onchange = e => openPush(s, box, e.target.checked);
   box.querySelector('.pcx').onclick = () => { box.hidden = true; };
