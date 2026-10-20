@@ -653,6 +653,14 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .scres .kp div{background:#1b222a;border:1px solid #2a323b;border-radius:8px;padding:5px 2px;text-align:center}
 .scres .kp b{display:block;font-size:17px;font-weight:800;line-height:1.1}
 .scres .kp small{display:block;margin-top:2px;font-size:9.5px;color:#8b949e;text-transform:uppercase;letter-spacing:.3px}
+.scan{position:relative}
+.scsug{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:40;max-height:60vh;overflow:auto;border-radius:12px;background:#10151a;border:1px solid #38424d;box-shadow:0 14px 30px rgba(0,0,0,.55)}
+.scsug[hidden]{display:none}
+.scsug .it{display:flex;gap:10px;align-items:center;padding:7px 10px;cursor:pointer;border-bottom:1px solid #1d242c}
+.scsug .it:last-child{border-bottom:0}.scsug .it:hover,.scsug .it.on{background:#1b232c}
+.scsug .it .ph{width:44px;height:44px;border-radius:8px;background:#232b34;flex:none;overflow:hidden}.scsug .it .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.scsug .it .t{min-width:0;flex:1;font-size:14px;font-weight:700;color:#e6edf3;line-height:1.25}.scsug .it .t small{display:block;font-weight:400;font-size:12px;color:#8b949e}
+.scsug .none{padding:10px 12px;font-size:13px;color:#8b949e}
 .scres[hidden],.scan button[hidden]{display:none}
 .sv-teal{color:#2dd4bf}.sv-amber{color:#f0a030}.sv-orange{color:#f0883e}.sv-red{color:#ff6b61}.sv-grey{color:#8b949e}.sv-info{color:#58a6ff}
 .bg-teal{background:#0f9488}.bg-amber{background:#b7791f}.bg-orange{background:#c2561a}.bg-red{background:#c93c37}.bg-grey{background:#4b5563}
@@ -947,13 +955,14 @@ select.sel{appearance:none;-webkit-appearance:none}
   <div class="scanwrap" id="scanWrap">
   <div class="scan" id="scanBox">
     <div class="vf"><svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M7 9v6M10 9v6M13 9v6M16 9v6" stroke="#8b949e" stroke-width="1.6"/></svg><i></i></div>
-          <input id="scanIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode">
+          <input id="scanIn" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Scan barcode or search product name">
       <button id="scanGo">Find</button>
       <button id="scanCam" type="button" title="Scan with camera">📷</button>
       <button id="scanClr" type="button" title="Clear scan" hidden>✕</button>
     <video id="scanVid" playsinline muted hidden></video>
     <div class="scmsg" id="scanMsg"></div>
     <div class="scres" id="scanRes" hidden></div>
+    <div class="scsug" id="scanSug" hidden></div>
   </div>
   </div>
   <section class="hl" id="hl">
@@ -1763,6 +1772,7 @@ function scanLookup(code){
   code = String(code || '').trim();
   if (!code) return;
   const hit = scanFind(code);
+  if (!hit && !isCode(code)) { scan = null; $('scanClr').hidden = true; scanMsg('No product found for "' + code + '".', true); render(); return; }
   if (!hit) { scan = null; $('scanClr').hidden = true; scanMsg('No restock entry for barcode ' + code + '. It may have no sales yet, no barcode saved in Shopify, or the report has not refreshed since it was added.', true); render(); return; }
   try { showTab('mine'); } catch (e) {}
   scan = hit; state.set(hit.pid, true);
@@ -1771,7 +1781,7 @@ function scanLookup(code){
   render();
   $('scanBox').scrollIntoView({block: 'start', behavior: 'smooth'});
 }
-function scanClear(){ scan = null; $('scanIn').value = ''; $('scanClr').hidden = true; scanMsg(''); stopCam(); render(); }
+function scanClear(){ scan = null; sugHide(); $('scanIn').value = ''; $('scanClr').hidden = true; scanMsg(''); stopCam(); render(); }
 function stopCam(){ if (camTimer) { clearInterval(camTimer); camTimer = null; } if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; } $('scanVid').hidden = true; $('scanCam').textContent = '📷'; }
 async function startCam(){
   if (camStream) { stopCam(); return; }
@@ -1787,8 +1797,36 @@ async function startCam(){
     try { const r = await det.detect(vid); if (r && r.length) { const code = r[0].rawValue; stopCam(); $('scanIn').value = code; scanLookup(code); } } catch (e) {}
   }, 300);
 }
-$('scanIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); scanLookup($('scanIn').value); $('scanIn').select(); } });
-$('scanGo').addEventListener('click', () => scanLookup($('scanIn').value));
+/* One box for both: digits only = barcode; anything else = product name search with a picture dropdown. */
+const isCode = v => /^[\d\s-]{6,}$/.test(String(v || '').trim());
+let sugList = [], sugOn = -1;
+function sugHide(){ $('scanSug').hidden = true; sugOn = -1; }
+function sugPick(pid){
+  const P = data.products.find(p => String(p.id) === String(pid)); if (!P) return;
+  sugHide(); try { showTab('mine'); } catch (e) {}
+  scan = {pid: String(P.id), title: null, name: P.title}; state.set(String(P.id), true);
+  $('scanIn').value = P.title; $('scanClr').hidden = false; scanMsg('');
+  render(); $('scanBox').scrollIntoView({block: 'start', behavior: 'smooth'});
+}
+function sugDraw(){
+  const q = $('scanIn').value.trim().toLowerCase(), el = $('scanSug');
+  if (q.length < 2 || isCode(q)) { sugHide(); return; }
+  const words = q.split(/\s+/);
+  sugList = data.products.filter(p => { const t = (p.title + ' ' + supName(p.supplier)).toLowerCase(); return words.every(w => t.includes(w)); })
+    .sort((a, b) => (b.sales || 0) - (a.sales || 0)).slice(0, 10);
+  sugOn = sugList.length ? 0 : -1;
+  el.innerHTML = sugList.length ? sugList.map((p, i) => `<div class="it${i === 0 ? ' on' : ''}" data-sug="${esc(String(p.id))}"><div class="ph">${p.image ? `<img src="${esc(p.image)}${p.image.includes('?') ? '&' : '?'}width=100" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}</div><div class="t">${esc(p.title)}<small>${esc(supName(p.supplier) || 'no supplier')}</small></div></div>`).join('') : '<div class="none">No product with that name.</div>';
+  el.hidden = false;
+}
+$('scanIn').addEventListener('input', sugDraw);
+$('scanIn').addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { if (!sugList.length || $('scanSug').hidden) return; e.preventDefault(); sugOn = (sugOn + (e.key === 'ArrowDown' ? 1 : -1) + sugList.length) % sugList.length; $('scanSug').querySelectorAll('.it').forEach((x, i) => x.classList.toggle('on', i === sugOn)); return; }
+  if (e.key === 'Escape') { sugHide(); return; }
+  if (e.key === 'Enter') { e.preventDefault(); const v = $('scanIn').value; if (isCode(v)) { sugHide(); scanLookup(v); $('scanIn').select(); } else if (sugList.length && sugOn >= 0 && !$('scanSug').hidden) sugPick(sugList[sugOn].id); else scanLookup(v); }
+});
+$('scanSug').addEventListener('mousedown', e => { const it = e.target.closest('[data-sug]'); if (it) { e.preventDefault(); sugPick(it.getAttribute('data-sug')); } });
+document.addEventListener('click', e => { if (!e.target.closest('#scanBox')) sugHide(); });
+$('scanGo').addEventListener('click', () => { const v = $('scanIn').value; if (isCode(v) || !sugList.length) scanLookup(v); else sugPick(sugList[Math.max(0, sugOn)].id); });
 $('scanCam').addEventListener('click', startCam);
 $('scanClr').addEventListener('click', scanClear);
 
