@@ -107,9 +107,11 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .ssf{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 2px 0;font-size:13px;color:var(--muted)}.ssf button{padding:6px 12px}
 .dh{cursor:pointer}.dh .chev{flex:none;color:var(--muted);font-size:16px}
 .dd{margin:-2px 0 8px;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:var(--card2)}
-.dp{padding:6px 0}.dp+.dp{border-top:1px solid var(--border)}.dph{display:flex;gap:10px;align-items:center;margin-bottom:6px}.dph b{flex:1;min-width:0;font-size:14px;line-height:1.25}.dph .im{width:48px;height:48px}
+.dp{padding:6px 0}.dp+.dp{border-top:1px solid var(--border)}.dph{display:flex;gap:10px;align-items:center;margin-bottom:6px;flex-wrap:wrap}.dph a.im{cursor:pointer;outline:1px solid var(--border)}.dbd{display:flex;gap:6px;align-items:center;margin-left:auto}.dpa{margin:0 0 6px}.dpa button{padding:5px 12px;font-size:13px}.dmsg{min-height:0;margin:0 0 6px}
+.lst{padding:3px 12px;border-radius:99px;font-size:12.5px;font-weight:800;user-select:none;-webkit-user-select:none;touch-action:manipulation}.lst.g{background:var(--green-bg);border-color:var(--green);color:var(--green)}.lst.r{background:var(--red-bg);border-color:var(--red);color:var(--red)}.lst.n{color:var(--muted)}
+.chn{padding:3px 10px;border-radius:99px;font-size:12.5px;font-weight:700;background:var(--info-bg);color:var(--info)}.chn.z{background:var(--red-bg);color:var(--red)}.dph b{flex:1;min-width:0;font-size:14px;line-height:1.25}.dph .im{width:48px;height:48px}
 .dr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:3px 0}.dr .tag{display:inline-block;font-size:12px;font-weight:700;padding:1px 9px;border-radius:999px;background:var(--info-bg);color:var(--info);min-width:42px;text-align:center}
-.dr .dq{font-size:13px;color:var(--muted)}.dr .dq b{color:var(--text);font-size:15px}.dr .pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:700;margin-left:auto}.dr small.bad{color:var(--red);font-weight:700;width:100%}
+.dr .dq{font-size:13px;color:var(--muted)}.dr .dq b{color:var(--text);font-size:15px}.dr .pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:700}.dr .sp{flex:1}.dr .stp button{width:30px;height:30px;font-size:16px}.dr .stp b{min-width:24px;font-size:16px}.dr .pl{padding:5px 12px;font-size:13px}.dr small.bad{color:var(--red);font-weight:700;width:100%}
 .ssx{flex:none;margin-left:auto;padding:2px 8px;border-radius:8px;color:var(--muted);font-size:16px;line-height:1}.ssx:hover{background:var(--grey-bg);color:var(--text)}
 .sso div{align-items:center}.sso .th{flex:none;width:40px;height:40px;border-radius:8px;background:var(--grey-bg);overflow:hidden}.sso .th img{width:100%;height:100%;object-fit:cover;display:block}.sso .tx{flex:1;min-width:0}
 .ssb .ssl{flex:1;min-width:0}
@@ -139,7 +141,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 <div class="wrap">
   <header><h1>Stock Take</h1><button id="theme" title="Light / dark">◐</button></header>
   <div class="demo" id="demo" hidden></div>
-  <nav class="tabs"><button id="tabBulk" class="on">Bulk transfer</button><button id="tabTake">Stock take</button><button id="tabAdj">Add / remove</button></nav>
+  <nav class="tabs"><button id="tabBulk" class="on">Bulk transfer</button><button id="tabTake">Stock take</button><button id="tabAdj">Add / remove</button><button id="tabBar">Barcodes</button></nav>
 
   <!-- ============ BULK TRANSFER ============ -->
   <div id="viewBulk">
@@ -179,9 +181,13 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
       <div class="foot"><span class="sum" id="adSum"></span><button type="button" class="pri" id="adGo" disabled>Add stock</button></div>
       <div class="msg" id="adRes"></div>
     </div>
-    <div class="bk"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0">Barcode labels for the next print run</h3><button type="button" id="lqCopy" hidden>Copy list</button><button type="button" id="lqDone" hidden>Mark printed</button></div>
-      <div id="lqList"><div class="empty">Nothing waiting.</div></div>
-      <div class="foot" id="lqFoot" hidden><label class="fld" style="flex:none;width:170px">Start at slot (1 to 65)<input type="text" id="lqSlot" value="1" inputmode="numeric" autocomplete="off"></label><span class="sum"></span><button type="button" class="pri" id="lqPrint">Print labels</button></div>
+  </div>
+
+  <!-- ============ BARCODES ============ -->
+  <div id="viewBar" hidden>
+    <div class="bk"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0" id="lqTitle">Labels to print</h3><button type="button" id="lqCopy" hidden>Copy list</button><button type="button" id="lqDone" hidden>Mark printed</button></div>
+      <div id="lqList"><div class="empty">No labels added yet. Use <b>Print label</b> on a finished stock take, or tick "Needs a barcode label" when adding stock.</div></div>
+      <div class="foot" id="lqFoot" hidden><label class="fld" style="flex:none;width:170px">Start at slot (1 to 65)<input type="text" id="lqSlot" value="1" inputmode="numeric" autocomplete="off"></label><span class="sum"></span><button type="button" class="pri" id="lqPrint">Download PDF</button></div>
       <div class="msg" id="lqMsg"></div>
     </div>
   </div>
@@ -250,6 +256,7 @@ DATA.products.forEach(p => p.variants.forEach(v => {
   const r = {vid: String(v.vid), pid: String(p.id), pt: p.title, image: p.image || '', t: v.t, cols: p.cols || [], bc: v.bc || [], q: v.q || {}};
   V.push(r); byVid.set(r.vid, r); r.bc.forEach(b => byBc.set(bcn(b), r));
 }));
+const P = new Map(DATA.products.map(p => [String(p.id), {url: p.url || '', st: p.st || '', ch: typeof p.ch === 'number' ? p.ch : null}]));
 const theme = t => { document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark'; };
 
 /* ---------- hub bridge ---------- */
@@ -279,8 +286,9 @@ const Store = PREVIEW ? {
   takePush: async (loc, items, dry, mode) => ({ok: true, dry: !!dry, variants: items.length, changed: items.length, same: 0, up: items.length, down: 0, unitsUp: items.reduce((a, i) => a + i.qty, 0), unitsDown: 0, toZero: 0}),
   adjust: async (loc, mode, items, dry) => { await new Promise(r => setTimeout(r, 400)); if (!dry) items.forEach(i => { const v = byVid.get(i.vid); v.q[loc] = Math.max(0, (v.q[loc] || 0) + (mode === 'remove' ? -i.qty : i.qty)); }); return {ok: true, variants: items.length, units: items.reduce((a, i) => a + i.qty, 0)}; },
   setBarcode: async (vid, barcode) => ({ok: true, vid, barcode}),
-  printLabels: async () => { throw new Error('Printing works inside the app, not in this preview.'); },
-  labels: async (op, items) => { let q = LS.get('st-demo-labels') || []; if (op === 'add') { items.forEach(i => { const v = byVid.get(i.vid); q.push({id: uid(), vid: i.vid, product: v.pt, variant: v.t, barcode: v.bc[0] || '', copies: i.qty}); }); LS.set('st-demo-labels', q); } if (op === 'done') { q = []; LS.set('st-demo-labels', q); } return {ok: true, rows: q}; },
+  printLabels: async () => { throw new Error('The PDF works inside the app, not in this preview.'); },
+  setStatus: async (pid, status) => ({ok: true, pid, status, url: '', channels: 7}),
+  labels: async (op, items) => { let q = LS.get('st-demo-labels') || []; if (op === 'add') { items.forEach(i => { const v = byVid.get(i.vid); q.push({id: uid(), vid: i.vid, product: v.pt, variant: v.t, barcode: v.bc[0] || '', copies: i.qty}); }); LS.set('st-demo-labels', q); } if (op === 'done') { q = []; LS.set('st-demo-labels', q); } if (op === 'setcopies') { items.forEach(i => { const r = q.find(x => x.vid === i.vid); if (r) r.copies = i.qty; }); LS.set('st-demo-labels', q); } if (op === 'remove') { q = q.filter(x => !items.some(i => i.vid === x.vid)); LS.set('st-demo-labels', q); } return {ok: true, rows: q}; },
   takeList: async () => LS.get('st-demo-takes') || [],
   takeSave: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
   takeEnd: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {status: 'ended', updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
@@ -291,6 +299,7 @@ const Store = PREVIEW ? {
   takePush: (loc, items, dry, mode) => call('takepush', {loc, items, dry, mode}, 120000),
   adjust: (loc, mode, items, dry) => call('adjustlist', {loc, mode, items, dry}, 120000),
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
+  setStatus: (pid, status) => call('setstatus', {pid, status}, 40000),
   printLabels: (labels, start) => call('printlabels', {labels: labels.map(r => ({product: r.product, variant: r.variant, barcode: r.barcode, copies: r.copies})), start}, 30000),
   labels: (op, items) => call('labelqueue', {op, items}),
   takeList: () => call('takelist'),
@@ -303,7 +312,7 @@ let curTab = 'bulk';
 function saveUi() { try { let t = '', f = 'all'; try { t = take ? take.id : ''; f = filt; } catch (e) {} parent.postMessage({type: 'stock-take', action: 'ui', ui: {tab: curTab, take: t, filt: f}}, '*'); } catch (e) {} }
 async function applyUi(ui) {
   if (!ui || typeof ui !== 'object') return;
-  const tab = ['bulk', 'take', 'adj'].includes(ui.tab) ? ui.tab : 'bulk';
+  const tab = ['bulk', 'take', 'adj', 'bar'].includes(ui.tab) ? ui.tab : 'bulk';
   show(tab);
   if (tab === 'take' && ui.take && !take) {
     try {
@@ -314,13 +323,14 @@ async function applyUi(ui) {
   }
 }
 function show(v) {
-  $('viewBulk').hidden = v !== 'bulk'; $('viewTake').hidden = v !== 'take'; $('viewAdj').hidden = v !== 'adj';
-  $('tabBulk').classList.toggle('on', v === 'bulk'); $('tabTake').classList.toggle('on', v === 'take'); $('tabAdj').classList.toggle('on', v === 'adj');
+  $('viewBulk').hidden = v !== 'bulk'; $('viewTake').hidden = v !== 'take'; $('viewAdj').hidden = v !== 'adj'; $('viewBar').hidden = v !== 'bar';
+  $('tabBulk').classList.toggle('on', v === 'bulk'); $('tabTake').classList.toggle('on', v === 'take'); $('tabAdj').classList.toggle('on', v === 'adj'); $('tabBar').classList.toggle('on', v === 'bar');
   if (v === 'take') takeOpen();
   if (v === 'adj') adjOpen();
+  if (v === 'bar') { try { window.refreshLabels(); } catch (e) {} }
   curTab = v; saveUi();
 }
-$('tabBulk').onclick = () => show('bulk'); $('tabTake').onclick = () => show('take'); $('tabAdj').onclick = () => show('adj');
+$('tabBulk').onclick = () => show('bulk'); $('tabTake').onclick = () => show('take'); $('tabAdj').onclick = () => show('adj'); $('tabBar').onclick = () => show('bar');
 $('theme').onclick = () => { const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; theme(t); try { parent.postMessage({type: 'stock-take', action: 'theme', theme: t}, '*'); } catch (e) {} };
 
 /* ---------- locations (shared) ---------- */
@@ -555,30 +565,44 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     busy = false; draw();
   };
 
-  /* ----- barcode label queue ----- */
+  /* ----- barcode label queue (Barcodes tab) ----- */
   const csv = () => ['Product,Size,Barcode,Copies'].concat(labelRows.map(r => [r.product, r.variant, r.barcode, r.copies].map(x => '"' + String(x).replace(/"/g, '""') + '"').join(','))).join('\n');
+  const lqMsg = (t, k) => { $('lqMsg').className = 'msg' + (k ? ' ' + k : ''); $('lqMsg').textContent = t || ''; };
   function drawLabels() {
     const n = labelRows.reduce((a, r) => a + r.copies, 0);
-    $('lqList').innerHTML = labelRows.length ? labelRows.map(r => `<div class="lq"><span><b>${E(r.product)}</b> <small>${E(r.variant)} · ${E(r.barcode)}</small></span><b>× ${r.copies}</b></div>`).join('') + `<div class="msg">${n} label${n === 1 ? '' : 's'} waiting for the next print run.</div>` : '<div class="empty">Nothing waiting.</div>';
+    $('tabBar').textContent = n ? `Barcodes · ${n}` : 'Barcodes';
+    $('lqTitle').textContent = n ? `Labels to print · ${n} label${n === 1 ? '' : 's'} on ${labelRows.length} item${labelRows.length === 1 ? '' : 's'}` : 'Labels to print';
+    $('lqList').innerHTML = labelRows.length ? labelRows.map(r => {
+      const v = byVid.get(String(r.vid)), im = v && v.image ? `<img src="${E(v.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(String(r.product || '').slice(0, 2).toUpperCase());
+      return `<div class="bkit" data-v="${E(r.vid)}"><div class="im">${im}</div><div class="nm"><b>${E(r.product)}</b><span class="tag">${E(r.variant)}</span><small>${E(r.barcode)}</small></div><div class="stp"><button data-lc="-1">−</button><b>${r.copies}</b><button data-lc="1">+</button></div><button class="rm" data-lx="1" title="Remove from the list">✕</button></div>`;
+    }).join('') : '<div class="empty">No labels added yet. Use <b>Print label</b> on a finished stock take, or tick "Needs a barcode label" when adding stock.</div>';
     $('lqCopy').hidden = $('lqDone').hidden = $('lqFoot').hidden = !labelRows.length;
   }
-  async function loadLabels() { try { const r = await Store.labels('list'); labelRows = r.rows || []; drawLabels(); } catch (e) { $('lqMsg').className = 'msg bad'; $('lqMsg').textContent = 'Could not load the label list: ' + e.message; } }
+  async function loadLabels() { try { const r = await Store.labels('list'); labelRows = r.rows || []; drawLabels(); } catch (e) { lqMsg('Could not load the label list: ' + e.message, 'bad'); } }
+  window.refreshLabels = loadLabels;
+  $('lqList').onclick = async e => {
+    const row = e.target.closest('.bkit'); if (!row) return; const r = labelRows.find(x => String(x.vid) === row.dataset.v); if (!r) return;
+    const c = e.target.closest('[data-lc]'), x = e.target.closest('[data-lx]');
+    try {
+      if (c) { const n = Math.max(1, Math.min(5000, r.copies + Number(c.dataset.lc))); if (n === r.copies) return; await Store.labels('setcopies', [{vid: r.vid, qty: n}]); r.copies = n; drawLabels(); }
+      else if (x) { await Store.labels('remove', [{vid: r.vid, qty: 1}]); labelRows = labelRows.filter(y => y !== r); drawLabels(); }
+    } catch (err) { lqMsg(err.message, 'bad'); }
+  };
   $('lqPrint').onclick = async () => {
-    const start = Math.max(1, Math.min(65, parseInt($('lqSlot').value, 10) || 1));
-    $('lqMsg').className = 'msg'; $('lqMsg').textContent = 'Opening the label sheet…';
-    try { const r = await Store.printLabels(labelRows, start); $('lqMsg').className = 'msg ok'; $('lqMsg').textContent = `Sheet opened: ${r.labels} labels on ${r.sheets} page${r.sheets === 1 ? '' : 's'}. Print it, then tap Mark printed.`; }
-    catch (e) { $('lqMsg').className = 'msg bad'; $('lqMsg').textContent = e.message; }
+    const start = Math.max(1, Math.min(65, parseInt($('lqSlot').value, 10) || 1)); lqMsg('Making the PDF…');
+    try { const r = await Store.printLabels(labelRows, start); lqMsg(`PDF saved to your Downloads folder: ${r.labels} labels on ${r.sheets} sheet${r.sheets === 1 ? '' : 's'}. Print it on the barcode paper at 100% scale, then tap Mark printed.`, 'ok'); }
+    catch (e) { lqMsg(e.message, 'bad'); }
   };
   $('lqCopy').onclick = () => {
     const ta = document.createElement('textarea'); ta.value = csv(); ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select();
     let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} ta.remove();
-    $('lqMsg').className = 'msg ' + (ok ? 'ok' : 'bad'); $('lqMsg').textContent = ok ? 'Copied (Product, Size, Barcode, Copies). Paste it into your label sheet.' : 'Copy was blocked here. Use the list above.';
+    lqMsg(ok ? 'Copied (Product, Size, Barcode, Copies).' : 'Copy was blocked here.', ok ? 'ok' : 'bad');
   };
   let doneArmed = false;
   $('lqDone').onclick = async () => {
     if (!doneArmed) { doneArmed = true; $('lqDone').textContent = 'Tap again: mark printed'; setTimeout(() => { doneArmed = false; $('lqDone').textContent = 'Mark printed'; }, 6000); return; }
     doneArmed = false; $('lqDone').textContent = 'Mark printed';
-    try { await Store.labels('done'); labelRows = []; drawLabels(); $('lqMsg').className = 'msg ok'; $('lqMsg').textContent = 'Cleared. The next labels will start a new list.'; } catch (e) { $('lqMsg').className = 'msg bad'; $('lqMsg').textContent = e.message; }
+    try { await Store.labels('done'); labelRows = []; drawLabels(); lqMsg('Cleared. The next labels start a new list.', 'ok'); } catch (e) { lqMsg(e.message, 'bad'); }
   };
 })();
 
@@ -653,24 +677,66 @@ async function takeOpen() {
 }
 $('tkOpen').onclick = e => { const b = e.target.closest('[data-resume]'); if (!b) return; const s = (window.__takes || []).find(x => x.id === b.getAttribute('data-resume')); if (s) begin(JSON.parse(JSON.stringify(s))); };
 
+const stLab = st => st === 'ACTIVE' ? ['Listed', 'g'] : st === 'UNLISTED' ? ['Unlisted', 'r'] : st === 'DRAFT' ? ['Draft', 'n'] : st === 'ARCHIVED' ? ['Archived', 'n'] : ['Status?', 'n'];
+const badgesHtml = pid => { const p = P.get(pid) || {}, [l, k] = stLab(p.st); return `<button type="button" class="lst ${k}" data-pid="${E(pid)}" title="Press and hold to change">${l}</button>` + (p.ch == null ? '' : `<span class="chn${p.ch === 0 ? ' z' : ''}">${p.ch} channel${p.ch === 1 ? '' : 's'}</span>`); };
+const copies = new Map();   // sessionId:vid -> how many labels to print (starts at the counted number)
 function doneDetail(s) {
   const c = s.counts || {}, known = new Set((s.vids || []).map(x => x[0])), rows = [];
-  (s.vids || []).forEach(([vid, ex]) => { const v = byVid.get(vid), n = c[vid] || 0; if (v && (ex > 0 || n > 0)) rows.push({pt: v.pt, t: v.t, ex, n}); });
-  Object.keys(c).forEach(k => { if (!known.has(k) && c[k] > 0 && byVid.get(k)) { const v = byVid.get(k); rows.push({pt: v.pt, t: v.t, ex: 0, n: c[k]}); } });
-  Object.values(s.outside || {}).forEach(o => { if (o && o.n > 0) rows.push({pt: o.pt, t: o.t, ex: 0, n: o.n, out: true}); });
+  (s.vids || []).forEach(([vid, ex]) => { const v = byVid.get(vid), n = c[vid] || 0; if (v && (ex > 0 || n > 0)) rows.push({vid, v, ex, n}); });
+  Object.keys(c).forEach(k => { if (!known.has(k) && c[k] > 0 && byVid.get(k)) rows.push({vid: k, v: byVid.get(k), ex: 0, n: c[k]}); });
+  Object.entries(s.outside || {}).forEach(([k, o]) => { if (o && o.n > 0) rows.push({vid: k, v: byVid.get(k) || {pid: 'o' + k, pt: o.pt, t: o.t, bc: [], image: ''}, ex: 0, n: o.n, out: true}); });
   if (!rows.length) return '<div class="empty">Nothing was recorded in this count.</div>';
-  const g = new Map(); rows.forEach(r => { if (!g.has(r.pt)) g.set(r.pt, []); g.get(r.pt).push(r); });
-  return '<div class="actions" style="margin:0 0 8px"><button class="go dpush" style="flex:1">⬆ Push this count to the website</button></div><div class="pushbox" hidden></div>' + [...g.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([pt, rs]) => `<div class="dp"><div class="dph"><div class="im">${(() => { const pv = V.find(v => v.pt === pt), im = pv && pv.image; return im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(pt.slice(0, 2).toUpperCase()); })()}</div><b>${E(pt)}</b></div>` + rs.sort((a, b) => a.t.localeCompare(b.t, undefined, {numeric: true})).map(r => {
-    const d = r.n - r.ex, pill = d === 0 ? ['var(--green-bg)', 'var(--green)', 'matched'] : d < 0 ? ['var(--red-bg)', 'var(--red)', 'missing ' + (-d)] : ['var(--orange-bg)', 'var(--orange)', 'extra +' + d];
-    return `<div class="dr"><span class="tag">${E(r.t)}</span><span class="dq">Stock <b>${r.ex}</b></span><span class="dq">Counted <b>${r.n}</b></span><span class="pill" style="background:${pill[0]};color:${pill[1]}">${pill[2]}</span>${r.out ? '<small class="bad">outside the filter</small>' : ''}</div>`;
-  }).join('') + '</div>').join('');
+  const g = new Map(); rows.forEach(r => { if (!g.has(r.v.pid)) g.set(r.v.pid, []); g.get(r.v.pid).push(r); });
+  const top = '<div class="actions" style="margin:0 0 8px"><button class="go dpush" style="flex:1">⬆ Push this count to the website</button><button class="dall" style="flex:1">🏷 Add all labels to Barcodes</button></div><div class="pushbox" hidden></div><div class="msg dmsg"></div>';
+  return top + [...g.entries()].sort((a, b) => a[1][0].v.pt.localeCompare(b[1][0].v.pt)).map(([pid, rs]) => {
+    const pv = rs[0].v, pr = P.get(pid) || {}, im = pv.image ? `<img src="${E(pv.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(pv.pt.slice(0, 2).toUpperCase());
+    const pic = pr.url ? `<a class="im" href="${E(pr.url)}" target="_blank" rel="noopener" title="Open the product page">${im}</a>` : `<div class="im">${im}</div>`;
+    return `<div class="dp" data-pid="${E(pid)}"><div class="dph">${pic}<b>${E(pv.pt)}</b><span class="dbd">${badgesHtml(pid)}</span></div><div class="dpa"><button type="button" class="dpall">🏷 Print all labels</button></div>` + rs.sort((a, b) => a.v.t.localeCompare(b.v.t, undefined, {numeric: true})).map(r => {
+      const d = r.n - r.ex, pill = d === 0 ? ['var(--green-bg)', 'var(--green)', 'matched'] : d < 0 ? ['var(--red-bg)', 'var(--red)', 'missing ' + (-d)] : ['var(--orange-bg)', 'var(--orange)', 'extra +' + d], key = s.id + ':' + r.vid;
+      if (!copies.has(key)) copies.set(key, r.n);
+      return `<div class="dr" data-vid="${E(r.vid)}"><span class="tag">${E(r.v.t)}</span><span class="dq">Stock <b>${r.ex}</b></span><span class="dq">Counted <b>${r.n}</b></span><span class="pill" style="background:${pill[0]};color:${pill[1]}">${pill[2]}</span>${r.out ? '<small class="bad">outside the filter</small>' : ''}<span class="sp"></span><span class="stp"><button type="button" data-cc="-1">−</button><b class="cv">${copies.get(key)}</b><button type="button" data-cc="1">+</button></span><button type="button" class="pl">Print label</button></div>`;
+    }).join('') + '</div>';
+  }).join('');
 }
+async function addLabels(box, sid, vids) {
+  const msg = box.querySelector('.dmsg'), items = [], skip = [];
+  vids.forEach(v => { const n = copies.get(sid + ':' + v) || 0, x = byVid.get(v); if (!n || !x) return; if (!x.bc.length) skip.push(x.pt + ' ' + x.t); else items.push({vid: v, qty: n}); });
+  if (!items.length) { msg.className = 'msg bad dmsg'; msg.textContent = skip.length ? 'No barcode on: ' + skip.slice(0, 4).join(', ') + '. Add one in the Add / remove tab first.' : 'Set how many labels you need first (use + above).'; return; }
+  try {
+    await Store.labels('add', items); try { window.refreshLabels(); } catch (e) {}
+    const n = items.reduce((a, i) => a + i.qty, 0);
+    msg.className = 'msg ok dmsg'; msg.textContent = `Added ${n} label${n === 1 ? '' : 's'} to Barcodes.` + (skip.length ? ` Skipped (no barcode): ${skip.slice(0, 4).join(', ')}.` : ''); beep('ok');
+  } catch (e) { msg.className = 'msg bad dmsg'; msg.textContent = e.message; }
+}
+let lpT = 0, lpFired = false, armedUnlist = null;
+async function changeStatus(btn) {
+  const pid = btn.dataset.pid, p = P.get(pid) || {}, box = btn.closest('.dn'), msg = box.querySelector('.dmsg');
+  const next = p.st === 'ACTIVE' ? 'UNLISTED' : 'ACTIVE';
+  if (next === 'UNLISTED' && armedUnlist !== pid) { armedUnlist = pid; msg.className = 'msg bad dmsg'; msg.textContent = 'Press and hold Listed again within 6 seconds to take this product off sale (Unlisted).'; setTimeout(() => { if (armedUnlist === pid) armedUnlist = null; }, 6000); return; }
+  armedUnlist = null; msg.className = 'msg dmsg'; msg.textContent = next === 'ACTIVE' ? 'Listing…' : 'Unlisting…';
+  try {
+    const r = await Store.setStatus(pid, next); p.st = r.status; if (r.url) p.url = r.url; if (r.channels != null) p.ch = r.channels; P.set(pid, p);
+    box.querySelectorAll(`.dp[data-pid="${pid}"] .dbd`).forEach(el => { el.innerHTML = badgesHtml(pid); });
+    msg.className = 'msg ok dmsg'; msg.textContent = r.status === 'ACTIVE' ? 'Product is Listed.' : 'Product is Unlisted.';
+  } catch (e) { msg.className = 'msg bad dmsg'; msg.textContent = e.message; }
+}
+$('tkDone').addEventListener('pointerdown', e => { const b = e.target.closest('.lst'); if (!b) return; lpFired = false; clearTimeout(lpT); lpT = setTimeout(() => { lpFired = true; try { navigator.vibrate && navigator.vibrate(30); } catch (x) {} changeStatus(b); }, 700); });
+['pointerup', 'pointerleave', 'pointercancel', 'pointermove'].forEach(t => $('tkDone').addEventListener(t, e => { if (t === 'pointermove' && !(e.target.closest && e.target.closest('.lst'))) { clearTimeout(lpT); return; } if (t !== 'pointermove') clearTimeout(lpT); }));
+$('tkDone').addEventListener('contextmenu', e => { if (e.target.closest('.lst')) e.preventDefault(); });
 $('tkDone').onclick = e => {
+  const box = e.target.closest('.dn'); if (!box) return; const sid = box.dataset.id;
   const pb = e.target.closest('.dpush');
-  if (pb) { const box = pb.closest('.dn'), s = (window.__takes || []).find(x => x.id === box.dataset.id); if (s) openPush(s, box.querySelector('.pushbox'), true); return; }
+  if (pb) { const s = (window.__takes || []).find(x => x.id === sid); if (s) openPush(s, box.querySelector('.pushbox'), true); return; }
   if (e.target.closest('.pushbox')) return;
-  const h = e.target.closest('.dh'); if (!h) return; const box = h.closest('.dn'), dd = box.querySelector('.dd');
-  if (dd.hidden) { const s = (window.__takes || []).find(x => x.id === box.dataset.id); dd.innerHTML = s ? doneDetail(s) : ''; }
+  if (e.target.closest('.lst')) { const m = box.querySelector('.dmsg'); if (!lpFired) { m.className = 'msg dmsg'; m.textContent = 'Press and hold the Listed / Unlisted button to change it.'; } return; }
+  if (e.target.closest('a.im')) return;
+  const cc = e.target.closest('[data-cc]');
+  if (cc) { const row = cc.closest('.dr'), key = sid + ':' + row.dataset.vid, n = Math.max(0, Math.min(500, (copies.get(key) || 0) + Number(cc.dataset.cc))); copies.set(key, n); row.querySelector('.cv').textContent = n; return; }
+  const pl = e.target.closest('.pl'); if (pl) { addLabels(box, sid, [pl.closest('.dr').dataset.vid]); return; }
+  const pa = e.target.closest('.dpall'); if (pa) { addLabels(box, sid, [...pa.closest('.dp').querySelectorAll('.dr')].map(r => r.dataset.vid)); return; }
+  if (e.target.closest('.dall')) { addLabels(box, sid, [...box.querySelectorAll('.dr')].map(r => r.dataset.vid)); return; }
+  const h = e.target.closest('.dh'); if (!h) return; const dd = box.querySelector('.dd');
+  if (dd.hidden) { const s = (window.__takes || []).find(x => x.id === sid); dd.innerHTML = s ? doneDetail(s) : ''; }
   dd.hidden = !dd.hidden; box.querySelector('.chev').textContent = dd.hidden ? '▸' : '▾';
 };
 function tally(s) {
@@ -859,6 +925,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
   }
   bulkInit();
   try { parent.postMessage({type: 'stock-take', action: 'ready'}, '*'); } catch (e) {}
+  setTimeout(() => { try { window.refreshLabels(); } catch (e) {} }, 800);
 })();
 </script>
 </body>

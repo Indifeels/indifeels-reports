@@ -22,7 +22,7 @@ MEL = ZoneInfo("Australia/Melbourne")
 NOISE = ("do not delete", "filter index", "all products", "home page", "frontpage")
 
 PRODUCTS = """{ products(query:"status:active"){ edges{ node{
-  id title featuredImage{ url }
+  id title handle status onlineStoreUrl resourcePublicationsCount(onlyPublished:true){ count } featuredImage{ url }
   collections{ edges{ node{ id title } } }
   variants{ edges{ node{ id title barcode inventoryItem{ id inventoryLevels{ edges{ node{ location{ id name } quantities(names:["available"]){ quantity } } } } } } } } } } } }"""
 
@@ -49,6 +49,9 @@ def build():
         gid = l.get("id", "")
         if "/Product/" in gid and "__parentId" not in l:
             products[gid] = {"id": num(gid), "title": l.get("title", ""), "image": ((l.get("featuredImage") or {}).get("url")) or "",
+                             "h": l.get("handle") or "", "st": l.get("status") or "",
+                             "url": l.get("onlineStoreUrl") or (("https://indifeels.com/products/" + l["handle"]) if l.get("handle") else ""),
+                             "ch": int(((l.get("resourcePublicationsCount") or {}).get("count")) or 0),
                              "cols": [], "variants": []}
     for l in lines:
         gid = l.get("id", "")

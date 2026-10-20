@@ -1752,6 +1752,8 @@
     rpOk(await sb.from("stock_takes").upsert(row, { onConflict: "id" }));
     return { ok: true };
   }
+  const rpJsLoaded = {};
+  const rpLoadJs = (src) => rpJsLoaded[src] || (rpJsLoaded[src] = new Promise((res, rej) => { const t = document.createElement("script"); t.src = src; t.onload = res; t.onerror = () => { delete rpJsLoaded[src]; rej(new Error("Couldn't load the label tools. Check your connection.")); }; document.head.appendChild(t); }));
   async function rpAdjCall(body, fallback) {
     const { data, error } = await sb.functions.invoke("stock-adjust", { body });
     if (error || !data?.ok) { let m = data?.error; try { if (!m && error?.context) m = (await error.context.json()).error; } catch (_) {} throw new Error(m || error?.message || fallback); }
@@ -1759,45 +1761,39 @@
   }
   const rpVidQty = (a, max) => (Array.isArray(a) ? a : []).slice(0, max).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && (i.qty ?? i.copies)) || 0) }));
   rpBridge("stock-take", {
+    setstatus: async (d) => rpAdjCall({ action: "setstatus", pid: rpText(d.pid, 20), status: d.status === "UNLISTED" ? "UNLISTED" : "ACTIVE" }, "Couldn't change the product status"),
     printlabels: async (d) => {
-      // Barcode label sheet in the Indifeels layout: A4, 5 x 13 = 65 labels of 38.1 x 21.2 mm, margins L/R 5 mm, T/B 10.7 mm.
+      // Barcode label sheet in the Indifeels layout: A4, 5 x 13 = 65 labels of 38.1 x 21.2 mm, margins L/R 5 mm, T/B 10.7 mm. Saved as a PDF download.
       const L = (Array.isArray(d.labels) ? d.labels : []).slice(0, 1500).map((r) => ({ p: rpText(r && r.product, 120), v: rpText(r && r.variant, 40), b: rpText(r && r.barcode, 40), n: Math.max(1, Math.min(500, Math.floor(Number(r && r.copies)) || 1)) })).filter((r) => /^[0-9A-Za-z._-]{3,40}$/.test(r.b));
       if (!L.length) throw new Error("Nothing to print");
       const start = Math.max(1, Math.min(65, Math.floor(Number(d.start)) || 1));
       const flat = []; L.forEach((r) => { for (let i = 0; i < r.n; i++) flat.push(r); });
       if (flat.length > 1300) throw new Error("Too many labels in one go (max 1300)");
-      const x = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-      const pitch = 38.1 + (210 - 10 - 5 * 38.1) / 4, pages = Math.ceil((start - 1 + flat.length) / 65);
-      let body = "";
-      for (let pg = 0; pg < pages; pg++) {
-        let cells = "";
-        for (let k = 0; k < 65; k++) {
-          const r = flat[pg * 65 + k - (start - 1)]; if (!r || pg * 65 + k < start - 1) continue;
-          cells += `<div class="lb" style="left:${(5 + (k % 5) * pitch).toFixed(3)}mm;top:${(10.7 + Math.floor(k / 5) * 21.2).toFixed(3)}mm"><div class="pn">${x(r.p)}</div><svg class="bc" data-c="${x(r.b)}"></svg><div class="ln"><span>${x(r.b)}</span><b>${x(r.v)}</b></div></div>`;
-        }
-        body += `<section class="pg">${cells}</section>`;
-      }
-      const lib = new URL("vendor/JsBarcode.all.min.js", location.href).href;
-      const html = `<!doctype html><html><head><meta charset="utf-8"><title>Barcode labels</title><style>
-@page{size:A4;margin:0}body{margin:0;background:#8a8a8a;font-family:Arial,Helvetica,sans-serif}
-.bar{position:sticky;top:0;z-index:5;background:#111;color:#fff;padding:10px 14px;font-size:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}.bar button{font:inherit;font-weight:700;padding:8px 16px;border-radius:8px;border:0;background:#58a6ff;color:#06101c;cursor:pointer}
-.pg{position:relative;width:210mm;height:297mm;background:#fff;margin:6mm auto;overflow:hidden;page-break-after:always}.pg:last-child{page-break-after:auto}
-.lb{position:absolute;width:38.1mm;height:21.2mm;box-sizing:border-box;padding:1.2mm 1.6mm;overflow:hidden;color:#000;display:flex;flex-direction:column;justify-content:space-between}
-.pn{font-size:5.6pt;font-weight:700;line-height:1.1;max-height:2.3em;overflow:hidden}.bc{display:block;margin:0 auto}
-.ln{display:flex;justify-content:space-between;align-items:baseline;font-size:5.5pt}.ln b{font-size:8pt}
-@media print{body{background:#fff}.bar{display:none}.pg{margin:0}}
-</style></head><body><div class="bar"><button onclick="window.print()">Print</button><span>${flat.length} label${flat.length === 1 ? "" : "s"} on ${pages} sheet${pages === 1 ? "" : "s"}, starting at slot ${start}. In the print window choose Paper A4, Margins None, Scale 100%.</span></div>${body}
-<script src="${x(lib)}"></script><script>
-window.addEventListener("load",function(){document.querySelectorAll("svg.bc").forEach(function(el){try{JsBarcode(el,el.getAttribute("data-c"),{format:"CODE128",width:1,height:30,margin:0,displayValue:false});var m=parseFloat(el.getAttribute("width")),h=parseFloat(el.getAttribute("height"));el.setAttribute("viewBox","0 0 "+m+" "+h);el.setAttribute("preserveAspectRatio","none");el.removeAttribute("width");el.removeAttribute("height");el.style.width=Math.min(m*0.3,34)+"mm";el.style.height="7.5mm";}catch(e){el.outerHTML='<div style="font-size:6pt;color:#c00">barcode?</div>';}});setTimeout(function(){window.print();},500);});
-</script></body></html>`;
-      const w = window.open("", "_blank");
-      if (!w) throw new Error("The pop-up was blocked. Allow pop-ups for this site, then tap Print labels again.");
-      w.document.open(); w.document.write(html); w.document.close();
+      await rpLoadJs("vendor/JsBarcode.all.min.js"); await rpLoadJs("vendor/jspdf.umd.min.js");
+      const doc = new window.jspdf.jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+      const W = 38.1, H = 21.2, pitch = W + (210 - 10 - 5 * W) / 4, pages = Math.ceil((start - 1 + flat.length) / 65);
+      const bars = (text) => {
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        window.JsBarcode(svg, text, { format: "CODE128", width: 1, height: 30, margin: 0, displayValue: false });
+        return { total: parseFloat(svg.getAttribute("width")) || 1, rects: [...svg.querySelectorAll("rect")].slice(1).map((r) => [parseFloat(r.getAttribute("x")) || 0, parseFloat(r.getAttribute("width")) || 0]) };
+      };
+      flat.forEach((r, i) => {
+        const slot = start - 1 + i, pg = Math.floor(slot / 65), k = slot % 65;
+        if (k === 0 && pg > 0) doc.addPage();
+        const x = 5 + (k % 5) * pitch, y = 10.7 + Math.floor(k / 5) * H;
+        doc.setTextColor(0); doc.setFont("helvetica", "bold"); doc.setFontSize(6);
+        doc.text(doc.splitTextToSize(r.p, W - 3.2).slice(0, 2), x + 1.6, y + 3.0, { lineHeightFactor: 1.05 });
+        const b = bars(r.b), mod = Math.min(0.34, 34 / b.total), bx = x + (W - b.total * mod) / 2;
+        doc.setFillColor(0, 0, 0); b.rects.forEach(([rx, rw]) => doc.rect(bx + rx * mod, y + 6.4, rw * mod, 8.2, "F"));
+        doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.text(r.b, x + 1.6, y + 18.2);
+        doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text(r.v, x + W - 1.6, y + 19.4, { align: "right" });
+      });
+      doc.save("indifeels-barcode-labels-" + new Date().toISOString().slice(0, 10) + ".pdf");
       return { ok: true, labels: flat.length, sheets: pages };
     },
     adjustlist: async (d) => rpAdjCall({ action: "adjustlist", loc: rpText(d.loc, 40), mode: d.mode === "remove" ? "remove" : "add", dry: !!d.dry, items: rpVidQty(d.items, 500) }, "Couldn't update the stock"),
     setbarcode: async (d) => rpAdjCall({ action: "setbarcode", vid: rpText(d.vid, 20), barcode: rpText(d.barcode, 40) }, "Couldn't save the barcode"),
-    labelqueue: async (d) => rpAdjCall({ action: "labelqueue", op: ["add", "list", "done"].includes(d.op) ? d.op : "list", items: rpVidQty(d.items, 200) }, "Couldn't update the label list"),
+    labelqueue: async (d) => rpAdjCall({ action: "labelqueue", op: ["add", "list", "done", "setcopies", "remove"].includes(d.op) ? d.op : "list", items: rpVidQty(d.items, 200) }, "Couldn't update the label list"),
     bulklocs: async () => rpStockCall({ action: "locations" }, "Couldn't load locations"),
     bulklookup: async (d) => rpStockCall({ action: "lookup", code: rpText(d.code, 40), from: rpText(d.from, 40), to: rpText(d.to, 40) }, "Couldn't look up the barcode"),
     bulktransfer: async (d) => rpStockCall({ action: "transfer", from: rpText(d.from, 40), to: rpText(d.to, 40), items: (Array.isArray(d.items) ? d.items : []).slice(0, 500).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && i.qty) || 0) })) }, "Couldn't finalize the transfer"),

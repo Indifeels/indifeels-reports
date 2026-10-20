@@ -115,8 +115,28 @@ async function setBarcode(body: any) {
   return json({ ok: true, vid, barcode: bc });
 }
 
+async function setStatus(body: any) {
+  const pid = String(body.pid || ""), st = body.status === "UNLISTED" ? "UNLISTED" : "ACTIVE";
+  if (!VID.test(pid)) return json({ error: "Bad product" }, 400);
+  const m = await gql(`mutation($p:ProductUpdateInput!){ productUpdate(product:$p){ product{ id status onlineStoreUrl resourcePublicationsCount(onlyPublished:true){ count } } userErrors{ message } } }`, { p: { id: `gid://shopify/Product/${pid}`, status: st } });
+  const ue = m.productUpdate.userErrors; if (ue?.length) return json({ error: ue[0].message }, 400);
+  const p = m.productUpdate.product;
+  return json({ ok: true, pid, status: p.status, url: p.onlineStoreUrl || "", channels: p.resourcePublicationsCount?.count ?? null });
+}
+
 async function labelQueue(body: any, svc: any) {
   const op = String(body.op || "list");
+  if (op === "setcopies") {
+    const want = items(body, 200, 5000);
+    for (const [vid, n] of want) { const { error } = await svc.from("label_queue").update({ copies: n }).eq("vid", vid).is("printed_at", null); if (error) throw new Error(error.message); }
+    return json({ ok: true });
+  }
+  if (op === "remove") {
+    const want = items(body, 200, 5000);
+    const { error } = await svc.from("label_queue").delete().in("vid", [...want.keys()]).is("printed_at", null);
+    if (error) throw new Error(error.message);
+    return json({ ok: true });
+  }
   if (op === "list") {
     const { data, error } = await svc.from("label_queue").select("id,vid,product,variant,barcode,copies,created_at").is("printed_at", null).order("created_at", { ascending: true }).limit(2000);
     if (error) throw new Error(error.message);
@@ -165,6 +185,7 @@ Deno.serve(async (req: Request) => {
   try {
     if (body.action === "adjustlist") return await adjustList(body);
     if (body.action === "setbarcode") return await setBarcode(body);
+    if (body.action === "setstatus") return await setStatus(body);
     if (body.action === "labelqueue") return await labelQueue(body, svc);
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
