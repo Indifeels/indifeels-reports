@@ -125,11 +125,20 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .sc-n:empty{display:none}
 .low.addl{background:#4a2f7a!important;color:#e6d9ff!important;border:0!important}
 :root[data-theme=light] .low.addl{background:#e9defa!important;color:#4a2f7a!important}
-.bx-prod table.shp tbody td:nth-child(3)::before{content:"SHIPPED"!important}
-.bx-prod table.pkd tbody td:nth-child(3)::before{content:"PACKED"!important}
 .setrow{margin:0 0 8px}.setpill{display:inline-block;padding:4px 12px;border-radius:999px;background:#17624f;color:#d6fff1;font-weight:800;font-size:13px}
 :root[data-theme=light] .setpill{background:#d3f2e7;color:#0b5a45}
 .setrow{cursor:pointer}.setpill i{font-style:normal;font-weight:600;opacity:.8;margin-left:6px;font-size:12px}.setbody.shut{display:none}
+/* phones: desktop fixed column widths (130+130+150px) overflow a phone, so let the tables size themselves and wrap */
+@media (max-width:700px){
+.bx-prod table.shp,.bx-prod table.pkd,.bx-prod table.otab{table-layout:auto;width:100%}
+.bx-prod table.shp th,.bx-prod table.shp td,.bx-prod table.pkd th,.bx-prod table.pkd td,.bx-prod table.otab th,.bx-prod table.otab td{width:auto!important}
+.bx-prod table.shp th:nth-child(2),.bx-prod table.shp th:nth-child(3),.bx-prod table.pkd th:nth-child(2),.bx-prod table.pkd th:nth-child(3){text-align:center}
+.bx-prod td.q .low.addl{max-width:96px;font-size:11px}
+.bx-prod td.st{white-space:normal}
+.bx-prod td.st>span{flex-wrap:wrap;justify-content:flex-end;gap:6px!important}
+.bx-prod td.st select{max-width:104px;font-size:13px}
+.bx-prod td.st:empty,.bx-prod th:last-child:empty{padding:0;width:0!important}
+}
 /*BXCSS_END*/
 
 .bx .bx-mvto{display:inline-flex;gap:8px;align-items:center;font-size:13px}
