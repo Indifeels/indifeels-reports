@@ -640,7 +640,8 @@ function takeScan(code) {
     const el = document.querySelector(`.vr[data-vid="${v.vid}"]`); if (el) el.scrollIntoView({block: 'center', behavior: 'smooth'});
     return;
   }
-  if (em.has(v.vid) || take.counts[v.vid]) {
+  const fl = take.filters || {}, inScope = (!fl.col || v.cols.includes(fl.col)) && (!fl.size || v.t === fl.size) && (!fl.pid || v.pid === fl.pid);
+  if (em.has(v.vid) || take.counts[v.vid] || inScope) {
     const ex = em.get(v.vid) || 0; take.counts[v.vid] = (take.counts[v.vid] || 0) + 1; take.dirty = true;
     const over = take.counts[v.vid] > ex;
     tkMsg(`${v.pt} · ${v.t}: ${take.counts[v.vid]} of ${ex}${over ? ' · EXTRA' : ''}`, over ? 'bad' : 'ok'); beep(over ? 'warn' : 'ok');
