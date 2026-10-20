@@ -602,7 +602,9 @@ $('tkStart').onclick = () => {
   begin({id: uid(), mode: vs.length ? 'count' : 'add', name: parts.join(' · '), loc, locName: locName(loc), filters: f, vids: vs.map(v => [v.vid, v.q[loc] || 0]), counts: {}, outside: {}, startedAt: new Date().toISOString(), status: 'open'});
 };
 function begin(s) {
-  take = s; if (!take.mode) take.mode = (take.vids || []).length ? 'count' : 'add'; take.dirty = false; filt = 'all'; endArmed = false;
+  take = s; if (!take.mode) take.mode = (take.vids || []).length ? 'count' : 'add'; take.counts = take.counts || {}; take.outside = take.outside || {}; take.dirty = false;
+  { const fl = take.filters || {}; Object.keys(take.outside).forEach(k => { const v = byVid.get(k), o = take.outside[k]; if (v && o && o.n > 0 && (!fl.col || v.cols.includes(fl.col)) && (!fl.size || v.t === fl.size) && (!fl.pid || v.pid === fl.pid)) { take.counts[k] = (take.counts[k] || 0) + o.n; delete take.outside[k]; take.dirty = true; } }); }
+  filt = 'all'; endArmed = false;
   $('tkSetup').hidden = true; $('tkResult').hidden = true; $('tkRun').hidden = false; $('pushBox').hidden = true;
   $('tkTitle').textContent = s.name; $('tkSub').textContent = 'Counting at ' + s.locName;
   document.querySelectorAll('#tkSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === 'all'));
