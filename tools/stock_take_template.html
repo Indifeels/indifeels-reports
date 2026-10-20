@@ -107,7 +107,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .ssf{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 2px 0;font-size:13px;color:var(--muted)}.ssf button{padding:6px 12px}
 .dh{cursor:pointer}.dh .chev{flex:none;color:var(--muted);font-size:16px}
 .dd{margin:-2px 0 8px;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:var(--card2)}
-.dp{padding:6px 0}.dp+.dp{border-top:1px solid var(--border)}.dp>b{display:block;font-size:13.5px;margin-bottom:4px}
+.dp{padding:6px 0}.dp+.dp{border-top:1px solid var(--border)}.dph{display:flex;gap:10px;align-items:center;margin-bottom:6px}.dph b{flex:1;min-width:0;font-size:14px;line-height:1.25}.dph .im{width:48px;height:48px}
 .dr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:3px 0}.dr .tag{display:inline-block;font-size:12px;font-weight:700;padding:1px 9px;border-radius:999px;background:var(--info-bg);color:var(--info);min-width:42px;text-align:center}
 .dr .dq{font-size:13px;color:var(--muted)}.dr .dq b{color:var(--text);font-size:15px}.dr .pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:700;margin-left:auto}.dr small.bad{color:var(--red);font-weight:700;width:100%}
 .ssx{flex:none;margin-left:auto;padding:2px 8px;border-radius:8px;color:var(--muted);font-size:16px;line-height:1}.ssx:hover{background:var(--grey-bg);color:var(--text)}
@@ -643,7 +643,7 @@ function doneDetail(s) {
   Object.values(s.outside || {}).forEach(o => { if (o && o.n > 0) rows.push({pt: o.pt, t: o.t, ex: 0, n: o.n, out: true}); });
   if (!rows.length) return '<div class="empty">Nothing was recorded in this count.</div>';
   const g = new Map(); rows.forEach(r => { if (!g.has(r.pt)) g.set(r.pt, []); g.get(r.pt).push(r); });
-  return [...g.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([pt, rs]) => `<div class="dp"><b>${E(pt)}</b>` + rs.sort((a, b) => a.t.localeCompare(b.t, undefined, {numeric: true})).map(r => {
+  return [...g.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([pt, rs]) => `<div class="dp"><div class="dph"><div class="im">${(() => { const pv = V.find(v => v.pt === pt), im = pv && pv.image; return im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(pt.slice(0, 2).toUpperCase()); })()}</div><b>${E(pt)}</b></div>` + rs.sort((a, b) => a.t.localeCompare(b.t, undefined, {numeric: true})).map(r => {
     const d = r.n - r.ex, pill = d === 0 ? ['var(--green-bg)', 'var(--green)', 'matched'] : d < 0 ? ['var(--red-bg)', 'var(--red)', 'missing ' + (-d)] : ['var(--orange-bg)', 'var(--orange)', 'extra +' + d];
     return `<div class="dr"><span class="tag">${E(r.t)}</span><span class="dq">Stock <b>${r.ex}</b></span><span class="dq">Counted <b>${r.n}</b></span><span class="pill" style="background:${pill[0]};color:${pill[1]}">${pill[2]}</span>${r.out ? '<small class="bad">outside the filter</small>' : ''}</div>`;
   }).join('') + '</div>').join('');
