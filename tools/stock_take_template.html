@@ -678,7 +678,7 @@ async function takeOpen() {
 $('tkOpen').onclick = e => { const b = e.target.closest('[data-resume]'); if (!b) return; const s = (window.__takes || []).find(x => x.id === b.getAttribute('data-resume')); if (s) begin(JSON.parse(JSON.stringify(s))); };
 
 const stLab = st => st === 'ACTIVE' ? ['Listed', 'g'] : st === 'UNLISTED' ? ['Unlisted', 'r'] : st === 'DRAFT' ? ['Draft', 'n'] : st === 'ARCHIVED' ? ['Archived', 'n'] : ['Status?', 'n'];
-const badgesHtml = pid => { const p = P.get(pid) || {}, [l, k] = stLab(p.st); return `<button type="button" class="lst ${k}" data-pid="${E(pid)}" title="Press and hold to change">${l}</button>` + (p.ch == null ? '' : `<span class="chn${p.ch === 0 ? ' z' : ''}">${p.ch} channel${p.ch === 1 ? '' : 's'}</span>`); };
+const badgesHtml = pid => { const p = P.get(pid) || {}, [l, k] = stLab(p.st); return `<button type="button" class="lst ${k}" data-pid="${E(pid)}" title="Press and hold to change">${l}</button>` + (p.ch == null ? '' : `<span class="chn${p.ch === 0 ? ' z' : ''}" title="Online Store, Shop, POS, Google & YouTube, Facebook & Instagram">${p.ch}/5 channels</span>`); };
 const copies = new Map();   // sessionId:vid -> how many labels to print (starts at the counted number)
 function doneDetail(s) {
   const c = s.counts || {}, known = new Set((s.vids || []).map(x => x[0])), rows = [];

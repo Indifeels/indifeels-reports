@@ -21,10 +21,31 @@ RID = "stock-take"
 MEL = ZoneInfo("Australia/Melbourne")
 NOISE = ("do not delete", "filter index", "all products", "home page", "frontpage")
 
-PRODUCTS = """{ products(query:"status:active"){ edges{ node{
-  id title handle status onlineStoreUrl resourcePublicationsCount(onlyPublished:true){ count } featuredImage{ url }
+PRODUCTS = """{ products(query:"status:active OR status:unlisted OR status:draft"){ edges{ node{
+  id title handle status onlineStoreUrl featuredImage{ url }
   collections{ edges{ node{ id title } } }
   variants{ edges{ node{ id title barcode inventoryItem{ id inventoryLevels{ edges{ node{ location{ id name } quantities(names:["available"]){ quantity } } } } } } } } } } } }"""
+
+
+CHANNEL_HIDDEN = ("published_status:unpublished", "published_status:shop-72-hidden", "published_status:pos-hidden",
+                  "published_status:google-hidden", "published_status:facebook-ads-hidden")   # Online Store, Shop, POS, Google & YouTube, Facebook & Instagram
+IDS_ONLY = "query($after:String,$q:String!){ products(first:250,after:$after,query:$q){ pageInfo{hasNextPage endCursor} nodes{ id } } }"
+
+
+def channels_off():
+    """product id -> how many of the 5 sales channels it is NOT published to (published_status filters only need read_products)."""
+    off = {}
+    for flt in CHANNEL_HIDDEN:
+        after = None
+        while True:
+            d = pv.gql(IDS_ONLY, {"after": after, "q": "(status:active OR status:unlisted OR status:draft) " + flt})["data"]["products"]
+            for n in d["nodes"]:
+                pid = n["id"].rsplit("/", 1)[-1]
+                off[pid] = off.get(pid, 0) + 1
+            if not d["pageInfo"]["hasNextPage"]:
+                break
+            after = d["pageInfo"]["endCursor"]
+    return off
 
 
 def menu_collections():
@@ -51,7 +72,6 @@ def build():
             products[gid] = {"id": num(gid), "title": l.get("title", ""), "image": ((l.get("featuredImage") or {}).get("url")) or "",
                              "h": l.get("handle") or "", "st": l.get("status") or "",
                              "url": l.get("onlineStoreUrl") or (("https://indifeels.com/products/" + l["handle"]) if l.get("handle") else ""),
-                             "ch": int(((l.get("resourcePublicationsCount") or {}).get("count")) or 0),
                              "cols": [], "variants": []}
     for l in lines:
         gid = l.get("id", "")
@@ -82,6 +102,13 @@ def build():
         qs = l.get("quantities") or []
         v["q"][lid] = int(qs[0]["quantity"]) if qs else 0
 
+    try:
+        off = channels_off()
+        for p in products.values():
+            p["ch"] = max(0, 5 - off.get(p["id"], 0))
+        print("channel counts for", len(off), "products with a channel off")
+    except Exception as exc:      # channel numbers are a nice-to-have: never block the stock list on them
+        print("channel counts skipped:", exc)
     out = [p for p in products.values() if p["variants"]]
     out.sort(key=lambda p: p["title"].lower())
     nvar = sum(len(p["variants"]) for p in out)

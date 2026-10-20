@@ -118,10 +118,10 @@ async function setBarcode(body: any) {
 async function setStatus(body: any) {
   const pid = String(body.pid || ""), st = body.status === "UNLISTED" ? "UNLISTED" : "ACTIVE";
   if (!VID.test(pid)) return json({ error: "Bad product" }, 400);
-  const m = await gql(`mutation($p:ProductUpdateInput!){ productUpdate(product:$p){ product{ id status onlineStoreUrl resourcePublicationsCount(onlyPublished:true){ count } } userErrors{ message } } }`, { p: { id: `gid://shopify/Product/${pid}`, status: st } });
+  const m = await gql(`mutation($p:ProductUpdateInput!){ productUpdate(product:$p){ product{ id status onlineStoreUrl } userErrors{ message } } }`, { p: { id: `gid://shopify/Product/${pid}`, status: st } });
   const ue = m.productUpdate.userErrors; if (ue?.length) return json({ error: ue[0].message }, 400);
   const p = m.productUpdate.product;
-  return json({ ok: true, pid, status: p.status, url: p.onlineStoreUrl || "", channels: p.resourcePublicationsCount?.count ?? null });
+  return json({ ok: true, pid, status: p.status, url: p.onlineStoreUrl || "", channels: null });
 }
 
 async function labelQueue(body: any, svc: any) {
