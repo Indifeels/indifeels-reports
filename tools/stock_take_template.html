@@ -105,6 +105,11 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .sso .chk{flex:none;width:22px;height:22px;border:2px solid var(--border);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:transparent;background:var(--bg)}
 .sso div.on .chk{background:var(--blue);border-color:var(--blue);color:#06101c}.sso div.on{background:var(--info-bg)}
 .ssf{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 2px 0;font-size:13px;color:var(--muted)}.ssf button{padding:6px 12px}
+.dh{cursor:pointer}.dh .chev{flex:none;color:var(--muted);font-size:16px}
+.dd{margin:-2px 0 8px;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:var(--card2)}
+.dp{padding:6px 0}.dp+.dp{border-top:1px solid var(--border)}.dp>b{display:block;font-size:13.5px;margin-bottom:4px}
+.dr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:3px 0}.dr .tag{display:inline-block;font-size:12px;font-weight:700;padding:1px 9px;border-radius:999px;background:var(--info-bg);color:var(--info);min-width:42px;text-align:center}
+.dr .dq{font-size:13px;color:var(--muted)}.dr .dq b{color:var(--text);font-size:15px}.dr .pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:700;margin-left:auto}.dr small.bad{color:var(--red);font-weight:700;width:100%}
 .ssx{flex:none;margin-left:auto;padding:2px 8px;border-radius:8px;color:var(--muted);font-size:16px;line-height:1}.ssx:hover{background:var(--grey-bg);color:var(--text)}
 .sso div{align-items:center}.sso .th{flex:none;width:40px;height:40px;border-radius:8px;background:var(--grey-bg);overflow:hidden}.sso .th img{width:100%;height:100%;object-fit:cover;display:block}.sso .tx{flex:1;min-width:0}
 .ssb .ssl{flex:1;min-width:0}
@@ -625,12 +630,29 @@ async function takeOpen() {
     const when = s => s.updated ? new Date(s.updated).toLocaleString(undefined, {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'}) : '';
     const cnt = s => { const t = tally(s); return t; };
     $('tkOpen').innerHTML = open.map(s => { const t = cnt(s); return `<div class="sess"><div class="nm"><b>${E(s.name)}</b><small>${E(s.locName)} · ${t.s} of ${t.e} counted · saved ${E(when(s))}</small></div><button class="pri" data-resume="${E(s.id)}">Resume</button></div>`; }).join('');
-    $('tkDone').innerHTML = done.map(s => { const t = cnt(s); return `<div class="sess"><div class="nm"><b>${E(s.name)}</b><small>${E(s.locName)} · ended ${E(when(s))}</small></div><span class="cards"><span class="pill" style="background:var(--red-bg);color:var(--red)">${t.miss} missing</span> <span class="pill" style="background:var(--orange-bg);color:var(--orange)">${t.extra} extra</span></span></div>`; }).join('');
+    $('tkDone').innerHTML = done.map(s => { const t = cnt(s); return `<div class="dn" data-id="${E(s.id)}"><div class="sess dh" role="button"><div class="nm"><b>${E(s.name)}</b><small>${E(s.locName)} · ended ${E(when(s))} · tap to see the stock</small></div><span class="cards"><span class="pill" style="background:var(--red-bg);color:var(--red)">${t.miss} missing</span> <span class="pill" style="background:var(--orange-bg);color:var(--orange)">${t.extra} extra</span></span><span class="chev">▸</span></div><div class="dd" hidden></div></div>`; }).join('');
     window.__takes = list;
   } catch (e) { /* history is optional */ }
 }
 $('tkOpen').onclick = e => { const b = e.target.closest('[data-resume]'); if (!b) return; const s = (window.__takes || []).find(x => x.id === b.getAttribute('data-resume')); if (s) begin(JSON.parse(JSON.stringify(s))); };
 
+function doneDetail(s) {
+  const c = s.counts || {}, known = new Set((s.vids || []).map(x => x[0])), rows = [];
+  (s.vids || []).forEach(([vid, ex]) => { const v = byVid.get(vid); if (v) rows.push({pt: v.pt, t: v.t, ex, n: c[vid] || 0}); });
+  Object.keys(c).forEach(k => { if (!known.has(k) && c[k] > 0 && byVid.get(k)) { const v = byVid.get(k); rows.push({pt: v.pt, t: v.t, ex: 0, n: c[k]}); } });
+  Object.values(s.outside || {}).forEach(o => { if (o && o.n > 0) rows.push({pt: o.pt, t: o.t, ex: 0, n: o.n, out: true}); });
+  if (!rows.length) return '<div class="empty">Nothing was recorded in this count.</div>';
+  const g = new Map(); rows.forEach(r => { if (!g.has(r.pt)) g.set(r.pt, []); g.get(r.pt).push(r); });
+  return [...g.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([pt, rs]) => `<div class="dp"><b>${E(pt)}</b>` + rs.sort((a, b) => a.t.localeCompare(b.t, undefined, {numeric: true})).map(r => {
+    const d = r.n - r.ex, pill = d === 0 ? ['var(--green-bg)', 'var(--green)', 'matched'] : d < 0 ? ['var(--red-bg)', 'var(--red)', 'missing ' + (-d)] : ['var(--orange-bg)', 'var(--orange)', 'extra +' + d];
+    return `<div class="dr"><span class="tag">${E(r.t)}</span><span class="dq">Stock <b>${r.ex}</b></span><span class="dq">Counted <b>${r.n}</b></span><span class="pill" style="background:${pill[0]};color:${pill[1]}">${pill[2]}</span>${r.out ? '<small class="bad">outside the filter</small>' : ''}</div>`;
+  }).join('') + '</div>').join('');
+}
+$('tkDone').onclick = e => {
+  const h = e.target.closest('.dh'); if (!h) return; const box = h.closest('.dn'), dd = box.querySelector('.dd');
+  if (dd.hidden) { const s = (window.__takes || []).find(x => x.id === box.dataset.id); dd.innerHTML = s ? doneDetail(s) : ''; }
+  dd.hidden = !dd.hidden; box.querySelector('.chev').textContent = dd.hidden ? '▸' : '▾';
+};
 function tally(s) {
   const vs = (s.vids || []), c = s.counts || {};
   let e = 0, sc = 0, miss = 0, extra = 0;
