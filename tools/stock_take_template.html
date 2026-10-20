@@ -75,7 +75,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .vr+.vr{border-top:1px solid var(--border)}
 .vr .vt{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vr.red{border-left-color:var(--red);background:var(--red-bg)}.vr.blue{border-left-color:var(--info);background:var(--info-bg)}
-.vr.green{border-left-color:var(--green);background:var(--green-bg)}.vr.extra{border-left-color:var(--orange);background:var(--orange-bg)}
+.vr.zero{border-left-color:var(--border);background:var(--card)}.vr.green{border-left-color:var(--green);background:var(--green-bg)}.vr.extra{border-left-color:var(--orange);background:var(--orange-bg)}
 .tl{flex:none;min-width:46px;padding:2px 4px;text-align:center;border-radius:8px;background:#0003}
 .tl b{display:block;font-size:17px;line-height:1.15}.tl span{display:block;font-size:9.5px;color:var(--muted);text-transform:uppercase}
 .vr.red .tl.l b{color:var(--red)}.vr.blue .tl.l b{color:var(--info)}.vr.green .tl.l b{color:var(--green)}.vr.extra .tl.l b{color:var(--orange)}
@@ -594,6 +594,11 @@ function inFilter(v, f) {
   const ps = (f && f.pids) || (f && f.pid ? [f.pid] : []);   // older saved counts used a single "pid"
   return (!f.col || v.cols.includes(f.col)) && (!f.size || v.t === f.size) && (!ps.length || ps.includes(v.pid));
 }
+function takeVars(f, loc) {
+  // every size of a product that is in the count is listed, even at 0 stock, so a missing size can still be added
+  const all = scopeVars(f), stocked = new Set(all.filter(v => (v.q[loc] || 0) > 0).map(v => v.pid)), picked = !!(f.pids && f.pids.length);
+  return all.filter(v => (v.q[loc] || 0) > 0 || picked || stocked.has(v.pid));
+}
 function scopeVars(f, loc) {
   return V.filter(v => inFilter(v, f));
 }
@@ -647,7 +652,7 @@ $('tkOpen').onclick = e => { const b = e.target.closest('[data-resume]'); if (!b
 
 function doneDetail(s) {
   const c = s.counts || {}, known = new Set((s.vids || []).map(x => x[0])), rows = [];
-  (s.vids || []).forEach(([vid, ex]) => { const v = byVid.get(vid); if (v) rows.push({pt: v.pt, t: v.t, ex, n: c[vid] || 0}); });
+  (s.vids || []).forEach(([vid, ex]) => { const v = byVid.get(vid), n = c[vid] || 0; if (v && (ex > 0 || n > 0)) rows.push({pt: v.pt, t: v.t, ex, n}); });
   Object.keys(c).forEach(k => { if (!known.has(k) && c[k] > 0 && byVid.get(k)) { const v = byVid.get(k); rows.push({pt: v.pt, t: v.t, ex: 0, n: c[k]}); } });
   Object.values(s.outside || {}).forEach(o => { if (o && o.n > 0) rows.push({pt: o.pt, t: o.t, ex: 0, n: o.n, out: true}); });
   if (!rows.length) return '<div class="empty">Nothing was recorded in this count.</div>';
@@ -672,14 +677,16 @@ function tally(s) {
 }
 $('tkStart').onclick = () => {
   const f = setupScope(); if (!f) return;
-  const loc = $('tkLoc').value, vs = scopeVars(f).filter(v => (v.q[loc] || 0) > 0);
+  const loc = $('tkLoc').value, vs = takeVars(f, loc);
   const parts = [f.col]; if (f.size) parts.push('size ' + f.size); if (f.pids && f.pids.length) parts.push(ssDes.label());
-  if (!vs.length) parts.push('adding stock');
-  begin({id: uid(), mode: vs.length ? 'count' : 'add', name: parts.join(' · '), loc, locName: locName(loc), filters: f, vids: vs.map(v => [v.vid, v.q[loc] || 0]), counts: {}, outside: {}, startedAt: new Date().toISOString(), status: 'open'});
+  const hasStock = vs.some(v => (v.q[loc] || 0) > 0); if (!hasStock) parts.push('adding stock');
+  begin({id: uid(), mode: hasStock ? 'count' : 'add', name: parts.join(' · '), loc, locName: locName(loc), filters: f, vids: vs.map(v => [v.vid, v.q[loc] || 0]), counts: {}, outside: {}, startedAt: new Date().toISOString(), status: 'open'});
 };
 function begin(s) {
-  take = s; if (!take.mode) take.mode = (take.vids || []).length ? 'count' : 'add'; take.counts = take.counts || {}; take.outside = take.outside || {}; take.dirty = false;
+  take = s; if (!take.mode) take.mode = (take.vids || []).some(x => x[1] > 0) ? 'count' : 'add'; take.counts = take.counts || {}; take.outside = take.outside || {}; take.dirty = false;
   { const fl = take.filters || {}; Object.keys(take.outside).forEach(k => { const v = byVid.get(k), o = take.outside[k]; if (v && o && o.n > 0 && inFilter(v, fl)) { take.counts[k] = (take.counts[k] || 0) + o.n; delete take.outside[k]; take.dirty = true; } }); }
+  { const fl = take.filters || {}, have = new Set((take.vids || []).map(x => x[0])); take.vids = take.vids || [];
+    if (fl.col && take.loc) takeVars(fl, take.loc).forEach(v => { if (!have.has(v.vid)) { take.vids.push([v.vid, 0]); take.dirty = true; } }); }   // counts started before this change: add the sizes that had no stock
   filt = 'all'; endArmed = false;
   $('tkSetup').hidden = true; $('tkResult').hidden = true; $('tkRun').hidden = false; $('pushBox').hidden = true;
   $('tkTitle').textContent = s.name; $('tkSub').textContent = 'Counting at ' + s.locName;
@@ -687,7 +694,7 @@ function begin(s) {
   tkMsg('Scan a barcode to count it.'); drawTake(); saveUi(); setTimeout(() => { try { $('tkIn').focus(); } catch (e) {} }, 50);
 }
 const expMap = () => new Map(take.vids);
-function status(e, c) { return c > e ? 'extra' : c === 0 ? 'red' : c < e ? 'blue' : 'green'; }
+function status(e, c) { return c > e ? 'extra' : e === 0 ? 'zero' : c === 0 ? 'red' : c < e ? 'blue' : 'green'; }
 function drawTake(flash) {
   const em = expMap(), c = take.counts;
   const ids = new Set(take.vids.map(x => x[0])); Object.keys(c).forEach(k => { if (c[k] > 0) ids.add(k); });
@@ -699,7 +706,7 @@ function drawTake(flash) {
   const tot = Math.max(E_ + X, 1); $('pbG').style.width = (ok / tot * 100) + '%'; $('pbO').style.width = (X / tot * 100) + '%';
   const groups = new Map();
   [...ids].map(k => byVid.get(k)).filter(Boolean).forEach(v => { const ex = em.get(v.vid) || 0, n = c[v.vid] || 0, st = status(ex, n); if (filt === 'left' && !(st === 'red' || st === 'blue')) return; if (filt === 'done' && st !== 'green') return; if (filt === 'extra' && st !== 'extra') return; if (!groups.has(v.pid)) groups.set(v.pid, []); groups.get(v.pid).push({v, ex, n, st}); });
-  const icon = {red: '', blue: '', green: '✓', extra: '!'};
+  const icon = {red: '', blue: '', green: '✓', extra: '!', zero: ''};
   $('tkList').innerHTML = groups.size ? [...groups.values()].sort((a, b) => a[0].v.pt.localeCompare(b[0].v.pt)).map(g => {
     const p = g[0].v, img = p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase());
     return `<div class="pc"><div class="ph"><div class="im">${img}</div><b>${E(p.pt)}</b></div>` + g.sort((a, b) => a.v.t.localeCompare(b.v.t, undefined, {numeric: true})).map(r => `<div class="vr ${r.st}${flash === r.v.vid ? ' flash' : ''}" data-vid="${E(r.v.vid)}"><div class="vt">${E(r.v.t)}</div><div class="tl"><b>${r.ex}</b><span>Stock</span></div><div class="tl"><b>${r.n}</b><span>Scanned</span></div><div class="tl l"><b>${r.n > r.ex ? '+' + (r.n - r.ex) : r.ex - r.n}</b><span>${r.n > r.ex ? 'Extra' : 'Left'}</span></div><div class="stp"><button data-d="-1" ${r.n <= 0 ? 'disabled' : ''}>−</button><button data-d="1">+</button></div><div class="st">${icon[r.st]}</div></div>`).join('') + '</div>';
