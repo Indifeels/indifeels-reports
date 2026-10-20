@@ -199,7 +199,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
           <div class="fld">Design (optional)<div class="ss" id="ssDes"></div></div>
         </div>
         <div style="margin-top:8px"><button type="button" id="tkClearAll" hidden>✕ Clear selection</button></div>
-        <div class="foot"><span class="sum" id="tkScope">Pick a collection to begin.</span><button class="pri" id="tkStart" disabled>Start stock take</button></div>
+        <div class="foot"><span class="sum" id="tkScope">Nothing selected: an open count. Scan any product and it joins the count.</span><button class="pri" id="tkStart" disabled>Start stock take</button></div>
       </div>
       <div class="bk" id="tkOpenBox" hidden><h3>Paused stock takes</h3><div id="tkOpen"></div></div>
       <div class="bk" id="tkDoneBox" hidden><h3>Finished</h3><div id="tkDone"></div></div>
@@ -639,6 +639,7 @@ async function takeOpen() {
     refreshSetupLists(); setupReady = true;
   }
   $('tkSetup').hidden = false; $('tkRun').hidden = true; $('tkResult').hidden = true;
+  setupScope();
   try {
     const list = await Store.takeList();
     const open = list.filter(s => s.status !== 'ended'), done = list.filter(s => s.status === 'ended').slice(0, 8);
