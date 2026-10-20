@@ -27,10 +27,10 @@
   "reason": ""
  },
  "facebook-tracked": {
-  "at": "2026-10-20T06:00+11:00",
-  "code_sha": "825b4119adaf715948c7c7fd9f826356152a5b9d",
-  "data_through": "2026-10-19T23:59:59+11:00",
-  "last_ok": "2026-10-20T06:00+11:00",
+  "at": "2026-10-20T14:00+11:00",
+  "code_sha": "21083e16c72c36923dffcaebc5dbaa5f5f5cc97d",
+  "data_through": "2026-10-20T14:00:23.665891+11:00",
+  "last_ok": "2026-10-20T14:00+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
