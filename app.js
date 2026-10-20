@@ -46,6 +46,7 @@
   function view(v) { VIEWS.forEach((x) => ($("#v-" + x).hidden = x !== v)); }
   function page(p, title) {
     PAGES.forEach((x) => ($("#v-" + x).hidden = x !== p));
+    if (p === "home") { try { localStorage.removeItem("ir-last-route"); } catch (_) {} }
     $("#b-back").hidden = p === "home";
     $("#bar-text").textContent = title || "Indifeels Reports";
     if (p !== "report") freshFrame(true);
@@ -61,7 +62,7 @@
   $("#b-menu").addEventListener("click", (e) => { e.stopPropagation(); const m = $("#menu"); m.hidden = !m.hidden; $("#b-menu").setAttribute("aria-expanded", String(!m.hidden)); });
   document.addEventListener("click", (e) => { if (!e.target.closest(".menu-wrap")) closeMenu(); });
   $$("#menu [data-go]").forEach((b) => b.addEventListener("click", () => go(b.dataset.go)));
-  $("#m-out").addEventListener("click", async () => { await sb.auth.signOut(); location.hash = ""; start(); });
+  $("#m-out").addEventListener("click", async () => { await sb.auth.signOut(); try { localStorage.removeItem("ir-last-route"); } catch (_) {} location.hash = ""; start(); });
 
   // ---------- phone push notifications ----------
   const b64urlBytes = (s) => {
@@ -1423,6 +1424,7 @@
   async function openReport(id, full) {
     const r = reports.find((x) => x.id === id); if (!r) return go("home");
     if (location.hash !== "#" + id) history.pushState(null, "", "#" + id);
+    try { localStorage.setItem("ir-last-route", id); } catch (_) {}
     if (id === "report-access") { if(me?.is_admin) return go("admin"); return go("home"); }
     if (id === "schedule-panel") return openSchedulePanel();
     if (id === "stock" && !full) return openStock(r);
@@ -1637,6 +1639,10 @@
         try { if (d.ui && typeof d.ui === "object") localStorage.setItem("ir-restock-ui", JSON.stringify(d.ui).slice(0, 20000)); } catch (_) {}
         return;
       }
+      if (d.action === "ui" && kind === "stock-take") {
+        try { if (d.ui && typeof d.ui === "object") localStorage.setItem("ir-stocktake-ui", JSON.stringify(d.ui).slice(0, 2000)); } catch (_) {}
+        return;
+      }
       if (d.action === "filters" && kind === "restock-plan") {
         try { if (d.filters && typeof d.filters === "object") localStorage.setItem("ir-restock-filters", JSON.stringify(d.filters).slice(0, 2000)); } catch (_) {}
         return;
@@ -1644,6 +1650,7 @@
       if (d.action === "ready") {
         let th = "dark"; try { th = localStorage.getItem("ir-restock-theme") === "light" ? "light" : "dark"; } catch (_) {}
         reply({ type: kind + "-theme", theme: th });
+        if (kind === "stock-take") { try { const u = JSON.parse(localStorage.getItem("ir-stocktake-ui") || "null"); if (u && typeof u === "object") reply({ type: "stock-take-ui", ui: u }); } catch (_) {} }
         if (kind === "restock-plan") { try { const f = JSON.parse(localStorage.getItem("ir-restock-filters") || "null"); if (f && typeof f === "object") reply({ type: "restock-plan-filters", filters: f }); } catch (_) {} }
         if (kind === "restock-plan") { try { const u = JSON.parse(localStorage.getItem("ir-restock-ui") || "null"); if (u && typeof u === "object") reply({ type: "restock-plan-ui", ui: u }); } catch (_) {} }
         if (kind === "restock-plan") { try { const done = JSON.parse(localStorage.getItem(RP_DONE) || "[]"); if (Array.isArray(done) && done.length) reply({ type: "restock-plan-state", state: { done: done.slice(0, 5000).map(String) } }); } catch (_) {} }
@@ -1982,11 +1989,13 @@
   async function openBoard(r) {
     page("board", r.title);
     if (location.hash !== "#project-board") history.pushState(null, "", "#project-board");
+    try { localStorage.setItem("ir-last-route", "project-board"); } catch (_) {}
     await window.BoardPanel.open(sb, $("#v-board"), me);
   }
   async function openSchedulePanel() {
     page("schedule", "Schedule Panel");
     if (location.hash !== "#schedule-panel") history.pushState(null,"","#schedule-panel");
+    try { localStorage.setItem("ir-last-route", "schedule-panel"); } catch (_) {}
     await window.SchedulePanel.open(sb, $("#v-schedule"), reports, !!me?.is_admin);
   }
   // ---------- routing ----------
@@ -2016,7 +2025,8 @@
     view("shell");
     await withTimeout(loadReports(), 15000);
     startAttributionRealtime(); updateOrderNotifyButton(); phonePushState();
-    const id = location.hash.slice(1);
+    let id = location.hash.slice(1);
+    if (!id) { try { id = localStorage.getItem("ir-last-route") || ""; } catch (_) {} }   // reload / reopened app: back to the screen that was open
     if (id && reports.some((r) => r.id === id)) openReport(id); else { page("home"); renderHome(); }
   }
   function showStartFailure() {

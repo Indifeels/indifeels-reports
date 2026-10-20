@@ -254,6 +254,7 @@ function call(action, payload, ms) {
 window.addEventListener('message', e => {
   const d = e.data || {};
   if (d.type === 'stock-take-theme') theme(d.theme);
+  else if (d.type === 'stock-take-ui') applyUi(d.ui);
   else if (d.type === 'stock-take-scan') { if (d.code) (d.target === 'bulk' ? bulkAdd : d.target === 'adj' ? adjScan : takeScan)(d.code); else if (d.error) (d.target === 'bulk' ? bkMsg : d.target === 'adj' ? adMsg : tkMsg)(d.error, 'bad'); }
   else if (d.type === 'stock-take-result') { const p = pend.get(d.req); if (!p) return; clearTimeout(p.t); pend.delete(d.req); d.ok ? p.res(d.data) : p.rej(new Error(d.error || 'Failed')); }
 });
@@ -286,11 +287,26 @@ const Store = PREVIEW ? {
 };
 
 /* ---------- tabs ---------- */
+let curTab = 'bulk';
+function saveUi() { try { let t = '', f = 'all'; try { t = take ? take.id : ''; f = filt; } catch (e) {} parent.postMessage({type: 'stock-take', action: 'ui', ui: {tab: curTab, take: t, filt: f}}, '*'); } catch (e) {} }
+async function applyUi(ui) {
+  if (!ui || typeof ui !== 'object') return;
+  const tab = ['bulk', 'take', 'adj'].includes(ui.tab) ? ui.tab : 'bulk';
+  show(tab);
+  if (tab === 'take' && ui.take && !take) {
+    try {
+      await takeOpen();
+      const s = (window.__takes || []).find(x => x.id === ui.take && x.status !== 'ended');
+      if (s) { begin(JSON.parse(JSON.stringify(s))); if (['all', 'left', 'done', 'extra'].includes(ui.filt)) { filt = ui.filt; document.querySelectorAll('#tkSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === filt)); drawTake(); saveUi(); } }
+    } catch (e) {}
+  }
+}
 function show(v) {
   $('viewBulk').hidden = v !== 'bulk'; $('viewTake').hidden = v !== 'take'; $('viewAdj').hidden = v !== 'adj';
   $('tabBulk').classList.toggle('on', v === 'bulk'); $('tabTake').classList.toggle('on', v === 'take'); $('tabAdj').classList.toggle('on', v === 'adj');
   if (v === 'take') takeOpen();
   if (v === 'adj') adjOpen();
+  curTab = v; saveUi();
 }
 $('tabBulk').onclick = () => show('bulk'); $('tabTake').onclick = () => show('take'); $('tabAdj').onclick = () => show('adj');
 $('theme').onclick = () => { const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; theme(t); try { parent.postMessage({type: 'stock-take', action: 'theme', theme: t}, '*'); } catch (e) {} };
@@ -565,6 +581,7 @@ $('tkLoc').onchange = setupScope;
 
 async function takeOpen() {
   if (take) return;
+  saveUi();
   try { await loadLocs(); } catch (e) { $('tkScope').textContent = 'Could not load locations: ' + e.message; return; }
   if (!setupReady) {
     $('tkLoc').innerHTML = locs.map(l => `<option value="${E(l.id)}">${E(l.name)}</option>`).join('');
@@ -609,7 +626,7 @@ function begin(s) {
   $('tkSetup').hidden = true; $('tkResult').hidden = true; $('tkRun').hidden = false; $('pushBox').hidden = true;
   $('tkTitle').textContent = s.name; $('tkSub').textContent = 'Counting at ' + s.locName;
   document.querySelectorAll('#tkSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === 'all'));
-  tkMsg('Scan a barcode to count it.'); drawTake(); setTimeout(() => { try { $('tkIn').focus(); } catch (e) {} }, 50);
+  tkMsg('Scan a barcode to count it.'); drawTake(); saveUi(); setTimeout(() => { try { $('tkIn').focus(); } catch (e) {} }, 50);
 }
 const expMap = () => new Map(take.vids);
 function status(e, c) { return c > e ? 'extra' : c === 0 ? 'red' : c < e ? 'blue' : 'green'; }
@@ -632,6 +649,7 @@ function drawTake(flash) {
   $('tkOutBox').hidden = !out.length;
   $('tkOut').innerHTML = out.map(([k, o]) => `<div class="sess out" data-ov="${E(k)}"><div class="nm"><b>${E(o.pt)}</b><span class="tag">${E(o.t)}</span><small class="bad">Outside your filter</small></div><div class="stp"><button data-od="-1">−</button><b>${o.n}</b><button data-od="1">+</button></div></div>`).join('');
   $('tkSave').textContent = take.dirty ? 'Save ●' : 'Saved ✓'; $('tkSave').disabled = !take.dirty;
+  if (take.dirty && !window.__autoT) window.__autoT = setTimeout(() => { window.__autoT = 0; if (take && take.dirty && !pushBusy) save(false, true); }, 1500);
   $('tkEnd').classList.toggle('arm', endArmed); $('tkEnd').textContent = endArmed ? `Tap again: end (${L} left, ${X + outN} extra)` : 'End stock take';
 }
 function takeScan(code) {
@@ -661,18 +679,18 @@ window.takeScan = takeScan;
 $('tkIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = $('tkIn').value; $('tkIn').value = ''; takeScan(v.trim()); } });
 $('tkAdd').onclick = () => { const v = $('tkIn').value; $('tkIn').value = ''; if (v.trim()) takeScan(v.trim()); $('tkIn').focus(); };
 $('tkCam').onclick = () => camera('take');
-$('tkSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; filt = b.dataset.f; document.querySelectorAll('#tkSeg button').forEach(x => x.classList.toggle('on', x === b)); drawTake(); };
+$('tkSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; filt = b.dataset.f; document.querySelectorAll('#tkSeg button').forEach(x => x.classList.toggle('on', x === b)); drawTake(); saveUi(); };
 $('tkList').onclick = e => {
   const b = e.target.closest('[data-d]'), row = e.target.closest('.vr'); if (!b || !row || !take) return;
   const vid = row.getAttribute('data-vid'); take.counts[vid] = Math.max(0, (take.counts[vid] || 0) + Number(b.getAttribute('data-d'))); take.dirty = true; endArmed = false; drawTake(vid);
 };
 $('tkOut').onclick = e => { const b = e.target.closest('[data-od]'), row = e.target.closest('[data-ov]'); if (!b || !row) return; const o = take.outside[row.getAttribute('data-ov')]; o.n = Math.max(0, o.n + Number(b.getAttribute('data-od'))); take.dirty = true; drawTake(); };
-async function save(pause) {
+async function save(pause, quiet) {
   if (!take) return true;
-  $('tkSave').disabled = true; tkMsg('Saving…');
+  $('tkSave').disabled = true; if (!quiet) tkMsg('Saving…');
   try {
     await Store.takeSave({id: take.id, name: take.name, loc: take.loc, locName: take.locName, filters: take.filters, vids: take.vids, counts: take.counts, outside: take.outside, startedAt: take.startedAt, status: 'open'});
-    take.dirty = false; tkMsg('Saved.', 'ok');
+    take.dirty = false; if (!quiet) tkMsg('Saved.', 'ok');
     if (pause) { take = null; takeOpen(); } else drawTake();
     return true;
   } catch (e) { tkMsg('Could not save: ' + e.message, 'bad'); $('tkSave').disabled = false; return false; }
@@ -685,7 +703,7 @@ $('tkEnd').onclick = async () => {
   try {
     await Store.takeEnd({id: take.id, name: take.name, loc: take.loc, locName: take.locName, filters: take.filters, vids: take.vids, counts: take.counts, outside: take.outside, startedAt: take.startedAt, endedAt: new Date().toISOString(), summary: {expected: t.e, counted: t.s, missing: t.miss, extra: t.extra}});
   } catch (e) { tkMsg('Could not end: ' + e.message, 'bad'); drawTake(); return; }
-  const s = take; take = null; lastEnded = s; $('pushBox').hidden = true; $('pushBox2').hidden = true;
+  const s = take; take = null; saveUi(); lastEnded = s; $('pushBox').hidden = true; $('pushBox2').hidden = true;
   $('tkRun').hidden = true; $('tkResult').hidden = false;
   $('rsTitle').textContent = 'Stock take finished'; $('rsSub').textContent = s.name + ' · ' + s.locName;
   $('rsE').textContent = t.e; $('rsC').textContent = t.s; $('rsM').textContent = t.miss; $('rsX').textContent = t.extra;
