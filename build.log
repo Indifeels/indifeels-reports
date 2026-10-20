@@ -1,0 +1,11 @@
+status stock-take: FAILED
+menu collections: 40
+Traceback (most recent call last):
+  File "/home/runner/work/indifeels-reports/indifeels-reports/tools/stock_take.py", line 119, in <module>
+    build()
+  File "/home/runner/work/indifeels-reports/indifeels-reports/tools/stock_take.py", line 46, in build
+    lines = rp.bulk(PRODUCTS, "stock take products")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/indifeels-reports/indifeels-reports/tools/restock_plan.py", line 80, in bulk
+    raise RuntimeError(f"{label} bulk operation {op['status']} {op.get('errorCode') or ''}".strip())
+RuntimeError: stock take products bulk operation FAILED ACCESS_DENIED
