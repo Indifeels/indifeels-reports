@@ -236,8 +236,8 @@ def add_supplier_choice(name, choices):
         return False
 
 
-BAD_BACKFILL_TAGS = {"9699978019173", "9699978084709", "9699978674533", "9700037460325", "9700038213989", "9700053778789",
-                     "9700053844325", "9700056039781", "9700056138085", "9720955568485"}
+BAD_BACKFILL_TAGS = {("9699978019173", "Pankaj"), ("9699978084709", "Vistara"), ("9699978674533", "Vistara"), ("9700037460325", "Vistara"),
+                     ("9700053778789", "Vistara"), ("9700056039781", "Vistara"), ("9700056138085", "Vistara")}   # (product, name) pairs the owner never re-tagged
 
 
 def sync_supplier_tags(prod_lines, choices):
@@ -260,7 +260,7 @@ def sync_supplier_tags(prod_lines, choices):
     done = []
     for t in tags:
         pid = str(t["product_id"])
-        if pid in BAD_BACKFILL_TAGS and not t["synced"]:
+        if (pid, t["supplier"].strip()) in BAD_BACKFILL_TAGS and not t["synced"]:
             continue                      # bulk back-fill from old order claims (wrong names, never confirmed by the owner): ignore
         l = prods.get(pid)
         if not l:
