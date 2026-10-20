@@ -657,12 +657,15 @@ function doneDetail(s) {
   Object.values(s.outside || {}).forEach(o => { if (o && o.n > 0) rows.push({pt: o.pt, t: o.t, ex: 0, n: o.n, out: true}); });
   if (!rows.length) return '<div class="empty">Nothing was recorded in this count.</div>';
   const g = new Map(); rows.forEach(r => { if (!g.has(r.pt)) g.set(r.pt, []); g.get(r.pt).push(r); });
-  return [...g.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([pt, rs]) => `<div class="dp"><div class="dph"><div class="im">${(() => { const pv = V.find(v => v.pt === pt), im = pv && pv.image; return im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(pt.slice(0, 2).toUpperCase()); })()}</div><b>${E(pt)}</b></div>` + rs.sort((a, b) => a.t.localeCompare(b.t, undefined, {numeric: true})).map(r => {
+  return '<div class="actions" style="margin:0 0 8px"><button class="go dpush" style="flex:1">⬆ Push this count to the website</button></div><div class="pushbox" hidden></div>' + [...g.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([pt, rs]) => `<div class="dp"><div class="dph"><div class="im">${(() => { const pv = V.find(v => v.pt === pt), im = pv && pv.image; return im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(pt.slice(0, 2).toUpperCase()); })()}</div><b>${E(pt)}</b></div>` + rs.sort((a, b) => a.t.localeCompare(b.t, undefined, {numeric: true})).map(r => {
     const d = r.n - r.ex, pill = d === 0 ? ['var(--green-bg)', 'var(--green)', 'matched'] : d < 0 ? ['var(--red-bg)', 'var(--red)', 'missing ' + (-d)] : ['var(--orange-bg)', 'var(--orange)', 'extra +' + d];
     return `<div class="dr"><span class="tag">${E(r.t)}</span><span class="dq">Stock <b>${r.ex}</b></span><span class="dq">Counted <b>${r.n}</b></span><span class="pill" style="background:${pill[0]};color:${pill[1]}">${pill[2]}</span>${r.out ? '<small class="bad">outside the filter</small>' : ''}</div>`;
   }).join('') + '</div>').join('');
 }
 $('tkDone').onclick = e => {
+  const pb = e.target.closest('.dpush');
+  if (pb) { const box = pb.closest('.dn'), s = (window.__takes || []).find(x => x.id === box.dataset.id); if (s) openPush(s, box.querySelector('.pushbox'), true); return; }
+  if (e.target.closest('.pushbox')) return;
   const h = e.target.closest('.dh'); if (!h) return; const box = h.closest('.dn'), dd = box.querySelector('.dd');
   if (dd.hidden) { const s = (window.__takes || []).find(x => x.id === box.dataset.id); dd.innerHTML = s ? doneDetail(s) : ''; }
   dd.hidden = !dd.hidden; box.querySelector('.chev').textContent = dd.hidden ? '▸' : '▾';
@@ -821,7 +824,7 @@ async function openPush(s, box, keepZero) {
 }
 $('tkPush').onclick = () => openPush(take, $('pushBox'));
 let lastEnded = null;
-$('rsPush').onclick = () => openPush(lastEnded, $('pushBox2'));
+$('rsPush').onclick = () => openPush(lastEnded, $('pushBox2'), true);
 $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden = true; takeOpen(); };
 
 /* ---------- start ---------- */
