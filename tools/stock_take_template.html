@@ -591,6 +591,7 @@ function tally(s) {
   const vs = (s.vids || []), c = s.counts || {};
   let e = 0, sc = 0, miss = 0, extra = 0;
   vs.forEach(([vid, ex]) => { const n = c[vid] || 0; e += ex; sc += Math.min(n, ex); miss += Math.max(0, ex - n); extra += Math.max(0, n - ex); });
+  { const known = new Set(vs.map(x => x[0])); Object.keys(c).forEach(k => { if (!known.has(k) && c[k] > 0) extra += c[k]; }); }
   Object.values(s.outside || {}).forEach(o => { extra += o.n; });
   return {e, s: sc, miss, extra};
 }
@@ -617,6 +618,7 @@ function drawTake(flash) {
   const ids = new Set(take.vids.map(x => x[0])); Object.keys(c).forEach(k => { if (c[k] > 0) ids.add(k); });
   let E_ = 0, S = 0, L = 0, X = 0, ok = 0;
   take.vids.forEach(([vid, ex]) => { const n = c[vid] || 0; E_ += ex; S += n; L += Math.max(0, ex - n); X += Math.max(0, n - ex); ok += Math.min(n, ex); });
+  Object.keys(c).forEach(k => { if (!em.has(k) && c[k] > 0) { S += c[k]; X += c[k]; } });
   const out = Object.entries(take.outside).filter(([k, o]) => o.n > 0), outN = out.reduce((a, [k, o]) => a + o.n, 0);
   $('nE').textContent = E_; $('nS').textContent = S + outN; $('nL').textContent = L; $('nX').textContent = X + outN;
   const tot = Math.max(E_ + X, 1); $('pbG').style.width = (ok / tot * 100) + '%'; $('pbO').style.width = (X / tot * 100) + '%';
