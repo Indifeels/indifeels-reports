@@ -236,7 +236,7 @@ const Store = PREVIEW ? {
   locs: async () => ({locations: [{id: '1', name: 'Shop location'}, {id: '2', name: 'Backup'}]}),
   lookup: async (code, from, to) => { const v = byBc.get(bcn(code)); if (!v) return {found: false}; await new Promise(r => setTimeout(r, 250)); return {found: true, vid: v.vid, product: v.pt, variant: v.t, image: v.image, from: v.q[from] || 0, to: v.q[to] || 0}; },
   transfer: async (from, to, items) => { await new Promise(r => setTimeout(r, 600)); items.forEach(i => { const v = byVid.get(i.vid); v.q[from] = (v.q[from] || 0) - i.qty; v.q[to] = (v.q[to] || 0) + i.qty; }); return {ok: true}; },
-  takePush: async (loc, items, dry) => ({ok: true, dry: !!dry, variants: items.length, changed: items.length, same: 0, up: items.length, down: 0, unitsUp: items.reduce((a, i) => a + i.qty, 0), unitsDown: 0, toZero: 0}),
+  takePush: async (loc, items, dry, mode) => ({ok: true, dry: !!dry, variants: items.length, changed: items.length, same: 0, up: items.length, down: 0, unitsUp: items.reduce((a, i) => a + i.qty, 0), unitsDown: 0, toZero: 0}),
   takeList: async () => LS.get('st-demo-takes') || [],
   takeSave: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
   takeEnd: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {status: 'ended', updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
@@ -244,7 +244,7 @@ const Store = PREVIEW ? {
   locs: () => call('bulklocs').catch(() => ({locations: DATA.locations || []})),   // the report data carries the locations too
   lookup: (code, from, to) => call('bulklookup', {code, from, to}),
   transfer: (from, to, items) => call('bulktransfer', {from, to, items}, 90000),
-  takePush: (loc, items, dry) => call('takepush', {loc, items, dry}, 120000),
+  takePush: (loc, items, dry, mode) => call('takepush', {loc, items, dry, mode}, 120000),
   takeList: () => call('takelist'),
   takeSave: s => call('takesave', {session: s}),
   takeEnd: s => call('takeend', {session: s}),
@@ -392,8 +392,9 @@ function setupScope() {
   $('tkClearAll').hidden = !(f.col || f.size || f.pid);
   if (!f.col) { $('tkScope').textContent = 'Pick a collection to begin.'; $('tkStart').disabled = true; return null; }
   const vs = scopeVars(f).filter(v => (v.q[loc] || 0) > 0), pcs = vs.reduce((a, v) => a + (v.q[loc] || 0), 0);
-  $('tkScope').textContent = vs.length ? `${pcs} piece${pcs === 1 ? '' : 's'} across ${vs.length} variant${vs.length === 1 ? '' : 's'}` : 'No stock at this location for that filter.';
-  $('tkStart').disabled = !vs.length; return f;
+  const any = scopeVars(f).length;
+  $('tkScope').textContent = vs.length ? `${pcs} piece${pcs === 1 ? '' : 's'} across ${vs.length} variant${vs.length === 1 ? '' : 's'}` : (any ? 'No stock here yet: everything you scan will be ADDED to the stock.' : 'Nothing in this collection or filter.');
+  $('tkStart').disabled = !any; return f;
 }
 function refreshSetupLists() {
   const col = ssCol.get(), inCol = V.filter(v => !col || v.cols.includes(col));
@@ -444,10 +445,11 @@ $('tkStart').onclick = () => {
   const f = setupScope(); if (!f) return;
   const loc = $('tkLoc').value, vs = scopeVars(f).filter(v => (v.q[loc] || 0) > 0);
   const parts = [f.col]; if (f.size) parts.push('size ' + f.size); if (f.pid) parts.push(ssDes.label());
-  begin({id: uid(), name: parts.join(' · '), loc, locName: locName(loc), filters: f, vids: vs.map(v => [v.vid, v.q[loc] || 0]), counts: {}, outside: {}, startedAt: new Date().toISOString(), status: 'open'});
+  if (!vs.length) parts.push('adding stock');
+  begin({id: uid(), mode: vs.length ? 'count' : 'add', name: parts.join(' · '), loc, locName: locName(loc), filters: f, vids: vs.map(v => [v.vid, v.q[loc] || 0]), counts: {}, outside: {}, startedAt: new Date().toISOString(), status: 'open'});
 };
 function begin(s) {
-  take = s; take.dirty = false; filt = 'all'; endArmed = false;
+  take = s; if (!take.mode) take.mode = (take.vids || []).length ? 'count' : 'add'; take.dirty = false; filt = 'all'; endArmed = false;
   $('tkSetup').hidden = true; $('tkResult').hidden = true; $('tkRun').hidden = false; $('pushBox').hidden = true;
   $('tkTitle').textContent = s.name; $('tkSub').textContent = 'Counting at ' + s.locName;
   document.querySelectorAll('#tkSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === 'all'));
@@ -480,6 +482,12 @@ function takeScan(code) {
   const v = byBc.get(bcn(code)); endArmed = false;
   if (!v) { tkMsg('Barcode ' + code + ' is not in the website data.', 'bad'); beep('bad'); return; }
   const em = expMap();
+  if (take.mode === 'add') {
+    take.counts[v.vid] = (take.counts[v.vid] || 0) + 1; take.dirty = true;
+    tkMsg(`${v.pt} · ${v.t}: +${take.counts[v.vid]} to add`, 'ok'); beep('ok'); drawTake(v.vid);
+    const el = document.querySelector(`.vr[data-vid="${v.vid}"]`); if (el) el.scrollIntoView({block: 'center', behavior: 'smooth'});
+    return;
+  }
   if (em.has(v.vid) || take.counts[v.vid]) {
     const ex = em.get(v.vid) || 0; take.counts[v.vid] = (take.counts[v.vid] || 0) + 1; take.dirty = true;
     const over = take.counts[v.vid] > ex;
@@ -547,12 +555,12 @@ async function openPush(s, box, keepZero) {
   if (!items.length) { box.innerHTML = head + '<div class="pm">Nothing scanned yet.</div>'; return; }
   box.innerHTML = head + '<div class="pm">Checking current stock…</div>';
   let r;
-  try { r = await Store.takePush(s.loc, items, true); } catch (e) { box.innerHTML = head + '<div class="pm bad">Could not check: ' + E(e.message) + '</div>'; return; }
+  try { r = await Store.takePush(s.loc, items, true, s.mode); } catch (e) { box.innerHTML = head + '<div class="pm bad">Could not check: ' + E(e.message) + '</div>'; return; }
   if (!r || r.error) { box.innerHTML = head + '<div class="pm bad">' + E((r && r.error) || 'Could not check') + '</div>'; return; }
   box.innerHTML = head +
-    `<div>Sets <b>${E(s.locName)}</b> stock (and the website ST number) to the counted numbers for <b>${r.variants}</b> variants.</div>` +
+    (s.mode === 'add' ? `<div><b>Adds</b> the scanned numbers to <b>${E(s.locName)}</b> stock (and the website ST number) for <b>${r.variants}</b> variants.</div>` : `<div>Sets <b>${E(s.locName)}</b> stock (and the website ST number) to the counted numbers for <b>${r.variants}</b> variants.</div>`) +
     `<div>▲ ${r.up} go up (+${r.unitsUp}) · ▼ ${r.down} go down (−${r.unitsDown}) · ${r.same} unchanged${r.toZero ? ' · <b style="color:var(--red)">' + r.toZero + ' go to 0</b>' : ''}</div>` +
-    `<label><input type="checkbox" class="pz"${withZero ? ' checked' : ''}> Also set variants I haven't scanned to 0</label>` +
+    (s.mode === 'add' ? '<input type="checkbox" class="pz" hidden>' : `<label><input type="checkbox" class="pz"${withZero ? ' checked' : ''}> Also set variants I haven't scanned to 0</label>`) +
     `<div class="actions"><button class="pri pgo"${r.changed ? '' : ' disabled'}>${r.changed ? 'Confirm: update ' + r.changed + ' variants' : 'Nothing to change'}</button><button class="pcx">Cancel</button></div><div class="pm"></div>`;
   box.querySelector('.pz').onchange = e => openPush(s, box, e.target.checked);
   box.querySelector('.pcx').onclick = () => { box.hidden = true; };
@@ -562,7 +570,7 @@ async function openPush(s, box, keepZero) {
     go.disabled = true; pm.className = 'pm'; pm.textContent = 'Updating Shopify… keep this open.';
     try {
       if (take && take === s && take.dirty) await save(false);
-      const res = await Store.takePush(s.loc, pushItems(s, box.querySelector('.pz').checked), false);
+      const res = await Store.takePush(s.loc, pushItems(s, box.querySelector('.pz').checked), false, s.mode);
       if (!res || res.error) throw new Error((res && res.error) || 'Failed');
       pm.className = 'pm ok'; pm.textContent = `Done: ${res.changed} variants updated (${res.up} up, ${res.down} down).` + (res.warn ? ' ' + res.warn : '');
       box.querySelector('.pcx').textContent = 'Close';

@@ -68,10 +68,12 @@ async function bulk(body: any) {
     // Stock take -> website: set available stock at ONE location to the counted numbers
     const loc = toLoc(body.loc);
     if (!LOCID.test(loc)) return json({ error: "Pick the location" }, 400);
+    const add = body.mode === "add"; // stock take on an empty location: scanned numbers are ADDED to current stock
     const want = new Map<string, number>();
     for (const it of Array.isArray(body.items) ? body.items.slice(0, 2500) : []) {
       const v = String(it?.vid || ""), n = Math.trunc(Number(it?.qty));
       if (!/^\d{1,20}$/.test(v) || !Number.isFinite(n) || n < 0 || n > 100000) return json({ error: "Bad item in the list" }, 400);
+      if (add && n < 1) continue;
       want.set(v, n);
     }
     if (!want.size) return json({ error: "Nothing to push" }, 400);
@@ -83,7 +85,7 @@ async function bulk(body: any) {
       d.nodes.forEach((n: any) => {
         if (!n) return; // variant deleted since the count: skip it
         const vid = n.id.split("/").pop();
-        rows.push({ vid, item: n.inventoryItem.id, title: `${n.product?.title || ""} ${n.title || ""}`.trim(), cur: q(n.inventoryItem.f), has: !!n.inventoryItem.f, qty: want.get(vid)! });
+        rows.push({ vid, item: n.inventoryItem.id, title: `${n.product?.title || ""} ${n.title || ""}`.trim(), cur: q(n.inventoryItem.f), has: !!n.inventoryItem.f, qty: add ? q(n.inventoryItem.f) + want.get(vid)! : want.get(vid)! });
       });
     }
     const chg = rows.filter((r) => r.qty !== r.cur);
