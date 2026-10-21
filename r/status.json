@@ -99,10 +99,10 @@
   "reason": "Semrush snapshot report cost 10000 API units (limit: snapshots 100 only); refresh stopped, nothing published"
  },
  "stock": {
-  "at": "2026-10-21T22:00+11:00",
-  "code_sha": "04a040e7385d54e65ff2c121a92384b444e071a1",
+  "at": "2026-10-21T22:43+11:00",
+  "code_sha": "230ce0fd814d8a3800cb77b72f9f350c1a3e6f9d",
   "data_through": null,
-  "last_ok": "2026-10-21T22:00+11:00",
+  "last_ok": "2026-10-21T22:43+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
