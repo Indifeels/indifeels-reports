@@ -201,6 +201,8 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
   <!-- ============ BARCODES ============ -->
   <div id="viewBar" hidden>
     <div class="bk"><h3>Add labels</h3>
+      <div class="fld" style="margin-bottom:8px">Shortlist by collection (optional)<div class="ss" id="ssLbCol"></div></div>
+      <div id="lbShort"></div>
       <div class="scan"><input id="lbIn" type="text" autocomplete="off" placeholder="Scan any size, or type a product name"><button id="lbAdd" type="button">Add</button><button id="lbCam" type="button" title="Scan with camera">📷</button></div>
       <div id="lbCard"></div>
       <div class="msg" id="lbMsg">Scan any size (or search by name) to see every size of that product. Counts start at 0.</div>
@@ -311,7 +313,7 @@ function ProductFind(input, opt) {
   let prods = null;
   const build = () => { if (prods) return prods; const m = new Map(); V.forEach(v => { if (!m.has(v.pid)) m.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image, vs: []}); m.get(v.pid).vs.push(v); }); return prods = [...m.values()]; };
   const hasText = () => /[a-z]/i.test(input.value);
-  const matches = () => { const t = input.value.toLowerCase().split(/\s+/).filter(Boolean); return build().filter(p => { const n = p.pt.toLowerCase(); return t.every(x => n.includes(x)); }).slice(0, 8); };
+  const matches = () => { const t = input.value.toLowerCase().split(/\s+/).filter(Boolean); return build().filter(p => { const n = p.pt.toLowerCase(); return (!opt.only || opt.only(p)) && t.every(x => n.includes(x)); }).slice(0, 8); };
   const clear = () => { box.innerHTML = ''; };
   const img = p => p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase());
   function suggest() {
@@ -688,7 +690,21 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
       `<div class="foot" style="padding:8px 10px"><span class="sum">${n} label${n === 1 ? '' : 's'} to add</span><button type="button" class="pri" id="lbGo" ${n ? '' : 'disabled'}>Add to label list</button></div></div>`;
   }
   async function showProduct(pid) { try { await loadLocs(); } catch (e) {} lbPid = pid; lbN = {}; drawCard(); lbMsg(''); }
-  const lbFind = ProductFind($('lbIn'), {onProduct: showProduct, addBtn: $('lbAdd')});
+  /* collection shortlist: pick a collection, then tap a product to open its sizes; name search is limited to it */
+  const ssLb = Sel($('ssLbCol'), 'All collections');
+  const lbCols = new Map(); V.forEach(v => v.cols.forEach(c => { if (!lbCols.has(c)) lbCols.set(c, new Set()); lbCols.get(c).add(v.pid); }));
+  ssLb.set([...lbCols.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, s]) => ({v: c, l: c, s: s.size + ' products'})));
+  const inLbCol = p => { const c = ssLb.get(); return !c || p.vs.some(v => v.cols.includes(c)); };
+  function drawShort() {
+    const c = ssLb.get(), box = $('lbShort');
+    if (!c) { box.innerHTML = ''; return; }
+    const ps = new Map(); V.forEach(v => { if (v.cols.includes(c) && !ps.has(v.pid)) ps.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image, n: 0}); if (ps.has(v.pid) && v.cols.includes(c)) ps.get(v.pid).n++; });
+    const list = [...ps.values()].sort((a, b) => a.pt.localeCompare(b.pt));
+    box.innerHTML = list.length ? `<div class="sum" style="margin-bottom:6px">${list.length} product${list.length === 1 ? '' : 's'} in ${E(c)}. Tap one to pick its sizes.</div><div class="pfs">` + list.slice(0, 120).map(p => `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}</span><span>${E(p.pt)}</span></button>`).join('') + '</div>' : '<div class="msg">No products in this collection.</div>';
+  }
+  ssLb.onpick(drawShort);
+  $('lbShort').onclick = e => { const b = e.target.closest('[data-p]'); if (b) showProduct(b.dataset.p); };
+  const lbFind = ProductFind($('lbIn'), {onProduct: showProduct, addBtn: $('lbAdd'), only: inLbCol});
   window.barScan = async (code, forced) => {
     let v = forced || byBc.get(bcn(code)); const dups = allBc.get(bcn(code)) || [];
     if (!forced && dups.length > 1) { v = await askDup(dups, shopLoc(), 'Scan ' + code); if (!v) return; }
