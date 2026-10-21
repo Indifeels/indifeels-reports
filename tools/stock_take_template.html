@@ -251,11 +251,19 @@ const PREVIEW = window.parent === window;      // opened on its own (not inside 
 const beep = k => { try { const C = window.AudioContext || window.webkitAudioContext, a = new C(), o = a.createOscillator(), g = a.createGain(); o.frequency.value = k === 'ok' ? 880 : k === 'warn' ? 520 : 220; g.gain.value = 0.08; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + (k === 'ok' ? 0.08 : 0.25)); setTimeout(() => a.close(), 400); } catch (e) {} };
 
 /* ---------- variants index (from the website data) ---------- */
-const V = [], byBc = new Map(), byVid = new Map();
+const V = [], byBc = new Map(), allBc = new Map(), byVid = new Map();
 DATA.products.forEach(p => p.variants.forEach(v => {
   const r = {vid: String(v.vid), pid: String(p.id), pt: p.title, image: p.image || '', t: v.t, cols: p.cols || [], bc: v.bc || [], q: v.q || {}};
-  V.push(r); byVid.set(r.vid, r); r.bc.forEach(b => byBc.set(bcn(b), r));
+  V.push(r); byVid.set(r.vid, r); r.bc.forEach(b => { const k = bcn(b); (allBc.get(k) || allBc.set(k, []).get(k)).push(r); });
 }));
+/* The same barcode can sit on more than one variant (old and new copies of a product). Prefer the one that holds stock. */
+const tot = r => Object.values(r.q).reduce((a, n) => a + n, 0);
+allBc.forEach((arr, k) => byBc.set(k, arr.slice().sort((x, y) => tot(y) - tot(x))[0]));
+const pickBc = (code, loc, fl) => {
+  const arr = allBc.get(bcn(code)) || []; if (arr.length < 2) return arr[0];
+  const sc = r => (fl && !fl.open && inFilter(r, fl) ? 1e6 : 0) + (loc ? (r.q[loc] || 0) * 1000 : 0) + tot(r);
+  return arr.slice().sort((x, y) => sc(y) - sc(x))[0];
+};
 const P = new Map(DATA.products.map(p => [String(p.id), {url: p.url || '', st: p.st || '', ch: typeof p.ch === 'number' ? p.ch : null}]));
 const theme = t => { document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark'; };
 
@@ -801,7 +809,7 @@ function drawTake(flash) {
 }
 function takeScan(code) {
   if (!take) return;
-  const v = byBc.get(bcn(code)); endArmed = false;
+  const v = take ? pickBc(code, take.loc, take.filters) : byBc.get(bcn(code)); endArmed = false;
   if (!v) { tkMsg('Barcode ' + code + ' is not in the website data.', 'bad'); beep('bad'); return; }
   if (take.filters && take.filters.open) {
     const whole = take.filters.scope === 'product', have = new Set(take.vids.map(x => x[0]));
