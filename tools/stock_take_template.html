@@ -18,6 +18,7 @@ button,select,input[type=text]{font:inherit;color:var(--text)}
 button{border:1px solid var(--border);background:var(--grey-bg);border-radius:10px;padding:7px 14px;cursor:pointer;font-weight:600}
 button:disabled{opacity:.45;cursor:default}
 button.pri{background:var(--blue);border-color:var(--blue);color:#06101c;font-weight:800}
+button.arm{background:var(--red);border-color:var(--red);color:#fff}
 button.pri.arm{background:#e3b341;border-color:#e3b341}
 #theme{padding:4px 10px}
 .tabs{display:flex;gap:8px;margin:6px 0 10px}
@@ -225,7 +226,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
         <div class="scan" style="margin-top:10px"><input id="tkIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode, then Enter"><button id="tkAdd">Add</button><button id="tkCam" type="button" title="Scan with camera">📷</button></div>
         <div class="seg" id="tkScopeSeg" hidden style="margin:8px 0 0"><button type="button" data-s="variant" class="on">Count this variant</button><button type="button" data-s="product">Count whole product</button></div>
         <div class="msg" id="tkMsg"></div>
-        <div class="actions"><button id="tkSave">Save</button><button id="tkPause">Save &amp; pause</button><span class="sp"></span><button class="pri" id="tkEnd">End stock take</button></div>
+        <div class="actions"><button id="tkSave">Save</button><button id="tkPause">Save &amp; pause</button><span class="sp"></span><button id="tkCancel">Cancel stock take</button><button class="pri" id="tkEnd">End stock take</button></div>
         <div class="actions" style="margin-top:8px"><button class="go" id="tkPush" style="flex:1">⬆ Push to website</button></div>
         <div class="pushbox" id="pushBox" hidden></div>
       </div>
@@ -308,6 +309,7 @@ const Store = PREVIEW ? {
   takeSave: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
   takeApply: async (id, counts, outside, vids) => { const a = LS.get('st-demo-takes') || [], s = a.find(x => x.id === id); return {id, code: 'ST-0001', status: s ? s.status || 'open' : 'open', counts: s ? s.counts : {}, outside: s ? s.outside : {}, vids: s ? s.vids : [], members: {}}; },
   takePushed: async () => ({ok: true, by: 'You'}),
+  takeCancel: async id => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== id); LS.set('st-demo-takes', a); return {ok: true}; },
   takeEnd: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {status: 'ended', updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
 } : {
   locs: () => call('bulklocs').catch(() => ({locations: DATA.locations || []})),   // the report data carries the locations too
@@ -325,6 +327,7 @@ const Store = PREVIEW ? {
   takeEnd: s => call('takeend', {session: s}),
   takeApply: (id, counts, outside, vids) => call('takeapply', {id, counts, outside, vids}, 30000),
   takePushed: id => call('takepushed', {id}, 20000),
+  takeCancel: id => call('takecancel', {id}, 20000),
 };
 
 /* ---------- tabs ---------- */
@@ -337,7 +340,7 @@ async function applyUi(ui) {
   if (tab === 'take' && ui.take && !take) {
     try {
       await takeOpen();
-      const s = (window.__takes || []).find(x => x.id === ui.take && x.status !== 'ended');
+      const s = (window.__takes || []).find(x => x.id === ui.take && x.status !== 'ended' && x.status !== 'cancelled');
       if (s) { const c0 = JSON.parse(JSON.stringify(s)); c0.remote = true; begin(c0); if (['all', 'left', 'done', 'extra'].includes(ui.filt)) { filt = ui.filt; document.querySelectorAll('#tkSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === filt)); drawTake(); saveUi(); } }
     } catch (e) {}
   }
@@ -679,6 +682,7 @@ const live = (m, meId) => Object.entries(m || {}).filter(([k, x]) => k !== meId 
 const liveOthers = s => live(s.members, s.meId || window.__meId);
 const PUSH_TRACKED_FROM = Date.parse('2026-10-21T00:40:00Z');
 const pushPill = s => {
+  if (s.status === 'cancelled') return `<span class="pill pp" style="background:var(--grey-bg);color:var(--muted)">✕ Cancelled${s.cancelledBy ? ' by ' + E(s.cancelledBy) : ''}</span>`;
   const when = t => new Date(t).toLocaleString(undefined, {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'});
   const none = !Object.values(s.counts || {}).some(n => n > 0) && !Object.values(s.outside || {}).some(o => o && o.n > 0);
   if (s.pushedBy || s.pushedAt) return `<span class="pill pp" style="background:var(--green-bg);color:var(--green)" title="${E(when(s.pushedAt))}">✓ Pushed by ${E(s.pushedBy || 'someone')}</span>`;
@@ -698,7 +702,7 @@ async function sync(force) {
   try {
     const r = await Store.takeApply(s.id, dc, dout, dv);
     if (take !== s) return false;
-    if (r.status === 'ended') { tkMsg('This stock take was ended on another device.', 'bad'); take = null; saveUi(); takeOpen(); return 'ended'; }
+    if (r.status === 'ended' || r.status === 'cancelled') { tkMsg('This stock take was ' + (r.status === 'ended' ? 'ended' : 'cancelled') + ' on another device.', 'bad'); take = null; saveUi(); takeOpen(); return 'ended'; }
     const before = JSON.stringify([s.counts, s.outside, s.vids.length, s.members]);
     // changes made on this device while the request was in flight stay on top of the merged list
     const cc = Object.assign({}, r.counts), oo = JSON.parse(JSON.stringify(r.outside || {}));
@@ -731,12 +735,12 @@ async function takeOpen() {
   setupScope();
   try {
     const list = await Store.takeList();
-    const open = list.filter(s => s.status !== 'ended'), done = list.filter(s => s.status === 'ended').slice(0, 8);
+    const open = list.filter(s => s.status !== 'ended' && s.status !== 'cancelled'), done = list.filter(s => s.status === 'ended' || s.status === 'cancelled').slice(0, 8);
     $('tkOpenBox').hidden = !open.length; $('tkDoneBox').hidden = !done.length;
     const when = s => s.updated ? new Date(s.updated).toLocaleString(undefined, {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'}) : '';
     const cnt = s => { const t = tally(s); return t; };
     $('tkOpen').innerHTML = open.map(s => { const t = cnt(s); return `<div class="sess"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · ${t.s} of ${t.e} counted · saved ${E(when(s))}${memHtml(s)}</small></div><span class="cards"><span class="pill" style="background:${liveOthers(s).length ? 'var(--green-bg)' : 'var(--orange-bg)'};color:${liveOthers(s).length ? 'var(--green)' : 'var(--orange)'}">${liveOthers(s).length ? '● Live: ' + E(liveOthers(s).join(', ')) : '⏸ Paused'}</span></span><button class="pri" data-resume="${E(s.id)}">${liveOthers(s).length ? 'Add me to ' + E(s.code || 'this') : 'Resume'}</button></div>`; }).join('');
-    $('tkDone').innerHTML = done.map(s => { const t = cnt(s); return `<div class="dn" data-id="${E(s.id)}"><div class="sess dh" role="button"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · ended ${E(when(s))}${s.pushedBy ? ' · <span style="color:var(--green)">pushed by ' + E(s.pushedBy) + (s.pushedAt ? ', ' + E(when({updated: s.pushedAt})) : '') + '</span>' : ''} · tap to see the stock</small></div><span class="cards">${pushPill(s)} <span class="pill" style="background:var(--red-bg);color:var(--red)">${t.miss} missing</span> <span class="pill" style="background:var(--orange-bg);color:var(--orange)">${t.extra} extra</span></span><span class="chev">▸</span></div><div class="dd" hidden></div></div>`; }).join('');
+    $('tkDone').innerHTML = done.map(s => { const t = cnt(s); return `<div class="dn" data-id="${E(s.id)}"><div class="sess dh" role="button"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · ended ${E(when(s))}${s.pushedBy ? ' · <span style="color:var(--green)">pushed by ' + E(s.pushedBy) + (s.pushedAt ? ', ' + E(when({updated: s.pushedAt})) : '') + '</span>' : ''} · tap to see the stock</small></div><span class="cards">${pushPill(s)}${s.status === 'cancelled' ? '' : ` <span class="pill" style="background:var(--red-bg);color:var(--red)">${t.miss} missing</span> <span class="pill" style="background:var(--orange-bg);color:var(--orange)">${t.extra} extra</span>`}</span><span class="chev">▸</span></div><div class="dd" hidden></div></div>`; }).join('');
     window.__takes = list;
   } catch (e) { /* history is optional */ }
 }
@@ -752,7 +756,7 @@ function doneDetail(s) {
   Object.entries(s.outside || {}).forEach(([k, o]) => { if (o && o.n > 0) rows.push({vid: k, v: byVid.get(k) || {pid: 'o' + k, pt: o.pt, t: o.t, bc: [], image: ''}, ex: 0, n: o.n, out: true}); });
   if (!rows.length) return '<div class="empty">Nothing was recorded in this count.</div>';
   const g = new Map(); rows.forEach(r => { if (!g.has(r.v.pid)) g.set(r.v.pid, []); g.get(r.v.pid).push(r); });
-  const top = '<div class="actions" style="margin:0 0 8px"><button class="go dpush" style="flex:1">⬆ Push this count to the website</button><button class="dall" style="flex:1">🏷 Add all labels to Barcodes</button></div><div class="pushbox" hidden></div><div class="msg dmsg"></div>';
+  const top = s.status === 'cancelled' ? '<div class="msg" style="margin:0 0 8px">This stock take was cancelled. Nothing was pushed, and it can\'t be pushed. The numbers below are what had been scanned.</div>' : '<div class="actions" style="margin:0 0 8px"><button class="go dpush" style="flex:1">⬆ Push this count to the website</button><button class="dall" style="flex:1">🏷 Add all labels to Barcodes</button></div><div class="pushbox" hidden></div><div class="msg dmsg"></div>';
   return top + [...g.entries()].sort((a, b) => a[1][0].v.pt.localeCompare(b[1][0].v.pt)).map(([pid, rs]) => {
     const pv = rs[0].v, pr = P.get(pid) || {}, im = pv.image ? `<img src="${E(pv.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(pv.pt.slice(0, 2).toUpperCase());
     const pic = pr.url ? `<a class="im" href="${E(pr.url)}" target="_blank" rel="noopener" title="Open the product page">${im}</a>` : `<div class="im">${im}</div>`;
@@ -970,6 +974,15 @@ async function save(pause, quiet) {
   } catch (e) { tkMsg('Could not save: ' + e.message, 'bad'); $('tkSave').disabled = false; return false; }
 }
 $('tkSave').onclick = () => save(false); $('tkPause').onclick = () => save(true);
+let cancelArmed = false;
+$('tkCancel').onclick = async () => {
+  if (!take) return;
+  const b = $('tkCancel');
+  if (!cancelArmed) { cancelArmed = true; b.classList.add('arm'); b.textContent = 'Tap again: cancel it. Nothing will be pushed'; setTimeout(() => { cancelArmed = false; b.classList.remove('arm'); b.textContent = 'Cancel stock take'; }, 6000); return; }
+  cancelArmed = false; b.classList.remove('arm'); b.textContent = 'Cancel stock take';
+  try { if (take.remote) await Store.takeCancel(take.id); } catch (e) { tkMsg('Could not cancel: ' + e.message, 'bad'); return; }
+  take = null; saveUi(); takeOpen();
+};
 $('tkEnd').onclick = async () => {
   if (!take) return;
   if (!endArmed) { endArmed = true; drawTake(); setTimeout(() => { if (endArmed) { endArmed = false; if (take) drawTake(); } }, 6000); return; }

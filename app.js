@@ -1739,7 +1739,7 @@
   });
 
   const stJson = (v, max) => { const t = JSON.stringify(v == null ? null : v); if (t && t.length > max) throw new Error("Too much data to save"); return v == null ? null : v; };
-  const stRow = (r) => ({ meId: me.id, id: r.id, code: r.code || "", members: r.members || {}, pushedBy: r.pushed_by || "", pushedAt: r.pushed_at || "", name: r.name, loc: r.loc, locName: r.loc_name, status: r.status, filters: r.filters, vids: r.vids, counts: r.counts, outside: r.outside, summary: r.summary, startedAt: r.started_at, endedAt: r.ended_at, updated: r.updated_at });
+  const stRow = (r) => ({ cancelledBy: r.cancelled_by || "", meId: me.id, id: r.id, code: r.code || "", members: r.members || {}, pushedBy: r.pushed_by || "", pushedAt: r.pushed_at || "", name: r.name, loc: r.loc, locName: r.loc_name, status: r.status, filters: r.filters, vids: r.vids, counts: r.counts, outside: r.outside, summary: r.summary, startedAt: r.started_at, endedAt: r.ended_at, updated: r.updated_at });
   async function stSave(sess, ended) {
     const x = sess || {};
     if (!/^[A-Za-z0-9_-]{4,40}$/.test(String(x.id || ""))) throw new Error("Bad stock take id");
@@ -1748,7 +1748,7 @@
       started_at: x.startedAt || new Date().toISOString(), updated_at: new Date().toISOString() };
     if (ended) { row.summary = stJson(x.summary || null, 2000); row.ended_at = x.endedAt || new Date().toISOString(); }
     if (!row.name || !row.loc) throw new Error("Missing name or location");
-    if (!ended) { const cur = rpOk(await sb.from("stock_takes").select("status").eq("id", row.id).maybeSingle()); if (cur && cur.status === "ended") throw new Error("This stock take has already ended"); }
+    if (!ended) { const cur = rpOk(await sb.from("stock_takes").select("status").eq("id", row.id).maybeSingle()); if (cur && (cur.status === "ended" || cur.status === "cancelled")) throw new Error("This stock take has already " + (cur.status === "ended" ? "ended" : "been cancelled")); }
     rpOk(await sb.from("stock_takes").upsert(row, { onConflict: "id" }));
     return { ok: true };
   }
@@ -1799,7 +1799,7 @@
     bulklookup: async (d) => rpStockCall({ action: "lookup", code: rpText(d.code, 40), from: rpText(d.from, 40), to: rpText(d.to, 40) }, "Couldn't look up the barcode"),
     bulktransfer: async (d) => rpStockCall({ action: "transfer", from: rpText(d.from, 40), to: rpText(d.to, 40), items: (Array.isArray(d.items) ? d.items : []).slice(0, 500).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && i.qty) || 0) })) }, "Couldn't finalize the transfer"),
     takepush: async (d) => rpStockCall({ action: "setcounts", loc: rpText(d.loc, 40), dry: !!d.dry, mode: d.mode === "add" ? "add" : "set", items: (Array.isArray(d.items) ? d.items : []).slice(0, 2500).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && i.qty) || 0) })) }, "Couldn't push to the website"),
-    takelist: async () => (rpOk(await sb.from("stock_takes").select("id,code,members,pushed_by,pushed_at,name,loc,loc_name,status,filters,vids,counts,outside,summary,started_at,ended_at,updated_at").order("updated_at", { ascending: false }).limit(40)) || []).map(stRow),
+    takelist: async () => (rpOk(await sb.from("stock_takes").select("id,code,members,pushed_by,pushed_at,cancelled_by,name,loc,loc_name,status,filters,vids,counts,outside,summary,started_at,ended_at,updated_at").order("updated_at", { ascending: false }).limit(40)) || []).map(stRow),
     takesave: async (d) => stSave(d.session, false),
     // Shared stock takes: send only what changed on this device (deltas) and get the merged list back, so two people can scan into one take.
     takeapply: async (d) => {
@@ -1810,6 +1810,7 @@
       const r = rpOk(await sb.rpc("st_apply", { p_id: d.id, p_counts: num(d.counts), p_outside: out, p_vids: vids, p_name: rpText(me.display_name || me.username, 60) }));
       return { meId: me.id, id: r.id, code: r.code, status: r.status, counts: r.counts, outside: r.outside, vids: r.vids, members: r.members, pushedBy: r.pushed_by || "", pushedAt: r.pushed_at || "" };
     },
+    takecancel: async (d) => { if (!/^[A-Za-z0-9_-]{4,40}$/.test(String(d.id || ""))) throw new Error("Bad stock take id"); rpOk(await sb.rpc("st_cancel", { p_id: d.id, p_name: rpText(me.display_name || me.username, 60) })); return { ok: true }; },
     takepushed: async (d) => { if (!/^[A-Za-z0-9_-]{4,40}$/.test(String(d.id || ""))) throw new Error("Bad stock take id"); rpOk(await sb.rpc("st_pushed", { p_id: d.id, p_name: rpText(me.display_name || me.username, 60) })); return { ok: true, by: me.display_name || me.username }; },
     takeend: async (d) => stSave(d.session, true),
   });
