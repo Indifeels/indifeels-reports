@@ -46,6 +46,15 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .dupv{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--border);border-radius:10px;padding:8px;margin:6px 0}
 .dupv .nm{flex:1;min-width:150px}.dupv .nm small{display:block;color:var(--muted)}
 .dupv button.dd{color:var(--red)}.dupv button.dd.arm{background:var(--red);color:#fff}
+.pf{margin-top:6px}.pfs{display:flex;flex-direction:column;gap:4px}
+.pfs button{display:flex;align-items:center;gap:8px;text-align:left;padding:6px 8px;border-radius:10px;width:100%}
+.pfs .im,.lbh .im{width:34px;height:34px;border-radius:8px;overflow:hidden;background:var(--card2);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)}
+.pfs .im img,.lbh .im img{width:100%;height:100%;object-fit:cover}
+.lbc{border:1px solid var(--border);border-radius:12px;margin-top:10px;overflow:hidden}
+.lbh{display:flex;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap}.lbh b{flex:1;min-width:140px}
+.lbr{display:flex;align-items:center;gap:10px;padding:7px 10px;border-bottom:1px solid var(--border)}.lbr:last-of-type{border-bottom:0}
+.lbr .nm{flex:1}.lbr small{display:block;color:var(--muted)}
+.rmv{padding:2px 8px;color:var(--red);border-radius:8px;margin-left:6px}
 .msg{min-height:18px;margin-top:6px;font-size:13px;color:var(--muted)}.msg.bad{color:var(--red)}.msg.ok{color:var(--green)}
 .scan{display:flex;gap:8px}.scan input{flex:1}.scan button{padding:0 16px}
 .sw{flex:none;height:42px;width:42px;padding:0;font-size:18px}
@@ -191,6 +200,11 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 
   <!-- ============ BARCODES ============ -->
   <div id="viewBar" hidden>
+    <div class="bk"><h3>Add labels</h3>
+      <div class="scan"><input id="lbIn" type="text" autocomplete="off" placeholder="Scan any size, or type a product name"><button id="lbAdd" type="button">Add</button><button id="lbCam" type="button" title="Scan with camera">📷</button></div>
+      <div id="lbCard"></div>
+      <div class="msg" id="lbMsg">Scan any size (or search by name) to see every size of that product. Counts start at 0.</div>
+    </div>
     <div class="bk"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0" id="lqTitle">Labels to print</h3><button type="button" id="lqCopy" hidden>Copy list</button><button type="button" id="lqDone" hidden>Mark printed</button></div>
       <div id="lqList"><div class="empty">No labels added yet. Use <b>Print label</b> on a finished stock take, or tick "Needs a barcode label" when adding stock.</div></div>
       <div class="foot" id="lqFoot" hidden><label class="fld" style="flex:none;width:170px">Start at slot (1 to 65)<input type="text" id="lqSlot" value="1" inputmode="numeric" autocomplete="off"></label><span class="sum"></span><button type="button" class="pri" id="lqPrint">Download PDF</button></div>
@@ -287,10 +301,40 @@ window.addEventListener('message', e => {
   const d = e.data || {};
   if (d.type === 'stock-take-theme') theme(d.theme);
   else if (d.type === 'stock-take-ui') applyUi(d.ui);
-  else if (d.type === 'stock-take-scan') { if (d.code) (d.target === 'bulk' ? bulkAdd : d.target === 'adj' ? adjScan : takeScan)(d.code); else if (d.error) (d.target === 'bulk' ? bkMsg : d.target === 'adj' ? adMsg : tkMsg)(d.error, 'bad'); }
+  else if (d.type === 'stock-take-scan') { if (d.code) (d.target === 'bulk' ? bulkAdd : d.target === 'adj' ? adjScan : d.target === 'bar' ? window.barScan : takeScan)(d.code); else if (d.error) (d.target === 'bulk' ? bkMsg : d.target === 'adj' ? adMsg : d.target === 'bar' ? lbMsg : tkMsg)(d.error, 'bad'); }
   else if (d.type === 'stock-take-result') { const p = pend.get(d.req); if (!p) return; clearTimeout(p.t); pend.delete(d.req); d.ok ? p.res(d.data) : p.rej(new Error(d.error || 'Failed')); }
 });
-const camera = target => { if (PREVIEW) return (target === 'bulk' ? bkMsg : target === 'adj' ? adMsg : tkMsg)('Camera works inside the app. In this preview, type a barcode or tap a demo barcode above.', 'bad'); try { parent.postMessage({type: 'stock-take', action: 'camera', target}, '*'); } catch (e) {} };
+const lbMsg = (t, k) => { const m = $('lbMsg'); if (!m) return; m.textContent = t || ''; m.className = 'msg' + (k ? ' ' + k : ''); };
+/* Find a product by name next to a barcode box. opt.onVariant(v) is called when a size is tapped, opt.onProduct(pid) replaces the size chips. */
+function ProductFind(input, opt) {
+  const host = input.closest('.scan'), box = document.createElement('div'); box.className = 'pf'; host.after(box);
+  let prods = null;
+  const build = () => { if (prods) return prods; const m = new Map(); V.forEach(v => { if (!m.has(v.pid)) m.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image, vs: []}); m.get(v.pid).vs.push(v); }); return prods = [...m.values()]; };
+  const hasText = () => /[a-z]/i.test(input.value);
+  const matches = () => { const t = input.value.toLowerCase().split(/\s+/).filter(Boolean); return build().filter(p => { const n = p.pt.toLowerCase(); return t.every(x => n.includes(x)); }).slice(0, 8); };
+  const clear = () => { box.innerHTML = ''; };
+  const img = p => p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase());
+  function suggest() {
+    if (!hasText()) { clear(); return; }
+    const m = matches();
+    box.innerHTML = m.length ? '<div class="pfs">' + m.map(p => `<button type="button" data-p="${E(p.pid)}"><span class="im">${img(p)}</span><span>${E(p.pt)}</span></button>`).join('') + '</div>' : '<div class="msg">No product with that name.</div>';
+  }
+  function pick(pid) {
+    input.value = ''; clear();
+    if (opt.onProduct) { opt.onProduct(pid); return; }
+    const p = build().find(x => x.pid === pid); if (!p) return;
+    box.innerHTML = `<div class="msg" style="margin-top:8px"><b>${E(p.pt)}</b>: tap a size to count it</div><div class="chips">` + p.vs.slice().sort((a, b) => a.t.localeCompare(b.t, undefined, {numeric: true})).map(v => `<button type="button" data-v="${E(v.vid)}">${E(v.t)}<small>stock ${(opt.loc && opt.loc() ? v.q[opt.loc()] : 0) || 0}</small></button>`).join('') + '</div>';
+  }
+  input.addEventListener('input', suggest);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && hasText()) { e.preventDefault(); e.stopImmediatePropagation(); const m = matches(); if (m.length) pick(m[0].pid); } }, true);
+  if (opt.addBtn) opt.addBtn.addEventListener('click', e => { if (hasText()) { e.stopImmediatePropagation(); const m = matches(); if (m.length) pick(m[0].pid); } }, true);
+  box.addEventListener('click', e => {
+    const pb = e.target.closest('[data-p]'); if (pb) { pick(pb.dataset.p); return; }
+    const vb = e.target.closest('[data-v]'); if (vb) { const v = byVid.get(vb.dataset.v); if (v && opt.onVariant) opt.onVariant(v); }
+  });
+  return {pick, clear};
+}
+const camera = target => { if (PREVIEW) return (target === 'bulk' ? bkMsg : target === 'adj' ? adMsg : target === 'bar' ? lbMsg : tkMsg)('Camera works inside the app. In this preview, type a barcode or tap a demo barcode above.', 'bad'); try { parent.postMessage({type: 'stock-take', action: 'camera', target}, '*'); } catch (e) {} };
 
 /* ---------- Store: hub in production, demo in preview ---------- */
 const LS = {get: k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
@@ -325,7 +369,7 @@ const Store = PREVIEW ? {
   takeList: () => call('takelist'),
   takeSave: s => call('takesave', {session: s}),
   takeEnd: s => call('takeend', {session: s}),
-  takeApply: (id, counts, outside, vids) => call('takeapply', {id, counts, outside, vids}, 30000),
+  takeApply: (id, counts, outside, vids, drop) => call('takeapply', {id, counts, outside, vids, drop}, 30000),
   takePushed: id => call('takepushed', {id}, 20000),
   takeCancel: id => call('takecancel', {id}, 20000),
 };
@@ -629,6 +673,47 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     doneArmed = false; $('lqDone').textContent = 'Mark printed';
     try { await Store.labels('done'); labelRows = []; drawLabels(); lqMsg('Cleared. The next labels start a new list.', 'ok'); } catch (e) { lqMsg(e.message, 'bad'); }
   };
+
+  /* ----- add labels: scan any size or search by name, then choose how many of each size ----- */
+  let lbPid = '', lbN = {};
+  const shopLoc = () => { const l = (locs || []).find(x => /shop/i.test(x.name)) || (locs || [])[0]; return l ? l.id : ''; };
+  const sizeCmp2 = (a, b) => a.t.localeCompare(b.t, undefined, {numeric: true});
+  function drawCard() {
+    if (!lbPid) { $('lbCard').innerHTML = ''; return; }
+    const vs = V.filter(v => v.pid === lbPid).sort(sizeCmp2); if (!vs.length) { $('lbCard').innerHTML = ''; return; }
+    const loc = shopLoc(), p = vs[0], im = p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase());
+    const n = vs.reduce((a, v) => a + (v.bc[0] ? (lbN[v.vid] || 0) : 0), 0);
+    $('lbCard').innerHTML = `<div class="lbc"><div class="lbh"><div class="im">${im}</div><b>${E(p.pt)}</b><button type="button" id="lbStock">Set to stock quantity</button><button type="button" id="lbZero">Set all to 0</button><button type="button" id="lbX" title="Close">✕</button></div>` +
+      vs.map(v => `<div class="lbr" data-v="${E(v.vid)}"><div class="nm"><span class="tag">${E(v.t)}</span><small>${v.bc[0] ? 'Stock ' + (v.q[loc] || 0) + ' · ' + E(v.bc[0]) : '<span class="bad">No barcode yet. Add one in the Add / remove tab.</span>'}</small></div><div class="stp"><button type="button" data-b="-1" ${v.bc[0] ? '' : 'disabled'}>−</button><b>${lbN[v.vid] || 0}</b><button type="button" data-b="1" ${v.bc[0] ? '' : 'disabled'}>+</button></div></div>`).join('') +
+      `<div class="foot" style="padding:8px 10px"><span class="sum">${n} label${n === 1 ? '' : 's'} to add</span><button type="button" class="pri" id="lbGo" ${n ? '' : 'disabled'}>Add to label list</button></div></div>`;
+  }
+  async function showProduct(pid) { try { await loadLocs(); } catch (e) {} lbPid = pid; lbN = {}; drawCard(); lbMsg(''); }
+  const lbFind = ProductFind($('lbIn'), {onProduct: showProduct, addBtn: $('lbAdd')});
+  window.barScan = async (code, forced) => {
+    let v = forced || byBc.get(bcn(code)); const dups = allBc.get(bcn(code)) || [];
+    if (!forced && dups.length > 1) { v = await askDup(dups, shopLoc(), 'Scan ' + code); if (!v) return; }
+    if (!v) { lbMsg('Barcode ' + code + ' is not in the website data. Search by name instead.', 'bad'); beep('bad'); return; }
+    beep('ok'); await showProduct(v.pid); lbMsg(v.pt + ': pick how many labels for each size.', 'ok');
+  };
+  const lbGo = () => { const v = $('lbIn').value.trim(); $('lbIn').value = ''; if (v) window.barScan(v); };
+  $('lbIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); lbGo(); } });
+  $('lbAdd').onclick = lbGo;
+  $('lbCam').onclick = () => camera('bar');
+  $('lbCard').onclick = async e => {
+    const loc = shopLoc();
+    const b = e.target.closest('[data-b]');
+    if (b) { const vid = b.closest('.lbr').dataset.v; lbN[vid] = Math.max(0, Math.min(500, (lbN[vid] || 0) + Number(b.dataset.b))); drawCard(); return; }
+    if (e.target.closest('#lbStock')) { V.filter(v => v.pid === lbPid && v.bc[0]).forEach(v => { lbN[v.vid] = Math.min(500, v.q[loc] || 0); }); drawCard(); return; }
+    if (e.target.closest('#lbZero')) { lbN = {}; drawCard(); return; }
+    if (e.target.closest('#lbX')) { lbPid = ''; lbN = {}; drawCard(); return; }
+    if (e.target.closest('#lbGo')) {
+      const items = Object.entries(lbN).filter(([vid, n]) => n > 0 && (byVid.get(vid) || {bc: []}).bc[0]).map(([vid, n]) => ({vid, qty: n}));
+      if (!items.length) return;
+      $('lbGo').disabled = true;
+      try { await Store.labels('add', items); const t = items.reduce((a, i) => a + i.qty, 0); lbPid = ''; lbN = {}; drawCard(); await loadLabels(); lbMsg(`${t} label${t === 1 ? '' : 's'} added to the list below.`, 'ok'); }
+      catch (err) { lbMsg(err.message, 'bad'); drawCard(); }
+    }
+  };
 })();
 
 /* =====================================================================
@@ -699,8 +784,9 @@ async function sync(force) {
   new Set([...Object.keys(sent.counts), ...Object.keys(b.counts)]).forEach(k => { const d = (sent.counts[k] || 0) - (b.counts[k] || 0); if (d) dc[k] = d; });
   new Set([...Object.keys(sent.outside), ...Object.keys(b.outside)]).forEach(k => { const o = sent.outside[k] || b.outside[k], d = ((sent.outside[k] || {}).n || 0) - ((b.outside[k] || {}).n || 0); if (d) dout[k] = {pt: o.pt, t: o.t, n: d}; });
   s.vids.forEach(x => { if (!b.vids.has(String(x[0]))) dv.push(x); });
+  const sentDrops = (s.drops || []).slice();
   try {
-    const r = await Store.takeApply(s.id, dc, dout, dv);
+    const r = await Store.takeApply(s.id, dc, dout, dv, sentDrops);
     if (take !== s) return false;
     if (r.status === 'ended' || r.status === 'cancelled') { tkMsg('This stock take was ' + (r.status === 'ended' ? 'ended' : 'cancelled') + ' on another device.', 'bad'); take = null; saveUi(); takeOpen(); return 'ended'; }
     const before = JSON.stringify([s.counts, s.outside, s.vids.length, s.members]);
@@ -711,6 +797,7 @@ async function sync(force) {
     const have = new Set(r.vids.map(x => String(x[0])));
     const extra = s.vids.filter(x => !have.has(String(x[0])));
     s.vids = r.vids.filter(x => byVid.has(String(x[0]))).concat(extra);
+    s.drops = (s.drops || []).filter(x => !sentDrops.includes(x)); s.dropped = r.dropped || s.dropped || [];
     s.counts = cc; s.outside = oo; window.__meId = s.meId = r.meId || s.meId; s.members = r.members || {}; s.code = r.code || s.code; s.pushedBy = r.pushedBy;
     s.base = {counts: Object.assign({}, r.counts), outside: JSON.parse(JSON.stringify(r.outside || {})), vids: have};
     s.dirty = JSON.stringify(cc) !== JSON.stringify(r.counts) || JSON.stringify(oo) !== JSON.stringify(r.outside || {}) || extra.length > 0;
@@ -837,7 +924,7 @@ function begin(s) {
   take = s; if (take.remote) take.base = snapOf(take); if (!take.mode) take.mode = (take.filters && take.filters.open) || (take.vids || []).some(x => x[1] > 0) ? 'count' : 'add'; take.counts = take.counts || {}; take.outside = take.outside || {}; take.dirty = false;
   { const fl = take.filters || {}; Object.keys(take.outside).forEach(k => { const v = byVid.get(k), o = take.outside[k]; if (v && o && o.n > 0 && inFilter(v, fl)) { take.counts[k] = (take.counts[k] || 0) + o.n; delete take.outside[k]; take.dirty = true; } }); }
   { const fl = take.filters || {}, have = new Set((take.vids || []).map(x => x[0])); take.vids = take.vids || [];
-    if (fl.col && take.loc) takeVars(fl, take.loc).forEach(v => { if (!have.has(v.vid)) { take.vids.push([v.vid, 0]); take.dirty = true; } }); }   // counts started before this change: add the sizes that had no stock
+    if (fl.col && take.loc) takeVars(fl, take.loc).forEach(v => { if (!have.has(v.vid) && !(take.dropped || []).includes(v.vid)) { take.vids.push([v.vid, 0]); take.dirty = true; } }); }   // counts started before this change: add the sizes that had no stock
   filt = 'all'; endArmed = false; syncScopeSeg();
   $('tkSetup').hidden = true; $('tkResult').hidden = true; $('tkRun').hidden = false; $('pushBox').hidden = true;
   $('tkTitle').textContent = s.name; $('tkSub').textContent = 'Counting at ' + s.locName;
@@ -860,7 +947,7 @@ function drawTake(flash) {
   const icon = {red: '', blue: '', green: '✓', extra: '!', zero: ''};
   $('tkList').innerHTML = groups.size ? [...groups.values()].sort((a, b) => a[0].v.pt.localeCompare(b[0].v.pt)).map(g => {
     const p = g[0].v, img = p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase());
-    return `<div class="pc"><div class="ph"><div class="im">${img}</div><b>${E(p.pt)}</b></div>` + g.sort((a, b) => a.v.t.localeCompare(b.v.t, undefined, {numeric: true})).map(r => `<div class="vr ${r.st}${flash === r.v.vid ? ' flash' : ''}" data-vid="${E(r.v.vid)}"><div class="vt">${E(r.v.t)}</div><div class="tl"><b>${r.ex}</b><span>Stock</span></div><div class="tl"><b>${r.n}</b><span>Scanned</span></div><div class="tl l"><b>${r.n > r.ex ? '+' + (r.n - r.ex) : r.ex - r.n}</b><span>${r.n > r.ex ? 'Extra' : 'Left'}</span></div><div class="stp"><button data-d="-1" ${r.n <= 0 ? 'disabled' : ''}>−</button><button data-d="1">+</button></div><div class="st">${icon[r.st]}</div></div>`).join('') + '</div>';
+    return `<div class="pc"><div class="ph"><div class="im">${img}</div><b style="flex:1">${E(p.pt)}</b><button type="button" class="rmv" data-rmp="${E(p.pid)}" title="Remove this product from the count">✕ Remove</button></div>` + g.sort((a, b) => a.v.t.localeCompare(b.v.t, undefined, {numeric: true})).map(r => `<div class="vr ${r.st}${flash === r.v.vid ? ' flash' : ''}" data-vid="${E(r.v.vid)}"><div class="vt">${E(r.v.t)}</div><div class="tl"><b>${r.ex}</b><span>Stock</span></div><div class="tl"><b>${r.n}</b><span>Scanned</span></div><div class="tl l"><b>${r.n > r.ex ? '+' + (r.n - r.ex) : r.ex - r.n}</b><span>${r.n > r.ex ? 'Extra' : 'Left'}</span></div><div class="stp"><button data-d="-1" ${r.n <= 0 ? 'disabled' : ''}>−</button><button data-d="1">+</button><button type="button" class="rmv" data-rm title="Remove this size from the count">✕</button></div><div class="st">${icon[r.st]}</div></div>`).join('') + '</div>';
   }).join('') : `<div class="empty">${filt === 'all' ? (take.filters && take.filters.open ? 'Scan a barcode to start. Each scan adds that product to the count.' : 'Nothing here.') : 'Nothing in this view.'}</div>`;
   $('tkOutBox').hidden = !out.length;
   $('tkOut').innerHTML = out.map(([k, o]) => `<div class="sess out" data-ov="${E(k)}"><div class="nm"><b>${E(o.pt)}</b><span class="tag">${E(o.t)}</span><small class="bad">Outside your filter</small></div><div class="stp"><button data-od="-1">−</button><b>${o.n}</b><button data-od="1">+</button></div></div>`).join('');
@@ -953,11 +1040,23 @@ function takeScan(code, forced) {
   }
 }
 window.takeScan = takeScan;
+ProductFind($('tkIn'), {addBtn: $('tkAdd'), loc: () => take && take.loc, onVariant: v => takeScan(v.bc[0] || '', v)});
+ProductFind($('bkIn'), {addBtn: $('bkAdd'), loc: () => $('bkFrom').value, onVariant: v => { if (v.bc[0] && byBc.get(bcn(v.bc[0])) === v) window.bulkAdd(v.bc[0]); else bkMsg(v.pt + ' ' + v.t + ' has no unique barcode. Use the Add / remove tab for it.', 'bad'); }});
 $('tkIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = $('tkIn').value; $('tkIn').value = ''; takeScan(v.trim()); } });
 $('tkAdd').onclick = () => { const v = $('tkIn').value; $('tkIn').value = ''; if (v.trim()) takeScan(v.trim()); $('tkIn').focus(); };
 $('tkCam').onclick = () => camera('take');
 $('tkSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; filt = b.dataset.f; document.querySelectorAll('#tkSeg button').forEach(x => x.classList.toggle('on', x === b)); drawTake(); saveUi(); };
+function dropFromTake(vids) {
+  const set = new Set(vids); take.vids = take.vids.filter(x => !set.has(x[0])); vids.forEach(v => { delete take.counts[v]; });
+  take.drops = (take.drops || []).concat(vids.filter(v => !(take.drops || []).includes(v))); take.dropped = (take.dropped || []).concat(vids);
+  take.dirty = true; drawTake();
+}
 $('tkList').onclick = e => {
+  const rm = e.target.closest('[data-rm]'), rp = e.target.closest('[data-rmp]');
+  if (take && (rm || rp)) {
+    const ids = rm ? [rm.closest('.vr').getAttribute('data-vid')] : V.filter(v => v.pid === rp.dataset.rmp && (take.vids.some(x => x[0] === v.vid) || take.counts[v.vid] > 0)).map(v => v.vid);
+    const v0 = byVid.get(ids[0]); dropFromTake(ids); tkMsg(`Removed ${v0 ? v0.pt : 'it'}${rm && v0 ? ' · ' + v0.t : ''} from this count. Scan it again to add it back.`, 'ok'); return;
+  }
   const b = e.target.closest('[data-d]'), row = e.target.closest('.vr'); if (!b || !row || !take) return;
   const vid = row.getAttribute('data-vid'); take.counts[vid] = Math.max(0, (take.counts[vid] || 0) + Number(b.getAttribute('data-d'))); take.dirty = true; endArmed = false; drawTake(vid);
 };
