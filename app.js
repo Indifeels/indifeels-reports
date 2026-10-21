@@ -1805,8 +1805,9 @@
         if (pic) doc.addImage(pic, "JPEG", x + 1.6, y + 1.75, PW, PH); else { doc.setFillColor(235, 235, 235); doc.rect(x + 1.6, y + 1.75, PW, PH, "F"); }
         doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "bold"); doc.setFontSize(8.3);
         doc.text(fit(r.p), x + TX, y + 4.4);
-        doc.text(fit(r.v), x + TX, y + 8.6);
-        const pr = money(r.pr); if (pr) { doc.setTextColor(0, 110, 0); doc.setFontSize(9.2); doc.text(pr, x + TX, y + 13.3); }
+        const big = (t, size, yy) => { let z = size; doc.setFontSize(z); while (z > 6 && doc.getTextWidth(t) > TW) { z -= 0.3; doc.setFontSize(z); } doc.text(t, x + TX, yy); };
+        big(r.v, 10.8, y + 8.9);
+        const pr = money(r.pr); if (pr) { doc.setTextColor(0, 110, 0); big(pr, 11.5, y + 13.5); }
         const b = bars(r.b), mod = Math.min(0.41, 33 / b.total), bx = x + (W - b.total * mod) / 2;
         doc.setFillColor(0, 0, 0); b.rects.forEach(([rx, rw]) => doc.rect(bx + rx * mod, y + 14.45, rw * mod, 5.1, "F"));
       });
