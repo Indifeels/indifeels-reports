@@ -677,6 +677,15 @@ $('tkLoc').onchange = setupScope;
 const snapOf = s => ({counts: Object.assign({}, s.counts), outside: JSON.parse(JSON.stringify(s.outside || {})), vids: new Set((s.vids || []).map(x => String(x[0])))});
 const live = (m, meId) => Object.entries(m || {}).filter(([k, x]) => k !== meId && x && x.at && Date.now() - new Date(x.at).getTime() < 90000).map(([k, x]) => x.name);
 const liveOthers = s => live(s.members, s.meId || window.__meId);
+const PUSH_TRACKED_FROM = Date.parse('2026-10-21T00:40:00Z');
+const pushPill = s => {
+  const when = t => new Date(t).toLocaleString(undefined, {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'});
+  const none = !Object.values(s.counts || {}).some(n => n > 0) && !Object.values(s.outside || {}).some(o => o && o.n > 0);
+  if (s.pushedBy || s.pushedAt) return `<span class="pill pp" style="background:var(--green-bg);color:var(--green)" title="${E(when(s.pushedAt))}">✓ Pushed by ${E(s.pushedBy || 'someone')}</span>`;
+  if (none) return '<span class="pill pp" style="background:var(--grey-bg);color:var(--muted)">Nothing to push</span>';
+  if (s.endedAt && Date.parse(s.endedAt) < PUSH_TRACKED_FROM) return '<span class="pill pp" style="background:var(--grey-bg);color:var(--muted)" title="Counted before pushes were recorded">Push not recorded</span>';
+  return '<span class="pill pp" style="background:var(--info-bg);color:var(--info)">⏳ Pending push</span>';
+};
 const memHtml = s => { const n = Object.values(s.members || {}).map(x => x && x.name).filter(Boolean); return n.length ? ' · ' + E([...new Set(n)].join(', ')) + (liveOthers(s).length ? ' <span style="color:var(--green)">● live</span>' : '') : ''; };
 let syncBusy = false;
 async function sync(force) {
@@ -726,8 +735,8 @@ async function takeOpen() {
     $('tkOpenBox').hidden = !open.length; $('tkDoneBox').hidden = !done.length;
     const when = s => s.updated ? new Date(s.updated).toLocaleString(undefined, {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'}) : '';
     const cnt = s => { const t = tally(s); return t; };
-    $('tkOpen').innerHTML = open.map(s => { const t = cnt(s); return `<div class="sess"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · ${t.s} of ${t.e} counted · saved ${E(when(s))}${memHtml(s)}</small></div><button class="pri" data-resume="${E(s.id)}">${liveOthers(s).length ? 'Add me to ' + E(s.code || 'this') : 'Resume'}</button></div>`; }).join('');
-    $('tkDone').innerHTML = done.map(s => { const t = cnt(s); return `<div class="dn" data-id="${E(s.id)}"><div class="sess dh" role="button"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · ended ${E(when(s))}${s.pushedBy ? ' · <span style="color:var(--green)">pushed by ' + E(s.pushedBy) + (s.pushedAt ? ', ' + E(when({updated: s.pushedAt})) : '') + '</span>' : ''} · tap to see the stock</small></div><span class="cards"><span class="pill" style="background:var(--red-bg);color:var(--red)">${t.miss} missing</span> <span class="pill" style="background:var(--orange-bg);color:var(--orange)">${t.extra} extra</span></span><span class="chev">▸</span></div><div class="dd" hidden></div></div>`; }).join('');
+    $('tkOpen').innerHTML = open.map(s => { const t = cnt(s); return `<div class="sess"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · ${t.s} of ${t.e} counted · saved ${E(when(s))}${memHtml(s)}</small></div><span class="cards"><span class="pill" style="background:${liveOthers(s).length ? 'var(--green-bg)' : 'var(--orange-bg)'};color:${liveOthers(s).length ? 'var(--green)' : 'var(--orange)'}">${liveOthers(s).length ? '● Live: ' + E(liveOthers(s).join(', ')) : '⏸ Paused'}</span></span><button class="pri" data-resume="${E(s.id)}">${liveOthers(s).length ? 'Add me to ' + E(s.code || 'this') : 'Resume'}</button></div>`; }).join('');
+    $('tkDone').innerHTML = done.map(s => { const t = cnt(s); return `<div class="dn" data-id="${E(s.id)}"><div class="sess dh" role="button"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · ended ${E(when(s))}${s.pushedBy ? ' · <span style="color:var(--green)">pushed by ' + E(s.pushedBy) + (s.pushedAt ? ', ' + E(when({updated: s.pushedAt})) : '') + '</span>' : ''} · tap to see the stock</small></div><span class="cards">${pushPill(s)} <span class="pill" style="background:var(--red-bg);color:var(--red)">${t.miss} missing</span> <span class="pill" style="background:var(--orange-bg);color:var(--orange)">${t.extra} extra</span></span><span class="chev">▸</span></div><div class="dd" hidden></div></div>`; }).join('');
     window.__takes = list;
   } catch (e) { /* history is optional */ }
 }
@@ -1015,7 +1024,7 @@ async function openPush(s, box, keepZero) {
       if (take && take === s && take.dirty) await save(false);
       const res = await Store.takePush(s.loc, pushItems(s, box.querySelector('.pz').checked), false, s.mode);
       if (!res || res.error) throw new Error((res && res.error) || 'Failed');
-      if (s.id) Store.takePushed(s.id).then(r => { s.pushedBy = r.by; s.pushedAt = new Date().toISOString(); }).catch(() => {});
+      if (s.id) Store.takePushed(s.id).then(r => { s.pushedBy = r.by; s.pushedAt = new Date().toISOString(); document.querySelectorAll('.dn[data-id="' + s.id + '"] .pp').forEach(el => { el.outerHTML = pushPill(s); }); }).catch(() => {});
       pm.className = 'pm ok'; pm.textContent = `Done: ${res.changed} variants updated (${res.up} up, ${res.down} down).` + (res.warn ? ' ' + res.warn : '');
       box.querySelector('.pcx').textContent = 'Close';
     } catch (e) { pm.className = 'pm bad'; pm.textContent = 'Not finished: ' + e.message; go.disabled = false; }
