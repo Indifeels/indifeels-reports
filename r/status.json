@@ -27,10 +27,10 @@
   "reason": "Daily/Monthly workflow failed; check GitHub Actions"
  },
  "facebook-tracked": {
-  "at": "2026-10-21T20:00+11:00",
-  "code_sha": "e7a02e3142bbef9e163dd0cfd4dc4af0e69c6dc1",
-  "data_through": "2026-10-21T20:00:22.930338+11:00",
-  "last_ok": "2026-10-21T20:00+11:00",
+  "at": "2026-10-22T06:01+11:00",
+  "code_sha": "9ea2659ac5c502d730f24be16b5a87e574e60b10",
+  "data_through": "2026-10-21T23:59:59+11:00",
+  "last_ok": "2026-10-22T06:01+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
