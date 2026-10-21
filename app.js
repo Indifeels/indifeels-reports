@@ -1763,8 +1763,9 @@
   rpBridge("stock-take", {
     setstatus: async (d) => rpAdjCall({ action: "setstatus", pid: rpText(d.pid, 20), status: d.status === "UNLISTED" ? "UNLISTED" : "ACTIVE" }, "Couldn't change the product status"),
     printlabels: async (d) => {
-      // Barcode label sheet in the Indifeels layout: A4, 5 x 13 = 65 labels of 38.1 x 21.2 mm, margins L/R 5 mm, T/B 10.7 mm. Saved as a PDF download.
-      const L = (Array.isArray(d.labels) ? d.labels : []).slice(0, 1500).map((r) => ({ p: rpText(r && r.product, 120), v: rpText(r && r.variant, 40), b: rpText(r && r.barcode, 40), n: Math.max(1, Math.min(500, Math.floor(Number(r && r.copies)) || 1)) })).filter((r) => /^[0-9A-Za-z._-]{3,40}$/.test(r.b));
+      // Same layout as the Barcode Man "Indifeels" template: A4, 5 x 13 = 65 labels of 38.1 x 21.2 mm (margins L/R 5 mm, T/B 10.7 mm).
+      // Each label: product photo on the left, name / size / price (green) beside it, Code 128 bars underneath (no digits). Saved as a PDF download.
+      const L = (Array.isArray(d.labels) ? d.labels : []).slice(0, 1500).map((r) => ({ p: rpText(r && r.product, 120), v: rpText(r && r.variant, 40), b: rpText(r && r.barcode, 40), img: /^https:\/\/[^ ]{5,500}$/.test(String(r && r.image || "")) ? String(r.image) : "", pr: rpText(r && r.price, 20), n: Math.max(1, Math.min(500, Math.floor(Number(r && r.copies)) || 1)) })).filter((r) => /^[0-9A-Za-z._-]{3,40}$/.test(r.b));
       if (!L.length) throw new Error("Nothing to print");
       const start = Math.max(1, Math.min(65, Math.floor(Number(d.start)) || 1));
       const flat = []; L.forEach((r) => { for (let i = 0; i < r.n; i++) flat.push(r); });
@@ -1772,21 +1773,42 @@
       await rpLoadJs("vendor/JsBarcode.all.min.js"); await rpLoadJs("vendor/jspdf.umd.min.js");
       const doc = new window.jspdf.jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
       const W = 38.1, H = 21.2, pitch = W + (210 - 10 - 5 * W) / 4, pages = Math.ceil((start - 1 + flat.length) / 65);
+      const PW = 9.8, PH = 12.41;   // photo box, as in the template
+      const shots = new Map();      // image url -> jpeg data (cropped to the photo box), or "" when it can't be loaded
+      const shot = (url) => shots.get(url) || shots.set(url, new Promise((res) => {
+        if (!url) return res("");
+        const im = new Image(); im.crossOrigin = "anonymous";
+        im.onload = () => {
+          try {
+            const cw = 220, ch = Math.round(cw * PH / PW), c = document.createElement("canvas"); c.width = cw; c.height = ch;
+            const k = Math.max(cw / im.naturalWidth, ch / im.naturalHeight), w = im.naturalWidth * k, h = im.naturalHeight * k, g = c.getContext("2d");
+            g.fillStyle = "#fff"; g.fillRect(0, 0, cw, ch); g.drawImage(im, (cw - w) / 2, (ch - h) / 2, w, h); res(c.toDataURL("image/jpeg", 0.85));
+          } catch (e) { res(""); }
+        };
+        im.onerror = () => res(""); im.src = url + (url.includes("?") ? "&" : "?") + "width=300";
+        setTimeout(() => res(""), 15000);
+      })).get(url);
+      const pics = new Map(); for (const u of [...new Set(flat.map((r) => r.img))]) pics.set(u, await shot(u));
       const bars = (text) => {
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         window.JsBarcode(svg, text, { format: "CODE128", width: 1, height: 30, margin: 0, displayValue: false });
         return { total: parseFloat(svg.getAttribute("width")) || 1, rects: [...svg.querySelectorAll("rect")].slice(1).map((r) => [parseFloat(r.getAttribute("x")) || 0, parseFloat(r.getAttribute("width")) || 0]) };
       };
+      const money = (p) => { const n = parseFloat(p); return Number.isFinite(n) ? "$" + (Math.abs(n - Math.round(n)) < 0.005 ? String(Math.round(n)) : n.toFixed(2)) : ""; };
+      const TX = 12.36, TW = 25.3;  // text column: starts 12.36 mm from the label edge, 25.3 mm wide
+      const fit = (text) => { const words = String(text).split(/\s+/).filter(Boolean); let out = ""; for (const w of words) { const t = out ? out + " " + w : w; if (doc.getTextWidth(t) > TW && out) break; out = t; } return out; };
       flat.forEach((r, i) => {
         const slot = start - 1 + i, pg = Math.floor(slot / 65), k = slot % 65;
         if (k === 0 && pg > 0) doc.addPage();
         const x = 5 + (k % 5) * pitch, y = 10.7 + Math.floor(k / 5) * H;
-        doc.setTextColor(0); doc.setFont("helvetica", "bold"); doc.setFontSize(6);
-        doc.text(doc.splitTextToSize(r.p, W - 3.2).slice(0, 2), x + 1.6, y + 3.0, { lineHeightFactor: 1.05 });
-        const b = bars(r.b), mod = Math.min(0.34, 34 / b.total), bx = x + (W - b.total * mod) / 2;
-        doc.setFillColor(0, 0, 0); b.rects.forEach(([rx, rw]) => doc.rect(bx + rx * mod, y + 6.4, rw * mod, 8.2, "F"));
-        doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.text(r.b, x + 1.6, y + 18.2);
-        doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text(r.v, x + W - 1.6, y + 19.4, { align: "right" });
+        const pic = pics.get(r.img);
+        if (pic) doc.addImage(pic, "JPEG", x + 1.6, y + 1.75, PW, PH); else { doc.setFillColor(235, 235, 235); doc.rect(x + 1.6, y + 1.75, PW, PH, "F"); }
+        doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "bold"); doc.setFontSize(8.3);
+        doc.text(fit(r.p), x + TX, y + 4.4);
+        doc.text(fit(r.v), x + TX, y + 8.6);
+        const pr = money(r.pr); if (pr) { doc.setTextColor(0, 110, 0); doc.setFontSize(9.2); doc.text(pr, x + TX, y + 13.3); }
+        const b = bars(r.b), mod = Math.min(0.41, 33 / b.total), bx = x + (W - b.total * mod) / 2;
+        doc.setFillColor(0, 0, 0); b.rects.forEach(([rx, rw]) => doc.rect(bx + rx * mod, y + 14.45, rw * mod, 5.1, "F"));
       });
       doc.save("indifeels-barcode-labels-" + new Date().toISOString().slice(0, 10) + ".pdf");
       return { ok: true, labels: flat.length, sheets: pages };

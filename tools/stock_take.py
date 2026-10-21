@@ -24,7 +24,7 @@ NOISE = ("do not delete", "filter index", "all products", "home page", "frontpag
 PRODUCTS = """{ products(query:"status:active OR status:unlisted OR status:draft"){ edges{ node{
   id title handle status onlineStoreUrl featuredImage{ url }
   collections{ edges{ node{ id title } } }
-  variants{ edges{ node{ id title barcode inventoryItem{ id inventoryLevels{ edges{ node{ location{ id name } quantities(names:["available"]){ quantity } } } } } } } } } } } }"""
+  variants{ edges{ node{ id title barcode price inventoryItem{ id inventoryLevels{ edges{ node{ location{ id name } quantities(names:["available"]){ quantity } } } } } } } } } } } }"""
 
 
 CHANNEL_HIDDEN = ("published_status:unpublished", "published_status:shop-72-hidden", "published_status:pos-hidden",
@@ -81,7 +81,7 @@ def build():
             if t and not any(n in t.lower() for n in NOISE) and t not in products[par]["cols"]:
                 products[par]["cols"].append(t)
         elif "/ProductVariant/" in gid and par in products:
-            v = {"vid": num(gid), "t": l.get("title", ""), "bc": [b for b in [(l.get("barcode") or "").strip()] if b], "q": {}}
+            v = {"vid": num(gid), "t": l.get("title", ""), "bc": [b for b in [(l.get("barcode") or "").strip()] if b], "pr": str(l.get("price") or ""), "q": {}}
             products[par]["variants"].append(v)
             variants[gid] = v
             it = (l.get("inventoryItem") or {}).get("id")
