@@ -1792,6 +1792,7 @@
       return { ok: true, labels: flat.length, sheets: pages };
     },
     adjustlist: async (d) => rpAdjCall({ action: "adjustlist", loc: rpText(d.loc, 40), mode: d.mode === "remove" ? "remove" : "add", dry: !!d.dry, items: rpVidQty(d.items, 500) }, "Couldn't update the stock"),
+    deletevariant: async (d) => rpAdjCall({ action: "deletevariant", vid: rpText(d.vid, 20) }, "Couldn't delete the variant"),
     setbarcode: async (d) => rpAdjCall({ action: "setbarcode", vid: rpText(d.vid, 20), barcode: rpText(d.barcode, 40) }, "Couldn't save the barcode"),
     labelqueue: async (d) => rpAdjCall({ action: "labelqueue", op: ["add", "list", "done", "setcopies", "remove"].includes(d.op) ? d.op : "list", items: rpVidQty(d.items, 200) }, "Couldn't update the label list"),
     bulklocs: async () => rpStockCall({ action: "locations" }, "Couldn't load locations"),

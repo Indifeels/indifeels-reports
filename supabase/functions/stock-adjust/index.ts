@@ -124,6 +124,23 @@ async function setStatus(body: any) {
   return json({ ok: true, pid, status: p.status, url: p.onlineStoreUrl || "", channels: null });
 }
 
+// Delete ONE variant that shares its barcode with another variant. Refuses if it is not a duplicate or still holds stock.
+async function deleteVariant(body: any) {
+  const vid = String(body.vid || "");
+  if (!VID.test(vid)) return json({ error: "Bad variant" }, 400);
+  const d = await gql(`query($id:ID!){ productVariant(id:$id){ id title barcode product{ id title variantsCount{ count } } inventoryItem{ inventoryLevels(first:20){ nodes{ quantities(names:["available"]){ quantity } } } } } }`, { id: `gid://shopify/ProductVariant/${vid}` });
+  const v = d.productVariant; if (!v) return json({ error: "Variant not found (already deleted?)" }, 404);
+  if (!v.barcode) return json({ error: "Only variants with a duplicated barcode can be deleted here" }, 400);
+  const dup = await gql(`query($q:String!){ productVariants(first:5, query:$q){ nodes{ id } } }`, { q: `barcode:${v.barcode}` });
+  if (!dup.productVariants.nodes.some((n: any) => n.id !== v.id)) return json({ error: "This is the only variant with that barcode, so it is not a duplicate" }, 400);
+  if ((v.product?.variantsCount?.count ?? 0) < 2) return json({ error: "It is the only variant of its product" }, 400);
+  const units = (v.inventoryItem?.inventoryLevels?.nodes || []).reduce((a: number, l: any) => a + q(l), 0);
+  if (units > 0) return json({ error: `${v.product.title} ${v.title} still has ${units} in stock. Move it to the other variant first.` }, 400);
+  const m = await gql(`mutation($p:ID!,$v:[ID!]!){ productVariantsBulkDelete(productId:$p, variantsIds:$v){ userErrors{ message } } }`, { p: v.product.id, v: [v.id] });
+  const ue = m.productVariantsBulkDelete.userErrors; if (ue?.length) return json({ error: ue[0].message }, 400);
+  return json({ ok: true, vid, name: `${v.product.title} ${v.title}` });
+}
+
 async function labelQueue(body: any, svc: any) {
   const op = String(body.op || "list");
   if (op === "setcopies") {
@@ -186,6 +203,7 @@ Deno.serve(async (req: Request) => {
     if (body.action === "adjustlist") return await adjustList(body);
     if (body.action === "setbarcode") return await setBarcode(body);
     if (body.action === "setstatus") return await setStatus(body);
+    if (body.action === "deletevariant") return await deleteVariant(body);
     if (body.action === "labelqueue") return await labelQueue(body, svc);
     return json({ error: "Unknown action" }, 400);
   } catch (e) {

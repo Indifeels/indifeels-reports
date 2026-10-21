@@ -40,6 +40,11 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .sso div{padding:9px 10px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;gap:10px}
 .sso div:hover{background:var(--grey-bg)}.sso div small{color:var(--muted)}
 .sso .none{color:var(--muted);cursor:default}
+.dupov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:center;justify-content:center;padding:12px}
+.dupov>div{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;max-width:560px;width:100%;max-height:85vh;overflow:auto}
+.dupv{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--border);border-radius:10px;padding:8px;margin:6px 0}
+.dupv .nm{flex:1;min-width:150px}.dupv .nm small{display:block;color:var(--muted)}
+.dupv button.dd{color:var(--red)}.dupv button.dd.arm{background:var(--red);color:#fff}
 .msg{min-height:18px;margin-top:6px;font-size:13px;color:var(--muted)}.msg.bad{color:var(--red)}.msg.ok{color:var(--green)}
 .scan{display:flex;gap:8px}.scan input{flex:1}.scan button{padding:0 16px}
 .sw{flex:none;height:42px;width:42px;padding:0;font-size:18px}
@@ -207,6 +212,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
         <div style="margin-top:8px"><button type="button" id="tkClearAll" hidden>✕ Clear selection</button></div>
         <div class="foot"><span class="sum" id="tkScope">Nothing selected: an open count. Scan any product and it joins the count.</span><button class="pri" id="tkStart" disabled>Start stock take</button></div>
       </div>
+      <div class="bk"><h3>Duplicate barcodes</h3><div class="sum">Two variants with the same barcode make scans land on the wrong one. Find them and delete the one you don't need.</div><div style="margin-top:8px"><button type="button" id="dupFind">Find duplicate barcodes</button></div><div id="dupList"></div></div>
       <div class="bk" id="tkOpenBox" hidden><h3>Paused stock takes</h3><div id="tkOpen"></div></div>
       <div class="bk" id="tkDoneBox" hidden><h3>Finished</h3><div id="tkDone"></div></div>
     </div>
@@ -294,6 +300,7 @@ const Store = PREVIEW ? {
   takePush: async (loc, items, dry, mode) => ({ok: true, dry: !!dry, variants: items.length, changed: items.length, same: 0, up: items.length, down: 0, unitsUp: items.reduce((a, i) => a + i.qty, 0), unitsDown: 0, toZero: 0}),
   adjust: async (loc, mode, items, dry) => { await new Promise(r => setTimeout(r, 400)); if (!dry) items.forEach(i => { const v = byVid.get(i.vid); v.q[loc] = Math.max(0, (v.q[loc] || 0) + (mode === 'remove' ? -i.qty : i.qty)); }); return {ok: true, variants: items.length, units: items.reduce((a, i) => a + i.qty, 0)}; },
   setBarcode: async (vid, barcode) => ({ok: true, vid, barcode}),
+  deleteVariant: async vid => ({ok: true, vid}),
   printLabels: async () => { throw new Error('The PDF works inside the app, not in this preview.'); },
   setStatus: async (pid, status) => ({ok: true, pid, status, url: '', channels: 7}),
   labels: async (op, items) => { let q = LS.get('st-demo-labels') || []; if (op === 'add') { items.forEach(i => { const v = byVid.get(i.vid); q.push({id: uid(), vid: i.vid, product: v.pt, variant: v.t, barcode: v.bc[0] || '', copies: i.qty}); }); LS.set('st-demo-labels', q); } if (op === 'done') { q = []; LS.set('st-demo-labels', q); } if (op === 'setcopies') { items.forEach(i => { const r = q.find(x => x.vid === i.vid); if (r) r.copies = i.qty; }); LS.set('st-demo-labels', q); } if (op === 'remove') { q = q.filter(x => !items.some(i => i.vid === x.vid)); LS.set('st-demo-labels', q); } return {ok: true, rows: q}; },
@@ -307,6 +314,7 @@ const Store = PREVIEW ? {
   takePush: (loc, items, dry, mode) => call('takepush', {loc, items, dry, mode}, 120000),
   adjust: (loc, mode, items, dry) => call('adjustlist', {loc, mode, items, dry}, 120000),
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
+  deleteVariant: vid => call('deletevariant', {vid}, 40000),
   setStatus: (pid, status) => call('setstatus', {pid, status}, 40000),
   printLabels: (labels, start) => call('printlabels', {labels: labels.map(r => ({product: r.product, variant: r.variant, barcode: r.barcode, copies: r.copies})), start}, 30000),
   labels: (op, items) => call('labelqueue', {op, items}),
@@ -517,8 +525,10 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     const it = items.find(i => i.vid === v.vid); if (it) it.qty = Math.min(1000, it.qty + n); else items.push({vid: v.vid, qty: n, label: false});
     draw(); const el = document.querySelector(`.adit[data-v="${v.vid}"]`); if (el) { el.classList.add('flash'); el.scrollIntoView({block: 'nearest', behavior: 'smooth'}); setTimeout(() => el.classList.remove('flash'), 600); }
   }
-  window.adjScan = code => {
-    const v = byBc.get(bcn(code)); if (!v) { adMsg('Barcode ' + code + ' is not in the website data. Find the product in the list instead.', 'bad'); beep('bad'); return; }
+  window.adjScan = async code => {
+    let v = byBc.get(bcn(code)); const dups = allBc.get(bcn(code)) || [];
+    if (dups.length > 1) { v = await askDup(dups, loc(), 'Scan ' + code); if (!v) return; }
+    if (!v) { adMsg('Barcode ' + code + ' is not in the website data. Find the product in the list instead.', 'bad'); beep('bad'); return; }
     adMsg(`${v.pt} · ${v.t} added.`, 'ok'); beep('ok'); put(v, 1);
   };
   window.adjOpen = async () => {
@@ -807,9 +817,60 @@ function drawTake(flash) {
   if (take.dirty && !window.__autoT) window.__autoT = setTimeout(() => { window.__autoT = 0; if (take && take.dirty && !pushBusy) save(false, true); }, 1500);
   $('tkEnd').classList.toggle('arm', endArmed); $('tkEnd').textContent = endArmed ? `Tap again: end (${L} left, ${X + outN} extra)` : 'End stock take';
 }
-function takeScan(code) {
+const dupPick = new Map();
+async function removeVariant(vid) {
+  await Store.deleteVariant(vid);
+  const v = byVid.get(vid); if (!v) return;
+  byVid.delete(vid); const i = V.indexOf(v); if (i >= 0) V.splice(i, 1);
+  allBc.forEach((arr, k) => { const j = arr.indexOf(v); if (j >= 0) { arr.splice(j, 1); if (arr.length) byBc.set(k, arr.slice().sort((x, y) => tot(y) - tot(x))[0]); else { allBc.delete(k); byBc.delete(k); } } });
+  DATA.products.forEach(p => { p.variants = p.variants.filter(x => String(x.vid) !== vid); });
+  if (take) { take.vids = take.vids.filter(x => x[0] !== vid); delete take.counts[vid]; take.dirty = true; }
+}
+/* Pick which of several variants sharing one barcode to use; the others can be deleted from Shopify here. */
+function askDup(arr, loc, title) {
+  return new Promise(res => {
+    let list = arr.slice(); const ov = document.createElement('div'); ov.className = 'dupov';
+    const draw = (msg, bad) => {
+      if (list.length < 2) { ov.remove(); res(list[0] || null); return; }
+      ov.innerHTML = `<div><h3 style="margin:0 0 4px">Duplicate variants</h3><div class="sum">${E(title)}: this barcode is on ${list.length} variants. Choose the one to use. You can delete the one you don't need.</div>` +
+        list.map(r => `<div class="dupv" data-v="${E(r.vid)}"><div class="nm"><b>${E(r.pt)}</b> · ${E(r.t)}<small>Stock here: ${r.q[loc] || 0} · all locations: ${tot(r)}</small></div><button type="button" class="pri" data-use>Use this one</button><button type="button" class="dd" data-del>Delete</button></div>`).join('') +
+        `<div class="msg ${bad ? 'bad' : ''}">${E(msg || '')}</div><div style="text-align:right"><button type="button" data-x>Cancel</button></div></div>`;
+    };
+    ov.onclick = async e => {
+      if (e.target.closest('[data-x]')) { ov.remove(); res(null); return; }
+      const row = e.target.closest('.dupv'); if (!row) return; const r = byVid.get(row.dataset.v);
+      if (e.target.closest('[data-use]')) { ov.remove(); res(r); return; }
+      const b = e.target.closest('[data-del]'); if (!b) return;
+      if (!b.classList.contains('arm')) { b.classList.add('arm'); b.textContent = 'Tap again to delete'; setTimeout(() => { if (b.isConnected) { b.classList.remove('arm'); b.textContent = 'Delete'; } }, 5000); return; }
+      b.disabled = true; b.textContent = 'Deleting…';
+      try { await removeVariant(r.vid); list = list.filter(x => x !== r); draw(r.pt + ' ' + r.t + ' deleted.'); }
+      catch (err) { draw(err.message, true); }
+    };
+    draw(); document.body.appendChild(ov);
+  });
+}
+$('dupFind').onclick = () => {
+  const groups = [...allBc.entries()].filter(([k, a]) => a.length > 1);
+  const box = $('dupList');
+  if (!groups.length) { box.innerHTML = '<div class="msg ok">No duplicate barcodes.</div>'; return; }
+  box.innerHTML = `<div class="msg">${groups.length} barcode${groups.length === 1 ? '' : 's'} used more than once. Tap one to choose and delete.</div>` + groups.slice(0, 60).map(([k, a]) => `<div class="dupv" data-k="${E(k)}"><div class="nm"><b>${E(a[0].pt)}</b> · ${E(a[0].t)}<small>barcode ${E(k)} · ${a.map(r => E(r.pt + ' ' + r.t) + ' (' + tot(r) + ')').join(' | ')}</small></div><button type="button">Review</button></div>`).join('') + (groups.length > 60 ? `<div class="msg">…and ${groups.length - 60} more.</div>` : '');
+};
+$('dupList').onclick = async e => {
+  const row = e.target.closest('.dupv'); if (!row || !e.target.closest('button')) return;
+  const arr = allBc.get(row.dataset.k); if (!arr || arr.length < 2) return;
+  await askDup(arr, ($('tkLoc') || {}).value, 'Barcode ' + row.dataset.k); $('dupFind').onclick();
+};
+function takeScan(code, forced) {
   if (!take) return;
-  const v = take ? pickBc(code, take.loc, take.filters) : byBc.get(bcn(code)); endArmed = false;
+  let v = forced || (take ? pickBc(code, take.loc, take.filters) : byBc.get(bcn(code))); endArmed = false;
+  if (!forced) {
+    const k = bcn(code), arr = allBc.get(k) || [];
+    if (arr.length > 1) {
+      const pk = byVid.get(dupPick.get(k));
+      if (pk && arr.includes(pk)) v = pk;
+      else { askDup(arr, take.loc, 'Scan ' + code).then(x => { if (x) { dupPick.set(k, x.vid); takeScan(code, x); } }); return; }
+    }
+  }
   if (!v) { tkMsg('Barcode ' + code + ' is not in the website data.', 'bad'); beep('bad'); return; }
   if (take.filters && take.filters.open) {
     const whole = take.filters.scope === 'product', have = new Set(take.vids.map(x => x[0]));
