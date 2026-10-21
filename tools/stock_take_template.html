@@ -306,6 +306,8 @@ const Store = PREVIEW ? {
   labels: async (op, items) => { let q = LS.get('st-demo-labels') || []; if (op === 'add') { items.forEach(i => { const v = byVid.get(i.vid); q.push({id: uid(), vid: i.vid, product: v.pt, variant: v.t, barcode: v.bc[0] || '', copies: i.qty}); }); LS.set('st-demo-labels', q); } if (op === 'done') { q = []; LS.set('st-demo-labels', q); } if (op === 'setcopies') { items.forEach(i => { const r = q.find(x => x.vid === i.vid); if (r) r.copies = i.qty; }); LS.set('st-demo-labels', q); } if (op === 'remove') { q = q.filter(x => !items.some(i => i.vid === x.vid)); LS.set('st-demo-labels', q); } return {ok: true, rows: q}; },
   takeList: async () => LS.get('st-demo-takes') || [],
   takeSave: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
+  takeApply: async (id, counts, outside, vids) => { const a = LS.get('st-demo-takes') || [], s = a.find(x => x.id === id); return {id, code: 'ST-0001', status: s ? s.status || 'open' : 'open', counts: s ? s.counts : {}, outside: s ? s.outside : {}, vids: s ? s.vids : [], members: {}}; },
+  takePushed: async () => ({ok: true, by: 'You'}),
   takeEnd: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {status: 'ended', updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
 } : {
   locs: () => call('bulklocs').catch(() => ({locations: DATA.locations || []})),   // the report data carries the locations too
@@ -321,6 +323,8 @@ const Store = PREVIEW ? {
   takeList: () => call('takelist'),
   takeSave: s => call('takesave', {session: s}),
   takeEnd: s => call('takeend', {session: s}),
+  takeApply: (id, counts, outside, vids) => call('takeapply', {id, counts, outside, vids}, 30000),
+  takePushed: id => call('takepushed', {id}, 20000),
 };
 
 /* ---------- tabs ---------- */
@@ -334,7 +338,7 @@ async function applyUi(ui) {
     try {
       await takeOpen();
       const s = (window.__takes || []).find(x => x.id === ui.take && x.status !== 'ended');
-      if (s) { begin(JSON.parse(JSON.stringify(s))); if (['all', 'left', 'done', 'extra'].includes(ui.filt)) { filt = ui.filt; document.querySelectorAll('#tkSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === filt)); drawTake(); saveUi(); } }
+      if (s) { const c0 = JSON.parse(JSON.stringify(s)); c0.remote = true; begin(c0); if (['all', 'left', 'done', 'extra'].includes(ui.filt)) { filt = ui.filt; document.querySelectorAll('#tkSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === filt)); drawTake(); saveUi(); } }
     } catch (e) {}
   }
 }
@@ -669,6 +673,40 @@ ssDes.onpick(setupScope);
 $('tkClearAll').onclick = () => { ssCol.reset(); ssSize.reset(); ssDes.reset(); refreshSetupLists(); setupScope(); };
 $('tkLoc').onchange = setupScope;
 
+/* ---------- shared stock takes: several people scan into one list ---------- */
+const snapOf = s => ({counts: Object.assign({}, s.counts), outside: JSON.parse(JSON.stringify(s.outside || {})), vids: new Set((s.vids || []).map(x => String(x[0])))});
+const live = (m, meId) => Object.entries(m || {}).filter(([k, x]) => k !== meId && x && x.at && Date.now() - new Date(x.at).getTime() < 90000).map(([k, x]) => x.name);
+const liveOthers = s => live(s.members, s.meId || window.__meId);
+const memHtml = s => { const n = Object.values(s.members || {}).map(x => x && x.name).filter(Boolean); return n.length ? ' · ' + E([...new Set(n)].join(', ')) + (liveOthers(s).length ? ' <span style="color:var(--green)">● live</span>' : '') : ''; };
+let syncBusy = false;
+async function sync(force) {
+  if (!take || !take.remote || !take.base) return false;
+  if (syncBusy) return false; syncBusy = true;
+  const s = take, sent = snapOf(s), b = s.base, dc = {}, dout = {}, dv = [];
+  new Set([...Object.keys(sent.counts), ...Object.keys(b.counts)]).forEach(k => { const d = (sent.counts[k] || 0) - (b.counts[k] || 0); if (d) dc[k] = d; });
+  new Set([...Object.keys(sent.outside), ...Object.keys(b.outside)]).forEach(k => { const o = sent.outside[k] || b.outside[k], d = ((sent.outside[k] || {}).n || 0) - ((b.outside[k] || {}).n || 0); if (d) dout[k] = {pt: o.pt, t: o.t, n: d}; });
+  s.vids.forEach(x => { if (!b.vids.has(String(x[0]))) dv.push(x); });
+  try {
+    const r = await Store.takeApply(s.id, dc, dout, dv);
+    if (take !== s) return false;
+    if (r.status === 'ended') { tkMsg('This stock take was ended on another device.', 'bad'); take = null; saveUi(); takeOpen(); return 'ended'; }
+    const before = JSON.stringify([s.counts, s.outside, s.vids.length, s.members]);
+    // changes made on this device while the request was in flight stay on top of the merged list
+    const cc = Object.assign({}, r.counts), oo = JSON.parse(JSON.stringify(r.outside || {}));
+    new Set([...Object.keys(s.counts), ...Object.keys(sent.counts)]).forEach(k => { const d = (s.counts[k] || 0) - (sent.counts[k] || 0); if (d) cc[k] = Math.max(0, (cc[k] || 0) + d); });
+    new Set([...Object.keys(s.outside), ...Object.keys(sent.outside)]).forEach(k => { const d = ((s.outside[k] || {}).n || 0) - ((sent.outside[k] || {}).n || 0); if (d) { const o = oo[k] || (oo[k] = {pt: (s.outside[k] || {}).pt, t: (s.outside[k] || {}).t, n: 0}); o.n = Math.max(0, (o.n || 0) + d); } });
+    const have = new Set(r.vids.map(x => String(x[0])));
+    const extra = s.vids.filter(x => !have.has(String(x[0])));
+    s.vids = r.vids.filter(x => byVid.has(String(x[0]))).concat(extra);
+    s.counts = cc; s.outside = oo; window.__meId = s.meId = r.meId || s.meId; s.members = r.members || {}; s.code = r.code || s.code; s.pushedBy = r.pushedBy;
+    s.base = {counts: Object.assign({}, r.counts), outside: JSON.parse(JSON.stringify(r.outside || {})), vids: have};
+    s.dirty = JSON.stringify(cc) !== JSON.stringify(r.counts) || JSON.stringify(oo) !== JSON.stringify(r.outside || {}) || extra.length > 0;
+    return JSON.stringify([s.counts, s.outside, s.vids.length, s.members]) !== before;
+  } catch (e) { if (force) throw e; return false; }
+  finally { syncBusy = false; }
+}
+setInterval(() => { if (take && take.remote && !pushBusy && !document.hidden) sync().then(c => { if (c === true && take) drawTake(); }); }, 4000);
+
 async function takeOpen() {
   if (take) return;
   saveUi();
@@ -688,12 +726,12 @@ async function takeOpen() {
     $('tkOpenBox').hidden = !open.length; $('tkDoneBox').hidden = !done.length;
     const when = s => s.updated ? new Date(s.updated).toLocaleString(undefined, {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'}) : '';
     const cnt = s => { const t = tally(s); return t; };
-    $('tkOpen').innerHTML = open.map(s => { const t = cnt(s); return `<div class="sess"><div class="nm"><b>${E(s.name)}</b><small>${E(s.locName)} · ${t.s} of ${t.e} counted · saved ${E(when(s))}</small></div><button class="pri" data-resume="${E(s.id)}">Resume</button></div>`; }).join('');
-    $('tkDone').innerHTML = done.map(s => { const t = cnt(s); return `<div class="dn" data-id="${E(s.id)}"><div class="sess dh" role="button"><div class="nm"><b>${E(s.name)}</b><small>${E(s.locName)} · ended ${E(when(s))} · tap to see the stock</small></div><span class="cards"><span class="pill" style="background:var(--red-bg);color:var(--red)">${t.miss} missing</span> <span class="pill" style="background:var(--orange-bg);color:var(--orange)">${t.extra} extra</span></span><span class="chev">▸</span></div><div class="dd" hidden></div></div>`; }).join('');
+    $('tkOpen').innerHTML = open.map(s => { const t = cnt(s); return `<div class="sess"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · ${t.s} of ${t.e} counted · saved ${E(when(s))}${memHtml(s)}</small></div><button class="pri" data-resume="${E(s.id)}">${liveOthers(s).length ? 'Add me to ' + E(s.code || 'this') : 'Resume'}</button></div>`; }).join('');
+    $('tkDone').innerHTML = done.map(s => { const t = cnt(s); return `<div class="dn" data-id="${E(s.id)}"><div class="sess dh" role="button"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · ended ${E(when(s))}${s.pushedBy ? ' · <span style="color:var(--green)">pushed by ' + E(s.pushedBy) + (s.pushedAt ? ', ' + E(when({updated: s.pushedAt})) : '') + '</span>' : ''} · tap to see the stock</small></div><span class="cards"><span class="pill" style="background:var(--red-bg);color:var(--red)">${t.miss} missing</span> <span class="pill" style="background:var(--orange-bg);color:var(--orange)">${t.extra} extra</span></span><span class="chev">▸</span></div><div class="dd" hidden></div></div>`; }).join('');
     window.__takes = list;
   } catch (e) { /* history is optional */ }
 }
-$('tkOpen').onclick = e => { const b = e.target.closest('[data-resume]'); if (!b) return; const s = (window.__takes || []).find(x => x.id === b.getAttribute('data-resume')); if (s) begin(JSON.parse(JSON.stringify(s))); };
+$('tkOpen').onclick = e => { const b = e.target.closest('[data-resume]'); if (!b) return; const s = (window.__takes || []).find(x => x.id === b.getAttribute('data-resume')); if (s) { const c = JSON.parse(JSON.stringify(s)); c.remote = true; begin(c); } };
 
 const stLab = st => st === 'ACTIVE' ? ['Listed', 'g'] : st === 'UNLISTED' ? ['Unlisted', 'r'] : st === 'DRAFT' ? ['Draft', 'n'] : st === 'ARCHIVED' ? ['Archived', 'n'] : ['Status?', 'n'];
 const badgesHtml = pid => { const p = P.get(pid) || {}, [l, k] = stLab(p.st); return `<button type="button" class="lst ${k}" data-pid="${E(pid)}" title="Press and hold to change">${l}</button>` + (p.ch == null ? '' : `<span class="chn${p.ch === 0 ? ' z' : ''}" title="Online Store, Shop, POS, Google & YouTube, Facebook & Instagram">${p.ch}/5 channels</span>`); };
@@ -783,7 +821,7 @@ function syncScopeSeg() {
 }
 $('tkScopeSeg').onclick = e => { const b = e.target.closest('button'); if (!b || !take) return; take.filters.scope = b.dataset.s; take.dirty = true; syncScopeSeg(); tkMsg(b.dataset.s === 'product' ? 'Next scan adds the whole product: you must scan every size of it.' : 'Next scan adds just that variant.', 'ok'); drawTake(); };
 function begin(s) {
-  take = s; if (!take.mode) take.mode = (take.filters && take.filters.open) || (take.vids || []).some(x => x[1] > 0) ? 'count' : 'add'; take.counts = take.counts || {}; take.outside = take.outside || {}; take.dirty = false;
+  take = s; if (take.remote) take.base = snapOf(take); if (!take.mode) take.mode = (take.filters && take.filters.open) || (take.vids || []).some(x => x[1] > 0) ? 'count' : 'add'; take.counts = take.counts || {}; take.outside = take.outside || {}; take.dirty = false;
   { const fl = take.filters || {}; Object.keys(take.outside).forEach(k => { const v = byVid.get(k), o = take.outside[k]; if (v && o && o.n > 0 && inFilter(v, fl)) { take.counts[k] = (take.counts[k] || 0) + o.n; delete take.outside[k]; take.dirty = true; } }); }
   { const fl = take.filters || {}, have = new Set((take.vids || []).map(x => x[0])); take.vids = take.vids || [];
     if (fl.col && take.loc) takeVars(fl, take.loc).forEach(v => { if (!have.has(v.vid)) { take.vids.push([v.vid, 0]); take.dirty = true; } }); }   // counts started before this change: add the sizes that had no stock
@@ -791,7 +829,7 @@ function begin(s) {
   $('tkSetup').hidden = true; $('tkResult').hidden = true; $('tkRun').hidden = false; $('pushBox').hidden = true;
   $('tkTitle').textContent = s.name; $('tkSub').textContent = 'Counting at ' + s.locName;
   document.querySelectorAll('#tkSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === 'all'));
-  tkMsg('Scan a barcode to count it.'); drawTake(); saveUi(); setTimeout(() => { try { $('tkIn').focus(); } catch (e) {} }, 50);
+  tkMsg('Scan a barcode to count it.'); drawTake(); saveUi(); if (take.remote) sync().then(c => { if (c && take) drawTake(); }); setTimeout(() => { try { $('tkIn').focus(); } catch (e) {} }, 50);
 }
 const expMap = () => new Map(take.vids);
 function status(e, c) { return c > e ? 'extra' : e === 0 ? 'zero' : c === 0 ? 'red' : c < e ? 'blue' : 'green'; }
@@ -813,6 +851,7 @@ function drawTake(flash) {
   }).join('') : `<div class="empty">${filt === 'all' ? (take.filters && take.filters.open ? 'Scan a barcode to start. Each scan adds that product to the count.' : 'Nothing here.') : 'Nothing in this view.'}</div>`;
   $('tkOutBox').hidden = !out.length;
   $('tkOut').innerHTML = out.map(([k, o]) => `<div class="sess out" data-ov="${E(k)}"><div class="nm"><b>${E(o.pt)}</b><span class="tag">${E(o.t)}</span><small class="bad">Outside your filter</small></div><div class="stp"><button data-od="-1">−</button><b>${o.n}</b><button data-od="1">+</button></div></div>`).join('');
+  { const o = liveOthers(take); $('tkTitle').textContent = (take.code ? take.code + ' · ' : '') + take.name; $('tkSub').textContent = 'Counting at ' + take.locName + (o.length ? ' · with ' + o.join(', ') : ''); }
   $('tkSave').textContent = take.dirty ? 'Save ●' : 'Saved ✓'; $('tkSave').disabled = !take.dirty;
   if (take.dirty && !window.__autoT) window.__autoT = setTimeout(() => { window.__autoT = 0; if (take && take.dirty && !pushBusy) save(false, true); }, 1500);
   $('tkEnd').classList.toggle('arm', endArmed); $('tkEnd').textContent = endArmed ? `Tap again: end (${L} left, ${X + outN} extra)` : 'End stock take';
@@ -914,8 +953,9 @@ async function save(pause, quiet) {
   if (!take) return true;
   $('tkSave').disabled = true; if (!quiet) tkMsg('Saving…');
   try {
-    await Store.takeSave({id: take.id, name: take.name, loc: take.loc, locName: take.locName, filters: take.filters, vids: take.vids, counts: take.counts, outside: take.outside, startedAt: take.startedAt, status: 'open'});
-    take.dirty = false; if (!quiet) tkMsg('Saved.', 'ok');
+    if (!take.remote) { await Store.takeSave({id: take.id, name: take.name, loc: take.loc, locName: take.locName, filters: take.filters, vids: take.vids, counts: take.counts, outside: take.outside, startedAt: take.startedAt, status: 'open'}); take.remote = true; take.base = snapOf(take); take.dirty = false; }
+    else if (await sync(true) === 'ended') return true;
+    if (take) take.dirty = false; if (!quiet) tkMsg('Saved.', 'ok');
     if (pause) { take = null; takeOpen(); } else drawTake();
     return true;
   } catch (e) { tkMsg('Could not save: ' + e.message, 'bad'); $('tkSave').disabled = false; return false; }
@@ -924,7 +964,9 @@ $('tkSave').onclick = () => save(false); $('tkPause').onclick = () => save(true)
 $('tkEnd').onclick = async () => {
   if (!take) return;
   if (!endArmed) { endArmed = true; drawTake(); setTimeout(() => { if (endArmed) { endArmed = false; if (take) drawTake(); } }, 6000); return; }
-  endArmed = false; const t = tally(take);
+  endArmed = false;
+  if (take.remote) { try { if (await sync(true) === 'ended') return; } catch (e) { tkMsg('Could not end: ' + e.message, 'bad'); drawTake(); return; } }
+  const t = tally(take);
   try {
     await Store.takeEnd({id: take.id, name: take.name, loc: take.loc, locName: take.locName, filters: take.filters, vids: take.vids, counts: take.counts, outside: take.outside, startedAt: take.startedAt, endedAt: new Date().toISOString(), summary: {expected: t.e, counted: t.s, missing: t.miss, extra: t.extra}});
   } catch (e) { tkMsg('Could not end: ' + e.message, 'bad'); drawTake(); return; }
@@ -973,6 +1015,7 @@ async function openPush(s, box, keepZero) {
       if (take && take === s && take.dirty) await save(false);
       const res = await Store.takePush(s.loc, pushItems(s, box.querySelector('.pz').checked), false, s.mode);
       if (!res || res.error) throw new Error((res && res.error) || 'Failed');
+      if (s.id) Store.takePushed(s.id).then(r => { s.pushedBy = r.by; s.pushedAt = new Date().toISOString(); }).catch(() => {});
       pm.className = 'pm ok'; pm.textContent = `Done: ${res.changed} variants updated (${res.up} up, ${res.down} down).` + (res.warn ? ' ' + res.warn : '');
       box.querySelector('.pcx').textContent = 'Close';
     } catch (e) { pm.className = 'pm bad'; pm.textContent = 'Not finished: ' + e.message; go.disabled = false; }
