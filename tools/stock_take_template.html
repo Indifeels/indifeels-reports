@@ -1264,7 +1264,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     $('bxLines').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; const l = lines.find(x => x.id === b.dataset.i); if (!l) return; const q = qv[l.id] == null ? rem(l) : qv[l.id]; qv[l.id] = Math.max(0, Math.min(rem(l), q + Number(b.dataset.d))); disarm(); drawLines(); };
     $('bxBar').onclick = async () => {
       const items = [], skip = [];
-      cur().forEach(l => { const v = match(l); if (v && v.bc.length) items.push({vid: v.vid, qty: l.qty}); else skip.push(l.product_title + ' · ' + l.variant_title); });
+      cur().forEach(l => { const q = qv[l.id] == null ? rem(l) : qv[l.id]; if (q <= 0) return; const v = match(l); if (v && v.bc.length) items.push({vid: v.vid, qty: q}); else skip.push(l.product_title + ' · ' + l.variant_title); });
       if (!items.length) return msg('Nothing to add: none of these lines has a barcode.', 'bad');
       try { await Store.labels('add', items); await window.refreshLabels(); const t = items.reduce((a, i) => a + i.qty, 0); msg(`${t} label${t === 1 ? '' : 's'} added to the sheet below.` + (skip.length ? ` Skipped (no barcode/variant): ${skip.join('; ')}.` : ''), skip.length ? 'bad' : 'ok'); }
       catch (e) { msg(e.message, 'bad'); }
