@@ -183,9 +183,13 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
   <div id="viewAdj" hidden>
     <div class="bk"><h3>Add or remove stock</h3>
       <div class="seg" id="adMode"><button data-m="add" class="on">Add stock</button><button data-m="remove">Remove stock</button></div>
+      <div class="seg" id="adScope"><button data-s="variant" class="on">One variant</button><button data-s="product">Whole product</button></div>
       <div class="row">
         <label class="fld">Location<select id="adLoc"></select></label>
-        <div class="fld">Find a product (no barcode needed)<div class="ss" id="adProd"></div></div>
+        <div class="fld">Collection (optional)<div class="ss" id="adCol"></div></div>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <div class="fld" style="flex:1">Find a product (no barcode needed)<div class="ss" id="adProd"></div></div>
       </div>
       <div class="chips" id="adSizes"></div>
       <div class="scan" style="margin-top:10px"><input id="adIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Or scan / type a barcode, then Enter"><button id="adAddBtn">Add</button><button id="adCam" type="button" title="Scan with camera">📷</button></div>
@@ -193,7 +197,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
     </div>
     <div class="bk"><div class="row" style="align-items:center"><b id="adTitle" style="flex:1">List</b><button type="button" id="adClear" hidden>Clear list</button></div>
       <div id="adList"><div class="empty">Nothing in the list yet.</div></div>
-      <div class="foot"><span class="sum" id="adSum"></span><button type="button" id="adCancel" disabled>Cancel</button><button type="button" class="pri" id="adGo" disabled>Add stock</button></div>
+      <div class="foot"><span class="sum" id="adSum"></span><button type="button" id="adCancel" disabled>Cancel</button><button type="button" id="adCancel" disabled>Cancel</button><button type="button" class="pri" id="adGo" disabled>Add stock</button></div>
       <div class="msg" id="adRes"></div>
     </div>
   </div>
@@ -548,6 +552,15 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   const loc = () => $('adLoc').value;
   const sizeCmp = (a, b) => a.t.localeCompare(b.t, undefined, {numeric: true});
   const sel = Sel($('adProd'), 'Search product…', true);
+  const colSel = Sel($('adCol'), 'All collections');
+  let scope = 'variant';
+  const productOpts = () => { const c = colSel.get(), seen = new Map(); V.forEach(v => { if (!c || v.cols.includes(c)) seen.set(v.pid, v.pt); }); return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t})); };
+  const addProduct = pid => {
+    const vs = V.filter(v => v.pid === pid).sort(sizeCmp); let n = 0, skip = 0;
+    vs.forEach(v => { if (mode === 'remove' && stock(v) < 1) { skip++; return; } const it = items.find(i => i.vid === v.vid); if (it) it.qty = Math.min(1000, it.qty + 1); else items.push({vid: v.vid, qty: 1, label: false}); n++; });
+    armed = false; $('adRes').textContent = ''; draw();
+    adMsg(n ? `${vs[0].pt}: 1 of each of ${n} size${n === 1 ? '' : 's'} added to the list.` + (skip ? ` ${skip} size${skip === 1 ? '' : 's'} with no stock here skipped.` : '') : `${vs[0].pt}: no sizes with stock to remove here.`, n ? 'ok' : 'bad');
+  };
   const stock = v => v.q[loc()] || 0;
   const total = () => items.reduce((a, i) => a + i.qty, 0);
   const over = i => mode === 'remove' && i.qty > stock(byVid.get(i.vid));
@@ -569,6 +582,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     const n = total(), bad = items.some(over);
     $('adSum').textContent = items.length ? `${n} piece${n === 1 ? '' : 's'} to ${mode}` : '';
     $('adCancel').disabled = !items.length || busy;
+    $('adCancel').disabled = !items.length || busy;
     $('adGo').disabled = !items.length || busy || bad || !loc();
     $('adGo').classList.toggle('arm', armed);
     $('adGo').textContent = mode === 'add' ? 'Add stock' : (armed ? `Tap again: remove ${n} pieces` : 'Remove stock');
@@ -583,20 +597,24 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     let v = byBc.get(bcn(code)); const dups = allBc.get(bcn(code)) || [];
     if (dups.length > 1) { v = await askDup(dups, loc(), 'Scan ' + code); if (!v) return; }
     if (!v) { adMsg('Barcode ' + code + ' is not in the website data. Find the product in the list instead.', 'bad'); beep('bad'); return; }
-    adMsg(`${v.pt} · ${v.t} added.`, 'ok'); beep('ok'); put(v, 1);
+    beep('ok'); if (scope === 'product') { addProduct(v.pid); return; }
+    adMsg(`${v.pt} · ${v.t} added.`, 'ok'); put(v, 1);
   };
   window.adjOpen = async () => {
     if (!ready) {
       try { await loadLocs(); } catch (e) { adMsg('Could not load locations: ' + e.message, 'bad'); return; }
       $('adLoc').innerHTML = locs.map(l => `<option value="${E(l.id)}">${E(l.name)}</option>`).join('');
       const shop = locs.find(l => /shop/i.test(l.name)); if (shop) $('adLoc').value = shop.id;
-      const seen = new Map(); V.forEach(v => seen.set(v.pid, v.pt));
-      sel.set([...seen.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t})));
+      const cc = new Map(); V.forEach(v => v.cols.forEach(c => { if (!cc.has(c)) cc.set(c, new Set()); cc.get(c).add(v.pid); }));
+      colSel.set([...cc.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, st]) => ({v: c, l: c, s: st.size + ' products'})));
+      sel.set(productOpts());
       ready = true; draw();
     }
     loadLabels();
   };
-  sel.onpick(() => sizes());
+  colSel.onpick(() => { sel.set(productOpts()); sizes(); });
+  sel.onpick(() => { const pid = sel.get(); if (pid && scope === 'product') addProduct(pid); sizes(); });
+  $('adScope').onclick = e => { const b = e.target.closest('button'); if (!b) return; scope = b.dataset.s; document.querySelectorAll('#adScope button').forEach(x => x.classList.toggle('on', x === b)); adMsg(scope === 'product' ? 'Whole product: picking or scanning a product adds 1 of every size.' : 'One variant: each scan or tap adds 1 of that variant.'); };
   $('adLoc').onchange = () => { armed = false; draw(); };
   $('adMode').onclick = e => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.m; armed = false; $('adRes').textContent = ''; document.querySelectorAll('#adMode button').forEach(x => x.classList.toggle('on', x === b)); draw(); };
   $('adSizes').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; put(byVid.get(b.dataset.v), 1); };
@@ -604,6 +622,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   $('adAddBtn').onclick = () => { const v = $('adIn').value.trim(); $('adIn').value = ''; if (v) adjScan(v); $('adIn').focus(); };
   $('adCam').onclick = () => camera('adj');
   $('adClear').onclick = () => { items = []; armed = false; draw(); };
+  $('adCancel').onclick = () => { items = []; armed = false; $('adRes').textContent = ''; draw(); };
   $('adCancel').onclick = () => { items = []; armed = false; $('adRes').textContent = ''; draw(); };
   $('adList').onclick = async e => {
     const row = e.target.closest('.adit'); if (!row) return;
