@@ -1110,6 +1110,7 @@ const Store = {
   hideList: () => call('hidelist'),
   hideSize: (vkey, product, title, hidden, shopify) => call('hidesize', { vkey, product, title, hidden, shopify: !!shopify }),
   setTag: (product, supplier) => call('settag', { product, supplier }),
+  tagList: () => call('taglist'),
   stockGet: vid => call('stockget', { vid }),
   stockAdjust: (vid, dShop, dBackup) => call('stockadjust', { vid, dShop, dBackup }),
 };
@@ -2009,11 +2010,11 @@ function supClose(){ if (spModal) spModal.hidden = true; }
 async function supSave(pid, sup){
   const m = spModal.querySelector('.m'); m.innerHTML = '<p class="pt">Saving…</p>';
   try {
-    await Store.setTag(pid, sup);
+    const shop = await Store.setTag(pid, sup);
     const pr = data.products.find(p => String(p.id) === pid); if (pr) pr.supplier = sup;
     if (sup) { data.suppliers = data.suppliers || []; if (!data.suppliers.some(n => n.toLowerCase() === sup.toLowerCase())) data.suppliers.push(sup); }
     for (const o of orders.values()) if (String(o.product_id) === pid && o.status === 'saved' && !o.claimed && (!o.supplier || /^unassigned$/i.test(o.supplier) || sup === '')) o.supplier = sup || 'Unassigned';
-    notify((sup ? 'Supplier set to ' + sup : 'Supplier removed') + '. It is saved to Shopify on the next refresh (after the next order, or at midnight).', true);
+    notify((sup ? 'Supplier set to ' + sup : 'Supplier removed') + (shop && shop.shopify ? ' and updated in Shopify.' : '. Saved here; Shopify could not be updated now (' + ((shop && shop.error) || 'try again') + ') and will catch up on the next refresh.'), true);
   } catch (err) { notify('Could not save supplier: ' + err.message); }
   supClose(); render(); if (curTab === 'sup') renderSv();
 }
@@ -2227,7 +2228,8 @@ function liveStock(o){
 let lastSig = '';
 async function refresh(){
   try {
-    const [rows, disc, bx, dreq, pks, hz] = await Promise.all([Store.list(), Store.discList().catch(() => null), Store.boxes().catch(() => null), Store.discReq().catch(() => null), Store.parkList().catch(() => null), Store.hideList().catch(() => null)]);
+    const [rows, disc, bx, dreq, pks, hz, tgs] = await Promise.all([Store.list(), Store.discList().catch(() => null), Store.boxes().catch(() => null), Store.discReq().catch(() => null), Store.parkList().catch(() => null), Store.hideList().catch(() => null), Store.tagList().catch(() => null)]);
+    if (Array.isArray(tgs)) { const gen = Date.parse(data.generatedAt) || 0; tgs.forEach(t => { if (Date.parse(t.tagged_at) > gen) { const pr = data.products.find(p => String(p.id) === String(t.product_id)); if (pr) pr.supplier = t.supplier || ''; } }); }   // supplier picked after this build was made wins until the next build
     if (Array.isArray(hz)) { hiddenOk = true; hiddenSizes = new Set(hz.map(d => String(d.vkey))); }
     if (dreq) discReqs = dreq;
     if (bx) boxesData = bx;
@@ -2248,7 +2250,7 @@ async function refresh(){
     if (landed.length) {
       try { await Store.received(landed.map(o => o.id)); landed.forEach(o => { o.status = 'received'; o.received_at = new Date().toISOString(); }); } catch (e) { /* manual Received buttons still work */ }
     }
-    const sig = JSON.stringify([[...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty, o.box_no, o.supplier, o.wrong_pick, o.wrong_ack]), [...discMap.entries()], [...parkMap.entries()], [...hiddenSizes], hiddenOk, boxesData.map(x => [x.box_no, x.status, x.tracking_no, x.tracking_url]), discReqs.map(r => r.product_id)]);
+    const sig = JSON.stringify([data.products.map(p => p.supplier || ''), [...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty, o.box_no, o.supplier, o.wrong_pick, o.wrong_ack]), [...discMap.entries()], [...parkMap.entries()], [...hiddenSizes], hiddenOk, boxesData.map(x => [x.box_no, x.status, x.tracking_no, x.tracking_url]), discReqs.map(r => r.product_id)]);
     if (sig !== lastSig) { lastSig = sig; render(); }
     updateQueue(); if (!$('viewSup').hidden) renderSv();
   } catch (err) { $('sub').textContent = 'Could not load supplier status: ' + err.message; }

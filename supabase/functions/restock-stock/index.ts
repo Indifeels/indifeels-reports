@@ -221,6 +221,39 @@ Deno.serve(async (req: Request) => {
   if (body.action === "locations" || body.action === "lookup" || body.action === "transfer" || body.action === "setcounts") {
     try { return await bulk(body); } catch (e) { return json({ error: String((e as Error)?.message || e).slice(0, 300) }, 500); }
   }
+  if (body.action === "setsupplier") {
+    // owner picked a supplier on a product: write Shopify custom.supplier_name right now (blank = remove it)
+    try {
+      const pid = String(body.product || "");
+      if (!/^\d{1,20}$/.test(pid)) return json({ error: "Bad product" }, 400);
+      const name = String(body.supplier || "").replace(/^\s*\d+\s*:\s*/, "").trim().replace(/\s+/g, " ");
+      if (name.length > 100) return json({ error: "Name too long" }, 400);
+      const owner = `gid://shopify/Product/${pid}`;
+      if (!name || /^unassigned$/i.test(name)) {
+        const r = await gql(`mutation($m:[MetafieldIdentifierInput!]!){ metafieldsDelete(metafields:$m){ userErrors{ message } } }`, { m: [{ ownerId: owner, namespace: "custom", key: "supplier_name" }] });
+        const e = r.metafieldsDelete.userErrors; if (e?.length) throw new Error(e[0].message);
+        return json({ ok: true, value: "" });
+      }
+      // the field only accepts names on its choices list: use the list's own spelling, add the name if it is new
+      const def = await gql(`{ metafieldDefinitions(first:1, ownerType:PRODUCT, namespace:"custom", key:"supplier_name"){ nodes{ validations{ name value } } } }`, {});
+      let choices: string[] | null = null;
+      for (const n of def.metafieldDefinitions.nodes.slice(0, 1)) for (const v of n.validations) if (v.name === "choices") choices = JSON.parse(v.value).map((x: unknown) => String(x));
+      const strip = (x: string) => x.replace(/^\s*\d+\s*:\s*/, "").trim().toLowerCase();
+      let val = name;
+      if (choices) {
+        const hit = choices.find((c) => strip(c) === name.toLowerCase());
+        if (hit) val = hit;
+        else {
+          const u = await gql(`mutation($d:MetafieldDefinitionUpdateInput!){ metafieldDefinitionUpdate(definition:$d){ userErrors{ message } } }`,
+            { d: { namespace: "custom", key: "supplier_name", ownerType: "PRODUCT", validations: [{ name: "choices", value: JSON.stringify([...choices, name]) }] } });
+          const ue = u.metafieldDefinitionUpdate.userErrors; if (ue?.length) throw new Error("Could not add the new supplier to Shopify's list: " + ue[0].message);
+        }
+      }
+      const r = await gql(`mutation($m:[MetafieldsSetInput!]!){ metafieldsSet(metafields:$m){ userErrors{ message } } }`, { m: [{ ownerId: owner, namespace: "custom", key: "supplier_name", type: "single_line_text_field", value: val }] });
+      const e = r.metafieldsSet.userErrors; if (e?.length) throw new Error(e[0].message);
+      return json({ ok: true, value: val });
+    } catch (e) { return json({ error: String((e as Error)?.message || e).slice(0, 200) }, 500); }
+  }
   const vid = String(body.vid || "");
   if (!/^\d{1,20}$/.test(vid)) return json({ error: "Bad variant" }, 400);
 

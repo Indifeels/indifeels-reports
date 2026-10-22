@@ -1716,7 +1716,17 @@
     discdecide: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); return rpOk(await sb.rpc("restock_owner_disc_decide", { p_product: String(d.product), p_approve: !!d.approve })); },
     setuser: async (d) => { rpOk(await sb.rpc("restock_supplier_user_set", { p_user: rpText(d.user_id, 40), p_supplier: rpText(d.supplier, 100), p_collection: rpText(d.collection, 100) || null })); return true; },
     park: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); rpOk(await sb.rpc("restock_owner_set_parked", { p_product: String(d.product), p_value: !!d.value })); return true; },
-    settag: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); return rpOk(await sb.rpc("restock_owner_set_tag", { p_product: String(d.product), p_supplier: rpText(d.supplier, 100) })); },
+    settag: async (d) => {
+      if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product");
+      rpOk(await sb.rpc("restock_owner_set_tag", { p_product: String(d.product), p_supplier: rpText(d.supplier, 100) }));
+      // also write it to Shopify right now (the saved tag stays as the fallback if this fails)
+      try {
+        const { data, error } = await sb.functions.invoke("restock-stock", { body: { action: "setsupplier", product: String(d.product), supplier: rpText(d.supplier, 100) || "" } });
+        if (error || !data?.ok) { let m = data?.error; try { if (!m && error?.context) m = (await error.context.json()).error; } catch (_) {} return { shopify: false, error: m || error?.message || "Shopify did not answer" }; }
+        return { shopify: true };
+      } catch (e) { return { shopify: false, error: String(e?.message || e) }; }
+    },
+    taglist: async () => rpOk(await sb.rpc("restock_owner_tag_list")) || [],
     parklist: async () => rpOk(await sb.from("restock_parked").select("product_id,parked")) || [],
     hidelist: async () => rpOk(await sb.from("restock_hidden_sizes").select("vkey")) || [],
     hidesize: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); rpOk(await sb.rpc("restock_owner_set_size_hidden", { p_vkey: rpText(d.vkey, 100), p_product: String(d.product), p_title: rpText(d.title, 120), p_hidden: !!d.hidden, p_shopify: !!d.shopify })); return true; },
