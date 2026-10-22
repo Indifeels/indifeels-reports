@@ -1788,6 +1788,7 @@
       return rpOk(await sb.rpc("restock_supplier_ship_box", { p_box: rpText(d.box, 40), p_date: date || null, p_url: rpText(d.url, 500) || null, p_no: rpText(d.no, 80) || null }));
     },
     discontinue: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); return rpOk(await sb.rpc("restock_supplier_discontinue", { p_product: String(d.product) })); },
+    notmine: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); return rpOk(await sb.rpc("restock_supplier_not_mine", { p_product: String(d.product) })); },
     discpending: async () => rpOk(await sb.rpc("restock_supplier_disc_pending")) || [],
     tracking: async (d) => { rpOk(await sb.rpc("restock_supplier_tracking", { p_box: rpText(d.box, 40), p_url: rpText(d.url, 500), p_no: rpText(d.no, 80) })); return true; },
   });

@@ -595,6 +595,7 @@ const Store = {
   setQty: (id, qty) => call('setqty', { id, qty }),
   discontinue: product => call('discontinue', { product }),
   discPending: () => call('discpending'),
+  notMine: product => call('notmine', { product }),
 };
 
 const $ = id => document.getElementById(id);
@@ -693,8 +694,10 @@ document.addEventListener('click', e => {
 const bxPlural = (n, w) => n + ' ' + (n === 1 ? w : w === 'box' ? 'boxes' : w + 's');
 /*BXJS_END*/
 let S = {orders: [], boxes: [], active: '', identity: '', code: ''};
-let armKey = '', armDel = '', delTo = '', armT = null, armDisc = '', armDiscT = null;
+let armKey = '', armDel = '', delTo = '', armT = null, armDisc = '', armDiscT = null, armNm = '', armNmT = null;
 const discSet = () => new Set((S.disc || []).map(String));
+const armN = pid => { armNm = pid; clearTimeout(armNmT); armNmT = setTimeout(() => { armNm = ''; render(); }, 7000); render(); };
+const bxNm = (pid, mine) => mine ? `<button class="danger dsc${armNm === String(pid) ? ' arm' : ''}" data-nm="${bxEsc(pid)}">${armNm === String(pid) ? 'Sure? It goes back to the owner. Tap again' : 'Not my product: remove'}</button>` : '';
 const armD = pid => { armDisc = pid; clearTimeout(armDiscT); armDiscT = setTimeout(() => { armDisc = ''; render(); }, 7000); render(); };
 const arm = (k, kind) => { if (kind === 'del') armDel = k; else armKey = k; clearTimeout(armT); armT = setTimeout(() => { armKey = ''; armDel = ''; render(); }, 6000); render(); };
 const taggedOf = ids => ids.filter(id => (S.orders.find(r => r.id === id) || {}).tagged_other);
@@ -731,7 +734,7 @@ function render(){
   $('msel').textContent = picked.size ? picked.size + ' selected' : 'Items you add go to ' + act;
   const tg = taggedOf([...picked]).length;
   $('addsel').disabled = !picked.size; $('addsel').classList.toggle('warn', armKey === '__sel'); $('addsel').textContent = armKey === '__sel' ? `${tg} tagged to another supplier — tap again to confirm they're yours` : picked.size ? `Add ${picked.size} to ${tgtBox === '__new' ? 'a new box' : (tgtBox || act)}` : 'Add selected to box';
-  $('master').innerHTML = m.length ? bxGroup(m).map(g => `<div class="mc">${bxImg(g[0])}<div class="pc">${bxName(g[0])}${bxSetTag(g)}<div class="pact">${bxDisc(g[0].product_id, {canDisc: true, discPend: discSet(), armDisc})}</div>${bxSetBody(g, `<table><thead><tr><th style="width:34px"></th><th>Variant</th><th style="text-align:center">Qty wanted</th><th style="text-align:center">You send</th><th></th></tr></thead><tbody>
+  $('master').innerHTML = m.length ? bxGroup(m).map(g => `<div class="mc">${bxImg(g[0])}<div class="pc">${bxName(g[0])}${bxSetTag(g)}<div class="pact">${bxDisc(g[0].product_id, {canDisc: true, discPend: discSet(), armDisc})}${bxNm(g[0].product_id, !g[0].tagged_other)}</div>${bxSetBody(g, `<table><thead><tr><th style="width:34px"></th><th>Variant</th><th style="text-align:center">Qty wanted</th><th style="text-align:center">You send</th><th></th></tr></thead><tbody>
       ${g.slice().sort(bxByVariant).map(r => `<tr class="mt"><td><input type="checkbox" data-pick="${bxEsc(r.id)}" ${picked.has(r.id) ? 'checked' : ''}></td><td>${bxEsc(r.variant_title)}${r.tagged_other ? '<span class="tg">⚠ Tagged to another supplier</span>' : ''}<span class="sub">Requested ${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</span></td><td class="q">${r.qty}</td><td class="q"><span class="stp"><button data-mq="-1" data-id="${bxEsc(r.id)}" ${sendOf(r) <= 1 ? 'disabled' : ''}>−</button><b>${sendOf(r)}</b><button data-mq="1" data-id="${bxEsc(r.id)}" ${sendOf(r) >= r.qty ? 'disabled' : ''}>+</button></span></td>
         <td class="a"><button data-add="${bxEsc(r.id)}" class="${armKey === r.id ? 'warn' : ''}">${armKey === r.id ? 'Not yours? Tap again to confirm' : 'Add to ' + bxEsc(act)}</button></td></tr>`).join('')}
       </tbody></table>`)}</div></div>`).join('') : `<div class="empty">${allMaster().length ? 'Nothing tagged to you right now. Switch to “Show: all products” to see the rest.' : 'Nothing waiting on the order list right now.'}</div>`;
@@ -771,6 +774,14 @@ async function act(fn, okMsg){
   busy = false; await load();
 }
 
+function onNm(e){
+  const b = e.target.closest('[data-nm]'); if (!b) return false;
+  const pid = b.getAttribute('data-nm');
+  if (armNm !== pid) { armN(pid); return true; }
+  armNm = ''; clearTimeout(armNmT);
+  act(() => Store.notMine(pid), n => 'Sent back to the owner to re-tag (' + n + ' line' + (n === 1 ? '' : 's') + ')');
+  return true;
+}
 function onDisc(e){
   const b = e.target.closest('[data-disc]'); if (!b) return false;
   const pid = b.getAttribute('data-disc');
@@ -780,6 +791,7 @@ function onDisc(e){
   return true;
 }
 $('master').addEventListener('click', e => {
+  if (onNm(e)) return;
   if (onDisc(e)) return;
   const mq = e.target.closest('[data-mq]');
   if (mq) { const r = S.orders.find(x => x.id === mq.getAttribute('data-id')); if (r) { sendQ.set(r.id, Math.max(1, Math.min(r.qty, sendOf(r) + (+mq.getAttribute('data-mq'))))); render(); } return; }

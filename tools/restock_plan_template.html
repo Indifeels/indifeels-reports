@@ -2379,7 +2379,7 @@ async function loadAccounts(){
       </tbody></table>`;
   } catch (err) { box.innerHTML = '<div class="sub">Could not load accounts: ' + esc(err.message) + '</div>'; }
 }
-const ACT = {ordered:'ordered', unordered:'cancelled the order', boxed:'added to box', unboxed:'removed from box', qty:'changed the quantity', shipped:'shipped', received:'marked restocked'};
+const ACT = {ordered:'ordered', unordered:'cancelled the order', boxed:'added to box', unboxed:'removed from box', qty:'changed the quantity', shipped:'shipped', notmine:'said not their product',received:'marked restocked'};
 async function loadActivity(){
   const box = $('svActivity'); box.innerHTML = '<div class="sub">Loading…</div>';
   try {
