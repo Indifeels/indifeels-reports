@@ -294,7 +294,7 @@ const beep = k => { try { const C = window.AudioContext || window.webkitAudioCon
 /* ---------- variants index (from the website data) ---------- */
 const V = [], byBc = new Map(), allBc = new Map(), byVid = new Map();
 DATA.products.forEach(p => p.variants.forEach(v => {
-  const r = {vid: String(v.vid), pid: String(p.id), pt: p.title, image: p.image || '', pr: v.pr || '', t: v.t, cols: p.cols || [], bc: v.bc || [], q: v.q || {}};
+  const r = {vid: String(v.vid), pid: String(p.id), pt: p.title, image: p.image || '', pr: v.pr || '', t: v.t, col: (p.colors || []).join(' / '), cols: p.cols || [], bc: v.bc || [], q: v.q || {}};
   V.push(r); byVid.set(r.vid, r); r.bc.forEach(b => { const k = bcn(b); (allBc.get(k) || allBc.set(k, []).get(k)).push(r); });
 }));
 /* The same barcode can sit on more than one variant (old and new copies of a product). Prefer the one that holds stock. */
@@ -390,7 +390,7 @@ const Store = PREVIEW ? {
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
   deleteVariant: vid => call('deletevariant', {vid}, 40000),
   setStatus: (pid, status) => call('setstatus', {pid, status}, 40000),
-  printLabels: (labels, start) => call('printlabels', {labels: labels.map(r => { const v = byVid.get(String(r.vid)) || {}; return {product: r.product, variant: r.variant, barcode: r.barcode, copies: r.copies, image: v.image || '', price: v.pr || ''}; }), start}, 60000),
+  printLabels: (labels, start) => call('printlabels', {labels: labels.map(r => { const v = byVid.get(String(r.vid)) || {}; return {product: r.product, variant: r.variant, barcode: r.barcode, copies: r.copies, image: v.image || '', price: v.pr || '', colour: v.col || ''}; }), start}, 60000),
   labels: (op, items) => call('labelqueue', {op, items}),
   takeList: () => call('takelist'),
   takeSave: s => call('takesave', {session: s}),

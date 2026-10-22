@@ -23,6 +23,7 @@ NOISE = ("do not delete", "filter index", "all products", "home page", "frontpag
 
 PRODUCTS = """{ products(query:"status:active OR status:unlisted OR status:draft"){ edges{ node{
   id title handle status onlineStoreUrl featuredImage{ url }
+  metafield(namespace:"shopify", key:"color-pattern"){ jsonValue }
   collections{ edges{ node{ id title } } }
   variants{ edges{ node{ id title barcode price inventoryItem{ id inventoryLevels{ edges{ node{ location{ id name } quantities(names:["available"]){ quantity } } } } } } } } } } } }"""
 
@@ -55,6 +56,26 @@ def menu_collections():
         return set(json.load(f)["ids"])
 
 
+COLOR_DEFS = "query($after:String){ metaobjects(type:\"shopify--color-pattern\", first:100, after:$after){ pageInfo{hasNextPage endCursor} nodes{ id displayName fields{ key value } } } }"
+
+
+def color_labels():
+    """metaobject gid -> colour name (e.g. Beige). Empty when the token cannot read metaobjects: labels then just skip the colour."""
+    out, after = {}, None
+    try:
+        while True:
+            d = pv.gql(COLOR_DEFS, {"after": after})["data"]["metaobjects"]
+            for n in d["nodes"]:
+                f = {x["key"]: x["value"] for x in n["fields"]}
+                out[n["id"]] = (f.get("label") or n["displayName"] or "").strip()
+            if not d["pageInfo"]["hasNextPage"]:
+                break
+            after = d["pageInfo"]["endCursor"]
+    except Exception as exc:
+        print("colour names skipped:", exc)
+    return out
+
+
 def num(gid):
     return gid.rsplit("/", 1)[-1] if gid else ""
 
@@ -65,6 +86,7 @@ def build():
     if len(main_cols) < 10:
         raise RuntimeError(f"Only {len(main_cols)} menu collections found: refusing to guess which collections are main ones")
     lines = rp.bulk(PRODUCTS, "stock take products")
+    cnames = color_labels()
     products, variants, items, locations = {}, {}, {}, {}
     for l in lines:
         gid = l.get("id", "")
@@ -72,7 +94,8 @@ def build():
             products[gid] = {"id": num(gid), "title": l.get("title", ""), "image": ((l.get("featuredImage") or {}).get("url")) or "",
                              "h": l.get("handle") or "", "st": l.get("status") or "",
                              "url": l.get("onlineStoreUrl") or (("https://indifeels.com/products/" + l["handle"]) if l.get("handle") else ""),
-                             "cols": [], "variants": []}
+                             "cols": [], "variants": [],
+                             "colors": [cnames[g] for g in ((l.get("metafield") or {}).get("jsonValue") or []) if cnames.get(g)]}
     for l in lines:
         gid = l.get("id", "")
         par = l.get("__parentId")
