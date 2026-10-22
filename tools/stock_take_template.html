@@ -218,9 +218,10 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
       <div class="msg" id="bxMsg"></div>
     </div>
     <div class="bk"><h3>Add labels</h3>
-      <div class="fld" style="margin-bottom:8px">Shortlist by collection (optional)<div class="ss" id="ssLbCol"></div></div>
-      <div id="lbShort"></div>
+      <div class="fld" style="margin-bottom:8px">Collection (optional)<div class="ss" id="ssLbCol"></div></div>
       <div class="scan"><input id="lbIn" type="text" autocomplete="off" placeholder="Scan any size, or type a product name"><button id="lbAdd" type="button">Add</button><button id="lbCam" type="button" title="Scan with camera">📷</button></div>
+      <label style="display:flex;align-items:center;gap:8px;margin:10px 2px 4px;font-weight:600"><input type="checkbox" id="lbRecent" style="width:20px;height:20px"> Recently uploaded: newest products first, label count = quantity uploaded</label>
+      <div id="lbShort"></div>
       <div id="lbCard"></div>
       <div class="msg" id="lbMsg">Scan any size (or search by name) to see every size of that product. Counts start at 0.</div>
     </div>
@@ -294,7 +295,7 @@ const beep = k => { try { const C = window.AudioContext || window.webkitAudioCon
 /* ---------- variants index (from the website data) ---------- */
 const V = [], byBc = new Map(), allBc = new Map(), byVid = new Map();
 DATA.products.forEach(p => p.variants.forEach(v => {
-  const r = {vid: String(v.vid), pid: String(p.id), pt: p.title, image: p.image || '', pr: v.pr || '', t: v.t, col: (p.colors || []).join(' / '), cols: p.cols || [], bc: v.bc || [], q: v.q || {}};
+  const r = {vid: String(v.vid), pid: String(p.id), pt: p.title, image: p.image || '', pr: v.pr || '', ca: p.ca || '', t: v.t, col: (p.colors || []).join(' / '), cols: p.cols || [], bc: v.bc || [], q: v.q || {}};
   V.push(r); byVid.set(r.vid, r); r.bc.forEach(b => { const k = bcn(b); (allBc.get(k) || allBc.set(k, []).get(k)).push(r); });
 }));
 /* The same barcode can sit on more than one variant (old and new copies of a product). Prefer the one that holds stock. */
@@ -745,19 +746,23 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
       vs.map(v => `<div class="lbr" data-v="${E(v.vid)}"><div class="nm"><span class="tag">${E(v.t)}</span><small>${v.bc[0] ? 'Stock ' + (v.q[loc] || 0) + ' · ' + E(v.bc[0]) : '<span class="bad">No barcode yet. Add one in the Add / remove tab.</span>'}</small></div><div class="stp"><button type="button" data-b="-1" ${v.bc[0] ? '' : 'disabled'}>−</button><b>${lbN[v.vid] || 0}</b><button type="button" data-b="1" ${v.bc[0] ? '' : 'disabled'}>+</button></div></div>`).join('') +
       `<div class="foot" style="padding:8px 10px"><span class="sum">${n} label${n === 1 ? '' : 's'} to add</span><button type="button" class="pri" id="lbGo" ${n ? '' : 'disabled'}>Add to label list</button></div></div>`;
   }
-  async function showProduct(pid) { try { await loadLocs(); } catch (e) {} lbPid = pid; lbN = {}; drawCard(); lbMsg(''); }
+  async function showProduct(pid) { try { await loadLocs(); } catch (e) {} lbPid = pid; lbN = {}; lbPrefill(); drawCard(); lbMsg($('lbRecent').checked ? 'Label counts set to the quantity uploaded. Adjust if needed.' : ''); }
   /* collection shortlist: pick a collection, then tap a product to open its sizes; name search is limited to it */
   const ssLb = Sel($('ssLbCol'), 'All collections');
   const lbCols = new Map(); V.forEach(v => v.cols.forEach(c => { if (!lbCols.has(c)) lbCols.set(c, new Set()); lbCols.get(c).add(v.pid); }));
   ssLb.set([...lbCols.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, s]) => ({v: c, l: c, s: s.size + ' products'})));
   const inLbCol = p => { const c = ssLb.get(); return !c || p.vs.some(v => v.cols.includes(c)); };
+  const sumQ = v => Object.values(v.q || {}).reduce((a, n) => a + (Number(n) || 0), 0);
+  const fmtD = d => { const t = new Date(d); return isNaN(t) ? '' : t.toLocaleDateString('en-AU', {day: 'numeric', month: 'short'}); };
   function drawShort() {
-    const c = ssLb.get(), box = $('lbShort');
-    if (!c) { box.innerHTML = ''; return; }
-    const ps = new Map(); V.forEach(v => { if (v.cols.includes(c) && !ps.has(v.pid)) ps.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image, n: 0}); if (ps.has(v.pid) && v.cols.includes(c)) ps.get(v.pid).n++; });
-    const list = [...ps.values()].sort((a, b) => a.pt.localeCompare(b.pt));
-    box.innerHTML = list.length ? `<div class="sum" style="margin-bottom:6px">${list.length} product${list.length === 1 ? '' : 's'} in ${E(c)}. Tap one to pick its sizes.</div><div class="pfs">` + list.slice(0, 120).map(p => `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}</span><span>${E(p.pt)}</span></button>`).join('') + '</div>' : '<div class="msg">No products in this collection.</div>';
+    const c = ssLb.get(), rec = $('lbRecent').checked, box = $('lbShort');
+    if (!c && !rec) { box.innerHTML = ''; return; }
+    const ps = new Map(); V.forEach(v => { if (c && !v.cols.includes(c)) return; if (!ps.has(v.pid)) ps.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image, ca: v.ca || '', n: 0}); ps.get(v.pid).n += sumQ(v); });
+    const list = [...ps.values()].sort(rec ? (a, b) => (b.ca || '').localeCompare(a.ca || '') || a.pt.localeCompare(b.pt) : (a, b) => a.pt.localeCompare(b.pt));
+    box.innerHTML = list.length ? `<div class="sum" style="margin-bottom:6px">${list.length} product${list.length === 1 ? '' : 's'}${c ? ' in ' + E(c) : ''}${rec ? ', newest first' : ''}. Tap one to pick its sizes.</div><div class="pfs">` + list.slice(0, 120).map(p => `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}</span><span style="flex:1;min-width:0">${E(p.pt)}${rec ? `<small style="display:block;color:var(--muted)">${fmtD(p.ca) ? 'Uploaded ' + fmtD(p.ca) + ' · ' : ''}${p.n} pcs</small>` : ''}</span></button>`).join('') + '</div>' : '<div class="msg">No products found.</div>';
   }
+  const lbPrefill = () => { if ($('lbRecent').checked) V.filter(v => v.pid === lbPid && v.bc[0]).forEach(v => { lbN[v.vid] = Math.min(500, sumQ(v)); }); };
+  $('lbRecent').onchange = () => { drawShort(); if (lbPid) { lbN = {}; lbPrefill(); drawCard(); } };
   ssLb.onpick(drawShort);
   $('lbShort').onclick = e => { const b = e.target.closest('[data-p]'); if (b) showProduct(b.dataset.p); };
   const lbFind = ProductFind($('lbIn'), {onProduct: showProduct, addBtn: $('lbAdd'), only: inLbCol});
