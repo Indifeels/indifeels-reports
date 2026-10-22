@@ -1266,7 +1266,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       const items = [], skip = [];
       cur().forEach(l => { const v = match(l); if (v && v.bc.length) items.push({vid: v.vid, qty: l.qty}); else skip.push(l.product_title + ' · ' + l.variant_title); });
       if (!items.length) return msg('Nothing to add: none of these lines has a barcode.', 'bad');
-      try { await Store.labels('add', items); await loadLabels(); const t = items.reduce((a, i) => a + i.qty, 0); msg(`${t} label${t === 1 ? '' : 's'} added to the sheet below.` + (skip.length ? ` Skipped (no barcode/variant): ${skip.join('; ')}.` : ''), skip.length ? 'bad' : 'ok'); }
+      try { await Store.labels('add', items); await window.refreshLabels(); const t = items.reduce((a, i) => a + i.qty, 0); msg(`${t} label${t === 1 ? '' : 's'} added to the sheet below.` + (skip.length ? ` Skipped (no barcode/variant): ${skip.join('; ')}.` : ''), skip.length ? 'bad' : 'ok'); }
       catch (e) { msg(e.message, 'bad'); }
     };
     $('bxLoc').onchange = disarm;
