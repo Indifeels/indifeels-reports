@@ -224,7 +224,8 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
       <div id="lbCard"></div>
       <div class="msg" id="lbMsg">Scan any size (or search by name) to see every size of that product. Counts start at 0.</div>
     </div>
-    <div class="bk"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0" id="lqTitle">Labels to print</h3><button type="button" id="lqCopy" hidden>Copy list</button><button type="button" id="lqDone" hidden>Mark printed</button></div>
+    <div class="bk"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0" id="lqTitle">Labels to print</h3><button type="button" id="lqDone" hidden>Mark printed</button></div>
+      <div class="seg" id="lqBar" hidden><button type="button" id="lqUndo">↶ Undo</button><button type="button" id="lqRedo">↷ Redo</button><button type="button" id="lqClear">🗑 Clear list</button></div>
       <div id="lqList"><div class="empty">No labels added yet. Use <b>Print label</b> on a finished stock take, or tick "Needs a barcode label" when adding stock.</div></div>
       <div class="foot" id="lqFoot" hidden><label class="fld" style="flex:none;width:170px">Start at slot (1 to 65)<input type="text" id="lqSlot" value="1" inputmode="numeric" autocomplete="off"></label><span class="sum"></span><button type="button" class="pri" id="lqPrint">Download PDF</button></div>
       <div class="msg" id="lqMsg"></div>
@@ -677,6 +678,19 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   /* ----- barcode label queue (Barcodes tab) ----- */
   const csv = () => ['Product,Size,Barcode,Copies'].concat(labelRows.map(r => [r.product, r.variant, r.barcode, r.copies].map(x => '"' + String(x).replace(/"/g, '""') + '"').join(','))).join('\n');
   const lqMsg = (t, k) => { $('lqMsg').className = 'msg' + (k ? ' ' + k : ''); $('lqMsg').textContent = t || ''; };
+  let undoSt = [], redoSt = [];
+  const snap = () => labelRows.map(r => ({vid: r.vid, copies: r.copies}));
+  const pushUndo = () => { undoSt.push(snap()); if (undoSt.length > 50) undoSt.shift(); redoSt = []; };
+  async function restoreTo(target) {
+    const cur = new Map(labelRows.map(r => [String(r.vid), r])), tg = new Map(target.map(r => [String(r.vid), r]));
+    const rm = [...cur.keys()].filter(k => !tg.has(k)).map(k => ({vid: cur.get(k).vid, qty: 1}));
+    const add = [...tg.keys()].filter(k => !cur.has(k)).map(k => ({vid: tg.get(k).vid, qty: tg.get(k).copies}));
+    const set = [...tg.keys()].filter(k => cur.has(k) && cur.get(k).copies !== tg.get(k).copies).map(k => ({vid: tg.get(k).vid, qty: tg.get(k).copies}));
+    if (rm.length) await Store.labels('remove', rm);
+    if (add.length) await Store.labels('add', add);
+    if (set.length) await Store.labels('setcopies', set);
+    await loadLabels();
+  }
   function drawLabels() {
     const n = labelRows.reduce((a, r) => a + r.copies, 0);
     $('tabBar').textContent = n ? `Barcodes · ${n}` : 'Barcodes';
@@ -685,7 +699,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
       const v = byVid.get(String(r.vid)), im = v && v.image ? `<img src="${E(v.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(String(r.product || '').slice(0, 2).toUpperCase());
       return `<div class="bkit" data-v="${E(r.vid)}"><div class="im">${im}</div><div class="nm"><b>${E(r.product)}</b><span class="tag">${E(r.variant)}</span><small>${E(r.barcode)}</small></div><div class="stp"><button data-lc="-1">−</button><b>${r.copies}</b><button data-lc="1">+</button></div><button class="rm" data-lx="1" title="Remove from the list">✕</button></div>`;
     }).join('') : '<div class="empty">No labels added yet. Use <b>Print label</b> on a finished stock take, or tick "Needs a barcode label" when adding stock.</div>';
-    $('lqCopy').hidden = $('lqDone').hidden = $('lqFoot').hidden = !labelRows.length;
+    $('lqDone').hidden = $('lqFoot').hidden = !labelRows.length; $('lqBar').hidden = !(labelRows.length || undoSt.length || redoSt.length); $('lqUndo').disabled = !undoSt.length; $('lqRedo').disabled = !redoSt.length;
   }
   async function loadLabels() { try { const r = await Store.labels('list'); labelRows = r.rows || []; drawLabels(); } catch (e) { lqMsg('Could not load the label list: ' + e.message, 'bad'); } }
   window.refreshLabels = loadLabels;
@@ -693,8 +707,8 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     const row = e.target.closest('.bkit'); if (!row) return; const r = labelRows.find(x => String(x.vid) === row.dataset.v); if (!r) return;
     const c = e.target.closest('[data-lc]'), x = e.target.closest('[data-lx]');
     try {
-      if (c) { const n = Math.max(1, Math.min(5000, r.copies + Number(c.dataset.lc))); if (n === r.copies) return; await Store.labels('setcopies', [{vid: r.vid, qty: n}]); r.copies = n; drawLabels(); }
-      else if (x) { await Store.labels('remove', [{vid: r.vid, qty: 1}]); labelRows = labelRows.filter(y => y !== r); drawLabels(); }
+      if (c) { const n = Math.max(1, Math.min(5000, r.copies + Number(c.dataset.lc))); if (n === r.copies) return; pushUndo(); await Store.labels('setcopies', [{vid: r.vid, qty: n}]); r.copies = n; drawLabels(); }
+      else if (x) { pushUndo(); await Store.labels('remove', [{vid: r.vid, qty: 1}]); labelRows = labelRows.filter(y => y !== r); drawLabels(); }
     } catch (err) { lqMsg(err.message, 'bad'); }
   };
   $('lqPrint').onclick = async () => {
@@ -702,10 +716,14 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     try { const r = await Store.printLabels(labelRows, start); lqMsg(`PDF saved to your Downloads folder: ${r.labels} labels on ${r.sheets} sheet${r.sheets === 1 ? '' : 's'}. Print it on the barcode paper at 100% scale, then tap Mark printed.`, 'ok'); }
     catch (e) { lqMsg(e.message, 'bad'); }
   };
-  $('lqCopy').onclick = () => {
-    const ta = document.createElement('textarea'); ta.value = csv(); ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select();
-    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} ta.remove();
-    lqMsg(ok ? 'Copied (Product, Size, Barcode, Copies).' : 'Copy was blocked here.', ok ? 'ok' : 'bad');
+  $('lqUndo').onclick = async () => { if (!undoSt.length) return; const prev = undoSt.pop(); redoSt.push(snap()); try { await restoreTo(prev); lqMsg('Undone.', 'ok'); } catch (e) { lqMsg(e.message, 'bad'); } };
+  $('lqRedo').onclick = async () => { if (!redoSt.length) return; const nx = redoSt.pop(); undoSt.push(snap()); try { await restoreTo(nx); lqMsg('Redone.', 'ok'); } catch (e) { lqMsg(e.message, 'bad'); } };
+  let clrArmed = false;
+  $('lqClear').onclick = async () => {
+    if (!labelRows.length) return;
+    if (!clrArmed) { clrArmed = true; $('lqClear').textContent = 'Tap again: clear all'; setTimeout(() => { clrArmed = false; $('lqClear').textContent = '🗑 Clear list'; }, 5000); return; }
+    clrArmed = false; $('lqClear').textContent = '🗑 Clear list';
+    try { pushUndo(); await Store.labels('remove', labelRows.map(r => ({vid: r.vid, qty: 1}))); labelRows = []; drawLabels(); lqMsg('List cleared. Tap Undo to bring it back.', 'ok'); } catch (e) { lqMsg(e.message, 'bad'); }
   };
   let doneArmed = false;
   $('lqDone').onclick = async () => {
