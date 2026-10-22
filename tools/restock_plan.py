@@ -422,6 +422,12 @@ def build():
     key = os.environ["STOCK_KEY"]
     pv.write_encrypted(key, f"{RID}.bin", page.encode())
     pv.write_encrypted(key, f"{RID}.meta.bin", json.dumps(meta).encode())
+    try:   # the Supplier Portal is a static page: re-encrypt it with every build so changes to its template go live (its meta file is left as is)
+        sup = open(os.path.join(pv.ROOT, "tools", "restock_supplier_template.html"), encoding="utf-8").read()
+        if "__DATA__" not in sup:
+            pv.write_encrypted(key, "restock-supplier.bin", sup.encode())
+    except Exception as exc:
+        print("supplier portal page not refreshed:", str(exc)[:120])
     pv.RID = RID
     pv.set_status(True)
     print(json.dumps({"products": len(products), "with_sales": len(out), "order_lines": lines, "sold_out_variants": oos,

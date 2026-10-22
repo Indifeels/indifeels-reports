@@ -74,6 +74,7 @@ jobs:
           git add r/status.json
           [ -f r/restock-plan.bin ] && git add r/restock-plan.bin || true
           [ -f r/restock-plan.meta.bin ] && git add r/restock-plan.meta.bin || true
+          [ -f r/restock-supplier.bin ] && git add r/restock-supplier.bin || true
           git diff --cached --quiet && exit 0
           git commit -m "Refresh Restock Planner (${{ github.event.client_payload.order || github.event_name }})"
           for i in 1 2 3; do
