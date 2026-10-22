@@ -27,6 +27,8 @@ button.pri.arm{background:#e3b341;border-color:#e3b341}
 .tabs button.on{background:var(--blue);color:#06101c;border-color:var(--blue);box-shadow:0 0 0 2px #58a6ff55}
 .bk{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin:10px 0}
 .bk h3{margin:0 0 8px;font-size:15px}
+.flows{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:8px}.flows button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:16px 14px;border-radius:16px;text-align:left;font-size:16px;min-height:92px}.flows button small{font-weight:500;color:var(--muted);font-size:12.5px}.flows button.on{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.wzs{margin-top:10px}.wzh{display:flex;align-items:center;gap:10px}.wzh>b{font-size:15.5px}.wzn{flex:none;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;background:var(--grey-bg);border:1px solid var(--border)}.wzs.done .wzn{background:var(--green);border-color:var(--green);color:#06140a}.wzs.locked{opacity:.5}.wzsum{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:13px;text-align:right}.wzchg{padding:5px 10px;font-size:13px;flex:none}.wzb{margin-top:10px}
 .bxl{display:flex!important;flex-direction:row!important;flex-wrap:nowrap;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}.bxl:last-child{border-bottom:0}.bxl img{width:40px;height:52px;flex:none;object-fit:cover;border-radius:6px;background:#0002}.bxl>div{flex:1;min-width:0}.bxl>div>div:first-child{font-size:14px;line-height:1.25;white-space:normal!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.bxl .stp button{width:36px;height:36px;padding:0;font-size:18px}.bxl>b{flex:none;font-size:16px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
 .fld{flex:1 1 170px;display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);font-weight:600;min-width:0}
@@ -205,33 +207,64 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 
   <!-- ============ BARCODES ============ -->
   <div id="viewBar" hidden>
-    <div class="bk"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0">Print barcodes for a box</h3><button type="button" id="bxRefresh">Refresh</button></div>
-      <label class="fld" style="margin-top:8px">Supplier<select id="bxSup"><option value="">All suppliers</option></select></label>
-      <div id="bxTiles" class="chips"><div class="empty">Loading boxes…</div></div>
-      <div id="bxDetail" hidden>
-        <details id="bxDet"><summary id="bxDetS" style="cursor:pointer;font-weight:700;padding:10px 2px">Items in this box</summary><div id="bxLines"></div></details>
-        <div class="foot"><span class="sum" id="bxSum"></span><button type="button" id="bxGenAll" hidden>Create missing barcodes</button><button type="button" id="bxBar">Add barcodes to the sheet</button></div>
-        <div id="bxRecv">
-          <div class="row" style="margin-top:10px;align-items:flex-end"><label class="fld">Add stock at<select id="bxLoc"></select></label></div>
-          <div class="foot"><button type="button" id="bxShort">Mark rest as not received</button><span class="sum"></span><button type="button" class="pri" id="bxAdd">Add stock to Shopify</button></div>
-        </div>
+    <div class="bk"><h3 style="margin:0 0 4px">What do you want to print barcodes for?</h3>
+      <div class="flows" id="wzFlows">
+        <button type="button" data-f="new"><b>New products</b><small>Recently added, one label per piece uploaded</small></button>
+        <button type="button" data-f="box"><b>Boxes</b><small>Packed or shipped supplier boxes</small></button>
+        <button type="button" data-f="col"><b>Collection / product</b><small>Pick a collection or scan a product</small></button>
       </div>
-      <div class="msg" id="bxMsg"></div>
+      <div id="wzWait" hidden style="margin-top:10px"><button type="button" id="wzGoPrint" style="width:100%;text-align:left;padding:12px 14px"><b id="wzWaitT"></b><small style="display:block;color:var(--muted)">Already in the label list. Tap to go to printing.</small></button></div>
     </div>
-    <div class="bk"><h3>Add labels</h3>
-      <div class="fld" style="margin-bottom:8px">Supplier (optional)<select id="lbSup"><option value="">All suppliers</option></select></div>
-      <div class="fld" style="margin-bottom:8px">Collection (optional)<div class="ss" id="ssLbCol"></div></div>
-      <div class="scan"><input id="lbIn" type="text" autocomplete="off" placeholder="Scan any size, or type a product name"><button id="lbAdd" type="button">Add</button><button id="lbCam" type="button" title="Scan with camera">📷</button></div>
-      <label style="display:flex;align-items:center;gap:8px;margin:10px 2px 4px;font-weight:600"><input type="checkbox" id="lbRecent" style="width:20px;height:20px"> Recently uploaded: newest products first, label count = quantity uploaded</label>
-      <details id="lbDet"><summary id="lbDetS" style="cursor:pointer;font-weight:700;padding:10px 2px">Product list (tap to show)</summary><div id="lbShort"></div></details>
-      <div id="lbCard"></div>
-      <div class="msg" id="lbMsg">Scan any size (or search by name) to see every size of that product. Counts start at 0.</div>
+
+    <div id="wzBox" hidden>
+      <section class="bk wzs" data-s="1"><div class="wzh"><span class="wzn">1</span><b>Select the box</b><span class="wzsum"></span><button type="button" class="wzchg">Change</button></div>
+        <div class="wzb">
+          <div class="row" style="align-items:flex-end"><label class="fld" style="flex:1">Supplier<select id="bxSup"><option value="">All suppliers</option></select></label><button type="button" id="bxRefresh">Refresh</button></div>
+          <div id="bxTiles" class="chips"><div class="empty">Loading boxes…</div></div>
+        </div></section>
+      <section class="bk wzs" data-s="2"><div class="wzh"><span class="wzn">2</span><b>Add the box to the label list</b><span class="wzsum"></span><button type="button" class="wzchg">Change</button></div>
+        <div class="wzb">
+          <div id="bxDetail" hidden>
+            <details id="bxDet"><summary id="bxDetS" style="cursor:pointer;font-weight:700;padding:10px 2px">Items in this box</summary><div id="bxLines"></div></details>
+            <div class="foot"><span class="sum" id="bxSum"></span><button type="button" id="bxGenAll" hidden>Create missing barcodes</button><button type="button" class="pri" id="bxBar">Add barcodes to the sheet</button></div>
+            <div id="bxRecv">
+              <div class="row" style="margin-top:10px;align-items:flex-end"><label class="fld">Add stock at<select id="bxLoc"></select></label></div>
+              <div class="foot"><button type="button" id="bxShort">Mark rest as not received</button><span class="sum"></span><button type="button" class="pri" id="bxAdd">Add stock to Shopify</button></div>
+            </div>
+          </div>
+          <div class="msg" id="bxMsg"></div>
+        </div></section>
     </div>
-    <div class="bk"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0" id="lqTitle">Labels to print</h3><button type="button" id="lqDone" hidden>Mark printed</button></div>
-      <div class="seg" id="lqBar" hidden><button type="button" id="lqUndo">↶ Undo</button><button type="button" id="lqRedo">↷ Redo</button><button type="button" id="lqClear">🗑 Clear list</button></div>
-      <div id="lqList"><div class="empty">No labels added yet. Use <b>Print label</b> on a finished stock take, or tick "Needs a barcode label" when adding stock.</div></div>
-      <div class="foot" id="lqFoot" hidden><label class="fld" style="flex:none;width:170px">Start at slot (1 to 65)<input type="text" id="lqSlot" value="1" inputmode="numeric" autocomplete="off"></label><span class="sum"></span><button type="button" class="pri" id="lqPrint">Download PDF</button></div>
-      <div class="msg" id="lqMsg"></div>
+
+    <div id="wzLb" hidden>
+      <section class="bk wzs" data-s="1"><div class="wzh"><span class="wzn">1</span><b>Pick a product</b><span class="wzsum"></span><button type="button" class="wzchg">Change</button></div>
+        <div class="wzb">
+          <div class="fld" style="margin-bottom:8px">Supplier (optional)<select id="lbSup"><option value="">All suppliers</option></select></div>
+          <div class="fld" style="margin-bottom:8px">Collection (optional)<div class="ss" id="ssLbCol"></div></div>
+          <div class="scan"><input id="lbIn" type="text" autocomplete="off" placeholder="Scan any size, or type a product name"><button id="lbAdd" type="button">Add</button><button id="lbCam" type="button" title="Scan with camera">📷</button></div>
+          <label id="lbRecentWrap" style="display:none"><input type="checkbox" id="lbRecent"></label>
+          <details id="lbDet"><summary id="lbDetS" style="cursor:pointer;font-weight:700;padding:10px 2px">Product list (tap to show)</summary><div id="lbShort"></div></details>
+        </div></section>
+      <section class="bk wzs" data-s="2" data-re="1" data-chg="＋ Add another product"><div class="wzh"><span class="wzn">2</span><b>Set label counts and add to the list</b><span class="wzsum"></span><button type="button" class="wzchg">Change</button></div>
+        <div class="wzb">
+          <div id="lbCard"></div>
+          <div class="msg" id="lbMsg">Pick a product to set how many labels each size needs.</div>
+        </div></section>
+    </div>
+
+    <div id="wzPrint" hidden>
+      <section class="bk wzs" data-s="3" data-chg="Print again"><div class="wzh"><span class="wzn">3</span><b>Print the barcodes</b><span class="wzsum"></span><button type="button" class="wzchg">Change</button></div>
+        <div class="wzb">
+          <div id="lqTitle" style="font-weight:700;margin-bottom:6px">Labels to print</div>
+          <div class="seg" id="lqBar" hidden><button type="button" id="lqUndo">↶ Undo</button><button type="button" id="lqRedo">↷ Redo</button><button type="button" id="lqClear">🗑 Clear list</button></div>
+          <div id="lqList"><div class="empty">No labels in the list yet.</div></div>
+          <div class="foot" id="lqFoot" hidden><label class="fld" style="flex:none;width:170px">Start at slot (1 to 65)<input type="text" id="lqSlot" value="1" inputmode="numeric" autocomplete="off"></label><span class="sum"></span><button type="button" class="pri" id="lqPrint">Download PDF</button></div>
+          <div class="msg" id="lqMsg"></div>
+        </div></section>
+      <section class="bk wzs" data-s="4"><div class="wzh"><span class="wzn">4</span><b>Barcodes applied on the products</b><span class="wzsum"></span></div>
+        <div class="wzb"><div class="msg" style="margin:0 0 8px">Stick the printed labels on the products, then confirm. This clears the label list.</div>
+          <button type="button" class="pri" id="lqDone">Barcodes applied</button></div></section>
+      <button type="button" id="wzAgain" class="pri" hidden style="width:100%;margin-top:6px">✓ All done. Start something else</button>
     </div>
   </div>
 
@@ -292,7 +325,61 @@ const $ = id => document.getElementById(id);
 const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const bcn = x => String(x || '').replace(/\D/g, '').replace(/^0+/, '') || String(x || '').trim();
 /* auto barcode: 13 digits starting 2 (the in-store EAN range, never a real product code) + EAN-13 check digit; the server refuses duplicates so we retry */
-const genBc = () => { let d = '2'; for (let i = 0; i < 11; i++) d += Math.floor(Math.random() * 10); let t = 0; for (let i = 0; i < 12; i++) t += Number(d[i]) * (i % 2 ? 3 : 1); return d + ((10 - t % 10) % 10); };
+const genBc = () => { for (let k = 0; k < 50; k++) { let d = '2'; for (let i = 0; i < 11; i++) d += Math.floor(Math.random() * 10); let t = 0; for (let i = 0; i < 12; i++) t += Number(d[i]) * (i % 2 ? 3 : 1); const c = d + ((10 - t % 10) % 10); if (!allBc.has(bcn(c)) && !byBc.has(bcn(c))) return c; } throw new Error('Could not find a free barcode, try again'); };
+const regBc = (v, code) => { v.bc = [code]; byBc.set(bcn(code), v); const k = bcn(code); (allBc.get(k) || allBc.set(k, []).get(k)).push(v); };
+
+/* ----- Barcodes tab wizard: 3 flows, numbered steps that unlock one after the other ----- */
+const WZ = (() => {
+  const st = {}; let flow = '';
+  const PAN = {box: ['wzBox', 'wzPrint'], new: ['wzLb', 'wzPrint'], col: ['wzLb', 'wzPrint'], print: ['wzPrint']};
+  const fresh = n => ({done: false, open: false, reached: n === '1', sum: ''});
+  const init = () => ['1', '2', '3', '4'].forEach(n => { st[n] = fresh(n); });
+  init();
+  function render() {
+    const panels = PAN[flow] || [];
+    ['wzBox', 'wzLb', 'wzPrint'].forEach(id => { $(id).hidden = !panels.includes(id); });
+    document.querySelectorAll('#viewBar .wzs').forEach(el => {
+      const n = el.dataset.s, s = st[n];
+      el.classList.toggle('done', s.done); el.classList.toggle('locked', !s.reached);
+      el.querySelector('.wzn').textContent = s.done ? '✓' : n;
+      el.querySelector('.wzb').hidden = !(s.reached && s.open);
+      el.querySelector('.wzsum').textContent = s.done ? s.sum : '';
+      const c = el.querySelector('.wzchg'); if (c) { c.hidden = !s.done; c.textContent = el.dataset.chg || 'Change'; }
+    });
+    $('wzFlows').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.f === flow));
+    $('wzAgain').hidden = !(flow && st['4'].done);
+    $('wzWait').hidden = !((window.__lq || 0) > 0 && !flow);
+  }
+  const api = {
+    get flow() { return flow; },
+    render,
+    start(f) {
+      flow = f; init();
+      if (f === 'print') { st['3'].reached = true; st['3'].open = true; } else st['1'].open = true;
+      try { window.bxReset && window.bxReset(); window.lbReset && window.lbReset(); } catch (e) {}
+      if (f === 'new' || f === 'col') { $('lbRecent').checked = f === 'new'; if ($('lbRecent').onchange) $('lbRecent').onchange(); }
+      if (f === 'box') { try { window.refreshBoxes && window.refreshBoxes(); } catch (e) {} }
+      render();
+    },
+    set(n, ok, sum) {
+      if (!flow) return; const s = st[n]; s.done = !!ok; s.open = !ok; s.sum = sum || ''; s.reached = true;
+      if (ok) { const m = String(+n + 1); if (st[m]) { st[m].reached = true; st[m].done = false; st[m].open = true; } }
+      render();
+    },
+    reopen(n) {
+      if (flow === 'box' && n === '1') { ['2', '3', '4'].forEach(m => { st[m] = fresh(m); }); try { window.bxReset(); } catch (e) {} }
+      if (flow !== 'box' && n === '1') { st['2'].open = false; try { window.lbReset(); } catch (e) {} }
+      st[n].done = false; st[n].open = true; render();
+    },
+    reset() { flow = ''; init(); render(); }
+  };
+  return api;
+})();
+$('wzFlows').onclick = e => { const b = e.target.closest('[data-f]'); if (b) WZ.start(b.dataset.f); };
+$('wzGoPrint').onclick = () => WZ.start('print');
+$('wzAgain').onclick = () => WZ.reset();
+document.querySelectorAll('#viewBar .wzchg').forEach(b => { b.onclick = () => { const el = b.closest('.wzs'); WZ.reopen(el.dataset.re || el.dataset.s); }; });
+WZ.render();
 async function autoBarcode(vid) {
   let last = null;
   for (let k = 0; k < 6; k++) { try { return await Store.setBarcode(vid, genBc()); } catch (e) { last = e; if (!/already uses/i.test(e.message || '')) throw e; } }
@@ -711,7 +798,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
       const v = byVid.get(String(r.vid)), im = v && v.image ? `<img src="${E(v.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(String(r.product || '').slice(0, 2).toUpperCase());
       return `<div class="bkit" data-v="${E(r.vid)}"><div class="im">${im}</div><div class="nm"><b>${E(r.product)}</b><span class="tag">${E(r.variant)}</span><small>${E(r.barcode)}</small></div><div class="stp"><button data-lc="-1">−</button><b>${r.copies}</b><button data-lc="1">+</button></div><button class="rm" data-lx="1" title="Remove from the list">✕</button></div>`;
     }).join('') : '<div class="empty">No labels added yet. Use <b>Print label</b> on a finished stock take, or tick "Needs a barcode label" when adding stock.</div>';
-    $('lqDone').hidden = $('lqFoot').hidden = !labelRows.length; $('lqBar').hidden = !(labelRows.length || undoSt.length || redoSt.length); $('lqUndo').disabled = !undoSt.length; $('lqRedo').disabled = !redoSt.length;
+    $('lqFoot').hidden = !labelRows.length; window.__lq = n; $('wzWaitT').textContent = `${n} label${n === 1 ? '' : 's'} waiting to print`; WZ.render(); $('lqBar').hidden = !(labelRows.length || undoSt.length || redoSt.length); $('lqUndo').disabled = !undoSt.length; $('lqRedo').disabled = !redoSt.length;
   }
   async function loadLabels() { try { const r = await Store.labels('list'); labelRows = r.rows || []; drawLabels(); } catch (e) { lqMsg('Could not load the label list: ' + e.message, 'bad'); } }
   window.refreshLabels = loadLabels;
@@ -725,7 +812,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   };
   $('lqPrint').onclick = async () => {
     const start = Math.max(1, Math.min(65, parseInt($('lqSlot').value, 10) || 1)); lqMsg('Making the PDF…');
-    try { const r = await Store.printLabels(labelRows, start); lqMsg(`PDF saved to your Downloads folder: ${r.labels} labels on ${r.sheets} sheet${r.sheets === 1 ? '' : 's'}. Print it on the barcode paper at 100% scale, then tap Mark printed.`, 'ok'); }
+    try { const r = await Store.printLabels(labelRows, start); lqMsg(`PDF saved to your Downloads folder: ${r.labels} labels on ${r.sheets} sheet${r.sheets === 1 ? '' : 's'}. Print it on the barcode paper at 100% scale, then confirm in the next step.`, 'ok'); WZ.set('3', true, r.labels + ' labels · PDF downloaded'); }
     catch (e) { lqMsg(e.message, 'bad'); }
   };
   $('lqUndo').onclick = async () => { if (!undoSt.length) return; const prev = undoSt.pop(); redoSt.push(snap()); try { await restoreTo(prev); lqMsg('Undone.', 'ok'); } catch (e) { lqMsg(e.message, 'bad'); } };
@@ -739,9 +826,9 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   };
   let doneArmed = false;
   $('lqDone').onclick = async () => {
-    if (!doneArmed) { doneArmed = true; $('lqDone').textContent = 'Tap again: mark printed'; setTimeout(() => { doneArmed = false; $('lqDone').textContent = 'Mark printed'; }, 6000); return; }
-    doneArmed = false; $('lqDone').textContent = 'Mark printed';
-    try { await Store.labels('done'); labelRows = []; drawLabels(); lqMsg('Cleared. The next labels start a new list.', 'ok'); } catch (e) { lqMsg(e.message, 'bad'); }
+    if (!doneArmed) { doneArmed = true; $('lqDone').textContent = 'Tap again to confirm'; setTimeout(() => { doneArmed = false; $('lqDone').textContent = 'Barcodes applied'; }, 6000); return; }
+    doneArmed = false; $('lqDone').textContent = 'Barcodes applied';
+    try { await Store.labels('done'); labelRows = []; drawLabels(); lqMsg('Cleared. The next labels start a new list.', 'ok'); WZ.set('4', true, 'Labels applied'); } catch (e) { lqMsg(e.message, 'bad'); }
   };
 
   /* ----- add labels: scan any size or search by name, then choose how many of each size ----- */
@@ -753,11 +840,11 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     const vs = V.filter(v => v.pid === lbPid).sort(sizeCmp2); if (!vs.length) { $('lbCard').innerHTML = ''; return; }
     const loc = shopLoc(), p = vs[0], im = p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase());
     const n = vs.reduce((a, v) => a + (v.bc[0] ? (lbN[v.vid] || 0) : 0), 0);
-    $('lbCard').innerHTML = `<div class="lbc"><div class="lbh"><div class="im">${im}</div><b>${E(p.pt)}</b><button type="button" id="lbStock">Set to stock quantity</button><button type="button" id="lbZero">Set all to 0</button><button type="button" id="lbX" title="Close">✕</button></div>` +
+    $('lbCard').innerHTML = `<div class="lbc"><div class="lbh"><div class="im">${im}</div><b>${E(p.pt)}</b><button type="button" id="lbStock">Set to stock quantity</button><button type="button" id="lbZero">Set all to 0</button>${vs.some(v => !v.bc[0]) ? '<button type="button" id="lbGen">Create missing barcodes</button>' : ''}<button type="button" id="lbX" title="Close">✕</button></div>` +
       vs.map(v => `<div class="lbr" data-v="${E(v.vid)}"><div class="nm"><span class="tag">${E(v.t)}</span><small>${v.bc[0] ? 'Stock ' + (v.q[loc] || 0) + ' · ' + E(v.bc[0]) : '<span class="bad">No barcode yet. Add one in the Add / remove tab.</span>'}</small></div><div class="stp"><button type="button" data-b="-1" ${v.bc[0] ? '' : 'disabled'}>−</button><b>${lbN[v.vid] || 0}</b><button type="button" data-b="1" ${v.bc[0] ? '' : 'disabled'}>+</button></div></div>`).join('') +
       `<div class="foot" style="padding:8px 10px"><span class="sum">${n} label${n === 1 ? '' : 's'} to add</span><button type="button" class="pri" id="lbGo" ${n ? '' : 'disabled'}>Add to label list</button></div></div>`;
   }
-  async function showProduct(pid) { try { await loadLocs(); } catch (e) {} lbPid = pid; lbN = {}; lbPrefill(); drawCard(); lbMsg($('lbRecent').checked ? 'Label counts set to the quantity uploaded. Adjust if needed.' : ''); }
+  async function showProduct(pid) { try { await loadLocs(); } catch (e) {} lbPid = pid; lbN = {}; lbPrefill(); drawCard(); { const q0 = V.find(v => v.pid === pid); WZ.set('1', true, q0 ? q0.pt : ''); } lbMsg($('lbRecent').checked ? 'Label counts set to the quantity uploaded. Adjust if needed.' : ''); }
   /* collection shortlist: pick a collection, then tap a product to open its sizes; name search is limited to it */
   const ssLb = Sel($('ssLbCol'), 'All collections');
   const lbCols = new Map(); V.forEach(v => v.cols.forEach(c => { if (!lbCols.has(c)) lbCols.set(c, new Set()); lbCols.get(c).add(v.pid); }));
@@ -783,7 +870,9 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   ssLb.onpick(() => { $('lbDet').open = false; drawShort(); });
   $('lbShort').onclick = e => { const b = e.target.closest('[data-p]'); if (b) showProduct(b.dataset.p); };
   const lbFind = ProductFind($('lbIn'), {onProduct: showProduct, addBtn: $('lbAdd'), only: inLbCol});
+  window.lbReset = () => { lbPid = ''; lbN = {}; drawCard(); lbMsg('Pick a product to set how many labels each size needs.'); };
   window.barScan = async (code, forced) => {
+    if (!['new', 'col'].includes(WZ.flow)) WZ.start('col');
     let v = forced || byBc.get(bcn(code)); const dups = allBc.get(bcn(code)) || [];
     if (!forced && dups.length > 1) { v = await askDup(dups, shopLoc(), 'Scan ' + code); if (!v) return; }
     if (!v) { lbMsg('Barcode ' + code + ' is not in the website data. Search by name instead.', 'bad'); beep('bad'); return; }
@@ -799,12 +888,13 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     if (b) { const vid = b.closest('.lbr').dataset.v; lbN[vid] = Math.max(0, Math.min(500, (lbN[vid] || 0) + Number(b.dataset.b))); drawCard(); return; }
     if (e.target.closest('#lbStock')) { V.filter(v => v.pid === lbPid && v.bc[0]).forEach(v => { lbN[v.vid] = Math.min(500, v.q[loc] || 0); }); drawCard(); return; }
     if (e.target.closest('#lbZero')) { lbN = {}; drawCard(); return; }
+    if (e.target.closest('#lbGen')) { const gb = e.target.closest('#lbGen'); gb.disabled = true; let ok = 0; try { for (const v of V.filter(v => v.pid === lbPid && !v.bc[0])) { const r = await autoBarcode(v.vid); regBc(v, r.barcode); ok++; } lbMsg(ok + ' barcode' + (ok === 1 ? '' : 's') + ' created and saved in Shopify.', 'ok'); } catch (err) { lbMsg(ok + ' created, then: ' + err.message, 'bad'); } drawCard(); return; }
     if (e.target.closest('#lbX')) { lbPid = ''; lbN = {}; drawCard(); return; }
     if (e.target.closest('#lbGo')) {
       const items = Object.entries(lbN).filter(([vid, n]) => n > 0 && (byVid.get(vid) || {bc: []}).bc[0]).map(([vid, n]) => ({vid, qty: n}));
       if (!items.length) return;
       $('lbGo').disabled = true;
-      try { await Store.labels('add', items); const t = items.reduce((a, i) => a + i.qty, 0); lbPid = ''; lbN = {}; drawCard(); await loadLabels(); lbMsg(`${t} label${t === 1 ? '' : 's'} added to the list below.`, 'ok'); }
+      try { await Store.labels('add', items); const t = items.reduce((a, i) => a + i.qty, 0); lbPid = ''; lbN = {}; drawCard(); await loadLabels(); lbMsg(`${t} label${t === 1 ? '' : 's'} added to the list.`, 'ok'); WZ.set('2', true, `${t} label${t === 1 ? '' : 's'} added`); }
       catch (err) { lbMsg(err.message, 'bad'); drawCard(); }
     }
   };
@@ -1285,9 +1375,10 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       try { lines = (await Store.boxList()) || []; if (box && !lines.some(l => l.box_no === box)) box = ''; drawTiles(); drawLines(); if (!lines.length) msg(''); }
       catch (e) { $('bxTiles').innerHTML = '<div class="empty">Could not load boxes.</div>'; msg(e.message, 'bad'); }
     }
+    window.bxReset = () => { box = ''; qv = {}; try { disarm(); } catch (e) {} drawTiles(); drawLines(); msg(''); };
     $('bxSup').onchange = () => { box = ''; drawTiles(); drawLines(); };
     $('bxRefresh').onclick = () => { disarm(); load(); };
-    $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; box = b.dataset.b; qv = {}; $('bxDet').open = false; disarm(); msg(''); drawTiles(); drawLines(); };
+    $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; box = b.dataset.b; qv = {}; $('bxDet').open = false; disarm(); msg(''); drawTiles(); drawLines(); { const bb = boxes().find(z => z.box === box); WZ.set('1', true, box + (bb ? ' · ' + bb.units + ' pcs' : '')); } };
     const gen1 = async vid => { const r = await autoBarcode(vid); const v = byVid.get(String(vid)); if (v) { v.bc = [r.barcode]; byBc.set(bcn(r.barcode), v); } return r; };
     $('bxLines').addEventListener('click', async e => { const g = e.target.closest('[data-g]'); if (!g) return; e.stopImmediatePropagation(); g.disabled = true; try { const r = await gen1(g.dataset.g); msg('Barcode ' + r.barcode + ' created.', 'ok'); drawLines(); } catch (err) { msg(err.message, 'bad'); g.disabled = false; } }, true);
     $('bxGenAll').onclick = async () => { const todo = cur().map(match).filter(v => v && !v.bc.length); if (!todo.length) return; $('bxGenAll').disabled = true; let ok = 0; try { for (const v of todo) { await gen1(v.vid); ok++; } msg(ok + ' barcode' + (ok === 1 ? '' : 's') + ' created.', 'ok'); } catch (err) { msg(ok + ' created, then: ' + err.message, 'bad'); } $('bxGenAll').disabled = false; drawLines(); };
@@ -1296,7 +1387,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       const items = [], skip = [];
       cur().forEach(l => { const q = qv[l.id] == null ? rem(l) : qv[l.id]; if (q <= 0) return; const v = match(l); if (v && v.bc.length) items.push({vid: v.vid, qty: q}); else skip.push(l.product_title + ' · ' + l.variant_title); });
       if (!items.length) return msg('Nothing to add: none of these lines has a barcode.', 'bad');
-      try { await Store.labels('add', items); await window.refreshLabels(); const t = items.reduce((a, i) => a + i.qty, 0); msg(`${t} label${t === 1 ? '' : 's'} added to the sheet below.` + (skip.length ? ` Skipped (no barcode/variant): ${skip.join('; ')}.` : ''), skip.length ? 'bad' : 'ok'); }
+      try { await Store.labels('add', items); await window.refreshLabels(); const t = items.reduce((a, i) => a + i.qty, 0); msg(`${t} label${t === 1 ? '' : 's'} added to the sheet below.` + (skip.length ? ` Skipped (no barcode/variant): ${skip.join('; ')}.` : ''), skip.length ? 'bad' : 'ok'); WZ.set('2', true, t + ' label' + (t === 1 ? '' : 's') + ' added'); }
       catch (e) { msg(e.message, 'bad'); }
     };
     $('bxLoc').onchange = disarm;
