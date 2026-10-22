@@ -99,10 +99,10 @@
   "reason": "Semrush calls reported non-zero API unit costs (domain/backlinks/competitor/tracking reports 10-600 units each); stopped without publishing"
  },
  "stock": {
-  "at": "2026-10-22T23:03+11:00",
-  "code_sha": "ff09c2bfbfcd363f3b49a89b75210017f30eb403",
+  "at": "2026-10-23T00:38+11:00",
+  "code_sha": "7045ffe5d030d1f099c68b2e8c993df5afbc3252",
   "data_through": null,
-  "last_ok": "2026-10-22T23:03+11:00",
+  "last_ok": "2026-10-23T00:38+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
