@@ -210,7 +210,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
       <div id="bxTiles" class="chips"><div class="empty">Loading boxes…</div></div>
       <div id="bxDetail" hidden>
         <details id="bxDet"><summary id="bxDetS" style="cursor:pointer;font-weight:700;padding:10px 2px">Items in this box</summary><div id="bxLines"></div></details>
-        <div class="foot"><span class="sum" id="bxSum"></span><button type="button" id="bxBar">Add barcodes to the sheet</button></div>
+        <div class="foot"><span class="sum" id="bxSum"></span><button type="button" id="bxGenAll" hidden>Create missing barcodes</button><button type="button" id="bxBar">Add barcodes to the sheet</button></div>
         <div id="bxRecv">
           <div class="row" style="margin-top:10px;align-items:flex-end"><label class="fld">Add stock at<select id="bxLoc"></select></label></div>
           <div class="foot"><button type="button" id="bxShort">Mark rest as not received</button><span class="sum"></span><button type="button" class="pri" id="bxAdd">Add stock to Shopify</button></div>
@@ -291,6 +291,13 @@ const DATA = __DATA__;
 const $ = id => document.getElementById(id);
 const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const bcn = x => String(x || '').replace(/\D/g, '').replace(/^0+/, '') || String(x || '').trim();
+/* auto barcode: 13 digits starting 2 (the in-store EAN range, never a real product code) + EAN-13 check digit; the server refuses duplicates so we retry */
+const genBc = () => { let d = '2'; for (let i = 0; i < 11; i++) d += Math.floor(Math.random() * 10); let t = 0; for (let i = 0; i < 12; i++) t += Number(d[i]) * (i % 2 ? 3 : 1); return d + ((10 - t % 10) % 10); };
+async function autoBarcode(vid) {
+  let last = null;
+  for (let k = 0; k < 6; k++) { try { return await Store.setBarcode(vid, genBc()); } catch (e) { last = e; if (!/already uses/i.test(e.message || '')) throw e; } }
+  throw last;
+}
 const PREVIEW = window.parent === window;      // opened on its own (not inside the hub): use demo data, no hub calls
 const beep = k => { try { const C = window.AudioContext || window.webkitAudioContext, a = new C(), o = a.createOscillator(), g = a.createGain(); o.frequency.value = k === 'ok' ? 880 : k === 'warn' ? 520 : 220; g.gain.value = 0.08; o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + (k === 'ok' ? 0.08 : 0.25)); setTimeout(() => a.close(), 400); } catch (e) {} };
 
@@ -600,7 +607,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
       const nobc = !v.bc.length;
       return `<div class="adit${over(i) ? ' err' : ''}" data-v="${E(i.vid)}"><div class="top"><div class="im">${img}</div><div class="nm"><b>${E(v.pt)}</b><span class="tag">${E(v.t)}</span><small${over(i) ? ' class="bad"' : ''}>${over(i) ? 'Only ' + stock(v) + ' here to remove' : 'Now ' + stock(v) + ' here → ' + (mode === 'add' ? stock(v) + i.qty : stock(v) - i.qty)}</small></div>` +
         `<div class="stp"><button data-d="-1">−</button><b>${i.qty}</b><button data-d="1">+</button></div><button class="rm" data-x="1" title="Remove from list">✕</button></div>` +
-        (mode === 'add' ? `<div class="ex">${nobc ? `<input type="text" data-bc placeholder="No barcode yet: type or scan one (optional)"><button type="button" data-bcs>Save barcode</button>` : ''}<label><input type="checkbox" data-lb ${i.label ? 'checked' : ''}> Needs a barcode label (next print run)</label></div>` : '') + '</div>';
+        (mode === 'add' ? `<div class="ex">${nobc ? `<input type="text" data-bc placeholder="No barcode yet: type or scan one (optional)"><button type="button" data-bcs>Save barcode</button><button type="button" data-bcg>Create automatically</button>` : ''}<label><input type="checkbox" data-lb ${i.label ? 'checked' : ''}> Needs a barcode label (next print run)</label></div>` : '') + '</div>';
     }).join('') : '<div class="empty">Nothing in the list yet.</div>';
     const n = total(), bad = items.some(over);
     $('adSum').textContent = items.length ? `${n} piece${n === 1 ? '' : 's'} to ${mode}` : '';
@@ -649,6 +656,8 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     const row = e.target.closest('.adit'); if (!row) return;
     const it = items.find(i => i.vid === row.dataset.v); if (!it) return;
     const d = e.target.closest('[data-d]'), x = e.target.closest('[data-x]'), sv = e.target.closest('[data-bcs]');
+    const gb = e.target.closest('[data-bcg]');
+    if (gb) { gb.disabled = true; try { const r = await autoBarcode(it.vid); const v = byVid.get(it.vid); v.bc = [r.barcode]; byBc.set(bcn(r.barcode), v); adMsg('Barcode ' + r.barcode + ' created on ' + v.pt + ' · ' + v.t, 'ok'); draw(); } catch (err) { adMsg(err.message, 'bad'); gb.disabled = false; } return; }
     if (d) { it.qty = Math.max(1, Math.min(1000, it.qty + Number(d.dataset.d))); armed = false; draw(); }
     else if (x) { items = items.filter(i => i !== it); armed = false; draw(); }
     else if (sv) {
@@ -1266,9 +1275,10 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       const sh = isShipped();
       { const ls = cur(); $('bxDetS').textContent = `Items in this box · ${ls.length} line${ls.length === 1 ? '' : 's'}, ${ls.reduce((a, l) => a + rem(l), 0)} pcs (tap to show)`; }
       $('bxLines').innerHTML = cur().map(l => { const v = match(l), r = rem(l), q = qv[l.id] == null ? r : qv[l.id];
-        return `<div class="bxl"><img src="${E(l.image || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${E(l.variant_title)} · sent ${l.qty}${l.recv_qty ? ' · already added ' + l.recv_qty : ''}${v ? '' : ' · <span style="color:var(--red)">no matching variant</span>'}${v && !v.bc.length ? ' · <span style="color:var(--red)">no barcode</span>' : ''}</div></div>${sh ? (r > 0 ? `<span class="stp"><button type="button" data-d="-1" data-i="${E(l.id)}">−</button><b style="min-width:24px;text-align:center">${q}</b><button type="button" data-d="1" data-i="${E(l.id)}">+</button></span>` : '<span class="sum">done</span>') : `<b>${l.qty}</b>`}</div>`; }).join('');
+        return `<div class="bxl"><img src="${E(l.image || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${E(l.variant_title)} · sent ${l.qty}${l.recv_qty ? ' · already added ' + l.recv_qty : ''}${v ? '' : ' · <span style="color:var(--red)">no matching variant</span>'}${v && !v.bc.length ? ' · <span style="color:var(--red)">no barcode</span> <button type="button" data-g="' + E(v.vid) + '" style="padding:2px 10px;font-size:12px">Create</button>' : ''}</div></div>${sh ? (r > 0 ? `<span class="stp"><button type="button" data-d="-1" data-i="${E(l.id)}">−</button><b style="min-width:24px;text-align:center">${q}</b><button type="button" data-d="1" data-i="${E(l.id)}">+</button></span>` : '<span class="sum">done</span>') : `<b>${l.qty}</b>`}</div>`; }).join('');
       const tot = cur().reduce((a, l) => a + (qv[l.id] == null ? rem(l) : qv[l.id]), 0), all = cur().reduce((a, l) => a + rem(l), 0);
       $('bxSum').textContent = sh ? `Adding ${tot} of ${all} pcs` : `${all} pcs packed — barcodes only until it is shipped`;
+      $('bxGenAll').hidden = !cur().some(l => { const v = match(l); return v && !v.bc.length; });
       $('bxRecv').hidden = !sh;
     }
     async function load() {
@@ -1278,6 +1288,9 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     $('bxSup').onchange = () => { box = ''; drawTiles(); drawLines(); };
     $('bxRefresh').onclick = () => { disarm(); load(); };
     $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; box = b.dataset.b; qv = {}; $('bxDet').open = false; disarm(); msg(''); drawTiles(); drawLines(); };
+    const gen1 = async vid => { const r = await autoBarcode(vid); const v = byVid.get(String(vid)); if (v) { v.bc = [r.barcode]; byBc.set(bcn(r.barcode), v); } return r; };
+    $('bxLines').addEventListener('click', async e => { const g = e.target.closest('[data-g]'); if (!g) return; e.stopImmediatePropagation(); g.disabled = true; try { const r = await gen1(g.dataset.g); msg('Barcode ' + r.barcode + ' created.', 'ok'); drawLines(); } catch (err) { msg(err.message, 'bad'); g.disabled = false; } }, true);
+    $('bxGenAll').onclick = async () => { const todo = cur().map(match).filter(v => v && !v.bc.length); if (!todo.length) return; $('bxGenAll').disabled = true; let ok = 0; try { for (const v of todo) { await gen1(v.vid); ok++; } msg(ok + ' barcode' + (ok === 1 ? '' : 's') + ' created.', 'ok'); } catch (err) { msg(ok + ' created, then: ' + err.message, 'bad'); } $('bxGenAll').disabled = false; drawLines(); };
     $('bxLines').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; const l = lines.find(x => x.id === b.dataset.i); if (!l) return; const q = qv[l.id] == null ? rem(l) : qv[l.id]; qv[l.id] = Math.max(0, Math.min(rem(l), q + Number(b.dataset.d))); disarm(); drawLines(); };
     $('bxBar').onclick = async () => {
       const items = [], skip = [];
