@@ -24,6 +24,7 @@ NOISE = ("do not delete", "filter index", "all products", "home page", "frontpag
 PRODUCTS = """{ products(query:"status:active OR status:unlisted OR status:draft"){ edges{ node{
   id title handle status createdAt onlineStoreUrl featuredImage{ url }
   metafield(namespace:"shopify", key:"color-pattern"){ jsonValue }
+  sup: metafield(namespace:"custom", key:"supplier_name"){ value }
   collections{ edges{ node{ id title } } }
   variants{ edges{ node{ id title barcode price inventoryItem{ id inventoryLevels{ edges{ node{ location{ id name } quantities(names:["available"]){ quantity } } } } } } } } } } } }"""
 
@@ -92,7 +93,7 @@ def build():
         gid = l.get("id", "")
         if "/Product/" in gid and "__parentId" not in l:
             products[gid] = {"id": num(gid), "title": l.get("title", ""), "image": ((l.get("featuredImage") or {}).get("url")) or "",
-                             "h": l.get("handle") or "", "st": l.get("status") or "", "ca": l.get("createdAt") or "",
+                             "h": l.get("handle") or "", "st": l.get("status") or "", "ca": l.get("createdAt") or "", "sup": ((l.get("sup") or {}).get("value") or "").strip(),
                              "url": l.get("onlineStoreUrl") or (("https://indifeels.com/products/" + l["handle"]) if l.get("handle") else ""),
                              "cols": [], "variants": [],
                              "colors": [cnames[g] for g in ((l.get("metafield") or {}).get("jsonValue") or []) if cnames.get(g)]}

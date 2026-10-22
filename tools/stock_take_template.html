@@ -206,9 +206,10 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
   <!-- ============ BARCODES ============ -->
   <div id="viewBar" hidden>
     <div class="bk"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0">Print barcodes for a box</h3><button type="button" id="bxRefresh">Refresh</button></div>
+      <label class="fld" style="margin-top:8px">Supplier<select id="bxSup"><option value="">All suppliers</option></select></label>
       <div id="bxTiles" class="chips"><div class="empty">Loading boxes…</div></div>
       <div id="bxDetail" hidden>
-        <div id="bxLines"></div>
+        <details id="bxDet"><summary id="bxDetS" style="cursor:pointer;font-weight:700;padding:10px 2px">Items in this box</summary><div id="bxLines"></div></details>
         <div class="foot"><span class="sum" id="bxSum"></span><button type="button" id="bxBar">Add barcodes to the sheet</button></div>
         <div id="bxRecv">
           <div class="row" style="margin-top:10px;align-items:flex-end"><label class="fld">Add stock at<select id="bxLoc"></select></label></div>
@@ -218,10 +219,11 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
       <div class="msg" id="bxMsg"></div>
     </div>
     <div class="bk"><h3>Add labels</h3>
+      <div class="fld" style="margin-bottom:8px">Supplier (optional)<select id="lbSup"><option value="">All suppliers</option></select></div>
       <div class="fld" style="margin-bottom:8px">Collection (optional)<div class="ss" id="ssLbCol"></div></div>
       <div class="scan"><input id="lbIn" type="text" autocomplete="off" placeholder="Scan any size, or type a product name"><button id="lbAdd" type="button">Add</button><button id="lbCam" type="button" title="Scan with camera">📷</button></div>
       <label style="display:flex;align-items:center;gap:8px;margin:10px 2px 4px;font-weight:600"><input type="checkbox" id="lbRecent" style="width:20px;height:20px"> Recently uploaded: newest products first, label count = quantity uploaded</label>
-      <div id="lbShort"></div>
+      <details id="lbDet"><summary id="lbDetS" style="cursor:pointer;font-weight:700;padding:10px 2px">Product list (tap to show)</summary><div id="lbShort"></div></details>
       <div id="lbCard"></div>
       <div class="msg" id="lbMsg">Scan any size (or search by name) to see every size of that product. Counts start at 0.</div>
     </div>
@@ -295,7 +297,7 @@ const beep = k => { try { const C = window.AudioContext || window.webkitAudioCon
 /* ---------- variants index (from the website data) ---------- */
 const V = [], byBc = new Map(), allBc = new Map(), byVid = new Map();
 DATA.products.forEach(p => p.variants.forEach(v => {
-  const r = {vid: String(v.vid), pid: String(p.id), pt: p.title, image: p.image || '', pr: v.pr || '', ca: p.ca || '', t: v.t, col: (p.colors || []).join(' / '), cols: p.cols || [], bc: v.bc || [], q: v.q || {}};
+  const r = {vid: String(v.vid), pid: String(p.id), pt: p.title, image: p.image || '', pr: v.pr || '', ca: p.ca || '', sup: p.sup || '', t: v.t, col: (p.colors || []).join(' / '), cols: p.cols || [], bc: v.bc || [], q: v.q || {}};
   V.push(r); byVid.set(r.vid, r); r.bc.forEach(b => { const k = bcn(b); (allBc.get(k) || allBc.set(k, []).get(k)).push(r); });
 }));
 /* The same barcode can sit on more than one variant (old and new copies of a product). Prefer the one that holds stock. */
@@ -751,19 +753,25 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   const ssLb = Sel($('ssLbCol'), 'All collections');
   const lbCols = new Map(); V.forEach(v => v.cols.forEach(c => { if (!lbCols.has(c)) lbCols.set(c, new Set()); lbCols.get(c).add(v.pid); }));
   ssLb.set([...lbCols.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, s]) => ({v: c, l: c, s: s.size + ' products'})));
-  const inLbCol = p => { const c = ssLb.get(); return !c || p.vs.some(v => v.cols.includes(c)); };
+  const inLbCol = p => { const c = ssLb.get(); return (!c || p.vs.some(v => v.cols.includes(c))) && p.vs.some(lbSupOk); };
   const sumQ = v => Object.values(v.q || {}).reduce((a, n) => a + (Number(n) || 0), 0);
   const fmtD = d => { const t = new Date(d); return isNaN(t) ? '' : t.toLocaleDateString('en-AU', {day: 'numeric', month: 'short'}); };
+  { const ss = [...new Set(V.map(v => v.sup).filter(Boolean))].sort(); $('lbSup').innerHTML = '<option value="">All suppliers</option>' + ss.map(x => `<option>${E(x)}</option>`).join(''); }
+  const lbSupOk = v => !$('lbSup').value || v.sup === $('lbSup').value;
   function drawShort() {
-    const c = ssLb.get(), rec = $('lbRecent').checked, box = $('lbShort');
-    if (!c && !rec) { box.innerHTML = ''; return; }
-    const ps = new Map(); V.forEach(v => { if (c && !v.cols.includes(c)) return; if (!ps.has(v.pid)) ps.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image, ca: v.ca || '', n: 0}); ps.get(v.pid).n += sumQ(v); });
+    const c = ssLb.get(), rec = $('lbRecent').checked, sp = $('lbSup').value, box = $('lbShort');
+    if (!c && !rec && !sp) { box.innerHTML = ''; $('lbDetS').textContent = 'Product list (pick a collection, supplier or Recently uploaded)'; return; }
+    const ps = new Map(); V.forEach(v => { if (c && !v.cols.includes(c)) return; if (!lbSupOk(v)) return; if (!ps.has(v.pid)) ps.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image, ca: v.ca || '', n: 0}); ps.get(v.pid).n += sumQ(v); });
     const list = [...ps.values()].sort(rec ? (a, b) => (b.ca || '').localeCompare(a.ca || '') || a.pt.localeCompare(b.pt) : (a, b) => a.pt.localeCompare(b.pt));
+    $('lbDetS').textContent = `Product list · ${list.length} product${list.length === 1 ? '' : 's'} (tap to ${$('lbDet').open ? 'hide' : 'show'})`;
     box.innerHTML = list.length ? `<div class="sum" style="margin-bottom:6px">${list.length} product${list.length === 1 ? '' : 's'}${c ? ' in ' + E(c) : ''}${rec ? ', newest first' : ''}. Tap one to pick its sizes.</div><div class="pfs">` + list.slice(0, 120).map(p => `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}</span><span style="flex:1;min-width:0">${E(p.pt)}${rec ? `<small style="display:block;color:var(--muted)">${fmtD(p.ca) ? 'Uploaded ' + fmtD(p.ca) + ' · ' : ''}${p.n} pcs</small>` : ''}</span></button>`).join('') + '</div>' : '<div class="msg">No products found.</div>';
   }
   const lbPrefill = () => { if ($('lbRecent').checked) V.filter(v => v.pid === lbPid && v.bc[0]).forEach(v => { lbN[v.vid] = Math.min(500, sumQ(v)); }); };
-  $('lbRecent').onchange = () => { drawShort(); if (lbPid) { lbN = {}; lbPrefill(); drawCard(); } };
-  ssLb.onpick(drawShort);
+  $('lbSup').onchange = () => { $('lbDet').open = false; drawShort(); };
+  $('lbDet').ontoggle = () => drawShort();
+  const lbRecentHook = 0;
+  $('lbRecent').onchange = () => { $('lbDet').open = false; drawShort(); if (lbPid) { lbN = {}; lbPrefill(); drawCard(); } };
+  ssLb.onpick(() => { $('lbDet').open = false; drawShort(); });
   $('lbShort').onclick = e => { const b = e.target.closest('[data-p]'); if (b) showProduct(b.dataset.p); };
   const lbFind = ProductFind($('lbIn'), {onProduct: showProduct, addBtn: $('lbAdd'), only: inLbCol});
   window.barScan = async (code, forced) => {
@@ -1243,17 +1251,20 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     const norm = x => String(x || '').trim().toLowerCase();
     const match = l => V.find(v => v.pid === String(l.product_id) && norm(v.t) === norm(l.variant_title));
     const rem = l => Math.max(0, (l.qty || 0) - (l.recv_qty || 0));
-    const boxes = () => { const m = new Map(); lines.forEach(l => { const b = m.get(l.box_no) || {box: l.box_no, shipped: l.line_status === 'shipped' || l.box_status === 'shipped', date: l.shipped_at, units: 0, n: 0}; b.units += rem(l); b.n++; m.set(l.box_no, b); }); return [...m.values()]; };
+    const boxes = () => { const m = new Map(); lines.forEach(l => { const b = m.get(l.box_no) || {box: l.box_no, shipped: l.line_status === 'shipped' || l.box_status === 'shipped', date: l.shipped_at, sup: l.supplier || '', units: 0, n: 0}; b.units += rem(l); b.n++; m.set(l.box_no, b); }); return [...m.values()]; };
     const cur = () => lines.filter(l => l.box_no === box);
     const isShipped = () => { const b = boxes().find(x => x.box === box); return !!(b && b.shipped); };
     const disarm = () => { armed = ''; $('bxAdd').classList.remove('arm'); $('bxShort').classList.remove('arm'); $('bxAdd').textContent = 'Add stock to Shopify'; $('bxShort').textContent = 'Mark rest as not received'; };
     function drawTiles() {
-      const b = boxes();
-      $('bxTiles').innerHTML = b.length ? b.map(x => `<button type="button" data-b="${E(x.box)}" class="${x.box === box ? 'in' : ''}">${E(x.box)}<small>${x.shipped ? 'Shipped' + (x.date ? ' ' + new Date(x.date).toLocaleDateString() : '') : 'Packed (not shipped)'} · ${x.units} pcs</small></button>`).join('') : '<div class="empty">No packed or shipped boxes waiting.</div>';
+      const all = boxes(), sups = [...new Set(all.map(x => x.sup).filter(Boolean))].sort(), sel = $('bxSup').value;
+      $('bxSup').innerHTML = '<option value="">All suppliers</option>' + sups.map(x => `<option${x === sel ? ' selected' : ''}>${E(x)}</option>`).join('');
+      const b = sel ? all.filter(x => x.sup === sel) : all;
+      $('bxTiles').innerHTML = b.length ? b.map(x => `<button type="button" data-b="${E(x.box)}" class="${x.box === box ? 'in' : ''}">${E(x.box)}${x.sup ? ' · ' + E(x.sup) : ''}<small>${x.shipped ? 'Shipped' + (x.date ? ' ' + new Date(x.date).toLocaleDateString() : '') : 'Packed (not shipped)'} · ${x.units} pcs</small></button>`).join('') : '<div class="empty">No packed or shipped boxes waiting.</div>';
     }
     function drawLines() {
       $('bxDetail').hidden = !box; if (!box) return;
       const sh = isShipped();
+      { const ls = cur(); $('bxDetS').textContent = `Items in this box · ${ls.length} line${ls.length === 1 ? '' : 's'}, ${ls.reduce((a, l) => a + rem(l), 0)} pcs (tap to show)`; }
       $('bxLines').innerHTML = cur().map(l => { const v = match(l), r = rem(l), q = qv[l.id] == null ? r : qv[l.id];
         return `<div class="bxl"><img src="${E(l.image || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${E(l.variant_title)} · sent ${l.qty}${l.recv_qty ? ' · already added ' + l.recv_qty : ''}${v ? '' : ' · <span style="color:var(--red)">no matching variant</span>'}${v && !v.bc.length ? ' · <span style="color:var(--red)">no barcode</span>' : ''}</div></div>${sh ? (r > 0 ? `<span class="stp"><button type="button" data-d="-1" data-i="${E(l.id)}">−</button><b style="min-width:24px;text-align:center">${q}</b><button type="button" data-d="1" data-i="${E(l.id)}">+</button></span>` : '<span class="sum">done</span>') : `<b>${l.qty}</b>`}</div>`; }).join('');
       const tot = cur().reduce((a, l) => a + (qv[l.id] == null ? rem(l) : qv[l.id]), 0), all = cur().reduce((a, l) => a + rem(l), 0);
@@ -1264,8 +1275,9 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       try { lines = (await Store.boxList()) || []; if (box && !lines.some(l => l.box_no === box)) box = ''; drawTiles(); drawLines(); if (!lines.length) msg(''); }
       catch (e) { $('bxTiles').innerHTML = '<div class="empty">Could not load boxes.</div>'; msg(e.message, 'bad'); }
     }
+    $('bxSup').onchange = () => { box = ''; drawTiles(); drawLines(); };
     $('bxRefresh').onclick = () => { disarm(); load(); };
-    $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; box = b.dataset.b; qv = {}; disarm(); msg(''); drawTiles(); drawLines(); };
+    $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; box = b.dataset.b; qv = {}; $('bxDet').open = false; disarm(); msg(''); drawTiles(); drawLines(); };
     $('bxLines').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; const l = lines.find(x => x.id === b.dataset.i); if (!l) return; const q = qv[l.id] == null ? rem(l) : qv[l.id]; qv[l.id] = Math.max(0, Math.min(rem(l), q + Number(b.dataset.d))); disarm(); drawLines(); };
     $('bxBar').onclick = async () => {
       const items = [], skip = [];
