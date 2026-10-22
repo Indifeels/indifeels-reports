@@ -204,6 +204,18 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 
   <!-- ============ BARCODES ============ -->
   <div id="viewBar" hidden>
+    <div class="bk"><div class="row" style="align-items:center"><h3 style="flex:1;margin:0">Print barcodes for a box</h3><button type="button" id="bxRefresh">Refresh</button></div>
+      <div id="bxTiles" class="chips"><div class="empty">Loading boxes…</div></div>
+      <div id="bxDetail" hidden>
+        <div id="bxLines"></div>
+        <div class="foot"><span class="sum" id="bxSum"></span><button type="button" id="bxBar">Add barcodes to the sheet</button></div>
+        <div id="bxRecv">
+          <div class="row" style="margin-top:10px;align-items:flex-end"><label class="fld">Add stock at<select id="bxLoc"></select></label></div>
+          <div class="foot"><button type="button" id="bxShort">Mark rest as not received</button><span class="sum"></span><button type="button" class="pri" id="bxAdd">Add stock to Shopify</button></div>
+        </div>
+      </div>
+      <div class="msg" id="bxMsg"></div>
+    </div>
     <div class="bk"><h3>Add labels</h3>
       <div class="fld" style="margin-bottom:8px">Shortlist by collection (optional)<div class="ss" id="ssLbCol"></div></div>
       <div id="lbShort"></div>
@@ -349,6 +361,9 @@ const Store = PREVIEW ? {
   lookup: async (code, from, to) => { const v = byBc.get(bcn(code)); if (!v) return {found: false}; await new Promise(r => setTimeout(r, 250)); return {found: true, vid: v.vid, product: v.pt, variant: v.t, image: v.image, from: v.q[from] || 0, to: v.q[to] || 0}; },
   transfer: async (from, to, items) => { await new Promise(r => setTimeout(r, 600)); items.forEach(i => { const v = byVid.get(i.vid); v.q[from] = (v.q[from] || 0) - i.qty; v.q[to] = (v.q[to] || 0) + i.qty; }); return {ok: true}; },
   takePush: async (loc, items, dry, mode) => ({ok: true, dry: !!dry, variants: items.length, changed: items.length, same: 0, up: items.length, down: 0, unitsUp: items.reduce((a, i) => a + i.qty, 0), unitsDown: 0, toZero: 0}),
+  boxList: async () => { const vs = V.filter(v => v.bc.length).slice(0, 4); const mk = (box, st, sh) => vs.map((v, i) => ({id: box + i, box_no: box, product_id: v.pid, product_title: v.pt, image: v.image, variant_title: v.t, supplier: 'Demo', qty: 3 + i, recv_qty: 0, line_status: sh ? 'shipped' : 'added', box_status: st, shipped_at: sh ? new Date().toISOString() : null})); return mk('Box-DM-01', 'shipped', true).concat(mk('Box-DM-02', 'open', false)); },
+  boxReceive: async items => ({ok: true, n: items.length}),
+  boxShort: async box => ({ok: true}),
   adjust: async (loc, mode, items, dry) => { await new Promise(r => setTimeout(r, 400)); if (!dry) items.forEach(i => { const v = byVid.get(i.vid); v.q[loc] = Math.max(0, (v.q[loc] || 0) + (mode === 'remove' ? -i.qty : i.qty)); }); return {ok: true, variants: items.length, units: items.reduce((a, i) => a + i.qty, 0)}; },
   setBarcode: async (vid, barcode) => ({ok: true, vid, barcode}),
   deleteVariant: async vid => ({ok: true, vid}),
@@ -366,6 +381,9 @@ const Store = PREVIEW ? {
   lookup: (code, from, to) => call('bulklookup', {code, from, to}),
   transfer: (from, to, items) => call('bulktransfer', {from, to, items}, 90000),
   takePush: (loc, items, dry, mode) => call('takepush', {loc, items, dry, mode}, 120000),
+  boxList: () => call('boxlist'),
+  boxReceive: items => call('boxreceive', {items}, 60000),
+  boxShort: box => call('boxshort', {box}, 60000),
   adjust: (loc, mode, items, dry) => call('adjustlist', {loc, mode, items, dry}, 120000),
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
   deleteVariant: vid => call('deletevariant', {vid}, 40000),
@@ -400,7 +418,7 @@ function show(v) {
   $('tabBulk').classList.toggle('on', v === 'bulk'); $('tabTake').classList.toggle('on', v === 'take'); $('tabAdj').classList.toggle('on', v === 'adj'); $('tabBar').classList.toggle('on', v === 'bar');
   if (v === 'take') takeOpen();
   if (v === 'adj') adjOpen();
-  if (v === 'bar') { try { window.refreshLabels(); } catch (e) {} }
+  if (v === 'bar') { try { window.refreshLabels(); window.refreshBoxes && window.refreshBoxes(); } catch (e) {} }
   curTab = v; saveUi();
 }
 $('tabBulk').onclick = () => show('bulk'); $('tabTake').onclick = () => show('take'); $('tabAdj').onclick = () => show('adj'); $('tabBar').onclick = () => show('bar');
@@ -1193,6 +1211,71 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
   }
   bulkInit();
   try { parent.postMessage({type: 'stock-take', action: 'ready'}, '*'); } catch (e) {}
+
+  /* ----- print barcodes for a box + add its stock to Shopify ----- */
+  (() => {
+    let lines = [], box = '', qv = {}, armed = '';
+    const msg = (t, k) => { const e = $('bxMsg'); e.textContent = t || ''; e.className = 'msg' + (k ? ' ' + k : ''); };
+    const norm = x => String(x || '').trim().toLowerCase();
+    const match = l => V.find(v => v.pid === String(l.product_id) && norm(v.t) === norm(l.variant_title));
+    const rem = l => Math.max(0, (l.qty || 0) - (l.recv_qty || 0));
+    const boxes = () => { const m = new Map(); lines.forEach(l => { const b = m.get(l.box_no) || {box: l.box_no, shipped: l.line_status === 'shipped' || l.box_status === 'shipped', date: l.shipped_at, units: 0, n: 0}; b.units += rem(l); b.n++; m.set(l.box_no, b); }); return [...m.values()]; };
+    const cur = () => lines.filter(l => l.box_no === box);
+    const isShipped = () => { const b = boxes().find(x => x.box === box); return !!(b && b.shipped); };
+    const disarm = () => { armed = ''; $('bxAdd').classList.remove('arm'); $('bxShort').classList.remove('arm'); $('bxAdd').textContent = 'Add stock to Shopify'; $('bxShort').textContent = 'Mark rest as not received'; };
+    function drawTiles() {
+      const b = boxes();
+      $('bxTiles').innerHTML = b.length ? b.map(x => `<button type="button" data-b="${E(x.box)}" class="${x.box === box ? 'in' : ''}">${E(x.box)}<small>${x.shipped ? 'Shipped' + (x.date ? ' ' + new Date(x.date).toLocaleDateString() : '') : 'Packed (not shipped)'} · ${x.units} pcs</small></button>`).join('') : '<div class="empty">No packed or shipped boxes waiting.</div>';
+    }
+    function drawLines() {
+      $('bxDetail').hidden = !box; if (!box) return;
+      const sh = isShipped();
+      $('bxLines').innerHTML = cur().map(l => { const v = match(l), r = rem(l), q = qv[l.id] == null ? r : qv[l.id];
+        return `<div class="row" style="align-items:center;gap:8px;margin:6px 0"><img src="${E(l.image || '')}" alt="" style="width:36px;height:46px;object-fit:cover;border-radius:6px;background:#0002"><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${E(l.variant_title)} · sent ${l.qty}${l.recv_qty ? ' · already added ' + l.recv_qty : ''}${v ? '' : ' · <span style="color:var(--red)">no matching variant</span>'}${v && !v.bc.length ? ' · <span style="color:var(--red)">no barcode</span>' : ''}</div></div>${sh ? (r > 0 ? `<button type="button" data-d="-1" data-i="${E(l.id)}">−</button><b style="min-width:26px;text-align:center">${q}</b><button type="button" data-d="1" data-i="${E(l.id)}">+</button>` : '<span class="sum">done</span>') : `<b>${l.qty}</b>`}</div>`; }).join('');
+      const tot = cur().reduce((a, l) => a + (qv[l.id] == null ? rem(l) : qv[l.id]), 0), all = cur().reduce((a, l) => a + rem(l), 0);
+      $('bxSum').textContent = sh ? `Adding ${tot} of ${all} pcs` : `${all} pcs packed — barcodes only until it is shipped`;
+      $('bxRecv').hidden = !sh;
+    }
+    async function load() {
+      try { lines = (await Store.boxList()) || []; if (box && !lines.some(l => l.box_no === box)) box = ''; drawTiles(); drawLines(); if (!lines.length) msg(''); }
+      catch (e) { $('bxTiles').innerHTML = '<div class="empty">Could not load boxes.</div>'; msg(e.message, 'bad'); }
+    }
+    $('bxRefresh').onclick = () => { disarm(); load(); };
+    $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; box = b.dataset.b; qv = {}; disarm(); msg(''); drawTiles(); drawLines(); };
+    $('bxLines').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; const l = lines.find(x => x.id === b.dataset.i); if (!l) return; const q = qv[l.id] == null ? rem(l) : qv[l.id]; qv[l.id] = Math.max(0, Math.min(rem(l), q + Number(b.dataset.d))); disarm(); drawLines(); };
+    $('bxBar').onclick = async () => {
+      const items = [], skip = [];
+      cur().forEach(l => { const v = match(l); if (v && v.bc.length) items.push({vid: v.vid, qty: l.qty}); else skip.push(l.product_title + ' · ' + l.variant_title); });
+      if (!items.length) return msg('Nothing to add: none of these lines has a barcode.', 'bad');
+      try { await Store.labels('add', items); await loadLabels(); const t = items.reduce((a, i) => a + i.qty, 0); msg(`${t} label${t === 1 ? '' : 's'} added to the sheet below.` + (skip.length ? ` Skipped (no barcode/variant): ${skip.join('; ')}.` : ''), skip.length ? 'bad' : 'ok'); }
+      catch (e) { msg(e.message, 'bad'); }
+    };
+    $('bxLoc').onchange = disarm;
+    $('bxAdd').onclick = async () => {
+      const ls = cur().map(l => ({l, q: qv[l.id] == null ? rem(l) : qv[l.id], v: match(l)})).filter(x => x.q > 0);
+      if (!ls.length) return msg('Nothing to add.', 'bad');
+      const bad = ls.filter(x => !x.v); if (bad.length) return msg('No matching variant on the website for: ' + bad.map(x => x.l.product_title + ' · ' + x.l.variant_title).join('; '), 'bad');
+      const tot = ls.reduce((a, x) => a + x.q, 0), all = cur().reduce((a, l) => a + rem(l), 0), locName = $('bxLoc').selectedOptions[0] ? $('bxLoc').selectedOptions[0].textContent : '';
+      if (armed !== 'add') { armed = 'add'; $('bxShort').classList.remove('arm'); $('bxAdd').classList.add('arm'); $('bxAdd').textContent = tot < all ? `Tap again: add ${tot} of ${all} to ${locName}` : `Tap again: add all ${tot} to ${locName}`; return; }
+      disarm(); $('bxAdd').disabled = true; msg('Adding stock…');
+      try {
+        const sum = {}; ls.forEach(x => { sum[x.v.vid] = (sum[x.v.vid] || 0) + x.q; });
+        await Store.adjust($('bxLoc').value, 'add', Object.keys(sum).map(vid => ({vid, qty: sum[vid]})), false);
+        try { await Store.boxReceive(ls.map(x => ({id: x.l.id, qty: x.q}))); } catch (e) { msg('Stock WAS added to Shopify, but the box list could not be updated: ' + e.message + ' — do not add it again.', 'bad'); $('bxAdd').disabled = false; return; }
+        qv = {}; await load();
+        msg(`${tot} pcs added to ${locName}.` + (tot < all ? ` ${all - tot} still in the list — add them to another location, or tap "Mark rest as not received".` : ''), 'ok');
+      } catch (e) { msg(e.message, 'bad'); }
+      $('bxAdd').disabled = false;
+    };
+    $('bxShort').onclick = async () => {
+      const left = cur().reduce((a, l) => a + rem(l), 0); if (!left) return msg('Nothing left to mark.', 'bad');
+      if (armed !== 'short') { armed = 'short'; $('bxAdd').classList.remove('arm'); $('bxAdd').textContent = 'Add stock to Shopify'; $('bxShort').classList.add('arm'); $('bxShort').textContent = `Tap again: ${left} pcs not received`; return; }
+      disarm();
+      try { await Store.boxShort(box); qv = {}; await load(); msg(`${left} pcs moved to the supplier's "Not received" list (both of you can see it).`, 'ok'); } catch (e) { msg(e.message, 'bad'); }
+    };
+    loadLocs().then(() => { $('bxLoc').innerHTML = locs.map(l => `<option value="${E(l.id)}">${E(l.name)}</option>`).join(''); const shop = locs.find(l => /shop/i.test(l.name)); if (shop) $('bxLoc').value = shop.id; }).catch(() => {});
+    window.refreshBoxes = load; load();
+  })();
   setTimeout(() => { try { window.refreshLabels(); } catch (e) {} }, 800);
 })();
 </script>

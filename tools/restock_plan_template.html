@@ -2276,7 +2276,9 @@ function renderSv(){
   if (names.includes(cur)) sel.value = cur;
   const who = sel.value;
   const lineSup = r => { const pr = data.products.find(p => String(p.id) === String(r.product_id)); return supName((pr && pr.supplier) || r.supplier).toLowerCase(); };
-  const master = all.filter(r => r.status === 'saved' && !r.claimed && (!who || lineSup(r) === supName(who).toLowerCase()));
+  const inSv = r => !who || lineSup(r) === supName(who).toLowerCase();
+  const shortRows = all.filter(r => r.status === 'saved' && r.short_box && inSv(r));
+  const master = all.filter(r => r.status === 'saved' && !r.claimed && !r.short_box && (!who || lineSup(r) === supName(who).toLowerCase()));
   $('svCount').textContent = master.length + ' on the order list' + (who ? ' for ' + who : '');
   $('svExport').disabled = !who || !master.length;
   const supNames = [...new Set(names.concat(data.products.map(p => p.supplier).filter(Boolean)).concat(svUsers.map(u => u.supplier).filter(Boolean)))].filter(n => !/^unassigned$/i.test(n)).sort((a, b) => a.localeCompare(b));
@@ -2288,9 +2290,11 @@ function renderSv(){
     const opts = supNames.concat(cur.filter(n => !supNames.includes(n)));
     return `<div class="svtag"><select data-tagp="${esc(g[0].product_id)}" data-cur="${esc(cur.join('|'))}"${cur.length ? '' : ' class="warn"'}><option value="">${cur.length ? (cur.length > 1 ? 'Mixed suppliers — pick one…' : 'Supplier: ' + esc(cur[0])) : '⚠ No supplier — pick one…'}</option>${opts.filter(n => n !== cur[0] || cur.length > 1).map(n => `<option>${esc(n)}</option>`).join('')}</select></div>`;
   };
-  const mTable = master.length ? bxGroup(master).map(g => `<div class="bx-prod" style="background:var(--card);margin-bottom:10px">${bxImg(g[0])}<div class="svinfo"><div class="svpn">${esc(g[0].product_title || '')}</div>${bxSetTag(g)}${tagSel(g)}</div>${bxSetBody(g, `<table class="otab"><thead><tr><th>Variant</th><th style="text-align:center">Qty wanted</th><th>Requested</th></tr></thead><tbody>
-      ${g.slice().sort(bxByVariant).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td><td>${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</td></tr>`).join('')}</tbody></table>`)}</div>`).join('') : '<div class="empty">Nothing waiting on the order list.</div>';
-  $('svList').innerHTML = bxSec('sv-order', '📋 Order list', bxPlural(master.length, 'item') + ' waiting', '<p class="sub" style="margin:0 0 10px">' + (who ? 'Only ' + esc(who) + '\'s products. ' : 'Every supplier sees these until one adds them to a box.') + '</p>' + mTable);
+  const mTbl = rows => bxGroup(rows).map(g => `<div class="bx-prod" style="background:var(--card);margin-bottom:10px">${bxImg(g[0])}<div class="svinfo"><div class="svpn">${esc(g[0].product_title || '')}</div>${bxSetTag(g)}${tagSel(g)}</div>${bxSetBody(g, `<table class="otab"><thead><tr><th>Variant</th><th style="text-align:center">Qty wanted</th><th>Requested</th></tr></thead><tbody>
+      ${g.slice().sort(bxByVariant).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td><td>${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</td></tr>`).join('')}</tbody></table>`)}</div>`).join('');
+  const mTable = master.length ? mTbl(master) : '<div class="empty">Nothing waiting on the order list.</div>';
+  const shortSec = shortRows.length ? `<div style="margin-top:14px;padding:10px;border:2px solid #e5484d;border-radius:14px;background:rgba(229,72,77,.08)"><h3 style="margin:0 0 4px;color:#e5484d;font-size:16px">⚠ Not received (${shortRows.reduce((t, r) => t + r.qty, 0)} pcs)</h3><p class="sub" style="margin:0 0 10px">Marked as sent but did not arrive. The supplier sees this list too.</p>${mTbl(shortRows)}</div>` : '';
+  $('svList').innerHTML = bxSec('sv-order', '📋 Order list', bxPlural(master.length, 'item') + ' waiting', '<p class="sub" style="margin:0 0 10px">' + (who ? 'Only ' + esc(who) + '\'s products. ' : 'Every supplier sees these until one adds them to a box.') + '</p>' + mTable + shortSec);
   const boxes = boxesFor(who);
   const tile = ({b, lines}) => bxTile(b, lines, {ro: true, rem: remOf, open: svOpen.has(b.box_no) ? svOpen.get(b.box_no) : false, who: b.supplier});
   const pk = boxes.filter(x => x.b.status !== 'shipped'), sh = boxes.filter(x => x.b.status === 'shipped');
@@ -2379,7 +2383,7 @@ async function loadAccounts(){
       </tbody></table>`;
   } catch (err) { box.innerHTML = '<div class="sub">Could not load accounts: ' + esc(err.message) + '</div>'; }
 }
-const ACT = {ordered:'ordered', unordered:'cancelled the order', boxed:'added to box', unboxed:'removed from box', qty:'changed the quantity', shipped:'shipped', notmine:'said not their product',received:'marked restocked'};
+const ACT = {ordered:'ordered', unordered:'cancelled the order', boxed:'added to box', unboxed:'removed from box', qty:'changed the quantity', shipped:'shipped', notmine:'said not their product',short:'was not received',received:'marked restocked'};
 async function loadActivity(){
   const box = $('svActivity'); box.innerHTML = '<div class="sub">Loading…</div>';
   try {
