@@ -921,6 +921,10 @@ select.sel{appearance:none;-webkit-appearance:none}
 .stka .go{background:#4da3ff;border-color:#4da3ff;color:#06203d}.stka button:disabled{opacity:.45}
 .stkm .msg{min-height:18px;margin-top:10px;font-size:13px;color:#ff8a8a}.stkm .msg.ok{color:#7ee08c}
 .svtag .btn{padding:8px 14px;border-radius:10px;border:0;background:#3a6fd8;color:#fff;font-weight:600;margin:0 6px 10px 0;cursor:pointer}.svsup{font-size:13px;opacity:.8;margin:-4px 0 8px}.svtc{font-size:13px;margin:0 0 8px}.svpn{font-weight:700;margin:2px 0 8px;font-size:15px}.svtag select:not(.warn){border-color:#4a6fa5;background:#2a3850;color:#fff;font-weight:700}:root[data-theme=light] .svtag select:not(.warn){background:#e3ebf7;color:#14233f}.svtag select{width:100%;margin:0 0 10px;padding:9px;border-radius:10px;border:1px solid #d9822b;background:var(--card);color:inherit;font-size:14px}
+  #viewSup .svctl{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+  #viewSup .svctl .svsel{display:flex;gap:8px;align-items:center;margin:0}#viewSup .svctl .svsel select{flex:1;min-width:0}
+  #viewSup .svbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}#viewSup .svbtns button{padding:9px 6px;margin:0;width:100%}
+  #svExport:disabled{opacity:.45}
 </style>
 <style>
 /* ---- Stock health gauge ---- */
@@ -1043,12 +1047,15 @@ select.sel{appearance:none;-webkit-appearance:none}
   <div id="boxes"></div>
 </div>
 <div id="viewSup" hidden>
-  <div class="controls">
-    <label class="o">Supplier <select id="svSup"></select></label>
-    <span class="grow"></span><span class="sub" id="svCount"></span>
-    <button id="svRefresh">Refresh</button>
-    <button id="svLog">Activity log</button>
-    <button id="svAccts">Supplier accounts</button>
+  <div class="controls svctl">
+    <label class="o svsel">Supplier <select id="svSup"></select></label>
+    <span class="sub" id="svCount"></span>
+    <div class="svbtns">
+      <button id="svExport" title="Pick a supplier first: exports that supplier's order list (image, size, quantity)">Export Excel</button>
+      <button id="svRefresh">Refresh</button>
+      <button id="svLog">Activity log</button>
+      <button id="svAccts">Supplier accounts</button>
+    </div>
   </div>
   <div class="sub" style="margin:2px 2px 10px">The order list and each supplier&#39;s boxes, read-only. Boxes are named by the supplier (Pankaj = P1, Vistara = V1 …). Changes show here within a minute.</div>
   <div id="svAccounts" hidden></div>
@@ -1111,6 +1118,7 @@ const Store = {
   hideSize: (vkey, product, title, hidden, shopify) => call('hidesize', { vkey, product, title, hidden, shopify: !!shopify }),
   setTag: (product, supplier) => call('settag', { product, supplier }),
   tagList: () => call('taglist'),
+  exportXlsx: (filename, rows) => call('exportxlsx', { filename, rows }, 60000),
   stockGet: vid => call('stockget', { vid }),
   stockAdjust: (vid, dShop, dBackup) => call('stockadjust', { vid, dShop, dBackup }),
 };
@@ -2262,13 +2270,15 @@ let svUsers = [];
 Store.users().then(u => { svUsers = u || []; }).catch(() => {});
 function renderSv(){
   const all = [...orders.values()];
-  const names = [...new Set(all.filter(r => r.claimed && r.supplier).map(r => r.supplier).concat(boxesData.map(x => x.supplier).filter(Boolean)))].sort();
+  const names = [...new Set(all.filter(r => r.claimed && r.supplier).map(r => r.supplier).concat(boxesData.map(x => x.supplier).filter(Boolean)).concat(supplierNames()))].filter(n => !/^unassigned$/i.test(n)).sort((a, b) => a.localeCompare(b));
   const sel = $('svSup'), cur = sel.value;
   sel.innerHTML = '<option value="">All suppliers</option>' + names.map(n => `<option>${esc(n)}</option>`).join('');
   if (names.includes(cur)) sel.value = cur;
   const who = sel.value;
-  const master = all.filter(r => r.status === 'saved' && !r.claimed);
-  $('svCount').textContent = master.length + ' on the order list';
+  const lineSup = r => { const pr = data.products.find(p => String(p.id) === String(r.product_id)); return supName((pr && pr.supplier) || r.supplier).toLowerCase(); };
+  const master = all.filter(r => r.status === 'saved' && !r.claimed && (!who || lineSup(r) === supName(who).toLowerCase()));
+  $('svCount').textContent = master.length + ' on the order list' + (who ? ' for ' + who : '');
+  $('svExport').disabled = !who || !master.length;
   const supNames = [...new Set(names.concat(data.products.map(p => p.supplier).filter(Boolean)).concat(svUsers.map(u => u.supplier).filter(Boolean)))].filter(n => !/^unassigned$/i.test(n)).sort((a, b) => a.localeCompare(b));
   const tagSel = g => {
     if (!/^\d+$/.test(String(g[0].product_id || ''))) return `<div class="svsup">Supplier: <b>${esc(g[0].supplier || '')}</b></div>`;
@@ -2280,7 +2290,7 @@ function renderSv(){
   };
   const mTable = master.length ? bxGroup(master).map(g => `<div class="bx-prod" style="background:var(--card);margin-bottom:10px">${bxImg(g[0])}<div class="svinfo"><div class="svpn">${esc(g[0].product_title || '')}</div>${bxSetTag(g)}${tagSel(g)}</div>${bxSetBody(g, `<table class="otab"><thead><tr><th>Variant</th><th style="text-align:center">Qty wanted</th><th>Requested</th></tr></thead><tbody>
       ${g.slice().sort(bxByVariant).map(r => `<tr><td>${esc(r.variant_title)}</td><td class="q">${r.qty}</td><td>${r.saved_at ? bxFmt(new Date(r.saved_at)) : ''}</td></tr>`).join('')}</tbody></table>`)}</div>`).join('') : '<div class="empty">Nothing waiting on the order list.</div>';
-  $('svList').innerHTML = bxSec('sv-order', '📋 Order list', bxPlural(master.length, 'item') + ' waiting', '<p class="sub" style="margin:0 0 10px">Every supplier sees these until one adds them to a box.</p>' + mTable);
+  $('svList').innerHTML = bxSec('sv-order', '📋 Order list', bxPlural(master.length, 'item') + ' waiting', '<p class="sub" style="margin:0 0 10px">' + (who ? 'Only ' + esc(who) + '\'s products. ' : 'Every supplier sees these until one adds them to a box.') + '</p>' + mTable);
   const boxes = boxesFor(who);
   const tile = ({b, lines}) => bxTile(b, lines, {ro: true, rem: remOf, open: svOpen.has(b.box_no) ? svOpen.get(b.box_no) : false, who: b.supplier});
   const pk = boxes.filter(x => x.b.status !== 'shipped'), sh = boxes.filter(x => x.b.status === 'shipped');
@@ -2340,6 +2350,16 @@ $('svList').addEventListener('click', async e => {
   } catch (err) { b.parentElement.innerHTML = '<div class="svtc" style="color:#e66">Could not save: ' + esc(err.message) + '</div>'; }
 });
 $('svRefresh').addEventListener('click', () => refresh());
+$('svExport').addEventListener('click', async () => {
+  const who = $('svSup').value; if (!who) { notify('Pick a supplier first'); return; }
+  const lines = [...orders.values()].filter(r => r.status === 'saved' && !r.claimed && (() => { const pr = data.products.find(p => String(p.id) === String(r.product_id)); return supName((pr && pr.supplier) || r.supplier).toLowerCase() === supName(who).toLowerCase(); })());
+  if (!lines.length) { notify('Nothing on the order list for ' + who); return; }
+  const rows = []; bxGroup(lines).forEach(g => g.slice().sort(bxByVariant).forEach(r => rows.push({ image: r.image || '', size: r.variant_title || '', qty: r.qty })));
+  const b = $('svExport'); b.disabled = true;
+  try { await Store.exportXlsx('order-list-' + who.replace(/[^\w]+/g, '-') + '-' + new Date().toISOString().slice(0, 10) + '.xlsx', rows); notify('Excel downloaded: ' + rows.length + ' lines for ' + who, true); }
+  catch (err) { notify('Could not export: ' + err.message); }
+  b.disabled = false;
+});
 async function loadAccounts(){
   const box = $('svAccounts');
   box.innerHTML = '<div class="sub">Loading…</div>';
