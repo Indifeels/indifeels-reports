@@ -2096,7 +2096,7 @@ $('list').addEventListener('click', async e => {
     const pid = dc.getAttribute('data-disc'), to = dc.getAttribute('data-to') === '1';
     if (to && !armed.has(pid)) { armed.add(pid); render(); setTimeout(() => { if (armed.delete(pid)) render(); }, 5000); return; }
     armed.delete(pid); dc.disabled = true;
-    try { await Store.disc(pid, to); discMap.set(pid, to); notify(to ? 'Marked discontinued. Shopify is updated on the next refresh (after the next order, or at midnight).' : 'Reinstated. Shopify is updated on the next refresh.', true); }
+    try { await Store.disc(pid, to); discMap.set(pid, to); if (to) { for (const [k, o] of [...orders]) if (String(o.product_id) === pid && (o.status === 'saved' || o.status === 'added')) orders.delete(k); indexOrders(); } notify(to ? 'Marked discontinued and removed from the order list. Shopify is updated on the next refresh (after the next order, or at midnight).' : 'Reinstated. Shopify is updated on the next refresh.', true); }
     catch (err) { notify('Could not update: ' + err.message); }
     render(); return;
   }
