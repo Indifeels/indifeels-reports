@@ -197,7 +197,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
     </div>
     <div class="bk"><div class="row" style="align-items:center"><b id="adTitle" style="flex:1">List</b><button type="button" id="adClear" hidden>Clear list</button></div>
       <div id="adList"><div class="empty">Nothing in the list yet.</div></div>
-      <div class="foot"><span class="sum" id="adSum"></span><button type="button" id="adCancel" disabled>Cancel</button><button type="button" id="adCancel" disabled>Cancel</button><button type="button" class="pri" id="adGo" disabled>Add stock</button></div>
+      <div class="foot"><span class="sum" id="adSum"></span><button type="button" id="adCancel" disabled>Cancel</button><button type="button" class="pri" id="adGo" disabled>Add stock</button></div>
       <div class="msg" id="adRes"></div>
     </div>
   </div>
@@ -582,7 +582,6 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     const n = total(), bad = items.some(over);
     $('adSum').textContent = items.length ? `${n} piece${n === 1 ? '' : 's'} to ${mode}` : '';
     $('adCancel').disabled = !items.length || busy;
-    $('adCancel').disabled = !items.length || busy;
     $('adGo').disabled = !items.length || busy || bad || !loc();
     $('adGo').classList.toggle('arm', armed);
     $('adGo').textContent = mode === 'add' ? 'Add stock' : (armed ? `Tap again: remove ${n} pieces` : 'Remove stock');
@@ -622,7 +621,6 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   $('adAddBtn').onclick = () => { const v = $('adIn').value.trim(); $('adIn').value = ''; if (v) adjScan(v); $('adIn').focus(); };
   $('adCam').onclick = () => camera('adj');
   $('adClear').onclick = () => { items = []; armed = false; draw(); };
-  $('adCancel').onclick = () => { items = []; armed = false; $('adRes').textContent = ''; draw(); };
   $('adCancel').onclick = () => { items = []; armed = false; $('adRes').textContent = ''; draw(); };
   $('adList').onclick = async e => {
     const row = e.target.closest('.adit'); if (!row) return;
