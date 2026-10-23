@@ -1448,7 +1448,15 @@ function lineHtml(o){
   if (o.status === 'saved') return `<div class="ln"><span class="badge c-info ob-ord"${tip}>Ordered ${o.qty}</span><span class="sub">${dShort(o.saved_at)}</span><button class="x" data-cancel="${esc(o.id)}" title="Cancel this order line (only until the supplier boxes it)">×</button></div>`;
   if (o.status === 'added') return `<div class="ln"><span class="badge c-amber ob-pack"${tip}>📦 Packed ${eff(o)}${o.box_no ? ' · ' + esc(o.box_no) : ''}${o.claimed && o.supplier ? ' · ' + esc(o.supplier) : ''}</span>${o.wrong_pick ? '<span class="wp" title="Picked by a supplier this product is not tagged to">⚠ wrong pick</span>' : ''}<button class="x" data-cancel="${esc(o.id)}" title="Remove this line (the supplier loses it)">×</button></div>${lowFlag(o)}`;
   const d = shipDay(o), days = daysBetween(d, Date.now());
-  return `<div class="ln"><span class="badge c-green ob-ship"${tip}>🚚 Shipped ${eff(o)} · ${dShort(d)}${o.box_no ? ' · ' + esc(o.box_no) : ''} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days')}</span><button class="recv" data-recv="${esc(o.id)}" title="This line arrived: stop its timer">Received</button></div>${lowFlag(o)}`;
+  return `<div class="ln"><span class="badge c-green ob-ship"${tip}>🚚 Shipped ${eff(o)} · ${dShort(d)}${o.box_no ? ' · ' + esc(o.box_no) : ''} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days')}${trackA(o.box_no)}</span><button class="recv" data-recv="${esc(o.id)}" title="This line arrived: stop its timer">Received</button></div>${lowFlag(o)}`;
+}
+function trackA(boxNo){
+  const b = boxNo ? boxesData.find(x => x.box_no === boxNo) : null, u = b ? bxUrl(b.tracking_url) : '';
+  return u ? ` · <a class="trk" href="${esc(u)}" target="_blank" rel="noopener noreferrer" title="Open the tracking page for this box${b.tracking_no ? ' (' + esc(b.tracking_no) + ')' : ''}" style="color:inherit;text-decoration:underline">🔗 Track</a>` : '';
+}
+function shipGroupHtml(ls){      // several shipped lines of one variant in the SAME box: one tile, one Received
+  const q = ls.reduce((a, o) => a + eff(o), 0), d = ls.map(shipDay).sort((a, b) => new Date(a) - new Date(b))[0], days = daysBetween(d, Date.now()), bn = ls[0].box_no;
+  return `<div class="ln"><span class="badge c-green ob-ship" title="${esc(ls.map(timeline).join(' | '))}">🚚 Shipped ${q} · ${dShort(d)} · ${esc(bn)} · ${days === 0 ? 'today' : days + (days === 1 ? ' day' : ' days')}${trackA(bn)}</span><button class="recv" data-recv="${esc(ls.map(o => o.id).join(','))}" title="These lines arrived: stop their timers">Received</button></div>${ls.map(lowFlag).join('')}`;
 }
 function liveHtml(live){
   const sv = live.filter(o => o.status === 'saved'), ad = live.filter(o => o.status === 'added'), sh = live.filter(o => o.status !== 'saved' && o.status !== 'added');
@@ -1464,7 +1472,10 @@ function liveHtml(live){
     const q = ad.reduce((a, o) => a + eff(o), 0), last = newest(ad), boxes = [...new Set(ad.map(o => o.box_no).filter(Boolean))];
     h += `<div class="ln"><span class="badge c-amber ob-pack" title="${esc(ad.map(timeline).join(' | '))}">📦 Packed ${q}${boxes.length ? ' · ' + esc(boxes.join(', ')) : ''}</span><button class="x" data-cancel="${esc(last.id)}" title="Remove the latest packed line (${eff(last)})">×</button></div>` + ad.map(lowFlag).join('');
   }
-  return h + sh.map(lineHtml).join('');
+  const byBox = new Map(), singles = [];
+  sh.forEach(o => { if (o.box_no) (byBox.get(o.box_no) || byBox.set(o.box_no, []).get(o.box_no)).push(o); else singles.push(o); });
+  [...byBox.values()].forEach(ls => { h += ls.length > 1 ? shipGroupHtml(ls) : lineHtml(ls[0]); });
+  return h + singles.map(lineHtml).join('');
 }
 function supHtml(i){
   const pp = pipeline(infos[i].key);
@@ -1987,7 +1998,7 @@ function onClick(e){
   const rb = t.closest('[data-recvbox]');
   if (rb) { const bn = rb.getAttribute('data-recvbox'); if (!armBtn(rb, 'box:' + bn)) return; const ls = [...orders.values()].filter(o => o.box_no === bn && o.status === 'shipped'); if (ls.length) { rb.disabled = true; receive(ls.map(o => o.id), ls.reduce((a, o) => a + eff(o), 0) + ' received · ' + bn); } return; }
   const rc = t.closest('[data-recv]');
-  if (rc) { if (!armBtn(rc, 'line:' + rc.getAttribute('data-recv'))) return; const o = orders.get(rc.getAttribute('data-recv')); rc.disabled = true; receive([rc.getAttribute('data-recv')], (o ? eff(o) : '') + ' received' + (o && o.box_no ? ' · ' + o.box_no : '')); return; }
+  if (rc) { if (!armBtn(rc, 'line:' + rc.getAttribute('data-recv'))) return; const ids = rc.getAttribute('data-recv').split(','), os = ids.map(i => orders.get(i)).filter(Boolean), o = os[0]; rc.disabled = true; receive(ids, os.reduce((a, x) => a + eff(x), 0) + ' received' + (o && o.box_no ? ' · ' + o.box_no : '')); return; }
 }
 $('boxes').addEventListener('click', onClick);
 $('wrong').addEventListener('click', async e => {
