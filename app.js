@@ -1896,6 +1896,37 @@
     takeend: async (d) => stSave(d.session, true),
   });
 
+  // ---------- size simulator feedback log (admin only) ----------
+  window.addEventListener("message", async (event) => {
+    const fr = $("#rep-frame");
+    if (!fr || event.source !== fr.contentWindow) return;
+    const d = event.data || {};
+    if (d.type !== "size-feedback" || !me?.is_admin) return;
+    const reply = (o) => { try { fr.contentWindow?.postMessage(Object.assign({ type: "size-feedback-state" }, o), "*"); } catch (_) {} };
+    const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+    const list = async () => {
+      const { data } = await sb.from("size_feedback").select("*").order("created_at", { ascending: false }).limit(40);
+      return data || [];
+    };
+    if (d.action === "list") {
+      reply({ rows: await list() });
+    } else if (d.action === "save") {
+      const r = d.row || {};
+      const ok = ["correct", "small", "large"].includes(r.verdict);
+      if (!ok) { reply({ saved: false }); return; }
+      const { error } = await sb.from("size_feedback").insert({
+        chest: num(r.chest), tummy: num(r.tummy), tall: !!r.tall, shoulders: String(r.shoulders || "").slice(0, 10),
+        rec_size: num(r.rec_size), alt_size: num(r.alt_size), alt_type: String(r.alt_type || "").slice(0, 10) || null,
+        tried_size: num(r.tried_size), slider: num(r.slider), verdict: r.verdict, note: String(r.note || "").slice(0, 400) || null,
+      });
+      reply({ saved: !error, rows: await list() });
+    } else if (d.action === "delete") {
+      const id = num(d.id);
+      if (id !== null) await sb.from("size_feedback").delete().eq("id", id);
+      reply({ rows: await list() });
+    }
+  });
+
   // ---------- colour tagging game ----------
   window.addEventListener("message", async (event) => {
     const fr = $("#rep-frame");
