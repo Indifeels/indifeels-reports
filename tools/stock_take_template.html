@@ -49,10 +49,12 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .dupv{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--border);border-radius:10px;padding:8px;margin:6px 0}
 .dupv .nm{flex:1;min-width:150px}.dupv .nm small{display:block;color:var(--muted)}
 .dupv button.dd{color:var(--red)}.dupv button.dd.arm{background:var(--red);color:#fff}
-.pf{margin-top:6px}.pfs{display:flex;flex-direction:column;gap:4px}
-.pfs button{display:flex;align-items:center;gap:8px;text-align:left;padding:6px 8px;border-radius:10px;width:100%}
-.pfs .im,.lbh .im{width:34px;height:34px;border-radius:8px;overflow:hidden;background:var(--card2);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)}
+.pf{margin-top:6px}.pfs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pfs button{display:flex;flex-direction:column;align-items:stretch;gap:6px;text-align:center;padding:4px;border-radius:12px;width:100%;font-size:13px;line-height:1.25}.pfs button>span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pfs .im{width:100%;height:auto;aspect-ratio:3/4;border-radius:12px}
+.lbh .im{width:34px;height:34px;border-radius:8px;overflow:hidden;background:var(--card2);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)}
 .pfs .im img,.lbh .im img{width:100%;height:100%;object-fit:cover}
+.sso.grid div{position:relative}.sso.grid .chk{position:absolute;top:8px;left:8px;z-index:1}
 .lbc{border:1px solid var(--border);border-radius:12px;margin-top:10px;overflow:hidden}
 .lbh{display:flex;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap}.lbh b{flex:1;min-width:140px}
 .lbr{display:flex;align-items:center;gap:10px;padding:7px 10px;border-bottom:1px solid var(--border)}.lbr:last-of-type{border-bottom:0}
@@ -141,12 +143,14 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .sso.grid .tx{flex:none;text-align:center;font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .sso.grid .none{grid-column:1/-1;padding:12px}
 /* compact top tile once a product is chosen */
+.bk.cmp{padding-top:8px;padding-bottom:10px}
 .adsum{display:flex;align-items:center;gap:8px;margin:0 0 4px}.adsum b{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.adsum button{padding:5px 12px;font-size:13px;flex:none}
 #adTop.cmp{padding-top:8px;padding-bottom:10px}
 .adsel{display:flex;align-items:center;gap:10px;margin:6px 0 2px;padding:6px;border:1px solid var(--border);border-radius:12px;background:var(--card2)}.adsel .im{flex:none;width:44px;height:58px;border-radius:8px;overflow:hidden;background:var(--grey-bg);display:flex;align-items:center;justify-content:center}.adsel .im img{width:100%;height:100%;object-fit:cover;display:block}.adsel b{flex:1;min-width:0;font-size:15px;line-height:1.25}.adsel button{padding:6px 12px;flex:none}
 @media(max-width:640px){
  .sso.grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
  .sso.grid div{font-size:12px;padding:3px}.sso.grid .tx{font-size:12px}
+ .pfs{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}.pfs button{font-size:12px}
  body{font-size:16px}
  .wrap{padding:0 8px 60px}
  .bk{padding:14px 12px}
@@ -176,13 +180,13 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 
   <!-- ============ BULK TRANSFER ============ -->
   <div id="viewBulk">
-    <div class="bk"><h3>1 · Locations</h3>
-      <div class="row">
+    <div class="bk" id="bkTile1"><div class="adsum" id="bkSum2" hidden><b id="bkSumT"></b><button type="button" id="bkEdit">Edit</button></div><h3 id="bkH">1 · Locations</h3>
+      <div id="bkCtl"><div class="row">
         <label class="fld">Transfer from<select id="bkFrom"><option value="">Loading…</option></select></label>
         <button type="button" class="sw" id="bkSwap" title="Swap">⇄</button>
         <label class="fld">Transfer to<select id="bkTo"><option value="">Loading…</option></select></label>
       </div>
-      <div class="msg" id="bkLocMsg"></div>
+      <div class="msg" id="bkLocMsg"></div></div>
     </div>
     <div class="bk"><h3>2 · Scan barcodes</h3>
       <div class="scan"><input id="bkIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode, then Enter" disabled><button id="bkAdd" disabled>Add</button><button id="bkCam" type="button" title="Scan with camera" disabled>📷</button></div>
@@ -288,8 +292,8 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
   <!-- ============ STOCK TAKE ============ -->
   <div id="viewTake" hidden>
     <div id="tkSetup">
-      <div class="bk"><h3>Start a stock take</h3>
-        <div class="row">
+      <div class="bk" id="tkTile"><div class="adsum" id="tkSum2" hidden><b id="tkSumT"></b><button type="button" id="tkEdit">Edit</button></div><h3 id="tkH">Start a stock take</h3>
+        <div id="tkCtl"><div class="row">
           <label class="fld">Counting at<select id="tkLoc"></select></label>
           <div class="fld">Collection<div class="ss" id="ssCol"></div></div>
         </div>
@@ -297,7 +301,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
           <div class="fld">Size / variant (optional)<div class="ss" id="ssSize"></div></div>
           <div class="fld">Design (optional)<div class="ss" id="ssDes"></div></div>
         </div>
-        <div style="margin-top:8px"><button type="button" id="tkClearAll" hidden>✕ Clear selection</button></div>
+        <div style="margin-top:8px"><button type="button" id="tkClearAll" hidden>✕ Clear selection</button></div></div>
         <div class="foot"><span class="sum" id="tkScope">Nothing selected: an open count. Scan any product and it joins the count.</span><button class="pri" id="tkStart" disabled>Start stock take</button></div>
       </div>
       <div class="bk"><h3>Duplicate barcodes</h3><div class="sum">Two variants with the same barcode make scans land on the wrong one. Find them and delete the one you don't need.</div><div style="margin-top:8px"><button type="button" id="dupFind">Find duplicate barcodes</button></div><div id="dupList"></div></div>
@@ -445,7 +449,7 @@ function ProductFind(input, opt) {
   let prods = null;
   const build = () => { if (prods) return prods; const m = new Map(); V.forEach(v => { if (!m.has(v.pid)) m.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image, vs: []}); m.get(v.pid).vs.push(v); }); return prods = [...m.values()]; };
   const hasText = () => /[a-z]/i.test(input.value);
-  const matches = () => { const t = input.value.toLowerCase().split(/\s+/).filter(Boolean); return build().filter(p => { const n = p.pt.toLowerCase(); return (!opt.only || opt.only(p)) && t.every(x => n.includes(x)); }).slice(0, 8); };
+  const matches = () => { const t = input.value.toLowerCase().split(/\s+/).filter(Boolean); return build().filter(p => { const n = p.pt.toLowerCase(); return (!opt.only || opt.only(p)) && t.every(x => n.includes(x)); }).slice(0, 12); };
   const clear = () => { box.innerHTML = ''; };
   const img = p => p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase());
   function suggest() {
@@ -589,7 +593,7 @@ document.addEventListener('click', () => document.querySelectorAll('.ss.open').f
    BULK TRANSFER
    ===================================================================== */
 (function () {
-  let items = [], armed = false, busy = false;
+  let items = [], armed = false, busy = false, bkEdit = false;
   const msg = (t, k) => { const m = $('bkMsg'); m.textContent = t || ''; m.className = 'msg' + (k ? ' ' + k : ''); };
   window.bkMsg = msg;
   const ready = () => !!($('bkFrom').value && $('bkTo').value && $('bkFrom').value !== $('bkTo').value);
@@ -602,6 +606,7 @@ document.addEventListener('click', () => document.querySelectorAll('.ss.open').f
   function gate() {
     const ok = ready(), lock = items.length > 0, same = $('bkFrom').value && $('bkFrom').value === $('bkTo').value;
     ['bkFrom', 'bkTo', 'bkSwap'].forEach(i => { $(i).disabled = lock || busy || !locs.length; });
+    { const cmp = ok && !bkEdit; $('bkCtl').hidden = cmp; $('bkH').hidden = cmp; $('bkSum2').hidden = !ok; $('bkEdit').textContent = bkEdit ? 'Done' : 'Edit'; $('bkTile1').classList.toggle('cmp', cmp); if (ok) $('bkSumT').textContent = locName($('bkFrom').value) + ' → ' + locName($('bkTo').value); }
     ['bkIn', 'bkAdd', 'bkCam'].forEach(i => { $(i).disabled = !ok || busy; });
     const m = $('bkMsg').textContent;
     if (!ok) msg(same ? 'From and To must be different.' : 'Pick both locations to start scanning.', same ? 'bad' : '');
@@ -645,6 +650,7 @@ document.addEventListener('click', () => document.querySelectorAll('.ss.open').f
   }
   window.bulkAdd = add;
   ['bkFrom', 'bkTo'].forEach(id => $(id).addEventListener('change', () => { draw(); if (ready()) $('bkIn').focus(); }));
+  $('bkEdit').onclick = () => { bkEdit = !bkEdit; draw(); };
   $('bkSwap').onclick = () => { const f = $('bkFrom').value; $('bkFrom').value = $('bkTo').value; $('bkTo').value = f; draw(); };
   $('bkIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = $('bkIn').value; $('bkIn').value = ''; add(v); } });
   $('bkAdd').onclick = () => { const v = $('bkIn').value; $('bkIn').value = ''; add(v); $('bkIn').focus(); };
@@ -932,7 +938,8 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
    STOCK TAKE
    ===================================================================== */
 let take = null, filt = 'all', endArmed = false, setupReady = false;
-const ssCol = Sel($('ssCol'), 'Choose a collection…'), ssSize = Sel($('ssSize'), 'All sizes'), ssDes = Sel($('ssDes'), 'All designs', true, true);
+const ssCol = Sel($('ssCol'), 'Choose a collection…'), ssSize = Sel($('ssSize'), 'All sizes'), ssDes = Sel($('ssDes'), 'All designs', true, true, true);
+let tkEdit = false;
 const tkMsg = (t, k) => { const m = $('tkMsg'); m.textContent = t || ''; m.className = 'msg' + (k ? ' ' + k : ''); };
 const uid = () => 'st' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const expOf = v => (v.q[take.loc] || 0);
@@ -953,6 +960,8 @@ function scopeVars(f, loc) {
 function setupScope() {
   const loc = $('tkLoc').value, f = {col: ssCol.get(), size: ssSize.get(), pids: ssDes.get()};
   $('tkClearAll').hidden = !(f.col || f.size || f.pids.length);
+  { const has = !!f.col, cmp = has && !tkEdit; $('tkCtl').hidden = cmp; $('tkH').hidden = cmp; $('tkSum2').hidden = !has; $('tkEdit').textContent = tkEdit ? 'Done' : 'Edit'; $('tkTile').classList.toggle('cmp', cmp);
+    if (has) $('tkSumT').textContent = [locName(loc), f.col, f.size, f.pids.length ? (f.pids.length === 1 ? ssDes.label() : f.pids.length + ' designs') : ''].filter(Boolean).join(' · '); else tkEdit = false; }
   if (!f.col) { $('tkScope').textContent = 'Nothing selected: an open count. Scan any product and it joins the count.'; $('tkStart').disabled = !loc; return f; }
   const vs = scopeVars(f).filter(v => (v.q[loc] || 0) > 0), pcs = vs.reduce((a, v) => a + (v.q[loc] || 0), 0);
   const any = scopeVars(f).length;
@@ -972,6 +981,7 @@ ssSize.onpick(() => { ssDes.reset(); const col = ssCol.get(), ds = new Map(); V.
 ssDes.onpick(setupScope);
 $('tkClearAll').onclick = () => { ssCol.reset(); ssSize.reset(); ssDes.reset(); refreshSetupLists(); setupScope(); };
 $('tkLoc').onchange = setupScope;
+$('tkEdit').onclick = () => { tkEdit = !tkEdit; setupScope(); };
 
 /* ---------- shared stock takes: several people scan into one list ---------- */
 const snapOf = s => ({counts: Object.assign({}, s.counts), outside: JSON.parse(JSON.stringify(s.outside || {})), vids: new Set((s.vids || []).map(x => String(x[0])))});
