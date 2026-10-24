@@ -150,6 +150,10 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .sso.grid .th{width:100%;height:auto;aspect-ratio:3/4;border-radius:12px}
 .sso.grid .tx{flex:none;text-align:center;font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .sso.grid .none{grid-column:1/-1;padding:12px}
+.sso.grid .th{position:relative}.sso.grid .ov{position:absolute;left:0;right:0;top:0;padding:8px 8px 22px;background:linear-gradient(#000d,#0000);color:#fff;font-weight:800;font-size:14px;line-height:1.2;text-align:left}
+.sso.grid .bd{position:absolute;right:6px;bottom:6px;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:800;background:#000a;color:#fff}.sso.grid .bd.out{background:#8a2a2e;color:#ffe3e4}
+.sso.grid div small{white-space:normal;text-align:center;font-size:12px;line-height:1.25}
+.ss:has(.ssp.gp){position:static}.bk{position:relative}.ssp.gp{top:auto;margin-top:4px;left:8px;right:8px}
 /* compact top tile once a product is chosen */
 .hv{border-top:1px solid var(--border);padding:8px 0}.hv summary{cursor:pointer;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}.hv summary small{color:var(--muted)}.hv .hl{margin-left:auto}
 .hr{padding:5px 0 5px 10px;font-size:13px;border-left:3px solid var(--border);margin:6px 0 6px 4px;line-height:1.5}.hr.z{border-color:var(--green)}.hr.n{border-color:var(--red)}.hr.p{border-color:var(--orange)}.hr span{font-weight:700}
@@ -159,6 +163,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .adsel{display:flex;align-items:center;gap:10px;margin:6px 0 2px;padding:6px;border:1px solid var(--border);border-radius:12px;background:var(--card2)}.adsel .im{flex:none;width:44px;height:58px;border-radius:8px;overflow:hidden;background:var(--grey-bg);display:flex;align-items:center;justify-content:center}.adsel .im img{width:100%;height:100%;object-fit:cover;display:block}.adsel b{flex:1;min-width:0;font-size:15px;line-height:1.25}.adsel button{padding:6px 12px;flex:none}
 @media(max-width:640px){
  .sso.grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+ .sso.grid .ov{font-size:12px;padding:6px 6px 18px}.ssp.gp{left:auto;right:auto;margin-top:6px}
  .sso.grid div{font-size:12px;padding:3px}.sso.grid .tx{font-size:12px}
  .pfs{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}.pfs button{font-size:12px}
  body{font-size:16px}
@@ -578,6 +583,12 @@ const loadLocs = () => locsP || (locsP = Store.locs().then(r => { locs = r.locat
 
 /* ---------- searchable select ---------- */
 const pidImg = new Map(V.map(v => [v.pid, v.image]));
+/* collection tiles: a photo from the collection, the name on it, and variants + stock at the chosen location */
+function collectionOpts(loc) {
+  const m = new Map();
+  V.forEach(v => v.cols.forEach(c => { let e = m.get(c); if (!e) m.set(c, e = {n: 0, q: 0, img: '', best: -1}); e.n++; const q = v.q[loc] || 0; e.q += q; if (v.image && q > e.best) { e.best = q; e.img = v.image; } }));
+  return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, e]) => ({v: c, l: c, top: c, img: e.img, s: `${e.n} variant${e.n === 1 ? '' : 's'} · ${e.q.toLocaleString()} in stock`}));
+}
 function Sel(root, ph, thumb, multi, grid) {
   root.innerHTML = `<button type="button" class="ssb"><span class="ssl">${E(ph)}</span><span class="ssx" role="button" aria-label="Clear" hidden>✕</span><i>▾</i></button><div class="ssp${grid ? ' gp' : ''}"><input type="text" placeholder="Search…" autocomplete="off"><div class="sso${grid ? ' grid' : ''}"></div>${multi ? '<div class="ssf"><span class="ssn"></span><span><button type="button" class="ssa">Tick all shown</button> <button type="button" class="ssd pri">Done</button></span></div>' : ''}</div>`;
   const b = root.querySelector('.ssb'), inp = root.querySelector('input'), box = root.querySelector('.sso');
@@ -592,7 +603,7 @@ function Sel(root, ph, thumb, multi, grid) {
   const shown = () => { const q = inp.value.trim().toLowerCase(); return opts.filter(o => (!multi || o.v) && (!q || o.l.toLowerCase().includes(q))).slice(0, 200); };
   const draw = () => {
     const keep = box.scrollTop, list = shown();
-    box.innerHTML = list.length ? list.map(o => { const im = thumb && o.v ? pidImg.get(o.v) : ''; return `<div data-i="${opts.indexOf(o)}"${multi && picked.has(o.v) ? ' class="on"' : ''}>${multi ? `<span class="chk">${picked.has(o.v) ? '✓' : ''}</span>` : ''}${thumb && o.v ? `<span class="th">${im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}</span>` : ''}<span class="tx">${E(o.l)}</span>${o.s ? `<small>${E(o.s)}</small>` : ''}</div>`; }).join('') : '<div class="none">No match</div>';
+    box.innerHTML = list.length ? list.map(o => { const im = o.img || (thumb && o.v ? pidImg.get(o.v) : ''), ph = (thumb && o.v) || o.img; return `<div data-i="${opts.indexOf(o)}"${multi && picked.has(o.v) ? ' class="on"' : ''}>${multi ? `<span class="chk">${picked.has(o.v) ? '✓' : ''}</span>` : ''}${ph ? `<span class="th">${im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}${o.top ? `<span class="ov">${E(o.top)}</span>` : ''}${o.badge ? `<span class="bd${o.bc ? ' ' + o.bc : ''}">${E(o.badge)}</span>` : ''}</span>` : ''}${o.top ? '' : `<span class="tx">${E(o.l)}</span>`}${o.s ? `<small>${E(o.s)}</small>` : ''}</div>`; }).join('') : '<div class="none">No match</div>';
     box.scrollTop = keep; sync();
   };
   b.onclick = e => { e.stopPropagation(); const was = root.classList.contains('open'); document.querySelectorAll('.ss.open').forEach(x => x.classList.remove('open')); if (!was) { root.classList.add('open'); inp.value = ''; draw(); inp.focus(); } };
@@ -728,7 +739,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   const loc = () => $('adLoc').value;
   const sizeCmp = (a, b) => a.t.localeCompare(b.t, undefined, {numeric: true});
   const sel = Sel($('adProd'), 'Search product…', true, false, true);
-  const colSel = Sel($('adCol'), 'All collections');
+  const colSel = Sel($('adCol'), 'All collections', true, false, true);
   let scope = 'variant', editing = false;
   /* Once a product is chosen (or the list has items) the top tile shrinks to one line, so the scan bar, the chosen product and its sizes sit at the very top. */
   function layout() {
@@ -739,7 +750,8 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     $('adFind').hidden = one; $('adSel').hidden = !one;
     if (one) { const v = V.find(x => x.pid === pid), im = pidImg.get(pid); $('adSelT').textContent = v ? v.pt : ''; $('adSelIm').innerHTML = im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; }
   }
-  const productOpts = () => { const c = colSel.get(), seen = new Map(); V.forEach(v => { if (!c || v.cols.includes(c)) seen.set(v.pid, v.pt); }); return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t})); };
+  const productOpts = () => { const c = colSel.get(), seen = new Map(), q = new Map(), L = loc(); V.forEach(v => { if (!c || v.cols.includes(c)) { seen.set(v.pid, v.pt); q.set(v.pid, (q.get(v.pid) || 0) + (v.q[L] || 0)); } }); return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t, badge: q.get(k) > 0 ? q.get(k) + ' in stock' : 'Out of stock', bc: q.get(k) > 0 ? '' : 'out'})); };
+  const refreshOpts = () => { if (!ready) return; sel.set(productOpts(), true); colSel.set(collectionOpts(loc()), true); };
   const addProduct = pid => {
     const vs = V.filter(v => v.pid === pid).sort(sizeCmp); let n = 0, skip = 0;
     vs.forEach(v => { if (mode === 'remove' && stock(v) < 1) { skip++; return; } const it = items.find(i => i.vid === v.vid); if (it) it.qty = Math.min(1000, it.qty + 1); else items.push({vid: v.vid, qty: 1, label: false}); n++; });
@@ -770,7 +782,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     $('adGo').disabled = !items.length || busy || bad || !loc();
     $('adGo').classList.toggle('arm', armed);
     $('adGo').textContent = mode === 'add' ? 'Add stock' : (armed ? `Tap again: remove ${n} pieces` : 'Remove stock');
-    sizes(); layout();
+    sizes(); layout(); refreshOpts();
   }
   function put(v, n) {
     armed = false; $('adRes').textContent = '';
@@ -789,8 +801,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
       try { await loadLocs(); } catch (e) { adMsg('Could not load locations: ' + e.message, 'bad'); return; }
       $('adLoc').innerHTML = locs.map(l => `<option value="${E(l.id)}">${E(l.name)}</option>`).join('');
       const shop = locs.find(l => /shop/i.test(l.name)); if (shop) $('adLoc').value = shop.id;
-      const cc = new Map(); V.forEach(v => v.cols.forEach(c => { if (!cc.has(c)) cc.set(c, new Set()); cc.get(c).add(v.pid); }));
-      colSel.set([...cc.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, st]) => ({v: c, l: c, s: st.size + ' products'})));
+      colSel.set(collectionOpts(loc()));
       sel.set(productOpts());
       ready = true; draw();
     }
@@ -813,7 +824,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   $('adHist').onclick = () => showHistory(sel.get());
   $('adSelX').onclick = () => { sel.reset(); editing = false; sizes(); layout(); $('adProd').querySelector('.ssb').click(); };
   $('adScope').onclick = e => { const b = e.target.closest('button'); if (!b) return; scope = b.dataset.s; document.querySelectorAll('#adScope button').forEach(x => x.classList.toggle('on', x === b)); adMsg(scope === 'product' ? 'Whole product: picking or scanning a product adds 1 of every size.' : 'One variant: each scan or tap adds 1 of that variant.'); layout(); };
-  $('adLoc').onchange = () => { armed = false; draw(); };
+  $('adLoc').onchange = () => { armed = false; refreshOpts(); draw(); };
   $('adMode').onclick = e => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.m; armed = false; $('adRes').textContent = ''; document.querySelectorAll('#adMode button').forEach(x => x.classList.toggle('on', x === b)); draw(); };
   $('adSizes').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; put(byVid.get(b.dataset.v), 1); };
   $('adIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const v = $('adIn').value.trim(); $('adIn').value = ''; if (v) adjScan(v); } });
@@ -986,7 +997,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
    STOCK TAKE
    ===================================================================== */
 let take = null, filt = 'all', endArmed = false, setupReady = false;
-const ssCol = Sel($('ssCol'), 'Choose a collection…'), ssSize = Sel($('ssSize'), 'All sizes'), ssDes = Sel($('ssDes'), 'All designs', true, true, true);
+const ssCol = Sel($('ssCol'), 'Choose a collection…', true, false, true), ssSize = Sel($('ssSize'), 'All sizes'), ssDes = Sel($('ssDes'), 'All designs', true, true, true);
 let tkEdit = false, lastPid = null, lastVid = null;
 const tkMsg = (t, k) => { const m = $('tkMsg'); m.textContent = t || ''; m.className = 'msg' + (k ? ' ' + k : ''); };
 const uid = () => 'st' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -1026,7 +1037,7 @@ ssCol.onpick(() => { ssSize.reset(); ssDes.reset(); refreshSetupLists(); setupSc
 ssSize.onpick(() => { ssDes.reset(); const col = ssCol.get(), ds = new Map(); V.filter(v => (!col || v.cols.includes(col)) && (!ssSize.get() || v.t === ssSize.get())).forEach(v => ds.set(v.pid, v.pt)); ssDes.set([{v: '', l: 'All designs'}].concat([...ds.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t})))); setupScope(); });
 ssDes.onpick(setupScope);
 $('tkClearAll').onclick = () => { ssCol.reset(); ssSize.reset(); ssDes.reset(); refreshSetupLists(); setupScope(); };
-$('tkLoc').onchange = setupScope;
+$('tkLoc').onchange = () => { ssCol.set(collectionOpts($('tkLoc').value), true); setupScope(); };
 $('tkHist').onclick = () => {
   const ds = ssDes.get();
   if (ds.length === 1) { showHistory(ds[0]); return; }
@@ -1092,8 +1103,7 @@ async function takeOpen() {
   if (!setupReady) {
     $('tkLoc').innerHTML = locs.map(l => `<option value="${E(l.id)}">${E(l.name)}</option>`).join('');
     const shop = locs.find(l => /shop/i.test(l.name)); if (shop) $('tkLoc').value = shop.id;
-    const cc = new Map(); V.forEach(v => v.cols.forEach(c => cc.set(c, (cc.get(c) || 0) + 1)));
-    ssCol.set([...cc.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, n]) => ({v: c, l: c, s: n + ' variants'})));
+    ssCol.set(collectionOpts($('tkLoc').value));
     refreshSetupLists(); setupReady = true;
   }
   $('tkSetup').hidden = false; $('tkRun').hidden = true; $('tkResult').hidden = true;
