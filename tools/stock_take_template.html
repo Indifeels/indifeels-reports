@@ -151,8 +151,8 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .sso.grid .tx{flex:none;text-align:center;font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .sso.grid .none{grid-column:1/-1;padding:12px}
 .sso.grid .th{position:relative}.sso.grid .ov{position:absolute;left:0;right:0;top:0;padding:8px 8px 22px;background:linear-gradient(#000d,#0000);color:#fff;font-weight:800;font-size:14px;line-height:1.2;text-align:left}
-.sso.grid .bd{position:absolute;right:6px;bottom:6px;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:800;background:#000a;color:#fff}.sso.grid .bd.out{background:#8a2a2e;color:#ffe3e4}
-.sso.grid div small{white-space:normal;text-align:center;font-size:12px;line-height:1.25}
+.sso.grid .bd{position:absolute;right:6px;bottom:6px;left:6px;white-space:pre-line;text-align:center;padding:3px 8px;border-radius:12px;font-size:11.5px;line-height:1.25;font-weight:800;background:#000a;color:#fff}.sso.grid .bd.out{background:#8a2a2e;color:#ffe3e4}
+.sso.grid div small{white-space:pre-line;text-align:center;font-size:12px;line-height:1.25}
 .ss:has(.ssp.gp){position:static}.bk{position:relative}.ssp.gp{top:auto;margin-top:4px;left:8px;right:8px}
 /* compact top tile once a product is chosen */
 .hv{border-top:1px solid var(--border);padding:8px 0}.hv summary{cursor:pointer;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}.hv summary small{color:var(--muted)}.hv .hl{margin-left:auto}
@@ -584,10 +584,11 @@ const loadLocs = () => locsP || (locsP = Store.locs().then(r => { locs = r.locat
 /* ---------- searchable select ---------- */
 const pidImg = new Map(V.map(v => [v.pid, v.image]));
 /* collection tiles: a photo from the collection, the name on it, and variants + stock at the chosen location */
-function collectionOpts(loc) {
+const locTxt = q => locs.map(l => String(l.name).split(/\s+/)[0] + ' ' + (q[l.id] || 0)).join(' · ');
+function collectionOpts() {
   const m = new Map();
-  V.forEach(v => v.cols.forEach(c => { let e = m.get(c); if (!e) m.set(c, e = {n: 0, q: 0, img: '', best: -1}); e.n++; const q = v.q[loc] || 0; e.q += q; if (v.image && q > e.best) { e.best = q; e.img = v.image; } }));
-  return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, e]) => ({v: c, l: c, top: c, img: e.img, s: `${e.n} variant${e.n === 1 ? '' : 's'} · ${e.q.toLocaleString()} in stock`}));
+  V.forEach(v => v.cols.forEach(c => { let e = m.get(c); if (!e) m.set(c, e = {n: 0, q: {}, t: 0, img: '', best: -1}); e.n++; locs.forEach(l => { e.q[l.id] = (e.q[l.id] || 0) + (v.q[l.id] || 0); }); const t = tot(v); e.t += t; if (v.image && t > e.best) { e.best = t; e.img = v.image; } }));
+  return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, e]) => ({v: c, l: c, top: c, img: e.img, s: `${e.n} variant${e.n === 1 ? '' : 's'} · Total ${e.t.toLocaleString()}\n${locTxt(e.q)}`}));
 }
 function Sel(root, ph, thumb, multi, grid) {
   root.innerHTML = `<button type="button" class="ssb"><span class="ssl">${E(ph)}</span><span class="ssx" role="button" aria-label="Clear" hidden>✕</span><i>▾</i></button><div class="ssp${grid ? ' gp' : ''}"><input type="text" placeholder="Search…" autocomplete="off"><div class="sso${grid ? ' grid' : ''}"></div>${multi ? '<div class="ssf"><span class="ssn"></span><span><button type="button" class="ssa">Tick all shown</button> <button type="button" class="ssd pri">Done</button></span></div>' : ''}</div>`;
@@ -750,8 +751,8 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     $('adFind').hidden = one; $('adSel').hidden = !one;
     if (one) { const v = V.find(x => x.pid === pid), im = pidImg.get(pid); $('adSelT').textContent = v ? v.pt : ''; $('adSelIm').innerHTML = im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; }
   }
-  const productOpts = () => { const c = colSel.get(), seen = new Map(), q = new Map(), L = loc(); V.forEach(v => { if (!c || v.cols.includes(c)) { seen.set(v.pid, v.pt); q.set(v.pid, (q.get(v.pid) || 0) + (v.q[L] || 0)); } }); return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t, badge: q.get(k) > 0 ? q.get(k) + ' in stock' : 'Out of stock', bc: q.get(k) > 0 ? '' : 'out'})); };
-  const refreshOpts = () => { if (!ready) return; sel.set(productOpts(), true); colSel.set(collectionOpts(loc()), true); };
+  const productOpts = () => { const c = colSel.get(), seen = new Map(), q = new Map(), T = new Map(); V.forEach(v => { if (!c || v.cols.includes(c)) { seen.set(v.pid, v.pt); const o = q.get(v.pid) || {}; locs.forEach(l => { o[l.id] = (o[l.id] || 0) + (v.q[l.id] || 0); }); q.set(v.pid, o); T.set(v.pid, (T.get(v.pid) || 0) + tot(v)); } }); return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t, badge: T.get(k) > 0 ? 'Total ' + T.get(k) + '\n' + locTxt(q.get(k)) : 'Out of stock', bc: T.get(k) > 0 ? '' : 'out'})); };
+  const refreshOpts = () => { if (!ready) return; sel.set(productOpts(), true); colSel.set(collectionOpts(), true); };
   const addProduct = pid => {
     const vs = V.filter(v => v.pid === pid).sort(sizeCmp); let n = 0, skip = 0;
     vs.forEach(v => { if (mode === 'remove' && stock(v) < 1) { skip++; return; } const it = items.find(i => i.vid === v.vid); if (it) it.qty = Math.min(1000, it.qty + 1); else items.push({vid: v.vid, qty: 1, label: false}); n++; });
@@ -801,7 +802,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
       try { await loadLocs(); } catch (e) { adMsg('Could not load locations: ' + e.message, 'bad'); return; }
       $('adLoc').innerHTML = locs.map(l => `<option value="${E(l.id)}">${E(l.name)}</option>`).join('');
       const shop = locs.find(l => /shop/i.test(l.name)); if (shop) $('adLoc').value = shop.id;
-      colSel.set(collectionOpts(loc()));
+      colSel.set(collectionOpts());
       sel.set(productOpts());
       ready = true; draw();
     }
@@ -1037,7 +1038,7 @@ ssCol.onpick(() => { ssSize.reset(); ssDes.reset(); refreshSetupLists(); setupSc
 ssSize.onpick(() => { ssDes.reset(); const col = ssCol.get(), ds = new Map(); V.filter(v => (!col || v.cols.includes(col)) && (!ssSize.get() || v.t === ssSize.get())).forEach(v => ds.set(v.pid, v.pt)); ssDes.set([{v: '', l: 'All designs'}].concat([...ds.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t})))); setupScope(); });
 ssDes.onpick(setupScope);
 $('tkClearAll').onclick = () => { ssCol.reset(); ssSize.reset(); ssDes.reset(); refreshSetupLists(); setupScope(); };
-$('tkLoc').onchange = () => { ssCol.set(collectionOpts($('tkLoc').value), true); setupScope(); };
+$('tkLoc').onchange = () => { ssCol.set(collectionOpts(), true); setupScope(); };
 $('tkHist').onclick = () => {
   const ds = ssDes.get();
   if (ds.length === 1) { showHistory(ds[0]); return; }
@@ -1103,7 +1104,7 @@ async function takeOpen() {
   if (!setupReady) {
     $('tkLoc').innerHTML = locs.map(l => `<option value="${E(l.id)}">${E(l.name)}</option>`).join('');
     const shop = locs.find(l => /shop/i.test(l.name)); if (shop) $('tkLoc').value = shop.id;
-    ssCol.set(collectionOpts($('tkLoc').value));
+    ssCol.set(collectionOpts());
     refreshSetupLists(); setupReady = true;
   }
   $('tkSetup').hidden = false; $('tkRun').hidden = true; $('tkResult').hidden = true;
