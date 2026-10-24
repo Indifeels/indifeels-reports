@@ -133,7 +133,20 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .ssx{flex:none;margin-left:auto;padding:2px 8px;border-radius:8px;color:var(--muted);font-size:16px;line-height:1}.ssx:hover{background:var(--grey-bg);color:var(--text)}
 .sso div{align-items:center}.sso .th{flex:none;width:40px;height:40px;border-radius:8px;background:var(--grey-bg);overflow:hidden}.sso .th img{width:100%;height:100%;object-fit:cover;display:block}.sso .tx{flex:1;min-width:0}
 .ssb .ssl{flex:1;min-width:0}
+/* photo grid picker (Add / remove product finder) */
+.ssp.gp{padding:10px}
+.sso.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;max-height:72vh}
+.sso.grid div{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:6px;padding:4px;border-radius:12px;font-size:13px}
+.sso.grid .th{width:100%;height:auto;aspect-ratio:3/4;border-radius:12px}
+.sso.grid .tx{flex:none;text-align:center;font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sso.grid .none{grid-column:1/-1;padding:12px}
+/* compact top tile once a product is chosen */
+.adsum{display:flex;align-items:center;gap:8px;margin:0 0 4px}.adsum b{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.adsum button{padding:5px 12px;font-size:13px;flex:none}
+#adTop.cmp{padding-top:8px;padding-bottom:10px}
+.adsel{display:flex;align-items:center;gap:10px;margin:6px 0 2px;padding:6px;border:1px solid var(--border);border-radius:12px;background:var(--card2)}.adsel .im{flex:none;width:44px;height:58px;border-radius:8px;overflow:hidden;background:var(--grey-bg);display:flex;align-items:center;justify-content:center}.adsel .im img{width:100%;height:100%;object-fit:cover;display:block}.adsel b{flex:1;min-width:0;font-size:15px;line-height:1.25}.adsel button{padding:6px 12px;flex:none}
 @media(max-width:640px){
+ .sso.grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+ .sso.grid div{font-size:12px;padding:3px}.sso.grid .tx{font-size:12px}
  body{font-size:16px}
  .wrap{padding:0 8px 60px}
  .bk{padding:14px 12px}
@@ -184,16 +197,20 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 
   <!-- ============ ADD / REMOVE STOCK ============ -->
   <div id="viewAdj" hidden>
-    <div class="bk"><h3>Add or remove stock</h3>
-      <div class="seg" id="adMode"><button data-m="add" class="on">Add stock</button><button data-m="remove">Remove stock</button></div>
-      <div class="seg" id="adScope"><button data-s="variant" class="on">One variant</button><button data-s="product">Whole product</button></div>
-      <div class="row">
-        <label class="fld">Location<select id="adLoc"></select></label>
-        <div class="fld">Collection (optional)<div class="ss" id="adCol"></div></div>
+    <div class="bk" id="adTop"><h3 id="adH">Add or remove stock</h3>
+      <div class="adsum" id="adSum2" hidden><b id="adSumT"></b><button type="button" id="adEdit">Edit</button></div>
+      <div id="adCtl">
+        <div class="seg" id="adMode"><button data-m="add" class="on">Add stock</button><button data-m="remove">Remove stock</button></div>
+        <div class="seg" id="adScope"><button data-s="variant" class="on">One variant</button><button data-s="product">Whole product</button></div>
+        <div class="row">
+          <label class="fld">Location<select id="adLoc"></select></label>
+          <div class="fld">Collection (optional)<div class="ss" id="adCol"></div></div>
+        </div>
       </div>
-      <div class="row" style="margin-top:6px">
+      <div class="row" style="margin-top:6px" id="adFind">
         <div class="fld" style="flex:1">Find a product (no barcode needed)<div class="ss" id="adProd"></div></div>
       </div>
+      <div class="adsel" id="adSel" hidden><span class="im" id="adSelIm"></span><b id="adSelT"></b><button type="button" id="adSelX">Change</button></div>
       <div class="chips" id="adSizes"></div>
       <div class="scan" style="margin-top:10px"><input id="adIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Or scan / type a barcode, then Enter"><button id="adAddBtn">Add</button><button id="adCam" type="button" title="Scan with camera">📷</button></div>
       <div class="msg" id="adMsg">Scan or pick any variant. Each scan or tap adds 1 to the list below.</div>
@@ -530,8 +547,8 @@ const loadLocs = () => locsP || (locsP = Store.locs().then(r => { locs = r.locat
 
 /* ---------- searchable select ---------- */
 const pidImg = new Map(V.map(v => [v.pid, v.image]));
-function Sel(root, ph, thumb, multi) {
-  root.innerHTML = `<button type="button" class="ssb"><span class="ssl">${E(ph)}</span><span class="ssx" role="button" aria-label="Clear" hidden>✕</span><i>▾</i></button><div class="ssp"><input type="text" placeholder="Search…" autocomplete="off"><div class="sso"></div>${multi ? '<div class="ssf"><span class="ssn"></span><span><button type="button" class="ssa">Tick all shown</button> <button type="button" class="ssd pri">Done</button></span></div>' : ''}</div>`;
+function Sel(root, ph, thumb, multi, grid) {
+  root.innerHTML = `<button type="button" class="ssb"><span class="ssl">${E(ph)}</span><span class="ssx" role="button" aria-label="Clear" hidden>✕</span><i>▾</i></button><div class="ssp${grid ? ' gp' : ''}"><input type="text" placeholder="Search…" autocomplete="off"><div class="sso${grid ? ' grid' : ''}"></div>${multi ? '<div class="ssf"><span class="ssn"></span><span><button type="button" class="ssa">Tick all shown</button> <button type="button" class="ssd pri">Done</button></span></div>' : ''}</div>`;
   const b = root.querySelector('.ssb'), inp = root.querySelector('input'), box = root.querySelector('.sso');
   const xb = root.querySelector('.ssx'), lab = root.querySelector('.ssl');
   let opts = [], cur = {v: '', l: ph}, onpick = () => {};
@@ -668,9 +685,18 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   let mode = 'add', items = [], armed = false, busy = false, ready = false, labelRows = [];
   const loc = () => $('adLoc').value;
   const sizeCmp = (a, b) => a.t.localeCompare(b.t, undefined, {numeric: true});
-  const sel = Sel($('adProd'), 'Search product…', true);
+  const sel = Sel($('adProd'), 'Search product…', true, false, true);
   const colSel = Sel($('adCol'), 'All collections');
-  let scope = 'variant';
+  let scope = 'variant', editing = false;
+  /* Once a product is chosen (or the list has items) the top tile shrinks to one line, so the scan bar, the chosen product and its sizes sit at the very top. */
+  function layout() {
+    const pid = sel.get(), has = !!pid || items.length > 0, cmp = has && !editing;
+    $('adCtl').hidden = cmp; $('adH').hidden = cmp; $('adSum2').hidden = !has; $('adTop').classList.toggle('cmp', cmp); $('adEdit').textContent = editing ? 'Done' : 'Edit';
+    if (has) { const c = colSel.get(); $('adSumT').textContent = (mode === 'add' ? 'Add stock' : 'Remove stock') + ' · ' + (scope === 'variant' ? 'One variant' : 'Whole product') + ' · ' + (locName(loc()) || '') + (c ? ' · ' + c : ''); }
+    const one = !!pid && scope === 'variant';
+    $('adFind').hidden = one; $('adSel').hidden = !one;
+    if (one) { const v = V.find(x => x.pid === pid), im = pidImg.get(pid); $('adSelT').textContent = v ? v.pt : ''; $('adSelIm').innerHTML = im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; }
+  }
   const productOpts = () => { const c = colSel.get(), seen = new Map(); V.forEach(v => { if (!c || v.cols.includes(c)) seen.set(v.pid, v.pt); }); return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t})); };
   const addProduct = pid => {
     const vs = V.filter(v => v.pid === pid).sort(sizeCmp); let n = 0, skip = 0;
@@ -702,7 +728,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     $('adGo').disabled = !items.length || busy || bad || !loc();
     $('adGo').classList.toggle('arm', armed);
     $('adGo').textContent = mode === 'add' ? 'Add stock' : (armed ? `Tap again: remove ${n} pieces` : 'Remove stock');
-    sizes();
+    sizes(); layout();
   }
   function put(v, n) {
     armed = false; $('adRes').textContent = '';
@@ -728,9 +754,11 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     }
     loadLabels();
   };
-  colSel.onpick(() => { sel.set(productOpts()); sizes(); });
-  sel.onpick(() => { const pid = sel.get(); if (pid && scope === 'product') addProduct(pid); sizes(); });
-  $('adScope').onclick = e => { const b = e.target.closest('button'); if (!b) return; scope = b.dataset.s; document.querySelectorAll('#adScope button').forEach(x => x.classList.toggle('on', x === b)); adMsg(scope === 'product' ? 'Whole product: picking or scanning a product adds 1 of every size.' : 'One variant: each scan or tap adds 1 of that variant.'); };
+  colSel.onpick(() => { sel.set(productOpts()); sizes(); layout(); });
+  sel.onpick(() => { const pid = sel.get(); if (pid && scope === 'product') { addProduct(pid); sel.reset(); } editing = false; sizes(); layout(); });
+  $('adEdit').onclick = () => { editing = !editing; layout(); };
+  $('adSelX').onclick = () => { sel.reset(); editing = false; sizes(); layout(); $('adProd').querySelector('.ssb').click(); };
+  $('adScope').onclick = e => { const b = e.target.closest('button'); if (!b) return; scope = b.dataset.s; document.querySelectorAll('#adScope button').forEach(x => x.classList.toggle('on', x === b)); adMsg(scope === 'product' ? 'Whole product: picking or scanning a product adds 1 of every size.' : 'One variant: each scan or tap adds 1 of that variant.'); layout(); };
   $('adLoc').onchange = () => { armed = false; draw(); };
   $('adMode').onclick = e => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.m; armed = false; $('adRes').textContent = ''; document.querySelectorAll('#adMode button').forEach(x => x.classList.toggle('on', x === b)); draw(); };
   $('adSizes').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; put(byVid.get(b.dataset.v), 1); };
