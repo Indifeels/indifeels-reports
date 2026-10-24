@@ -1640,7 +1640,7 @@
         return;
       }
       if (d.action === "ui" && kind === "stock-take") {
-        try { if (d.ui && typeof d.ui === "object") localStorage.setItem("ir-stocktake-ui", JSON.stringify(d.ui).slice(0, 2000)); } catch (_) {}
+        try { if (d.ui && typeof d.ui === "object") localStorage.setItem("ir-stocktake-ui", JSON.stringify(d.ui).slice(0, 40000)); } catch (_) {}
         return;
       }
       if (d.action === "filters" && kind === "restock-plan") {

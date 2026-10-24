@@ -312,7 +312,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
           <div class="fld">Design (optional)<div class="ss" id="ssDes"></div></div>
         </div>
         <div style="margin-top:8px"><button type="button" id="tkClearAll" hidden>✕ Clear selection</button></div></div>
-        <div class="foot"><span class="sum" id="tkScope">Nothing selected: an open count. Scan any product and it joins the count.</span><button class="pri" id="tkStart" disabled>Start stock take</button></div>
+        <div class="foot"><span class="sum" id="tkScope">Nothing selected: an open count. Scan any product and it joins the count.</span><button type="button" id="tkHist">Stock take history</button><button class="pri" id="tkStart" disabled>Start stock take</button></div>
       </div>
       <div class="bk"><h3>Duplicate barcodes</h3><div class="sum">Two variants with the same barcode make scans land on the wrong one. Find them and delete the one you don't need.</div><div style="margin-top:8px"><button type="button" id="dupFind">Find duplicate barcodes</button></div><div id="dupList"></div></div>
       <div class="bk" id="tkOpenBox" hidden><h3>Paused stock takes</h3><div id="tkOpen"></div></div>
@@ -533,11 +533,23 @@ const Store = PREVIEW ? {
 
 /* ---------- tabs ---------- */
 let curTab = 'bulk';
-function saveUi() { try { let t = '', f = 'all'; try { t = take ? take.id : ''; f = filt; } catch (e) {} parent.postMessage({type: 'stock-take', action: 'ui', ui: {tab: curTab, take: t, filt: f}}, '*'); } catch (e) {} }
+window.setupGet = () => ({loc: $('tkLoc').value, col: ssCol.get(), size: ssSize.get(), pids: ssDes.get()});
+window.setupRestore = async st => {
+  await takeOpen(); if (take || !st || !setupReady) return;
+  if (st.loc && locs.some(l => l.id === String(st.loc))) $('tkLoc').value = st.loc;
+  if (st.col) { ssCol.put(st.col, st.col); refreshSetupLists(); }
+  if (st.size) { ssSize.put(st.size, st.size); refreshSetupLists(); }
+  if ((st.pids || []).length) ssDes.putMulti(st.pids.map(id => { const v = V.find(x => x.pid === id); return v ? [id, v.pt] : null; }).filter(Boolean));
+  setupScope();
+};
+let uiLock = true; setTimeout(() => { uiLock = false; }, 4000);
+function saveUi() { if (uiLock) return; try { let t = '', f = 'all'; try { t = take ? take.id : ''; f = filt; } catch (e) {} const ui = {tab: curTab, take: t, filt: f}; try { ui.adj = window.adjGet && window.adjGet(); ui.setup = window.setupGet(); ui.bulk = window.bulkGet && window.bulkGet(); } catch (e) {} parent.postMessage({type: 'stock-take', action: 'ui', ui}, '*'); } catch (e) {} }
 async function applyUi(ui) {
   if (!ui || typeof ui !== 'object') return;
   const tab = ['bulk', 'take', 'adj', 'bar'].includes(ui.tab) ? ui.tab : 'bulk';
   show(tab);
+  try { await Promise.all([window.adjRestore(ui.adj), window.bulkRestore(ui.bulk)]); } catch (e) {}
+  if (tab === 'take' && !ui.take && !take) { try { await window.setupRestore(ui.setup); } catch (e) {} }
   if (tab === 'take' && ui.take && !take) {
     try {
       await takeOpen();
@@ -545,7 +557,9 @@ async function applyUi(ui) {
       if (s) { const c0 = JSON.parse(JSON.stringify(s)); c0.remote = true; begin(c0); if (['all', 'left', 'done', 'extra'].includes(ui.filt)) { filt = ui.filt; document.querySelectorAll('#tkSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === filt)); drawTake(); saveUi(); } }
     } catch (e) {}
   }
+  uiLock = false; saveUi();
 }
+{ let ut = 0; const q = () => { clearTimeout(ut); ut = setTimeout(saveUi, 350); }; ['click', 'change', 'keyup', 'message'].forEach(ev => window.addEventListener(ev, q, true)); }
 function show(v) {
   $('viewBulk').hidden = v !== 'bulk'; $('viewTake').hidden = v !== 'take'; $('viewAdj').hidden = v !== 'adj'; $('viewBar').hidden = v !== 'bar';
   $('tabBulk').classList.toggle('on', v === 'bulk'); $('tabTake').classList.toggle('on', v === 'take'); $('tabAdj').classList.toggle('on', v === 'adj'); $('tabBar').classList.toggle('on', v === 'bar');
@@ -597,7 +611,9 @@ function Sel(root, ph, thumb, multi, grid) {
     get: () => multi ? [...picked.keys()] : cur.v,
     label: () => multi ? (picked.size === 1 ? [...picked.values()][0] : picked.size + ' designs') : cur.l,
     disable: x => b.classList.toggle('dis', !!x), onpick: f => { onpick = f; },
-    reset: () => { cur = {v: '', l: ph}; picked.clear(); lab.textContent = ph; sync(); }
+    reset: () => { cur = {v: '', l: ph}; picked.clear(); lab.textContent = ph; sync(); },
+    put: (v, l) => { cur = {v, l}; lab.textContent = l; sync(); },
+    putMulti: arr => { picked.clear(); arr.forEach(([v, l]) => picked.set(v, l)); sync(); }
   };
 }
 document.addEventListener('click', () => document.querySelectorAll('.ss.open').forEach(x => x.classList.remove('open')));
@@ -688,6 +704,13 @@ document.addEventListener('click', () => document.querySelectorAll('.ss.open').f
       beep('ok');
     } catch (e) { busy = false; draw(); const el = $('bkRes'); el.className = 'msg bad'; el.textContent = String(e.message || e); beep('bad'); }
   };
+  window.bulkGet = () => ({from: $('bkFrom').value, to: $('bkTo').value, items: items.filter(i => i.state === 'ok').slice(0, 150).map(i => [i.code, i.qty])});
+  window.bulkRestore = async st => {
+    await window.bulkInit(); if (!st) return;
+    if (st.from) $('bkFrom').value = st.from; if (st.to) $('bkTo').value = st.to; draw();
+    for (const [code, qty] of (st.items || [])) { await add(code); const it = items.find(i => i.key === bcn(code)); if (it && qty > 1) it.qty = Math.min(1000, qty); }
+    draw();
+  };
   window.bulkInit = async () => {
     try { await loadLocs(); fill(); $('bkLocMsg').textContent = ''; }
     catch (e) { $('bkLocMsg').textContent = 'Could not load locations: ' + e.message; $('bkLocMsg').className = 'msg bad'; $('bkFrom').innerHTML = $('bkTo').innerHTML = '<option value="">Unavailable</option>'; return; }
@@ -772,6 +795,17 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
       ready = true; draw();
     }
     loadLabels();
+  };
+  window.adjGet = () => ({mode, scope, loc: $('adLoc').value, col: colSel.get(), pid: sel.get(), items: items.slice(0, 150).map(i => [i.vid, i.qty, i.label ? 1 : 0])});
+  window.adjRestore = async st => {
+    await window.adjOpen(); if (!st || !ready) return;
+    mode = st.mode === 'remove' ? 'remove' : 'add'; scope = st.scope === 'product' ? 'product' : 'variant';
+    document.querySelectorAll('#adMode button').forEach(x => x.classList.toggle('on', x.dataset.m === mode)); document.querySelectorAll('#adScope button').forEach(x => x.classList.toggle('on', x.dataset.s === scope));
+    if (st.loc && locs.some(l => l.id === String(st.loc))) $('adLoc').value = st.loc;
+    if (st.col) colSel.put(st.col, st.col); sel.set(productOpts(), true);
+    if (st.pid) { const v0 = V.find(v => v.pid === st.pid); if (v0) sel.put(st.pid, v0.pt); }
+    items = (st.items || []).filter(x => byVid.has(String(x[0]))).map(x => ({vid: String(x[0]), qty: Math.max(1, Math.min(1000, +x[1] || 1)), label: !!x[2]}));
+    armed = false; draw();
   };
   colSel.onpick(() => { sel.set(productOpts()); sizes(); layout(); });
   sel.onpick(() => { const pid = sel.get(); if (pid && scope === 'product') { addProduct(pid); sel.reset(); } editing = false; sizes(); layout(); });
@@ -974,8 +1008,6 @@ function scopeVars(f, loc) {
 function setupScope() {
   const loc = $('tkLoc').value, f = {col: ssCol.get(), size: ssSize.get(), pids: ssDes.get()};
   $('tkClearAll').hidden = !(f.col || f.size || f.pids.length);
-  { const has = !!f.col, cmp = has && !tkEdit; $('tkCtl').hidden = cmp; $('tkH').hidden = cmp; $('tkSum2').hidden = !has; $('tkEdit').textContent = tkEdit ? 'Done' : 'Edit'; $('tkTile').classList.toggle('cmp', cmp);
-    if (has) $('tkSumT').textContent = [locName(loc), f.col, f.size, f.pids.length ? (f.pids.length === 1 ? ssDes.label() : f.pids.length + ' designs') : ''].filter(Boolean).join(' · '); else tkEdit = false; }
   if (!f.col) { $('tkScope').textContent = 'Nothing selected: an open count. Scan any product and it joins the count.'; $('tkStart').disabled = !loc; return f; }
   const vs = scopeVars(f).filter(v => (v.q[loc] || 0) > 0), pcs = vs.reduce((a, v) => a + (v.q[loc] || 0), 0);
   const any = scopeVars(f).length;
@@ -995,7 +1027,17 @@ ssSize.onpick(() => { ssDes.reset(); const col = ssCol.get(), ds = new Map(); V.
 ssDes.onpick(setupScope);
 $('tkClearAll').onclick = () => { ssCol.reset(); ssSize.reset(); ssDes.reset(); refreshSetupLists(); setupScope(); };
 $('tkLoc').onchange = setupScope;
-$('tkEdit').onclick = () => { tkEdit = !tkEdit; setupScope(); };
+$('tkHist').onclick = () => {
+  const ds = ssDes.get();
+  if (ds.length === 1) { showHistory(ds[0]); return; }
+  const col = ssCol.get(), pool = new Map(); V.filter(v => (!col || v.cols.includes(col)) && (!ds.length || ds.includes(v.pid))).forEach(v => { if (!pool.has(v.pid)) pool.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image}); });
+  const list = [...pool.values()].sort((a, b) => a.pt.localeCompare(b.pt));
+  const ov = document.createElement('div'); ov.className = 'dupov';
+  ov.innerHTML = '<div><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1">Stock take history: pick a product</h3><button type="button" data-x>Close</button></div><input type="text" id="hqIn" placeholder="Search product…" autocomplete="off" style="margin:8px 0"><div class="pfs" id="hqGrid"></div></div>';
+  const draw = () => { const t = ov.querySelector('#hqIn').value.toLowerCase().split(/\s+/).filter(Boolean); ov.querySelector('#hqGrid').innerHTML = list.filter(p => t.every(x => p.pt.toLowerCase().includes(x))).slice(0, 60).map(p => `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}</span><span>${E(p.pt)}</span></button>`).join('') || '<div class="msg">No product found.</div>'; };
+  ov.onclick = e => { if (e.target === ov || e.target.closest('[data-x]')) { ov.remove(); return; } const b = e.target.closest('[data-p]'); if (b) { ov.remove(); showHistory(b.dataset.p); } };
+  ov.addEventListener('input', draw); document.body.appendChild(ov); draw(); ov.querySelector('#hqIn').focus();
+};
 
 /* ---------- shared stock takes: several people scan into one list ---------- */
 const snapOf = s => ({counts: Object.assign({}, s.counts), outside: JSON.parse(JSON.stringify(s.outside || {})), vids: new Set((s.vids || []).map(x => String(x[0])))});
@@ -1213,9 +1255,9 @@ async function showHistory(pid) {
     frame(vs.map(v => {
       const rows = (h[v.vid] || []).slice().sort((a, b) => String(b.at).localeCompare(String(a.at))), last = rows[0];
       const now = locs.map(l => `${E(l.name)} ${v.q[l.id] || 0}`).join(' · ');
-      return `<details class="hv"><summary><b>${E(v.t)}</b><small>Now: ${now}</small><small class="hl">${last ? 'Last counted ' + E(fmt(last.at)) : 'Never counted'}</small></summary>` +
+      return `<details class="hv" open><summary><b>${E(v.t)}</b><small>Now: ${now}</small><small class="hl">${last ? 'Last counted ' + E(fmt(last.at)) : 'Never counted'}</small></summary>` +
         (rows.length ? rows.map(r => { const d = r.counted - r.expected; return `<div class="hr ${d === 0 ? 'z' : d < 0 ? 'n' : 'p'}"><b>${E(fmt(r.at))}</b> · ${E(r.code || r.name)} · ${E(r.loc)}<br>Expected ${r.expected} → counted ${r.counted} <span>${d === 0 ? 'match' : (d > 0 ? '+' : '') + d}</span> · ${r.pushed ? 'pushed to website' + (r.by ? ' by ' + E(r.by) : '') : 'not pushed'}</div>`; }).join('') : '<div class="msg">No saved stock take includes this size.</div>') + '</details>';
-    }).join('') + '<div class="msg">Built from saved stock takes (latest 80). Tap a size to open it.</div>');
+    }).join('') + '<div class="msg">Built from saved stock takes (latest 80).</div>');
   } catch (e) { frame(`<div class="msg bad">${E(e.message)}</div>`); }
 }
 const dupPick = new Map();
