@@ -79,7 +79,15 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .done{border-color:#1f5c33!important;background:var(--green-bg);color:var(--green);font-weight:700;padding:8px 10px;border-radius:10px;border:1px solid}
 /* stock take */
 .bar{position:sticky;top:0;z-index:30;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 12px;margin:8px 0;box-shadow:0 8px 18px #0006}
-.bar h2{margin:0;font-size:16px}.bar .sub{color:var(--muted);font-size:12px}
+.bar h2{margin:0;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bar .sub{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .bh{display:flex;align-items:center;gap:8px}.bar .bh button{padding:5px 10px;font-size:13px;flex:none}
+.bar .nums{gap:4px;margin-top:4px}.bar .nums div{padding:2px 4px}.bar .nums b{font-size:16px}.bar .nums span{font-size:9.5px}.bar .pb{margin-top:4px;height:6px}
+#tkLast{position:sticky;top:var(--barh,0px);z-index:25}
+#tkLast .pc{margin:0 0 8px;border:2px solid var(--blue);box-shadow:0 8px 18px #0007}
+#tkLast .ph .im{width:92px;height:122px;border-radius:12px}#tkLast .ph b{font-size:17px}
+.vlist{position:relative;max-height:34vh;overflow:auto}
+.vr.last{outline:3px solid #ffd33d;outline-offset:-3px;background:var(--info-bg)}
+.vr.last .vt::before{content:'LAST';background:#ffd33d;color:#1a1400;font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px;margin-right:8px;vertical-align:middle}
 .nums{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0 6px}
 .nums div{border-radius:10px;padding:5px 4px;text-align:center;background:var(--grey-bg)}
 .nums b{display:block;font-size:20px;line-height:1.15}.nums span{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
@@ -311,16 +319,17 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 
     <div id="tkRun" hidden>
       <div class="bar">
-        <h2 id="tkTitle"></h2><div class="sub" id="tkSub"></div>
+        <div class="bh"><div style="flex:1;min-width:0"><h2 id="tkTitle"></h2><div class="sub" id="tkSub"></div></div><button type="button" id="tkMoreB">Actions ▾</button></div>
         <div class="nums"><div class="e"><b id="nE">0</b><span>Stock</span></div><div class="s"><b id="nS">0</b><span>Scanned</span></div><div class="l"><b id="nL">0</b><span>Remaining</span></div><div class="x"><b id="nX">0</b><span>Extra</span></div></div>
         <div class="pb"><i class="g" id="pbG"></i><i class="o" id="pbO"></i></div>
         <div class="scan" style="margin-top:10px"><input id="tkIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode, then Enter"><button id="tkAdd">Add</button><button id="tkCam" type="button" title="Scan with camera">📷</button></div>
         <div class="seg" id="tkScopeSeg" hidden style="margin:8px 0 0"><button type="button" data-s="variant" class="on">Count this variant</button><button type="button" data-s="product">Count whole product</button></div>
         <div class="msg" id="tkMsg"></div>
-        <div class="actions"><button id="tkSave">Save</button><button id="tkPause">Save &amp; pause</button><span class="sp"></span><button id="tkCancel">Cancel stock take</button><button class="pri" id="tkEnd">End stock take</button></div>
-        <div class="actions" style="margin-top:8px"><button class="go" id="tkPush" style="flex:1">⬆ Push to website</button></div>
+        <div id="tkMore" hidden><div class="actions"><button id="tkSave">Save</button><button id="tkPause">Save &amp; pause</button><span class="sp"></span><button id="tkCancel">Cancel stock take</button><button class="pri" id="tkEnd">End stock take</button></div>
+        <div class="actions" style="margin-top:8px"><button class="go" id="tkPush" style="flex:1">⬆ Push to website</button></div></div>
         <div class="pushbox" id="pushBox" hidden></div>
       </div>
+      <div id="tkLast"></div>
       <div class="seg" id="tkSeg"><button data-f="all" class="on">All</button><button data-f="left">Remaining</button><button data-f="done">Done</button><button data-f="extra">Extra</button></div>
       <div id="tkList" class="cards"></div>
       <div class="bk" id="tkOutBox" hidden><h3>Scanned but outside this filter</h3><div id="tkOut"></div></div>
@@ -939,7 +948,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
    ===================================================================== */
 let take = null, filt = 'all', endArmed = false, setupReady = false;
 const ssCol = Sel($('ssCol'), 'Choose a collection…'), ssSize = Sel($('ssSize'), 'All sizes'), ssDes = Sel($('ssDes'), 'All designs', true, true, true);
-let tkEdit = false;
+let tkEdit = false, lastPid = null, lastVid = null;
 const tkMsg = (t, k) => { const m = $('tkMsg'); m.textContent = t || ''; m.className = 'msg' + (k ? ' ' + k : ''); };
 const uid = () => 'st' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const expOf = v => (v.q[take.loc] || 0);
@@ -1147,7 +1156,7 @@ function begin(s) {
   { const fl = take.filters || {}; Object.keys(take.outside).forEach(k => { const v = byVid.get(k), o = take.outside[k]; if (v && o && o.n > 0 && inFilter(v, fl)) { take.counts[k] = (take.counts[k] || 0) + o.n; delete take.outside[k]; take.dirty = true; } }); }
   { const fl = take.filters || {}, have = new Set((take.vids || []).map(x => x[0])); take.vids = take.vids || [];
     if (fl.col && take.loc) takeVars(fl, take.loc).forEach(v => { if (!have.has(v.vid) && !(take.dropped || []).includes(v.vid)) { take.vids.push([v.vid, 0]); take.dirty = true; } }); }   // counts started before this change: add the sizes that had no stock
-  filt = 'all'; endArmed = false; syncScopeSeg();
+  filt = 'all'; endArmed = false; lastPid = null; lastVid = null; syncScopeSeg();
   $('tkSetup').hidden = true; $('tkResult').hidden = true; $('tkRun').hidden = false; $('pushBox').hidden = true;
   $('tkTitle').textContent = s.name; $('tkSub').textContent = 'Counting at ' + s.locName;
   document.querySelectorAll('#tkSeg button').forEach(b => b.classList.toggle('on', b.dataset.f === 'all'));
@@ -1167,10 +1176,15 @@ function drawTake(flash) {
   const groups = new Map();
   [...ids].map(k => byVid.get(k)).filter(Boolean).forEach(v => { const ex = em.get(v.vid) || 0, n = c[v.vid] || 0, st = status(ex, n); if (filt === 'left' && !(st === 'red' || st === 'blue')) return; if (filt === 'done' && st !== 'green') return; if (filt === 'extra' && st !== 'extra') return; if (!groups.has(v.pid)) groups.set(v.pid, []); groups.get(v.pid).push({v, ex, n, st}); });
   const icon = {red: '', blue: '', green: '✓', extra: '!', zero: ''};
-  $('tkList').innerHTML = groups.size ? [...groups.values()].sort((a, b) => a[0].v.pt.localeCompare(b[0].v.pt)).map(g => {
+  if (flash && byVid.get(flash)) { lastVid = flash; lastPid = byVid.get(flash).pid; }
+  const card = (g, isLast) => {
     const p = g[0].v, img = p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase());
-    return `<div class="pc"><div class="ph"><div class="im">${img}</div><b style="flex:1">${E(p.pt)}</b><button type="button" class="rmv" data-rmp="${E(p.pid)}" title="Remove this product from the count">✕ Remove</button></div>` + g.sort((a, b) => a.v.t.localeCompare(b.v.t, undefined, {numeric: true})).map(r => `<div class="vr ${r.st}${flash === r.v.vid ? ' flash' : ''}" data-vid="${E(r.v.vid)}"><div class="vt">${E(r.v.t)}</div><div class="tl"><b>${r.ex}</b><span>Stock</span></div><div class="tl"><b>${r.n}</b><span>Scanned</span></div><div class="tl l"><b>${r.n > r.ex ? '+' + (r.n - r.ex) : r.ex - r.n}</b><span>${r.n > r.ex ? 'Extra' : 'Left'}</span></div><div class="stp"><button data-d="-1" ${r.n <= 0 ? 'disabled' : ''}>−</button><button data-d="1">+</button><button type="button" class="rmv" data-rm title="Remove this size from the count">✕</button></div><div class="st">${icon[r.st]}</div></div>`).join('') + '</div>';
-  }).join('') : `<div class="empty">${filt === 'all' ? (take.filters && take.filters.open ? 'Scan a barcode to start. Each scan adds that product to the count.' : 'Nothing here.') : 'Nothing in this view.'}</div>`;
+    return `<div class="pc"><div class="ph"><div class="im">${img}</div><b style="flex:1">${E(p.pt)}</b><button type="button" class="rmv" data-rmp="${E(p.pid)}" title="Remove this product from the count">✕ Remove</button></div><div class="vlist">` + g.sort((a, b) => a.v.t.localeCompare(b.v.t, undefined, {numeric: true})).map(r => `<div class="vr ${r.st}${flash === r.v.vid ? ' flash' : ''}${isLast && r.v.vid === lastVid ? ' last' : ''}" data-vid="${E(r.v.vid)}"><div class="vt">${E(r.v.t)}</div><div class="tl"><b>${r.ex}</b><span>Stock</span></div><div class="tl"><b>${r.n}</b><span>Scanned</span></div><div class="tl l"><b>${r.n > r.ex ? '+' + (r.n - r.ex) : r.ex - r.n}</b><span>${r.n > r.ex ? 'Extra' : 'Left'}</span></div><div class="stp"><button data-d="-1" ${r.n <= 0 ? 'disabled' : ''}>−</button><button data-d="1">+</button><button type="button" class="rmv" data-rm title="Remove this size from the count">✕</button></div><div class="st">${icon[r.st]}</div></div>`).join('') + '</div></div>';
+  };
+  const sortedG = [...groups.values()].sort((a, b) => a[0].v.pt.localeCompare(b[0].v.pt)), lg = groups.get(lastPid);
+  $('tkLast').innerHTML = lg ? card(lg, true) : '';
+  { const lv = document.querySelector('#tkLast .vr.last'); if (lv) { const L = lv.parentElement; L.scrollTop = Math.max(0, lv.offsetTop - (L.clientHeight - lv.offsetHeight) / 2); } }
+  $('tkList').innerHTML = groups.size ? sortedG.filter(g => g !== lg).map(g => card(g)).join('') : `<div class="empty">${filt === 'all' ? (take.filters && take.filters.open ? 'Scan a barcode to start. Each scan adds that product to the count.' : 'Nothing here.') : 'Nothing in this view.'}</div>`;
   $('tkOutBox').hidden = !out.length;
   $('tkOut').innerHTML = out.map(([k, o]) => `<div class="sess out" data-ov="${E(k)}"><div class="nm"><b>${E(o.pt)}</b><span class="tag">${E(o.t)}</span><small class="bad">Outside your filter</small></div><div class="stp"><button data-od="-1">−</button><b>${o.n}</b><button data-od="1">+</button></div></div>`).join('');
   { const o = liveOthers(take); $('tkTitle').textContent = (take.code ? take.code + ' · ' : '') + take.name; $('tkSub').textContent = 'Counting at ' + take.locName + (o.length ? ' · with ' + o.join(', ') : ''); }
@@ -1239,14 +1253,13 @@ function takeScan(code, forced) {
     take.counts[v.vid] = (take.counts[v.vid] || 0) + 1; take.dirty = true;
     const ex = (take.vids.find(x => x[0] === v.vid) || [0, 0])[1], over = take.counts[v.vid] > ex;
     tkMsg(`${v.pt} · ${v.t}: ${take.counts[v.vid]} of ${ex}${over ? ' · EXTRA' : ''}`, over ? 'bad' : 'ok'); beep(over ? 'warn' : 'ok');
-    drawTake(v.vid); const el0 = document.querySelector(`.vr[data-vid="${v.vid}"]`); if (el0) el0.scrollIntoView({block: 'center', behavior: 'smooth'});
+    drawTake(v.vid);
     return;
   }
   const em = expMap();
   if (take.mode === 'add') {
     take.counts[v.vid] = (take.counts[v.vid] || 0) + 1; take.dirty = true;
     tkMsg(`${v.pt} · ${v.t}: +${take.counts[v.vid]} to add`, 'ok'); beep('ok'); drawTake(v.vid);
-    const el = document.querySelector(`.vr[data-vid="${v.vid}"]`); if (el) el.scrollIntoView({block: 'center', behavior: 'smooth'});
     return;
   }
   const fl = take.filters || {}, inScope = inFilter(v, fl);
@@ -1255,7 +1268,6 @@ function takeScan(code, forced) {
     const over = take.counts[v.vid] > ex;
     tkMsg(`${v.pt} · ${v.t}: ${take.counts[v.vid]} of ${ex}${over ? ' · EXTRA' : ''}`, over ? 'bad' : 'ok'); beep(over ? 'warn' : 'ok');
     drawTake(v.vid);
-    const el = document.querySelector(`.vr[data-vid="${v.vid}"]`); if (el) el.scrollIntoView({block: 'center', behavior: 'smooth'});
   } else {
     const o = take.outside[v.vid] || (take.outside[v.vid] = {pt: v.pt, t: v.t, n: 0}); o.n++; take.dirty = true;
     tkMsg(`${v.pt} · ${v.t} is not in this filter. Added to "outside this filter".`, 'bad'); beep('warn'); drawTake();
@@ -1282,6 +1294,9 @@ $('tkList').onclick = e => {
   const b = e.target.closest('[data-d]'), row = e.target.closest('.vr'); if (!b || !row || !take) return;
   const vid = row.getAttribute('data-vid'); take.counts[vid] = Math.max(0, (take.counts[vid] || 0) + Number(b.getAttribute('data-d'))); take.dirty = true; endArmed = false; drawTake(vid);
 };
+$('tkLast').onclick = $('tkList').onclick;
+$('tkMoreB').onclick = () => { const m = $('tkMore'); m.hidden = !m.hidden; $('tkMoreB').textContent = m.hidden ? 'Actions ▾' : 'Actions ▴'; };
+try { new ResizeObserver(() => { const b = document.querySelector('.bar'); if (b) document.documentElement.style.setProperty('--barh', (b.offsetHeight + 6) + 'px'); }).observe(document.querySelector('.bar')); } catch (e) {}
 $('tkOut').onclick = e => { const b = e.target.closest('[data-od]'), row = e.target.closest('[data-ov]'); if (!b || !row) return; const o = take.outside[row.getAttribute('data-ov')]; o.n = Math.max(0, o.n + Number(b.getAttribute('data-od'))); take.dirty = true; drawTake(); };
 async function save(pause, quiet) {
   if (!take) return true;
