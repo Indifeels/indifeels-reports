@@ -568,8 +568,8 @@ async function applyUi(ui) {
 function show(v) {
   $('viewBulk').hidden = v !== 'bulk'; $('viewTake').hidden = v !== 'take'; $('viewAdj').hidden = v !== 'adj'; $('viewBar').hidden = v !== 'bar';
   $('tabBulk').classList.toggle('on', v === 'bulk'); $('tabTake').classList.toggle('on', v === 'take'); $('tabAdj').classList.toggle('on', v === 'adj'); $('tabBar').classList.toggle('on', v === 'bar');
-  if (v === 'take') takeOpen();
-  if (v === 'adj') adjOpen();
+  if (v === 'take') Promise.resolve(takeOpen()).then(() => { try { window.setupApply(); } catch (e) {} });
+  if (v === 'adj') Promise.resolve(adjOpen()).then(() => { try { window.adjApply(); } catch (e) {} });
   if (v === 'bar') { try { window.refreshLabels(); window.refreshBoxes && window.refreshBoxes(); } catch (e) {} }
   curTab = v; saveUi();
 }
@@ -584,6 +584,9 @@ const loadLocs = () => locsP || (locsP = Store.locs().then(r => { locs = r.locat
 /* ---------- searchable select ---------- */
 const pidImg = new Map(V.map(v => [v.pid, v.image]));
 /* collection tiles: a photo from the collection, the name on it, and variants + stock at the chosen location */
+/* selection shared by the Stock take setup and the Add / remove tab: collection + product(s) */
+let shared = null;
+const setShared = (col, pids) => { shared = {col: col || '', pids: pids || []}; };
 const locTxt = q => locs.map(l => String(l.name).split(/\s+/)[0] + ' ' + (q[l.id] || 0)).join(' · ');
 function collectionOpts() {
   const m = new Map();
@@ -819,8 +822,16 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     items = (st.items || []).filter(x => byVid.has(String(x[0]))).map(x => ({vid: String(x[0]), qty: Math.max(1, Math.min(1000, +x[1] || 1)), label: !!x[2]}));
     armed = false; draw();
   };
-  colSel.onpick(() => { sel.set(productOpts()); sizes(); layout(); });
-  sel.onpick(() => { const pid = sel.get(); if (pid && scope === 'product') { addProduct(pid); sel.reset(); } editing = false; sizes(); layout(); });
+  window.adjApply = () => {
+    if (!ready || !shared) return; const sh = shared;
+    if (sh.col) colSel.put(sh.col, sh.col); else colSel.reset();
+    sel.set(productOpts(), true);
+    const v0 = sh.pids.length === 1 ? V.find(v => v.pid === sh.pids[0]) : null;
+    if (v0) sel.put(v0.pid, v0.pt); else sel.reset();
+    editing = false; draw();
+  };
+  colSel.onpick(() => { sel.set(productOpts()); setShared(colSel.get(), []); sizes(); layout(); });
+  sel.onpick(() => { const pid = sel.get(); setShared(colSel.get(), pid ? [pid] : []); if (pid && scope === 'product') { addProduct(pid); sel.reset(); } editing = false; sizes(); layout(); });
   $('adEdit').onclick = () => { editing = !editing; layout(); };
   $('adHist').onclick = () => showHistory(sel.get());
   $('adSelX').onclick = () => { sel.reset(); editing = false; sizes(); layout(); $('adProd').querySelector('.ssb').click(); };
@@ -1034,10 +1045,19 @@ function refreshSetupLists() {
   ssDes.set([{v: '', l: 'All designs'}].concat([...ds.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t}))));
   ssSize.disable(!col); ssDes.disable(!col);
 }
-ssCol.onpick(() => { ssSize.reset(); ssDes.reset(); refreshSetupLists(); setupScope(); });
+ssCol.onpick(() => { ssSize.reset(); ssDes.reset(); refreshSetupLists(); setShared(ssCol.get(), []); setupScope(); });
 ssSize.onpick(() => { ssDes.reset(); const col = ssCol.get(), ds = new Map(); V.filter(v => (!col || v.cols.includes(col)) && (!ssSize.get() || v.t === ssSize.get())).forEach(v => ds.set(v.pid, v.pt)); ssDes.set([{v: '', l: 'All designs'}].concat([...ds.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t})))); setupScope(); });
-ssDes.onpick(setupScope);
-$('tkClearAll').onclick = () => { ssCol.reset(); ssSize.reset(); ssDes.reset(); refreshSetupLists(); setupScope(); };
+ssDes.onpick(() => { setShared(ssCol.get(), ssDes.get()); setupScope(); });
+window.setupApply = () => {
+  if (!shared || take || !setupReady) return;
+  const sh = shared;
+  if (sh.col) ssCol.put(sh.col, sh.col); else ssCol.reset();
+  ssSize.reset(); ssDes.reset(); refreshSetupLists();
+  const pairs = sh.pids.map(id => { const v = V.find(x => x.pid === id); return v ? [id, v.pt] : null; }).filter(Boolean);
+  if (pairs.length) ssDes.putMulti(pairs);
+  setupScope();
+};
+$('tkClearAll').onclick = () => { ssCol.reset(); ssSize.reset(); ssDes.reset(); refreshSetupLists(); setShared('', []); setupScope(); };
 $('tkLoc').onchange = () => { ssCol.set(collectionOpts(), true); setupScope(); };
 $('tkHist').onclick = () => {
   const ds = ssDes.get();
@@ -1256,9 +1276,9 @@ async function showHistory(pid) {
   const vs = V.filter(v => v.pid === pid).sort((a, b) => a.t.localeCompare(b.t, undefined, {numeric: true}));
   if (!vs.length) return;
   const ov = document.createElement('div'); ov.className = 'dupov';
-  const frame = inner => { ov.innerHTML = `<div><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1">${E(vs[0].pt)}</h3><button type="button" data-x>Close</button></div>${inner}</div>`; };
+  const frame = inner => { ov.innerHTML = `<div><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1">${E(vs[0].pt)}</h3>${curTab === 'adj' ? '' : '<button type="button" class="pri" data-addrem>Add / remove stock</button>'}<button type="button" data-x>Close</button></div>${inner}</div>`; };
   frame('<div class="msg">Loading history…</div>');
-  ov.onclick = e => { if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); };
+  ov.onclick = e => { if (e.target.closest('[data-addrem]')) { ov.remove(); setShared('', [pid]); show('adj'); return; } if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); };
   document.body.appendChild(ov);
   const fmt = d => d ? new Date(d).toLocaleString(undefined, {day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit'}) : '';
   try {
