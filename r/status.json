@@ -36,10 +36,10 @@
   "reason": ""
  },
  "google-scorecard": {
-  "at": "2026-10-24T14:01+11:00",
-  "code_sha": "2988b3586b4f3c15f99a670610d941aba16cabe2",
+  "at": "2026-10-24T19:57+11:00",
+  "code_sha": "a9e3eaafa78271278a429bac7c65e2b60e0b08b0",
   "data_through": null,
-  "last_ok": "2026-10-24T14:01+11:00",
+  "last_ok": "2026-10-24T19:57+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
