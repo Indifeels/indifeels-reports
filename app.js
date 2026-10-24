@@ -1881,6 +1881,17 @@
     bulktransfer: async (d) => rpStockCall({ action: "transfer", from: rpText(d.from, 40), to: rpText(d.to, 40), items: (Array.isArray(d.items) ? d.items : []).slice(0, 500).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && i.qty) || 0) })) }, "Couldn't finalize the transfer"),
     takepush: async (d) => rpStockCall({ action: "setcounts", loc: rpText(d.loc, 40), dry: !!d.dry, mode: d.mode === "add" ? "add" : "set", items: (Array.isArray(d.items) ? d.items : []).slice(0, 2500).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && i.qty) || 0) })) }, "Couldn't push to the website"),
     takelist: async () => (rpOk(await sb.from("stock_takes").select("id,code,members,pushed_by,pushed_at,cancelled_by,dropped,name,loc,loc_name,status,filters,vids,counts,outside,summary,started_at,ended_at,updated_at").order("updated_at", { ascending: false }).limit(40)) || []).map(stRow),
+    takehistory: async (d) => {
+      const want = (Array.isArray(d.vids) ? d.vids : []).map(String).filter((x) => /^\d{1,20}$/.test(x)).slice(0, 200);
+      const rows = rpOk(await sb.from("stock_takes").select("id,code,name,loc_name,status,vids,counts,pushed_at,pushed_by,ended_at,updated_at,cancelled_by").neq("status", "open").neq("status", "cancelled").order("updated_at", { ascending: false }).limit(80)) || [];
+      const out = {};
+      rows.forEach((r) => {
+        if (r.cancelled_by) return;
+        const ex = new Map((r.vids || []).map((x) => [String(x[0]), Number(x[1]) || 0])), c = r.counts || {};
+        want.forEach((v) => { const n = Number(c[v]) || 0; if (!ex.has(v) && !n) return; (out[v] = out[v] || []).push({ code: r.code || "", name: r.name || "", loc: r.loc_name || "", expected: ex.get(v) || 0, counted: n, at: r.pushed_at || r.ended_at || r.updated_at, pushed: !!r.pushed_at, by: r.pushed_by || "" }); });
+      });
+      return out;
+    },
     takesave: async (d) => stSave(d.session, false),
     // Shared stock takes: send only what changed on this device (deltas) and get the merged list back, so two people can scan into one take.
     takeapply: async (d) => {
