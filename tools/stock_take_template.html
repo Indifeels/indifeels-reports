@@ -516,6 +516,7 @@ const Store = PREVIEW ? {
   takePushed: async () => ({ok: true, by: 'You'}),
   history: async () => ({}),
   counted: async () => ({}),
+  adds: async () => ({}),
   takeCancel: async id => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== id); LS.set('st-demo-takes', a); return {ok: true}; },
   takeEnd: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {status: 'ended', updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
 } : {
@@ -540,6 +541,7 @@ const Store = PREVIEW ? {
   takeCancel: id => call('takecancel', {id}, 20000),
   history: vids => call('takehistory', {vids}, 30000),
   counted: since => call('takecounted', {since}, 60000),
+  adds: vids => call('takeadjusts', {vids}, 30000).catch(() => ({})),
 };
 
 /* ---------- tabs ---------- */
@@ -1304,12 +1306,13 @@ async function showHistory(pid) {
   document.body.appendChild(ov);
   const fmt = d => d ? new Date(d).toLocaleString(undefined, {day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit'}) : '';
   try {
-    const h = await Store.history(vs.map(v => v.vid));
+    const [h, ad] = await Promise.all([Store.history(vs.map(v => v.vid)), Store.adds(vs.map(v => v.vid))]);
     frame(vs.map(v => {
-      const rows = (h[v.vid] || []).slice().sort((a, b) => String(b.at).localeCompare(String(a.at))), last = rows[0];
+      const rows = (h[v.vid] || []).slice().sort((a, b) => String(b.at).localeCompare(String(a.at))), last = rows[0], adj = (ad[v.vid] || []).slice().sort((a, b) => String(b.at).localeCompare(String(a.at)));
       const nb = n => `<b class="${n > 0 ? 'ng' : 'n0'}">${n}</b>`, now = locs.map(l => `${E(l.name)} ${nb(v.q[l.id] || 0)}`).join(' · ');
-      return `<details class="hv" open><summary><b class="sz">${E(v.t)}</b><small>Now: ${now}</small><small class="hl">${last ? 'Last counted <span class="dt">' + E(fmt(last.at)) + '</span>' : '<span class="n0">Never counted</span>'}</small></summary>` +
-        (rows.length ? rows.map(r => { const d = r.counted - r.expected, c = d === 0 ? 'ng' : d < 0 ? 'n0' : 'nb'; return `<div class="hr ${d === 0 ? 'z' : d < 0 ? 'n' : 'p'}"><b class="dt">${E(fmt(r.at))}</b> · ${E(r.code || r.name)} · ${E(r.loc)}<br>Expected <b>${r.expected}</b> <span class="${c}">→</span> counted <b class="${c}">${r.counted}</b> <span class="${c}">${d === 0 ? '✓ match' : d < 0 ? (-d) + ' missing' : '+' + d + ' extra'}</span> · ${r.pushed ? '<span class="ng">pushed to website' + (r.by ? ' by ' + E(r.by) : '') + '</span>' : '<span class="nz">not pushed</span>'}</div>`; }).join('') : '<div class="msg">No saved stock take includes this size.</div>') + '</details>';
+      return `<details class="hv" open><summary><b class="sz">${E(v.t)}</b><small>Now: ${now}</small><small class="hl">${last ? 'Last counted <span class="dt">' + E(fmt(last.at)) + '</span>' : '<span class="n0">Never counted</span>'}${adj.length ? ' · <span class="nb">last added/removed separately</span> <span class="dt">' + E(fmt(adj[0].at)) + '</span>' : ''}</small></summary>` +
+        (rows.length ? rows.map(r => { const d = r.counted - r.expected, c = d === 0 ? 'ng' : d < 0 ? 'n0' : 'nb'; return `<div class="hr ${d === 0 ? 'z' : d < 0 ? 'n' : 'p'}"><b class="dt">${E(fmt(r.at))}</b> · ${E(r.code || r.name)} · ${E(r.loc)}<br>Expected <b>${r.expected}</b> <span class="${c}">→</span> counted <b class="${c}">${r.counted}</b> <span class="${c}">${d === 0 ? '✓ match' : d < 0 ? (-d) + ' missing' : '+' + d + ' extra'}</span> · ${r.pushed ? '<span class="ng">pushed to website' + (r.by ? ' by ' + E(r.by) : '') + '</span>' : '<span class="nz">not pushed</span>'}</div>`; }).join('') : '<div class="msg">No saved stock take includes this size.</div>') +
+        (adj.length ? '<div class="msg" style="margin-top:6px"><b class="nb">Added / removed separately</b> (Add / remove tab, not part of a stock take)</div>' + adj.map(r => `<div class="hr p"><b class="dt">${E(fmt(r.at))}</b> · ${E(r.loc)}<br><b class="${r.mode === 'add' ? 'ng' : 'n0'}">${r.mode === 'add' ? '+' + r.qty + ' added' : '−' + r.qty + ' removed'}</b> · stock <b>${r.before}</b> <span class="${r.mode === 'add' ? 'ng' : 'n0'}">→</span> <b class="${r.mode === 'add' ? 'ng' : 'n0'}">${r.after}</b>${r.by ? ' · ' + E(r.by) : ''}</div>`).join('') : '') + '</details>';
     }).join('') + '<div class="msg">Built from saved stock takes (latest 80).</div>');
   } catch (e) { frame(`<div class="msg bad">${E(e.message)}</div>`); }
 }

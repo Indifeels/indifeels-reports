@@ -1903,6 +1903,13 @@
       });
       return out;
     },
+    takeadjusts: async (d) => {
+      const want = (Array.isArray(d.vids) ? d.vids : []).map(String).filter((x) => /^\d{1,20}$/.test(x)).slice(0, 200);
+      const { data, error } = await sb.from("stock_adjustments").select("vid,loc_name,mode,qty,before_qty,after_qty,by_name,created_at").in("vid", want).order("created_at", { ascending: false }).limit(500);
+      if (error) return {};
+      const out = {}; (data || []).forEach((r) => { (out[r.vid] = out[r.vid] || []).push({ loc: r.loc_name || "", mode: r.mode, qty: r.qty, before: r.before_qty, after: r.after_qty, by: r.by_name || "", at: r.created_at }); });
+      return out;
+    },
     takesave: async (d) => stSave(d.session, false),
     // Shared stock takes: send only what changed on this device (deltas) and get the merged list back, so two people can scan into one take.
     takeapply: async (d) => {

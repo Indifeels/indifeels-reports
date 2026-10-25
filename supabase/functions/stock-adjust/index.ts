@@ -52,7 +52,7 @@ function items(body: any, max: number, cap: number) {
   return m;
 }
 
-async function adjustList(body: any) {
+async function adjustList(body: any, svc: any, by: string) {
   const loc = toLoc(body.loc);
   if (!LOCID.test(loc)) return json({ error: "Pick the location" }, 400);
   const mode = body.mode === "remove" ? "remove" : "add", sign = mode === "add" ? 1 : -1;
@@ -88,6 +88,10 @@ async function adjustList(body: any) {
     if (ue?.length) return json({ error: `Updated ${done} of ${rows.length} variants, then Shopify stopped: ${ue[0].message}. Check the stock and try the rest again.`, updated: done }, 500);
     done += part.length;
   }
+  try {   // history of separate add / remove changes (never blocks the stock change itself)
+    const ln = loc === SHOPLOC ? "Shop location" : loc === BACKUP ? "Backup" : "";
+    await svc.from("stock_adjustments").insert(rows.map((r) => ({ vid: r.vid, product: r.title.slice(0, 200), variant: "", loc: loc.split("/").pop(), loc_name: ln, mode, qty: r.qty, before_qty: r.cur, after_qty: Math.max(0, r.cur + sign * r.qty), by_name: by.slice(0, 80) })));
+  } catch (_) { /* table not created yet */ }
   const k = loc === SHOPLOC ? "melbourne_stock" : loc === BACKUP ? "storage_stock" : "";
   let warn = "";
   if (k) {
@@ -195,12 +199,12 @@ Deno.serve(async (req: Request) => {
   const bearer = (req.headers.get("Authorization") || "").replace(/^Bearer /, "");
   const { data: who, error: whoErr } = await svc.auth.getUser(bearer);
   if (whoErr || !who?.user) return json({ error: "Not signed in" }, 401);
-  const { data: prof } = await svc.from("profiles").select("is_admin,disabled").eq("id", who.user.id).single();
+  const { data: prof } = await svc.from("profiles").select("is_admin,disabled,display_name,username").eq("id", who.user.id).single();
   if (!prof || prof.disabled || !prof.is_admin) return json({ error: "Only the owner can change stock" }, 403);
   let body: any = {};
   try { body = await req.json(); } catch { return json({ error: "Bad request" }, 400); }
   try {
-    if (body.action === "adjustlist") return await adjustList(body);
+    if (body.action === "adjustlist") return await adjustList(body, svc, String(prof.display_name || prof.username || ""));
     if (body.action === "setbarcode") return await setBarcode(body);
     if (body.action === "setstatus") return await setStatus(body);
     if (body.action === "deletevariant") return await deleteVariant(body);
