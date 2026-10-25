@@ -51,7 +51,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .dupv button.dd{color:var(--red)}.dupv button.dd.arm{background:var(--red);color:#fff}
 .pf{margin-top:6px}.pfs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .pfs button{display:flex;flex-direction:column;align-items:stretch;gap:6px;text-align:center;padding:4px;border-radius:12px;width:100%;font-size:13px;line-height:1.25}.pfs button>span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.pfs .im{width:100%;height:auto;aspect-ratio:3/4;border-radius:12px}
+.pfs .im{width:100%;height:auto;aspect-ratio:3/4;border-radius:12px;position:relative}
 .lbh .im{width:34px;height:34px;border-radius:8px;overflow:hidden;background:var(--card2);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)}
 .pfs .im img,.lbh .im img{width:100%;height:100%;object-fit:cover}
 .sso.grid div{position:relative}.sso.grid .chk{position:absolute;top:8px;left:8px;z-index:1}
@@ -151,8 +151,9 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .sso.grid .tx{flex:none;text-align:center;font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .sso.grid .none{grid-column:1/-1;padding:12px}
 .sso.grid .th{position:relative}.sso.grid .ov{position:absolute;left:0;right:0;top:0;padding:8px 8px 22px;background:linear-gradient(#000d,#0000);color:#fff;font-weight:800;font-size:14px;line-height:1.2;text-align:left}
-.sso.grid .bd{position:absolute;right:6px;bottom:6px;left:6px;white-space:pre-line;text-align:center;padding:3px 8px;border-radius:12px;font-size:11.5px;line-height:1.25;font-weight:800;background:#000a;color:#fff}.sso.grid .bd.out{background:#8a2a2e;color:#ffe3e4}
+.sso.grid .bd,.pfs .bd{position:absolute;right:6px;bottom:6px;left:6px;white-space:pre-line;text-align:center;padding:3px 8px;border-radius:12px;font-size:11.5px;line-height:1.25;font-weight:800;background:#000a;color:#fff}.sso.grid .bd.out,.pfs .bd.out{background:#8a2a2e;color:#ffe3e4}
 .sso.grid div small{white-space:pre-line;text-align:center;font-size:12px;line-height:1.25}
+.ssb .ssq{flex:1;min-width:0;width:auto;border:0;background:transparent;color:inherit;font:inherit;padding:0;border-radius:0;outline:0}.ssb .ssl{display:flex;align-items:center}.ssb .ssl img{width:30px;height:40px;object-fit:cover;border-radius:6px;margin-right:8px;flex:none}.ssb .ssl span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .ss:has(.ssp.gp){position:static}.bk{position:relative}.ssp.gp{top:auto;margin-top:4px;left:8px;right:8px}
 /* compact top tile once a product is chosen */
 .hv{border-top:1px solid var(--border);padding:8px 0}.hv summary{cursor:pointer;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}.hv summary small{color:var(--muted)}.hv .hl{margin-left:auto}
@@ -317,7 +318,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
           <div class="fld">Design (optional)<div class="ss" id="ssDes"></div></div>
         </div>
         <div style="margin-top:8px"><button type="button" id="tkClearAll" hidden>✕ Clear selection</button></div></div>
-        <div class="foot"><span class="sum" id="tkScope">Nothing selected: an open count. Scan any product and it joins the count.</span><button type="button" id="tkHist">Stock take history</button><button class="pri" id="tkStart" disabled>Start stock take</button></div>
+        <div class="foot"><span class="sum" id="tkScope">Nothing selected: an open count. Scan any product and it joins the count.</span><button type="button" id="tkUnc">Not counted</button><button type="button" id="tkHist">Stock take history</button><button class="pri" id="tkStart" disabled>Start stock take</button></div>
       </div>
       <div class="bk"><h3>Duplicate barcodes</h3><div class="sum">Two variants with the same barcode make scans land on the wrong one. Find them and delete the one you don't need.</div><div style="margin-top:8px"><button type="button" id="dupFind">Find duplicate barcodes</button></div><div id="dupList"></div></div>
       <div class="bk" id="tkOpenBox" hidden><h3>Paused stock takes</h3><div id="tkOpen"></div></div>
@@ -332,7 +333,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
         <div class="scan" style="margin-top:10px"><input id="tkIn" type="text" inputmode="numeric" autocomplete="off" placeholder="Scan or type barcode, then Enter"><button id="tkAdd">Add</button><button id="tkCam" type="button" title="Scan with camera">📷</button></div>
         <div class="seg" id="tkScopeSeg" hidden style="margin:8px 0 0"><button type="button" data-s="variant" class="on">Count this variant</button><button type="button" data-s="product">Count whole product</button></div>
         <div class="msg" id="tkMsg"></div>
-        <div id="tkMore" hidden><div class="actions"><button id="tkSave">Save</button><button id="tkPause">Save &amp; pause</button><span class="sp"></span><button id="tkCancel">Cancel stock take</button><button class="pri" id="tkEnd">End stock take</button></div>
+        <div id="tkMore" hidden><div class="actions"><button type="button" id="tkUncRun">Not counted yet</button><button id="tkSave">Save</button><button id="tkPause">Save &amp; pause</button><span class="sp"></span><button id="tkCancel">Cancel stock take</button><button class="pri" id="tkEnd">End stock take</button></div>
         <div class="actions" style="margin-top:8px"><button class="go" id="tkPush" style="flex:1">⬆ Push to website</button></div></div>
         <div class="pushbox" id="pushBox" hidden></div>
       </div>
@@ -428,7 +429,7 @@ const beep = k => { try { const C = window.AudioContext || window.webkitAudioCon
 /* ---------- variants index (from the website data) ---------- */
 const V = [], byBc = new Map(), allBc = new Map(), byVid = new Map();
 DATA.products.forEach(p => p.variants.forEach(v => {
-  const r = {vid: String(v.vid), pid: String(p.id), pt: p.title, image: p.image || '', pr: v.pr || '', ca: p.ca || '', sup: p.sup || '', t: v.t, col: (p.colors || []).join(' / '), cols: p.cols || [], bc: v.bc || [], q: v.q || {}};
+  const r = {vid: String(v.vid), pid: String(p.id), pt: p.title, image: p.image || '', pr: v.pr || '', ca: p.ca || '', sup: p.sup || '', st: p.st || '', t: v.t, col: (p.colors || []).join(' / '), cols: p.cols || [], bc: v.bc || [], q: v.q || {}};
   V.push(r); byVid.set(r.vid, r); r.bc.forEach(b => { const k = bcn(b); (allBc.get(k) || allBc.set(k, []).get(k)).push(r); });
 }));
 /* The same barcode can sit on more than one variant (old and new copies of a product). Prefer the one that holds stock. */
@@ -471,7 +472,7 @@ function ProductFind(input, opt) {
   function suggest() {
     if (!hasText()) { clear(); return; }
     const m = matches();
-    box.innerHTML = m.length ? '<div class="pfs">' + m.map(p => `<button type="button" data-p="${E(p.pid)}"><span class="im">${img(p)}</span><span>${E(p.pt)}</span></button>`).join('') + '</div>' : '<div class="msg">No product with that name.</div>';
+    box.innerHTML = m.length ? '<div class="pfs">' + m.map(p => { const st = stockOf(p.vs); return `<button type="button" data-p="${E(p.pid)}"><span class="im">${img(p)}<span class="bd${st.out ? ' out' : ''}">${E(st.txt)}</span></span><span>${E(p.pt)}</span></button>`; }).join('') + '</div>' : '<div class="msg">No product with that name.</div>';
   }
   function pick(pid) {
     input.value = ''; clear();
@@ -511,6 +512,7 @@ const Store = PREVIEW ? {
   takeApply: async (id, counts, outside, vids) => { const a = LS.get('st-demo-takes') || [], s = a.find(x => x.id === id); return {id, code: 'ST-0001', status: s ? s.status || 'open' : 'open', counts: s ? s.counts : {}, outside: s ? s.outside : {}, vids: s ? s.vids : [], members: {}}; },
   takePushed: async () => ({ok: true, by: 'You'}),
   history: async () => ({}),
+  counted: async () => ({}),
   takeCancel: async id => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== id); LS.set('st-demo-takes', a); return {ok: true}; },
   takeEnd: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {status: 'ended', updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
 } : {
@@ -534,6 +536,7 @@ const Store = PREVIEW ? {
   takePushed: id => call('takepushed', {id}, 20000),
   takeCancel: id => call('takecancel', {id}, 20000),
   history: vids => call('takehistory', {vids}, 30000),
+  counted: since => call('takecounted', {since}, 60000),
 };
 
 /* ---------- tabs ---------- */
@@ -584,6 +587,12 @@ const loadLocs = () => locsP || (locsP = Store.locs().then(r => { locs = r.locat
 /* ---------- searchable select ---------- */
 const pidImg = new Map(V.map(v => [v.pid, v.image]));
 /* collection tiles: a photo from the collection, the name on it, and variants + stock at the chosen location */
+const byPid = new Map(); V.forEach(v => { let a = byPid.get(v.pid); if (!a) byPid.set(v.pid, a = []); a.push(v); });
+function stockOf(vs) { const q = {}; let t = 0; (vs || []).forEach(v => { t += tot(v); locs.forEach(l => { q[l.id] = (q[l.id] || 0) + (v.q[l.id] || 0); }); }); return {t, out: t <= 0, txt: t > 0 ? 'Total ' + t + '\n' + locTxt(q) : 'Out of stock'}; }
+function designOpts(col, size) {
+  const ds = new Map(); V.forEach(v => { if ((!col || v.cols.includes(col)) && (!size || v.t === size)) ds.set(v.pid, v.pt); });
+  return [{v: '', l: 'All designs'}].concat([...ds.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => { const st = stockOf(byPid.get(k)); return {v: k, l: t, badge: st.txt, bc: st.out ? 'out' : ''}; }));
+}
 /* selection shared by the Stock take setup and the Add / remove tab: collection + product(s) */
 let shared = null;
 const setShared = (col, pids) => { shared = {col: col || '', pids: pids || []}; };
@@ -594,39 +603,49 @@ function collectionOpts() {
   return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, e]) => ({v: c, l: c, top: c, img: e.img, s: `${e.n} variant${e.n === 1 ? '' : 's'} · Total ${e.t.toLocaleString()}\n${locTxt(e.q)}`}));
 }
 function Sel(root, ph, thumb, multi, grid) {
-  root.innerHTML = `<button type="button" class="ssb"><span class="ssl">${E(ph)}</span><span class="ssx" role="button" aria-label="Clear" hidden>✕</span><i>▾</i></button><div class="ssp${grid ? ' gp' : ''}"><input type="text" placeholder="Search…" autocomplete="off"><div class="sso${grid ? ' grid' : ''}"></div>${multi ? '<div class="ssf"><span class="ssn"></span><span><button type="button" class="ssa">Tick all shown</button> <button type="button" class="ssd pri">Done</button></span></div>' : ''}</div>`;
-  const b = root.querySelector('.ssb'), inp = root.querySelector('input'), box = root.querySelector('.sso');
+  const tag = grid ? 'div' : 'button';
+  root.innerHTML = `<${tag}${grid ? '' : ' type="button"'} class="ssb"><span class="ssl">${E(ph)}</span>${grid ? `<input class="ssq" type="text" inputmode="search" placeholder="${E(ph)}" autocomplete="off">` : ''}<span class="ssx" role="button" aria-label="Clear" hidden>✕</span><i>▾</i></${tag}><div class="ssp${grid ? ' gp' : ''}"><input type="text" placeholder="Search…" autocomplete="off"><div class="sso${grid ? ' grid' : ''}"></div>${multi ? '<div class="ssf"><span class="ssn"></span><span><button type="button" class="ssa">Tick all shown</button> <button type="button" class="ssd pri">Done</button></span></div>' : ''}</div>`;
+  const b = root.querySelector('.ssb'), inp = root.querySelector('.ssp input'), q = root.querySelector('.ssq'), box = root.querySelector('.sso');
   const xb = root.querySelector('.ssx'), lab = root.querySelector('.ssl');
   let opts = [], cur = {v: '', l: ph}, onpick = () => {};
   const picked = new Map();                     // multi mode: value -> label
   const sync = () => {
     if (multi) { xb.hidden = !picked.size; lab.textContent = !picked.size ? ph : picked.size === 1 ? [...picked.values()][0] : picked.size + ' selected'; const n = root.querySelector('.ssn'); if (n) n.textContent = picked.size ? picked.size + ' ticked' : 'None ticked = all'; }
     else xb.hidden = !cur.v;
+    if (grid) {
+      const one = !multi && !!cur.v;
+      q.style.display = one ? 'none' : ''; lab.style.display = one ? '' : 'none'; inp.style.display = one ? '' : 'none';
+      if (one) { const o0 = opts.find(x => x.v === cur.v) || cur, im = cur.img || o0.img || pidImg.get(cur.v) || ''; lab.innerHTML = (im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : '') + `<span>${E(cur.l)}</span>`; }
+      else if (multi) q.placeholder = picked.size ? (picked.size === 1 ? [...picked.values()][0] : picked.size + ' selected') + ' (tap to change)' : ph;
+    }
   };
-  xb.onclick = e => { e.stopPropagation(); if (multi) picked.clear(); else { cur = {v: '', l: ph}; lab.textContent = ph; } sync(); root.classList.remove('open'); onpick(multi ? [...picked.keys()] : cur); };
+  xb.onclick = e => { e.stopPropagation(); if (multi) picked.clear(); else { cur = {v: '', l: ph}; lab.textContent = ph; } if (q) q.value = ''; inp.value = ''; sync(); root.classList.remove('open'); onpick(multi ? [...picked.keys()] : cur); if (q) setTimeout(() => q.focus(), 0); };
   const shown = () => { const q = inp.value.trim().toLowerCase(); return opts.filter(o => (!multi || o.v) && (!q || o.l.toLowerCase().includes(q))).slice(0, 200); };
   const draw = () => {
     const keep = box.scrollTop, list = shown();
     box.innerHTML = list.length ? list.map(o => { const im = o.img || (thumb && o.v ? pidImg.get(o.v) : ''), ph = (thumb && o.v) || o.img; return `<div data-i="${opts.indexOf(o)}"${multi && picked.has(o.v) ? ' class="on"' : ''}>${multi ? `<span class="chk">${picked.has(o.v) ? '✓' : ''}</span>` : ''}${ph ? `<span class="th">${im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}${o.top ? `<span class="ov">${E(o.top)}</span>` : ''}${o.badge ? `<span class="bd${o.bc ? ' ' + o.bc : ''}">${E(o.badge)}</span>` : ''}</span>` : ''}${o.top ? '' : `<span class="tx">${E(o.l)}</span>`}${o.s ? `<small>${E(o.s)}</small>` : ''}</div>`; }).join('') : '<div class="none">No match</div>';
     box.scrollTop = keep; sync();
   };
-  b.onclick = e => { e.stopPropagation(); const was = root.classList.contains('open'); document.querySelectorAll('.ss.open').forEach(x => x.classList.remove('open')); if (!was) { root.classList.add('open'); inp.value = ''; draw(); inp.focus(); } };
+  const openIt = () => { document.querySelectorAll('.ss.open').forEach(x => { if (x !== root) x.classList.remove('open'); }); root.classList.add('open'); draw(); };
+  b.onclick = e => { e.stopPropagation(); const was = root.classList.contains('open'); document.querySelectorAll('.ss.open').forEach(x => x.classList.remove('open')); if (!was) { if (q) q.value = ''; inp.value = ''; openIt(); (q && q.style.display !== 'none' ? q : inp).focus(); } };
+  if (q) { q.onclick = e => { e.stopPropagation(); if (!root.classList.contains('open')) openIt(); }; q.onfocus = () => { if (!root.classList.contains('open')) openIt(); }; q.oninput = () => { if (!root.classList.contains('open')) openIt(); inp.value = q.value; draw(); }; }
   box.onclick = e => {
     const d = e.target.closest('[data-i]'); if (!d) return; const o = opts[+d.getAttribute('data-i')];
     if (multi) { if (picked.has(o.v)) picked.delete(o.v); else picked.set(o.v, o.l); draw(); onpick([...picked.keys()]); return; }
-    cur = o; lab.textContent = cur.l; sync(); root.classList.remove('open'); onpick(cur);
+    cur = o; lab.textContent = cur.l; if (q) q.value = ''; inp.value = ''; sync(); root.classList.remove('open'); onpick(cur);
   };
   if (multi) {
     root.querySelector('.ssa').onclick = () => { shown().forEach(o => picked.set(o.v, o.l)); draw(); onpick([...picked.keys()]); };
     root.querySelector('.ssd').onclick = () => root.classList.remove('open');
   }
   inp.oninput = draw; root.querySelector('.ssp').onclick = e => e.stopPropagation();
+  sync();
   return {
-    set: (o, keep) => { opts = o; if (!keep) { cur = {v: '', l: ph}; picked.clear(); lab.textContent = ph; sync(); } },
+    set: (o, keep) => { opts = o; if (!keep) { cur = {v: '', l: ph}; picked.clear(); lab.textContent = ph; if (q) q.value = ''; sync(); } else if (grid) sync(); },
     get: () => multi ? [...picked.keys()] : cur.v,
     label: () => multi ? (picked.size === 1 ? [...picked.values()][0] : picked.size + ' designs') : cur.l,
     disable: x => b.classList.toggle('dis', !!x), onpick: f => { onpick = f; },
-    reset: () => { cur = {v: '', l: ph}; picked.clear(); lab.textContent = ph; sync(); },
+    reset: () => { cur = {v: '', l: ph}; picked.clear(); lab.textContent = ph; if (q) q.value = ''; inp.value = ''; sync(); },
     put: (v, l) => { cur = {v, l}; lab.textContent = l; sync(); },
     putMulti: arr => { picked.clear(); arr.forEach(([v, l]) => picked.set(v, l)); sync(); }
   };
@@ -1041,12 +1060,11 @@ function refreshSetupLists() {
   const col = ssCol.get(), inCol = V.filter(v => !col || v.cols.includes(col));
   const sz = new Map(); inCol.forEach(v => sz.set(v.t, (sz.get(v.t) || 0) + 1));
   ssSize.set([{v: '', l: 'All sizes'}].concat([...sz.keys()].sort((a, b) => a.localeCompare(b, undefined, {numeric: true})).map(t => ({v: t, l: t, s: sz.get(t) + ' design' + (sz.get(t) === 1 ? '' : 's')}))));
-  const ds = new Map(); inCol.filter(v => !ssSize.get() || v.t === ssSize.get()).forEach(v => ds.set(v.pid, v.pt));
-  ssDes.set([{v: '', l: 'All designs'}].concat([...ds.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t}))));
+  ssDes.set(designOpts(col, ssSize.get()));
   ssSize.disable(!col); ssDes.disable(!col);
 }
 ssCol.onpick(() => { ssSize.reset(); ssDes.reset(); refreshSetupLists(); setShared(ssCol.get(), []); setupScope(); });
-ssSize.onpick(() => { ssDes.reset(); const col = ssCol.get(), ds = new Map(); V.filter(v => (!col || v.cols.includes(col)) && (!ssSize.get() || v.t === ssSize.get())).forEach(v => ds.set(v.pid, v.pt)); ssDes.set([{v: '', l: 'All designs'}].concat([...ds.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([k, t]) => ({v: k, l: t})))); setupScope(); });
+ssSize.onpick(() => { ssDes.reset(); ssDes.set(designOpts(ssCol.get(), ssSize.get())); setupScope(); });
 ssDes.onpick(() => { setShared(ssCol.get(), ssDes.get()); setupScope(); });
 window.setupApply = () => {
   if (!shared || take || !setupReady) return;
@@ -1062,11 +1080,11 @@ $('tkLoc').onchange = () => { ssCol.set(collectionOpts(), true); setupScope(); }
 $('tkHist').onclick = () => {
   const ds = ssDes.get();
   if (ds.length === 1) { showHistory(ds[0]); return; }
-  const col = ssCol.get(), pool = new Map(); V.filter(v => (!col || v.cols.includes(col)) && (!ds.length || ds.includes(v.pid))).forEach(v => { if (!pool.has(v.pid)) pool.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image}); });
+  const col = ssCol.get(), pool = new Map(); V.filter(v => (!col || v.cols.includes(col)) && (!ds.length || ds.includes(v.pid))).forEach(v => { if (!pool.has(v.pid)) pool.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image, vs: byPid.get(v.pid)}); });
   const list = [...pool.values()].sort((a, b) => a.pt.localeCompare(b.pt));
   const ov = document.createElement('div'); ov.className = 'dupov';
   ov.innerHTML = '<div><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1">Stock take history: pick a product</h3><button type="button" data-x>Close</button></div><input type="text" id="hqIn" placeholder="Search product…" autocomplete="off" style="margin:8px 0"><div class="pfs" id="hqGrid"></div></div>';
-  const draw = () => { const t = ov.querySelector('#hqIn').value.toLowerCase().split(/\s+/).filter(Boolean); ov.querySelector('#hqGrid').innerHTML = list.filter(p => t.every(x => p.pt.toLowerCase().includes(x))).slice(0, 60).map(p => `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}</span><span>${E(p.pt)}</span></button>`).join('') || '<div class="msg">No product found.</div>'; };
+  const draw = () => { const t = ov.querySelector('#hqIn').value.toLowerCase().split(/\s+/).filter(Boolean); ov.querySelector('#hqGrid').innerHTML = list.filter(p => t.every(x => p.pt.toLowerCase().includes(x))).slice(0, 60).map(p => `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}<span class="bd${stockOf(p.vs).out ? ' out' : ''}">${E(stockOf(p.vs).txt)}</span></span><span>${E(p.pt)}</span></button>`).join('') || '<div class="msg">No product found.</div>'; };
   ov.onclick = e => { if (e.target === ov || e.target.closest('[data-x]')) { ov.remove(); return; } const b = e.target.closest('[data-p]'); if (b) { ov.remove(); showHistory(b.dataset.p); } };
   ov.addEventListener('input', draw); document.body.appendChild(ov); draw(); ov.querySelector('#hqIn').focus();
 };
@@ -1291,6 +1309,53 @@ async function showHistory(pid) {
     }).join('') + '<div class="msg">Built from saved stock takes (latest 80).</div>');
   } catch (e) { frame(`<div class="msg bad">${E(e.message)}</div>`); }
 }
+
+/* Products that are active on the website, hold stock, and were never counted since a date (or not yet in this count) */
+async function showUncounted() {
+  const run = !!take, ov = document.createElement('div'); ov.className = 'dupov';
+  const day = n => { const d = new Date(); d.setMonth(d.getMonth() - n); return d.toISOString().slice(0, 10); };
+  let since = run ? '' : day(6), list = [], q = '', busy = false;
+  const body = () => {
+    const shown = list.filter(p => !q || p.pt.toLowerCase().includes(q)), pcs = shown.reduce((a, p) => a + p.t, 0);
+    ov.innerHTML = `<div><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1">Not counted</h3><button type="button" data-x>Close</button></div>
+      <div class="chips" style="margin:8px 0">${run ? `<button type="button" data-per="" class="${since === '' ? 'in' : ''}">This count</button>` : ''}${[1, 3, 6, 12].map(n => `<button type="button" data-per="${n}" class="${since === day(n) ? 'in' : ''}">Last ${n} month${n === 1 ? '' : 's'}</button>`).join('')}<label class="fld" style="flex:none;min-width:150px">or since<input type="date" id="ucD" value="${E(since)}" max="${new Date().toISOString().slice(0, 10)}"></label></div>
+      <div class="msg">${busy ? 'Looking…' : `${shown.length} product${shown.length === 1 ? '' : 's'} (${pcs} pieces) active on the website with stock, ${since ? 'not counted since ' + E(since) : 'not yet in this count'}.`}</div>
+      <input type="text" id="ucQ" placeholder="Search these products…" autocomplete="off" value="${E(q)}" style="margin:6px 0">
+      <div class="pfs" id="ucG">${shown.slice(0, 80).map(p => { const st = stockOf(p.vs); return `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}<span class="bd${st.out ? ' out' : ''}">${E(st.txt)}</span></span><span>${E(p.pt)}</span></button>`; }).join('')}</div>
+      ${shown.length > 80 ? `<div class="msg">Showing 80 of ${shown.length}. Search to narrow.</div>` : ''}
+      <div class="foot"><span class="sum">Tap a product to see its history.</span><button type="button" class="pri" data-go ${!shown.length || busy ? 'disabled' : ''}>${run ? 'Add these to this count' : 'Count these ' + shown.length}</button></div></div>`;
+  };
+  const load = async () => {
+    busy = true; body();
+    try {
+      const done = new Set(); if (since) Object.keys(await Store.counted(new Date(since).toISOString())).forEach(k => done.add(k));
+      if (take) Object.keys(take.counts).forEach(k => { if (take.counts[k] > 0) done.add(k); });
+      list = [...byPid.values()].filter(vs => /^active$/i.test(vs[0].st) && vs.some(v => tot(v) > 0) && !vs.some(v => done.has(v.vid))).map(vs => ({pid: vs[0].pid, pt: vs[0].pt, image: vs[0].image, t: vs.reduce((a, v) => a + tot(v), 0), vs})).sort((a, b) => a.pt.localeCompare(b.pt));
+    } catch (e) { list = []; ov.innerHTML = `<div><div class="msg bad">${E(e.message)}</div><button type="button" data-x>Close</button></div>`; busy = false; return; }
+    busy = false; body();
+  };
+  ov.onclick = e => {
+    if (e.target === ov || e.target.closest('[data-x]')) { ov.remove(); return; }
+    const pr = e.target.closest('[data-per]'); if (pr) { since = pr.dataset.per === '' ? '' : day(+pr.dataset.per); load(); return; }
+    const pb = e.target.closest('[data-p]'); if (pb) { showHistory(pb.dataset.p); return; }
+    if (e.target.closest('[data-go]')) {
+      const shown = list.filter(p => !q || p.pt.toLowerCase().includes(q)); if (!shown.length) return;
+      ov.remove();
+      if (take) {
+        const have = new Set(take.vids.map(x => x[0])); let n = 0;
+        shown.forEach(p => p.vs.forEach(v => { if (!have.has(v.vid)) { take.vids.push([v.vid, v.q[take.loc] || 0]); have.add(v.vid); n++; } }));
+        take.dirty = true; drawTake(); tkMsg(`${n} variant${n === 1 ? '' : 's'} of ${shown.length} product${shown.length === 1 ? '' : 's'} added. They show as Remaining until you scan them.`, 'ok');
+      } else {
+        const loc = $('tkLoc').value, f = {col: '', size: '', pids: shown.map(p => p.pid)}, vs = shown.flatMap(p => p.vs);
+        begin({id: uid(), mode: 'count', name: 'Not counted since ' + since, loc, locName: locName(loc), filters: f, vids: vs.map(v => [v.vid, v.q[loc] || 0]), counts: {}, outside: {}, startedAt: new Date().toISOString(), status: 'open'});
+      }
+    }
+  };
+  ov.addEventListener('change', e => { if (e.target.id === 'ucD' && e.target.value) { since = e.target.value; load(); } });
+  ov.addEventListener('input', e => { if (e.target.id === 'ucQ') { q = e.target.value.trim().toLowerCase(); const pos = e.target.selectionStart; body(); const n = ov.querySelector('#ucQ'); n.focus(); n.setSelectionRange(pos, pos); } });
+  document.body.appendChild(ov); load();
+}
+$('tkUnc').onclick = showUncounted; $('tkUncRun').onclick = () => { if (take) showUncounted(); };
 const dupPick = new Map();
 async function removeVariant(vid) {
   await Store.deleteVariant(vid);

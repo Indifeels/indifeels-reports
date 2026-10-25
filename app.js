@@ -1892,6 +1892,17 @@
       });
       return out;
     },
+    takecounted: async (d) => {
+      const since = new Date(String(d.since || "")); if (isNaN(since.getTime())) throw new Error("Bad date");
+      const rows = rpOk(await sb.from("stock_takes").select("vids,counts,status,ended_at,updated_at,cancelled_by").neq("status", "cancelled").gte("updated_at", since.toISOString()).order("updated_at", { ascending: false }).limit(400)) || [];
+      const out = {};
+      rows.forEach((r) => {
+        if (r.cancelled_by) return; const at = r.ended_at || r.updated_at, c = r.counts || {};
+        Object.keys(c).forEach((k) => { if (Number(c[k]) > 0 && !out[k]) out[k] = at; });
+        if (r.status !== "open") (r.vids || []).forEach((x) => { const k = String(x[0]); if (!out[k]) out[k] = at; });
+      });
+      return out;
+    },
     takesave: async (d) => stSave(d.session, false),
     // Shared stock takes: send only what changed on this device (deltas) and get the merged list back, so two people can scan into one take.
     takeapply: async (d) => {
