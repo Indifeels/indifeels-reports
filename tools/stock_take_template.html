@@ -50,7 +50,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .dupv .nm{flex:1;min-width:150px}.dupv .nm small{display:block;color:var(--muted)}
 .dupv button.dd{color:var(--red)}.dupv button.dd.arm{background:var(--red);color:#fff}
 .pf{margin-top:6px}.pfs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.pfs button{display:flex;flex-direction:column;align-items:stretch;gap:6px;text-align:center;padding:4px;border-radius:12px;width:100%;font-size:13px;line-height:1.25}.pfs button>span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pfs button small{display:block;color:var(--muted);font-size:11.5px;line-height:1.3;text-align:center}.pfs button{display:flex;flex-direction:column;align-items:stretch;gap:6px;text-align:center;padding:4px;border-radius:12px;width:100%;font-size:13px;line-height:1.25}.pfs button>span:nth-child(2){display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pfs .im{width:100%;height:auto;aspect-ratio:3/4;border-radius:12px;position:relative}
 .lbh .im{width:34px;height:34px;border-radius:8px;overflow:hidden;background:var(--card2);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)}
 .pfs .im img,.lbh .im img{width:100%;height:100%;object-fit:cover}
@@ -162,6 +162,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .hv{border-top:1px solid var(--border);padding:8px 0}.hv summary{cursor:pointer;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}.hv summary small{color:var(--muted)}.hv .hl{margin-left:auto}
 .hr{padding:5px 0 5px 10px;font-size:13px;border-left:3px solid var(--border);margin:6px 0 6px 4px;line-height:1.5}.hr.z{border-color:var(--green)}.hr.n{border-color:var(--red)}.hr.p{border-color:var(--info)}.hr span{font-weight:700}
 .mk{border-color:var(--green);color:var(--green);font-weight:700}.mk.arm{background:var(--green);color:#06140a}
+.lbmulti{position:sticky;top:0;z-index:5;background:var(--card);padding:8px 0;flex-wrap:wrap;gap:8px}
 .uct{position:relative}.uct .tkb{position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:8px;border:2px solid #fff;background:#0008;color:transparent;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;z-index:2}.uct.on .tkb{background:var(--green);border-color:var(--green);color:#06140a}.uct.on{outline:3px solid var(--green);outline-offset:-3px}
 .hbtn{font-size:11.5px;color:var(--info);font-weight:700;text-decoration:underline;padding:2px 0}
 .bk.cmp{padding-top:8px;padding-bottom:10px}
@@ -993,7 +994,12 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     const ps = new Map(); V.forEach(v => { if (c && !v.cols.includes(c)) return; if (!lbSupOk(v)) return; if (!ps.has(v.pid)) ps.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image, ca: v.ca || '', n: 0}); ps.get(v.pid).n += sumQ(v); });
     const list = [...ps.values()].sort(rec ? (a, b) => (b.ca || '').localeCompare(a.ca || '') || a.pt.localeCompare(b.pt) : (a, b) => a.pt.localeCompare(b.pt));
     $('lbDetS').textContent = `Product list · ${list.length} product${list.length === 1 ? '' : 's'} (tap to ${$('lbDet').open ? 'hide' : 'show'})`;
-    box.innerHTML = list.length ? `<div class="sum" style="margin-bottom:6px">${list.length} product${list.length === 1 ? '' : 's'}${c ? ' in ' + E(c) : ''}${rec ? ', newest first' : ''}. Tap one to pick its sizes.</div><div class="pfs">` + list.slice(0, 120).map(p => `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}</span><span style="flex:1;min-width:0">${E(p.pt)}${rec ? `<small style="display:block;color:var(--muted)">${fmtD(p.ca) ? 'Uploaded ' + fmtD(p.ca) + ' · ' : ''}${p.n} pcs</small>` : ''}</span></button>`).join('') + '</div>' : '<div class="msg">No products found.</div>';
+    const gen = DATA.generatedAt ? new Date(DATA.generatedAt).toLocaleString('en-AU', {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'}) : '';
+    const shownP = list.slice(0, 120);
+    box.innerHTML = list.length ? `<div class="sum" style="margin-bottom:6px">${list.length} product${list.length === 1 ? '' : 's'}${c ? ' in ' + E(c) : ''}${rec ? ', newest first' : ''}. Tap a photo to pick its sizes, or tick several and add them together.${gen ? ` <span style="color:var(--muted)">Product data from <span class="dt">${E(gen)}</span></span>` : ''}</div>
+      <div class="foot lbmulti"><span class="sum"><b id="lbTn">${lbTick.size}</b> ticked · ${rec ? 'one label per piece uploaded' : 'one label per piece in stock at ' + E(((locs || []).find(x => x.id === shopLoc()) || {}).name || 'the shop')}</span><button type="button" id="lbTickAll">Tick all shown</button><button type="button" id="lbTickNone">Clear ticks</button><button type="button" class="pri" id="lbTickGo" ${lbTick.size ? '' : 'disabled'}>Add ticked to label list</button></div><div class="pfs">` +
+      shownP.map(p => `<button type="button" class="uct${lbTick.has(p.pid) ? ' on' : ''}" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}<span class="tkb" data-tick="${E(p.pid)}">✓</span></span><span>${E(p.pt)}</span>${rec ? `<small>${fmtD(p.ca) ? 'Uploaded ' + fmtD(p.ca) + ' · ' : ''}${p.n} pcs</small>` : `<small>${p.n} pcs</small>`}</button>`).join('') + '</div>' : '<div class="msg">No products found.</div>';
+    window.__lbShown = shownP.map(p => p.pid);
   }
   const lbPrefill = () => { if ($('lbRecent').checked) V.filter(v => v.pid === lbPid && v.bc[0]).forEach(v => { lbN[v.vid] = Math.min(500, sumQ(v)); }); };
   $('lbSup').onchange = () => { $('lbDet').open = false; drawShort(); };
@@ -1001,7 +1007,23 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   const lbRecentHook = 0;
   $('lbRecent').onchange = () => { $('lbDet').open = false; drawShort(); if (lbPid) { lbN = {}; lbPrefill(); drawCard(); } };
   ssLb.onpick(() => { $('lbDet').open = false; drawShort(); });
-  $('lbShort').onclick = e => { const b = e.target.closest('[data-p]'); if (b) showProduct(b.dataset.p); };
+  const lbTick = new Set();
+  const lbTickSync = () => { $('lbShort').querySelectorAll('.uct').forEach(b => b.classList.toggle('on', lbTick.has(b.dataset.p))); const n = $('lbTn'), g = $('lbTickGo'); if (n) n.textContent = lbTick.size; if (g) g.disabled = !lbTick.size; };
+  $('lbShort').onclick = async e => {
+    const tk = e.target.closest('[data-tick]'); if (tk) { const id = tk.dataset.tick; if (lbTick.has(id)) lbTick.delete(id); else lbTick.add(id); lbTickSync(); return; }
+    if (e.target.closest('#lbTickAll')) { (window.__lbShown || []).forEach(id => lbTick.add(id)); lbTickSync(); return; }
+    if (e.target.closest('#lbTickNone')) { lbTick.clear(); lbTickSync(); return; }
+    if (e.target.closest('#lbTickGo')) {
+      const loc = shopLoc(), rec = $('lbRecent').checked, items = [];
+      lbTick.forEach(pid => V.filter(v => v.pid === pid && v.bc[0]).forEach(v => { const n = Math.min(500, rec ? sumQ(v) : (v.q[loc] || 0)); if (n > 0) items.push({vid: v.vid, qty: n}); }));
+      if (!items.length) { lbMsg('Nothing to add: the ticked products have no pieces or no barcodes yet.', 'bad'); return; }
+      $('lbTickGo').disabled = true;
+      try { await Store.labels('add', items); const t = items.reduce((a, i) => a + i.qty, 0), np = lbTick.size; lbTick.clear(); await loadLabels(); drawShort(); lbMsg(`${t} label${t === 1 ? '' : 's'} added for ${np} product${np === 1 ? '' : 's'}.`, 'ok'); WZ.set('2', true, `${t} label${t === 1 ? '' : 's'} added`); }
+      catch (err) { lbMsg(err.message, 'bad'); $('lbTickGo').disabled = false; }
+      return;
+    }
+    const b = e.target.closest('[data-p]'); if (b) showProduct(b.dataset.p);
+  };
   const lbFind = ProductFind($('lbIn'), {onProduct: showProduct, addBtn: $('lbAdd'), only: inLbCol});
   window.lbReset = () => { lbPid = ''; lbN = {}; drawCard(); lbMsg('Pick a product to set how many labels each size needs.'); };
   window.barScan = async (code, forced) => {
