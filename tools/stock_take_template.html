@@ -161,6 +161,8 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .sz{color:var(--info);font-weight:800;font-size:1.05em}
 .hv{border-top:1px solid var(--border);padding:8px 0}.hv summary{cursor:pointer;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}.hv summary small{color:var(--muted)}.hv .hl{margin-left:auto}
 .hr{padding:5px 0 5px 10px;font-size:13px;border-left:3px solid var(--border);margin:6px 0 6px 4px;line-height:1.5}.hr.z{border-color:var(--green)}.hr.n{border-color:var(--red)}.hr.p{border-color:var(--info)}.hr span{font-weight:700}
+.uct{position:relative}.uct .tkb{position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:8px;border:2px solid #fff;background:#0008;color:transparent;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;z-index:2}.uct.on .tkb{background:var(--green);border-color:var(--green);color:#06140a}.uct.on{outline:3px solid var(--green);outline-offset:-3px}
+.hbtn{font-size:11.5px;color:var(--info);font-weight:700;text-decoration:underline;padding:2px 0}
 .bk.cmp{padding-top:8px;padding-bottom:10px}
 .adsum{display:flex;align-items:center;gap:8px;margin:0 0 4px}.adsum b{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.adsum button{padding:5px 12px;font-size:13px;flex:none}
 #adTop.cmp{padding-top:8px;padding-bottom:10px}
@@ -1322,47 +1324,83 @@ async function showUncounted() {
   const run = !!take, ov = document.createElement('div'); ov.className = 'dupov';
   const day = n => { const d = new Date(); d.setMonth(d.getMonth() - n); return d.toISOString().slice(0, 10); };
   const fl0 = run ? (take.filters || {}) : {col: ssCol.get(), pids: ssDes.get()};
-  let scopeCol = fl0.col || '', scopePids = (fl0.pids || []).slice(), since = run ? '' : day(6), list = [], q = '', busy = false;
+  let scopeCol = fl0.col || '', scopePids = (fl0.pids || []).slice(), since = run ? '' : day(6), list = [], q = '', busy = false, markArmed = false, note = '';
+  const ticked = new Set();
+  const shownList = () => list.filter(p => !q || p.pt.toLowerCase().includes(q));
+  const restList = () => shownList().filter(p => !ticked.has(p.pid));
+  const foot = () => {
+    const n = ticked.size, r = restList().length, sh = shownList().length;
+    const g = ov.querySelector('[data-go]'), m = ov.querySelector('[data-mark]'); if (!g || !m) return;
+    g.disabled = !n || busy; g.textContent = (run ? 'Count ticked (' : 'Count ticked (') + n + ')';
+    m.disabled = !r || busy; m.classList.toggle('arm', markArmed);
+    m.textContent = markArmed ? `Tap again: mark ${r} as counted` : (n ? `Mark the rest as counted (${r})` : `Mark all as counted (${sh})`);
+    const ta = ov.querySelector('[data-all]'); if (ta) ta.textContent = n >= sh && sh ? 'Untick all' : 'Tick all';
+  };
   const body = () => {
-    const shown = list.filter(p => !q || p.pt.toLowerCase().includes(q)), pcs = shown.reduce((a, p) => a + p.t, 0);
+    const shown = shownList(), pcs = shown.reduce((a, p) => a + p.t, 0);
     ov.innerHTML = `<div><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1">Not counted</h3><button type="button" data-x>Close</button></div>
       <div class="chips" style="margin:8px 0">${run ? `<button type="button" data-per="" class="${since === '' ? 'in' : ''}">This count</button>` : ''}${[1, 3, 6, 12].map(n => `<button type="button" data-per="${n}" class="${since === day(n) ? 'in' : ''}">Last ${n} month${n === 1 ? '' : 's'}</button>`).join('')}<label class="fld" style="flex:none;min-width:150px">or since<input type="date" id="ucD" value="${E(since)}" max="${new Date().toISOString().slice(0, 10)}"></label></div>
       ${scopeCol || scopePids.length ? `<div class="chips" style="margin:0 0 6px"><button type="button" class="in" data-allcol>${E(scopeCol || 'Selected designs')}${scopePids.length && scopeCol ? ' · ' + scopePids.length + ' design' + (scopePids.length === 1 ? '' : 's') : ''} ✕</button><small style="color:var(--muted);align-self:center">Tap ✕ to look at every collection</small></div>` : ''}
-      <div class="msg">${busy ? 'Looking…' : `${shown.length} product${shown.length === 1 ? '' : 's'} (${pcs} pieces) active on the website with stock${scopeCol ? ' in ' + E(scopeCol) : ''}, ${since ? 'not counted since ' + E(since) : 'not yet in this count'}.`}</div>
-      <input type="text" id="ucQ" placeholder="Search these products…" autocomplete="off" value="${E(q)}" style="margin:6px 0">
-      <div class="pfs" id="ucG">${shown.slice(0, 80).map(p => { const st = stockOf(p.vs); return `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}<span class="bd${st.out ? ' out' : ''}">${cn(st.txt)}</span></span><span>${E(p.pt)}</span></button>`; }).join('')}</div>
+      <div class="msg">${busy ? 'Working…' : `${shown.length} product${shown.length === 1 ? '' : 's'} (${pcs} pieces) active on the website with stock${scopeCol ? ' in ' + E(scopeCol) : ''}, ${since ? 'not counted since ' + E(since) : 'not yet in this count'}.`}</div>
+      ${note ? `<div class="msg ok">${E(note)}</div>` : ''}
+      <div style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="text" id="ucQ" placeholder="Search these products…" autocomplete="off" value="${E(q)}" style="flex:1"><button type="button" data-all>Tick all</button></div>
+      <div class="pfs" id="ucG">${shown.slice(0, 80).map(p => { const st = stockOf(p.vs); return `<button type="button" class="uct${ticked.has(p.pid) ? ' on' : ''}" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}<span class="tkb">✓</span><span class="bd${st.out ? ' out' : ''}">${cn(st.txt)}</span></span><span>${E(p.pt)}</span><span class="hbtn" data-hist="${E(p.pid)}">History</span></button>`; }).join('')}</div>
       ${shown.length > 80 ? `<div class="msg">Showing 80 of ${shown.length}. Search to narrow.</div>` : ''}
-      <div class="foot"><span class="sum">Tap a product to see its history.</span><button type="button" class="pri" data-go ${!shown.length || busy ? 'disabled' : ''}>${run ? 'Add these to this count' : 'Count these ' + shown.length}</button></div></div>`;
+      <div class="foot" style="flex-wrap:wrap"><span class="sum">Tick the ones you will count. Mark the others as counted when you are sure of the stock.</span><button type="button" data-mark>Mark all as counted</button><button type="button" class="pri" data-go disabled>Count ticked (0)</button></div></div>`;
+    foot();
   };
   const load = async () => {
-    busy = true; body();
+    busy = true; markArmed = false; body();
     try {
       const done = new Set(); if (since) Object.keys(await Store.counted(new Date(since).toISOString())).forEach(k => done.add(k));
       if (take) Object.keys(take.counts).forEach(k => { if (take.counts[k] > 0) done.add(k); });
       list = [...byPid.values()].filter(vs => /^active$/i.test(vs[0].st) && vs.some(v => tot(v) > 0) && !vs.some(v => done.has(v.vid)) && (!scopeCol || vs[0].cols.includes(scopeCol)) && (!scopePids.length || scopePids.includes(vs[0].pid))).map(vs => ({pid: vs[0].pid, pt: vs[0].pt, image: vs[0].image, t: vs.reduce((a, v) => a + tot(v), 0), vs})).sort((a, b) => a.pt.localeCompare(b.pt));
+      [...ticked].forEach(id => { if (!list.some(p => p.pid === id)) ticked.delete(id); });
     } catch (e) { list = []; ov.innerHTML = `<div><div class="msg bad">${E(e.message)}</div><button type="button" data-x>Close</button></div>`; busy = false; return; }
     busy = false; body();
   };
-  ov.onclick = e => {
+  const addToTake = (prods, matched) => {
+    const have = new Set(take.vids.map(x => x[0])); let n = 0;
+    prods.forEach(p => p.vs.forEach(v => { const ex = v.q[take.loc] || 0; if (!have.has(v.vid)) { take.vids.push([v.vid, ex]); have.add(v.vid); n++; } if (matched) take.counts[v.vid] = ex; }));
+    take.dirty = true; drawTake(); return n;
+  };
+  ov.onclick = async e => {
     if (e.target === ov || e.target.closest('[data-x]')) { ov.remove(); return; }
     if (e.target.closest('[data-allcol]')) { scopeCol = ''; scopePids = []; load(); return; }
     const pr = e.target.closest('[data-per]'); if (pr) { since = pr.dataset.per === '' ? '' : day(+pr.dataset.per); load(); return; }
-    const pb = e.target.closest('[data-p]'); if (pb) { showHistory(pb.dataset.p); return; }
+    const hb = e.target.closest('[data-hist]'); if (hb) { showHistory(hb.dataset.hist); return; }
+    if (e.target.closest('[data-all]')) { const sh = shownList(); if (ticked.size >= sh.length) ticked.clear(); else sh.forEach(p => ticked.add(p.pid)); markArmed = false; ov.querySelectorAll('.uct').forEach(b => b.classList.toggle('on', ticked.has(b.dataset.p))); foot(); return; }
+    const tile = e.target.closest('.uct'); if (tile) { const id = tile.dataset.p; if (ticked.has(id)) ticked.delete(id); else ticked.add(id); tile.classList.toggle('on', ticked.has(id)); markArmed = false; foot(); return; }
     if (e.target.closest('[data-go]')) {
-      const shown = list.filter(p => !q || p.pt.toLowerCase().includes(q)); if (!shown.length) return;
+      const pick = list.filter(p => ticked.has(p.pid)); if (!pick.length) return;
       ov.remove();
-      if (take) {
-        const have = new Set(take.vids.map(x => x[0])); let n = 0;
-        shown.forEach(p => p.vs.forEach(v => { if (!have.has(v.vid)) { take.vids.push([v.vid, v.q[take.loc] || 0]); have.add(v.vid); n++; } }));
-        take.dirty = true; drawTake(); tkMsg(`${n} variant${n === 1 ? '' : 's'} of ${shown.length} product${shown.length === 1 ? '' : 's'} added. They show as Remaining until you scan them.`, 'ok');
-      } else {
-        const loc = $('tkLoc').value, f = {col: '', size: '', pids: shown.map(p => p.pid)}, vs = shown.flatMap(p => p.vs);
+      if (take) { const n = addToTake(pick, false); tkMsg(`${n} variant${n === 1 ? '' : 's'} of ${pick.length} product${pick.length === 1 ? '' : 's'} added. They show as Remaining until you scan them.`, 'ok'); }
+      else {
+        const loc = $('tkLoc').value, f = {col: '', size: '', pids: pick.map(p => p.pid)}, vs = pick.flatMap(p => p.vs);
         begin({id: uid(), mode: 'count', name: 'Not counted since ' + since, loc, locName: locName(loc), filters: f, vids: vs.map(v => [v.vid, v.q[loc] || 0]), counts: {}, outside: {}, startedAt: new Date().toISOString(), status: 'open'});
       }
+      return;
+    }
+    if (e.target.closest('[data-mark]')) {
+      const rest = restList(); if (!rest.length || busy) return;
+      if (!markArmed) { markArmed = true; foot(); setTimeout(() => { if (markArmed) { markArmed = false; foot(); } }, 5000); return; }
+      markArmed = false; busy = true; foot();
+      try {
+        if (take) { const n = addToTake(rest, true); note = `${rest.length} product${rest.length === 1 ? '' : 's'} marked as counted in this count (${n} variants added, stock taken as correct).`; }
+        else {
+          const loc = $('tkLoc').value, vs = rest.flatMap(p => p.vs), cnt = {}, now = new Date().toISOString();
+          vs.forEach(v => { cnt[v.vid] = v.q[loc] || 0; });
+          const tot0 = vs.reduce((a, v) => a + (v.q[loc] || 0), 0);
+          await Store.takeEnd({id: uid(), name: 'Marked counted · ' + new Date().toLocaleDateString(undefined, {day: 'numeric', month: 'short'}), loc, locName: locName(loc), filters: {col: scopeCol, size: '', pids: rest.map(p => p.pid), marked: true}, vids: vs.map(v => [v.vid, v.q[loc] || 0]), counts: cnt, outside: {}, startedAt: now, endedAt: now, summary: {expected: tot0, counted: tot0, missing: 0, extra: 0}});
+          note = `${rest.length} product${rest.length === 1 ? '' : 's'} marked as counted (stock confirmed as correct, nothing changed on the website).`;
+        }
+        const gone = new Set(rest.map(p => p.pid)); list = list.filter(p => !gone.has(p.pid));
+      } catch (err) { note = ''; busy = false; body(); ov.querySelector('.msg').outerHTML = `<div class="msg bad">${E(err.message)}</div>`; return; }
+      busy = false; body();
     }
   };
   ov.addEventListener('change', e => { if (e.target.id === 'ucD' && e.target.value) { since = e.target.value; load(); } });
-  ov.addEventListener('input', e => { if (e.target.id === 'ucQ') { q = e.target.value.trim().toLowerCase(); const pos = e.target.selectionStart; body(); const n = ov.querySelector('#ucQ'); n.focus(); n.setSelectionRange(pos, pos); } });
+  ov.addEventListener('input', e => { if (e.target.id === 'ucQ') { q = e.target.value.trim().toLowerCase(); markArmed = false; const pos = e.target.selectionStart; body(); const n = ov.querySelector('#ucQ'); n.focus(); n.setSelectionRange(pos, pos); } });
   document.body.appendChild(ov); load();
 }
 $('tkUnc').onclick = showUncounted; $('tkUncRun').onclick = () => { if (take) showUncounted(); };
