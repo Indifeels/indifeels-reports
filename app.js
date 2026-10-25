@@ -1869,6 +1869,31 @@
       doc.save("indifeels-barcode-labels-" + new Date().toISOString().slice(0, 10) + ".pdf");
       return { ok: true, labels: flat.length, sheets: pages };
     },
+    previewlabel: async (d) => {
+      // One label drawn to scale on a canvas. MUST mirror the layout in printlabels above (keep the two in step).
+      const r = { p: rpText(d.product, 120), v: rpText(d.variant, 40), b: rpText(d.barcode, 40), img: /^https:\/\/[^ ]{5,500}$/.test(String(d.image || "")) ? String(d.image) : "", pr: rpText(d.price, 20), c: rpText(d.colour, 30) };
+      if (!/^[0-9A-Za-z._-]{3,40}$/.test(r.b)) throw new Error("This item has no barcode yet");
+      await rpLoadJs("vendor/JsBarcode.all.min.js");
+      const S = 16, W = 38.1, H = 21.2, PW = 11.6, PH = 14.2, TX = 13.7, TW = 23.4, PT = 0.3528 * S;
+      const cv = document.createElement("canvas"); cv.width = Math.round(W * S); cv.height = Math.round(H * S);
+      const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height);
+      const pic = await new Promise((res) => { if (!r.img) return res(null); const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => res(im); im.onerror = () => res(null); im.src = r.img + (r.img.includes("?") ? "&" : "?") + "width=600"; setTimeout(() => res(null), 15000); });
+      g.save(); g.beginPath(); g.rect(1.4 * S, 1.5 * S, PW * S, PH * S); g.clip();
+      if (pic) { const k = Math.max(PW * S / pic.naturalWidth, PH * S / pic.naturalHeight) * 1.2, w = pic.naturalWidth * k, h = pic.naturalHeight * k; g.drawImage(pic, 1.4 * S + (PW * S - w) / 2, 1.5 * S - (h - PH * S) * 0.22, w, h); } else { g.fillStyle = "#ebebeb"; g.fillRect(1.4 * S, 1.5 * S, PW * S, PH * S); }
+      g.restore();
+      const font = (pt) => { g.font = "bold " + (pt * PT) + "px Helvetica, Arial, sans-serif"; }; g.textBaseline = "alphabetic";
+      const tw = (t) => g.measureText(t).width / S;
+      font(8.3); let out = ""; for (const w of r.p.split(/\s+/).filter(Boolean)) { const t = out ? out + " " + w : w; if (tw(t) > TW && out) break; out = t; }
+      g.fillStyle = "#000"; g.fillText(out, TX * S, 4.4 * S);
+      const big = (t, size, yy) => { let z = size; font(z); while (z > 6 && tw(t) > TW) { z -= 0.3; font(z); } g.fillText(t, TX * S, yy * S); };
+      big(r.c ? r.v + " / " + r.c : r.v, 10.4, 9.4);
+      const n = parseFloat(r.pr), pr = Number.isFinite(n) ? "$" + (Math.abs(n - Math.round(n)) < 0.005 ? String(Math.round(n)) : n.toFixed(2)) : "";
+      if (pr) { g.fillStyle = "#006e00"; big(pr, 11, 15); }
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); window.JsBarcode(svg, r.b, { format: "CODE128", width: 1, height: 30, margin: 0, displayValue: false });
+      const total = parseFloat(svg.getAttribute("width")) || 1, mod = Math.min(0.41, 33 / total), bx = (W - total * mod) / 2;
+      g.fillStyle = "#000"; [...svg.querySelectorAll("rect")].slice(1).forEach((q) => g.fillRect((bx + (parseFloat(q.getAttribute("x")) || 0) * mod) * S, 16.2 * S, (parseFloat(q.getAttribute("width")) || 0) * mod * S, 4.3 * S));
+      return { png: cv.toDataURL("image/png"), mm: [W, H] };
+    },
     adjustlist: async (d) => rpAdjCall({ action: "adjustlist", loc: rpText(d.loc, 40), mode: d.mode === "remove" ? "remove" : "add", dry: !!d.dry, items: rpVidQty(d.items, 500) }, "Couldn't update the stock"),
     deletevariant: async (d) => rpAdjCall({ action: "deletevariant", vid: rpText(d.vid, 20) }, "Couldn't delete the variant"),
     setbarcode: async (d) => rpAdjCall({ action: "setbarcode", vid: rpText(d.vid, 20), barcode: rpText(d.barcode, 40) }, "Couldn't save the barcode"),

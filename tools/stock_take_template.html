@@ -512,6 +512,7 @@ const Store = PREVIEW ? {
   setBarcode: async (vid, barcode) => ({ok: true, vid, barcode}),
   deleteVariant: async vid => ({ok: true, vid}),
   printLabels: async () => { throw new Error('The PDF works inside the app, not in this preview.'); },
+  previewLabel: async () => { throw new Error('The label preview works inside the app, not in this preview.'); },
   setStatus: async (pid, status) => ({ok: true, pid, status, url: '', channels: 7}),
   labels: async (op, items) => { let q = LS.get('st-demo-labels') || []; if (op === 'add') { items.forEach(i => { const v = byVid.get(i.vid); q.push({id: uid(), vid: i.vid, product: v.pt, variant: v.t, barcode: v.bc[0] || '', copies: i.qty}); }); LS.set('st-demo-labels', q); } if (op === 'done') { q = []; LS.set('st-demo-labels', q); } if (op === 'setcopies') { items.forEach(i => { const r = q.find(x => x.vid === i.vid); if (r) r.copies = i.qty; }); LS.set('st-demo-labels', q); } if (op === 'remove') { q = q.filter(x => !items.some(i => i.vid === x.vid)); LS.set('st-demo-labels', q); } return {ok: true, rows: q}; },
   takeList: async () => LS.get('st-demo-takes') || [],
@@ -535,6 +536,7 @@ const Store = PREVIEW ? {
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
   deleteVariant: vid => call('deletevariant', {vid}, 40000),
   setStatus: (pid, status) => call('setstatus', {pid, status}, 40000),
+  previewLabel: r => { const v = byVid.get(String(r.vid)) || {}; return call('previewlabel', {product: r.product, variant: r.variant, barcode: r.barcode, image: v.image || '', price: v.pr || '', colour: v.col || ''}, 30000); },
   printLabels: (labels, start) => call('printlabels', {labels: labels.map(r => { const v = byVid.get(String(r.vid)) || {}; return {product: r.product, variant: r.variant, barcode: r.barcode, copies: r.copies, image: v.image || '', price: v.pr || '', colour: v.col || ''}; }), start}, 60000),
   labels: (op, items) => call('labelqueue', {op, items}),
   takeList: () => call('takelist'),
@@ -930,7 +932,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     $('lqTitle').textContent = n ? `Labels to print · ${n} label${n === 1 ? '' : 's'} on ${labelRows.length} item${labelRows.length === 1 ? '' : 's'}` : 'Labels to print';
     $('lqList').innerHTML = labelRows.length ? labelRows.map(r => {
       const v = byVid.get(String(r.vid)), im = v && v.image ? `<img src="${E(v.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(String(r.product || '').slice(0, 2).toUpperCase());
-      return `<div class="bkit" data-v="${E(r.vid)}"><div class="im">${im}</div><div class="nm"><b>${E(r.product)}</b><span class="tag">${E(r.variant)}</span><small>${E(r.barcode)}</small></div><div class="stp"><button data-lc="-1">−</button><b>${r.copies}</b><button data-lc="1">+</button></div><button class="rm" data-lx="1" title="Remove from the list">✕</button></div>`;
+      return `<div class="bkit" data-v="${E(r.vid)}"><div class="im">${im}</div><div class="nm"><b>${E(r.product)}</b><span class="tag">${E(r.variant)}</span><small>${E(r.barcode)}</small></div><div class="stp"><button data-lc="-1">−</button><b>${r.copies}</b><button data-lc="1">+</button></div><button type="button" class="hbtn" data-lp="1">Show label</button><button class="rm" data-lx="1" title="Remove from the list">✕</button></div><div class="lpv" data-pv="${E(r.vid)}" hidden></div>`;
     }).join('') : '<div class="empty">No labels added yet. Use <b>Print label</b> on a finished stock take, or tick "Needs a barcode label" when adding stock.</div>';
     $('lqFoot').hidden = !labelRows.length; window.__lq = n; $('wzWaitT').textContent = `${n} label${n === 1 ? '' : 's'} waiting to print`; WZ.render(); $('lqBar').hidden = !(labelRows.length || undoSt.length || redoSt.length); $('lqUndo').disabled = !undoSt.length; $('lqRedo').disabled = !redoSt.length;
   }
@@ -938,6 +940,14 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   window.refreshLabels = loadLabels;
   $('lqList').onclick = async e => {
     const row = e.target.closest('.bkit'); if (!row) return; const r = labelRows.find(x => String(x.vid) === row.dataset.v); if (!r) return;
+    if (e.target.closest('[data-lp]')) {
+      const pv = row.nextElementSibling, btn = e.target.closest('[data-lp]'); if (!pv || !pv.classList.contains('lpv')) return;
+      if (!pv.hidden) { pv.hidden = true; btn.textContent = 'Show label'; return; }
+      pv.hidden = false; btn.textContent = 'Hide label'; pv.innerHTML = '<div class="msg">Drawing the label…</div>';
+      try { const x = await Store.previewLabel(r); pv.innerHTML = `<img src="${x.png}" alt="Label preview" style="width:min(100%,456px);border:1px solid var(--border);border-radius:6px;background:#fff"><div class="sum" style="margin-top:4px">Actual size 38.1 × 21.2 mm, shown larger. Tell me what to change.</div>`; }
+      catch (err) { pv.innerHTML = `<div class="msg bad">${E(err.message)}</div>`; }
+      return;
+    }
     const c = e.target.closest('[data-lc]'), x = e.target.closest('[data-lx]');
     try {
       if (c) { const n = Math.max(1, Math.min(5000, r.copies + Number(c.dataset.lc))); if (n === r.copies) return; pushUndo(); await Store.labels('setcopies', [{vid: r.vid, qty: n}]); r.copies = n; drawLabels(); }
