@@ -116,7 +116,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .sess.out{border-color:var(--red);background:var(--red-bg)}.sess.out .nm small.bad{color:var(--red);font-weight:700}.sess.out .tag{background:var(--red-bg);color:var(--red);border:1px solid var(--red)}
 .res{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
 .res div{border-radius:12px;padding:10px 4px;text-align:center;background:var(--grey-bg)}.res b{display:block;font-size:24px}.res span{font-size:11px;color:var(--muted);text-transform:uppercase}
-.res .m b{color:var(--red)}.res .x b{color:var(--orange)}.res .c b{color:var(--green)}
+.res .m b{color:var(--red)}.res .x b{color:var(--info)}.res .c b{color:var(--green)}
 .demo{background:var(--orange-bg);color:var(--orange);border-radius:10px;padding:8px 10px;margin:8px 0;font-size:12.5px}
 .demo code{cursor:pointer;background:#0003;padding:1px 6px;border-radius:6px;margin:2px;display:inline-block}
 [hidden]{display:none!important}
@@ -156,8 +156,11 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .ssb .ssq{flex:1;min-width:0;width:auto;border:0;background:transparent;color:inherit;font:inherit;padding:0;border-radius:0;outline:0}.ssb .ssl{display:flex;align-items:center}.ssb .ssl img{width:30px;height:40px;object-fit:cover;border-radius:6px;margin-right:8px;flex:none}.ssb .ssl span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .ss:has(.ssp.gp){position:static}.bk{position:relative}.ssp.gp{top:auto;margin-top:4px;left:8px;right:8px}
 /* compact top tile once a product is chosen */
+.dt{color:#e8b730;font-weight:700}:root[data-theme="light"] .dt{color:#8a5a00}
+.n0{color:var(--red);font-weight:800}.ng{color:var(--green);font-weight:800}.nb{color:var(--info);font-weight:800}.nz{color:var(--orange);font-weight:800}i.n0,i.ng{font-style:normal}.bd .n0{color:#ff9a94}.bd .ng{color:#6fe08a}
+.sz{color:var(--info);font-weight:800;font-size:1.05em}
 .hv{border-top:1px solid var(--border);padding:8px 0}.hv summary{cursor:pointer;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}.hv summary small{color:var(--muted)}.hv .hl{margin-left:auto}
-.hr{padding:5px 0 5px 10px;font-size:13px;border-left:3px solid var(--border);margin:6px 0 6px 4px;line-height:1.5}.hr.z{border-color:var(--green)}.hr.n{border-color:var(--red)}.hr.p{border-color:var(--orange)}.hr span{font-weight:700}
+.hr{padding:5px 0 5px 10px;font-size:13px;border-left:3px solid var(--border);margin:6px 0 6px 4px;line-height:1.5}.hr.z{border-color:var(--green)}.hr.n{border-color:var(--red)}.hr.p{border-color:var(--info)}.hr span{font-weight:700}
 .bk.cmp{padding-top:8px;padding-bottom:10px}
 .adsum{display:flex;align-items:center;gap:8px;margin:0 0 4px}.adsum b{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.adsum button{padding:5px 12px;font-size:13px;flex:none}
 #adTop.cmp{padding-top:8px;padding-bottom:10px}
@@ -472,7 +475,7 @@ function ProductFind(input, opt) {
   function suggest() {
     if (!hasText()) { clear(); return; }
     const m = matches();
-    box.innerHTML = m.length ? '<div class="pfs">' + m.map(p => { const st = stockOf(p.vs); return `<button type="button" data-p="${E(p.pid)}"><span class="im">${img(p)}<span class="bd${st.out ? ' out' : ''}">${E(st.txt)}</span></span><span>${E(p.pt)}</span></button>`; }).join('') + '</div>' : '<div class="msg">No product with that name.</div>';
+    box.innerHTML = m.length ? '<div class="pfs">' + m.map(p => { const st = stockOf(p.vs); return `<button type="button" data-p="${E(p.pid)}"><span class="im">${img(p)}<span class="bd${st.out ? ' out' : ''}">${cn(st.txt)}</span></span><span>${E(p.pt)}</span></button>`; }).join('') + '</div>' : '<div class="msg">No product with that name.</div>';
   }
   function pick(pid) {
     input.value = ''; clear();
@@ -587,6 +590,7 @@ const loadLocs = () => locsP || (locsP = Store.locs().then(r => { locs = r.locat
 /* ---------- searchable select ---------- */
 const pidImg = new Map(V.map(v => [v.pid, v.image]));
 /* collection tiles: a photo from the collection, the name on it, and variants + stock at the chosen location */
+const cn = t => E(t).replace(/(?<![\d,])(\d[\d,]*)(?![\d,])(?! variants?)/g, m => `<i class="${m === '0' ? 'n0' : 'ng'}">${m}</i>`);
 const byPid = new Map(); V.forEach(v => { let a = byPid.get(v.pid); if (!a) byPid.set(v.pid, a = []); a.push(v); });
 function stockOf(vs) { const q = {}; let t = 0; (vs || []).forEach(v => { t += tot(v); locs.forEach(l => { q[l.id] = (q[l.id] || 0) + (v.q[l.id] || 0); }); }); return {t, out: t <= 0, txt: t > 0 ? 'Total ' + t + '\n' + locTxt(q) : 'Out of stock'}; }
 function designOpts(col, size) {
@@ -623,7 +627,7 @@ function Sel(root, ph, thumb, multi, grid) {
   const shown = () => { const q = inp.value.trim().toLowerCase(); return opts.filter(o => (!multi || o.v) && (!q || o.l.toLowerCase().includes(q))).slice(0, 200); };
   const draw = () => {
     const keep = box.scrollTop, list = shown();
-    box.innerHTML = list.length ? list.map(o => { const im = o.img || (thumb && o.v ? pidImg.get(o.v) : ''), ph = (thumb && o.v) || o.img; return `<div data-i="${opts.indexOf(o)}"${multi && picked.has(o.v) ? ' class="on"' : ''}>${multi ? `<span class="chk">${picked.has(o.v) ? '✓' : ''}</span>` : ''}${ph ? `<span class="th">${im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}${o.top ? `<span class="ov">${E(o.top)}</span>` : ''}${o.badge ? `<span class="bd${o.bc ? ' ' + o.bc : ''}">${E(o.badge)}</span>` : ''}</span>` : ''}${o.top ? '' : `<span class="tx">${E(o.l)}</span>`}${o.s ? `<small>${E(o.s)}</small>` : ''}</div>`; }).join('') : '<div class="none">No match</div>';
+    box.innerHTML = list.length ? list.map(o => { const im = o.img || (thumb && o.v ? pidImg.get(o.v) : ''), ph = (thumb && o.v) || o.img; return `<div data-i="${opts.indexOf(o)}"${multi && picked.has(o.v) ? ' class="on"' : ''}>${multi ? `<span class="chk">${picked.has(o.v) ? '✓' : ''}</span>` : ''}${ph ? `<span class="th">${im ? `<img src="${E(im)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}${o.top ? `<span class="ov">${E(o.top)}</span>` : ''}${o.badge ? `<span class="bd${o.bc ? ' ' + o.bc : ''}">${cn(o.badge)}</span>` : ''}</span>` : ''}${o.top ? '' : `<span class="tx">${E(o.l)}</span>`}${o.s ? `<small>${cn(o.s)}</small>` : ''}</div>`; }).join('') : '<div class="none">No match</div>';
     box.scrollTop = keep; sync();
   };
   const openIt = () => { document.querySelectorAll('.ss.open').forEach(x => { if (x !== root) x.classList.remove('open'); }); root.classList.add('open'); draw(); };
@@ -1084,7 +1088,7 @@ $('tkHist').onclick = () => {
   const list = [...pool.values()].sort((a, b) => a.pt.localeCompare(b.pt));
   const ov = document.createElement('div'); ov.className = 'dupov';
   ov.innerHTML = '<div><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1">Stock take history: pick a product</h3><button type="button" data-x>Close</button></div><input type="text" id="hqIn" placeholder="Search product…" autocomplete="off" style="margin:8px 0"><div class="pfs" id="hqGrid"></div></div>';
-  const draw = () => { const t = ov.querySelector('#hqIn').value.toLowerCase().split(/\s+/).filter(Boolean); ov.querySelector('#hqGrid').innerHTML = list.filter(p => t.every(x => p.pt.toLowerCase().includes(x))).slice(0, 60).map(p => `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}<span class="bd${stockOf(p.vs).out ? ' out' : ''}">${E(stockOf(p.vs).txt)}</span></span><span>${E(p.pt)}</span></button>`).join('') || '<div class="msg">No product found.</div>'; };
+  const draw = () => { const t = ov.querySelector('#hqIn').value.toLowerCase().split(/\s+/).filter(Boolean); ov.querySelector('#hqGrid').innerHTML = list.filter(p => t.every(x => p.pt.toLowerCase().includes(x))).slice(0, 60).map(p => `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}<span class="bd${stockOf(p.vs).out ? ' out' : ''}">${cn(stockOf(p.vs).txt)}</span></span><span>${E(p.pt)}</span></button>`).join('') || '<div class="msg">No product found.</div>'; };
   ov.onclick = e => { if (e.target === ov || e.target.closest('[data-x]')) { ov.remove(); return; } const b = e.target.closest('[data-p]'); if (b) { ov.remove(); showHistory(b.dataset.p); } };
   ov.addEventListener('input', draw); document.body.appendChild(ov); draw(); ov.querySelector('#hqIn').focus();
 };
@@ -1153,8 +1157,8 @@ async function takeOpen() {
     $('tkOpenBox').hidden = !open.length; $('tkDoneBox').hidden = !done.length;
     const when = s => s.updated ? new Date(s.updated).toLocaleString(undefined, {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'}) : '';
     const cnt = s => { const t = tally(s); return t; };
-    $('tkOpen').innerHTML = open.map(s => { const t = cnt(s); return `<div class="sess"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · ${t.s} of ${t.e} counted · saved ${E(when(s))}${memHtml(s)}</small></div><span class="cards"><span class="pill" style="background:${liveOthers(s).length ? 'var(--green-bg)' : 'var(--orange-bg)'};color:${liveOthers(s).length ? 'var(--green)' : 'var(--orange)'}">${liveOthers(s).length ? '● Live: ' + E(liveOthers(s).join(', ')) : '⏸ Paused'}</span></span><button class="pri" data-resume="${E(s.id)}">${liveOthers(s).length ? 'Add me to ' + E(s.code || 'this') : 'Resume'}</button></div>`; }).join('');
-    $('tkDone').innerHTML = done.map(s => { const t = cnt(s); return `<div class="dn" data-id="${E(s.id)}"><div class="sess dh" role="button"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · ended ${E(when(s))}${s.pushedBy ? ' · <span style="color:var(--green)">pushed by ' + E(s.pushedBy) + (s.pushedAt ? ', ' + E(when({updated: s.pushedAt})) : '') + '</span>' : ''} · tap to see the stock</small></div><span class="cards">${pushPill(s)}${s.status === 'cancelled' ? '' : ` <span class="pill" style="background:var(--red-bg);color:var(--red)">${t.miss} missing</span> <span class="pill" style="background:var(--orange-bg);color:var(--orange)">${t.extra} extra</span>`}</span><span class="chev">▸</span></div><div class="dd" hidden></div></div>`; }).join('');
+    $('tkOpen').innerHTML = open.map(s => { const t = cnt(s); return `<div class="sess"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · <b class="ng">${t.s}</b> of <b class="nb">${t.e}</b> counted · saved <span class="dt">${E(when(s))}</span>${memHtml(s)}</small></div><span class="cards"><span class="pill" style="background:${liveOthers(s).length ? 'var(--green-bg)' : 'var(--orange-bg)'};color:${liveOthers(s).length ? 'var(--green)' : 'var(--orange)'}">${liveOthers(s).length ? '● Live: ' + E(liveOthers(s).join(', ')) : '⏸ Paused'}</span></span><button class="pri" data-resume="${E(s.id)}">${liveOthers(s).length ? 'Add me to ' + E(s.code || 'this') : 'Resume'}</button></div>`; }).join('');
+    $('tkDone').innerHTML = done.map(s => { const t = cnt(s); return `<div class="dn" data-id="${E(s.id)}"><div class="sess dh" role="button"><div class="nm"><b>${E(s.code ? s.code + ' · ' : '')}${E(s.name)}</b><small>${E(s.locName)} · ended <span class="dt">${E(when(s))}</span>${s.pushedBy ? ' · <span style="color:var(--green)">pushed by ' + E(s.pushedBy) + (s.pushedAt ? ', <span class="dt">' + E(when({updated: s.pushedAt})) + '</span>' : '') + '</span>' : ''} · tap to see the stock</small></div><span class="cards">${pushPill(s)}${s.status === 'cancelled' ? '' : ` <span class="pill" style="background:var(--red-bg);color:var(--red)">${t.miss} missing</span> <span class="pill" style="background:var(--info-bg);color:var(--info)">${t.extra} extra</span>`}</span><span class="chev">▸</span></div><div class="dd" hidden></div></div>`; }).join('');
     window.__takes = list;
   } catch (e) { /* history is optional */ }
 }
@@ -1303,9 +1307,9 @@ async function showHistory(pid) {
     const h = await Store.history(vs.map(v => v.vid));
     frame(vs.map(v => {
       const rows = (h[v.vid] || []).slice().sort((a, b) => String(b.at).localeCompare(String(a.at))), last = rows[0];
-      const now = locs.map(l => `${E(l.name)} ${v.q[l.id] || 0}`).join(' · ');
-      return `<details class="hv" open><summary><b>${E(v.t)}</b><small>Now: ${now}</small><small class="hl">${last ? 'Last counted ' + E(fmt(last.at)) : 'Never counted'}</small></summary>` +
-        (rows.length ? rows.map(r => { const d = r.counted - r.expected; return `<div class="hr ${d === 0 ? 'z' : d < 0 ? 'n' : 'p'}"><b>${E(fmt(r.at))}</b> · ${E(r.code || r.name)} · ${E(r.loc)}<br>Expected ${r.expected} → counted ${r.counted} <span>${d === 0 ? 'match' : (d > 0 ? '+' : '') + d}</span> · ${r.pushed ? 'pushed to website' + (r.by ? ' by ' + E(r.by) : '') : 'not pushed'}</div>`; }).join('') : '<div class="msg">No saved stock take includes this size.</div>') + '</details>';
+      const nb = n => `<b class="${n > 0 ? 'ng' : 'n0'}">${n}</b>`, now = locs.map(l => `${E(l.name)} ${nb(v.q[l.id] || 0)}`).join(' · ');
+      return `<details class="hv" open><summary><b class="sz">${E(v.t)}</b><small>Now: ${now}</small><small class="hl">${last ? 'Last counted <span class="dt">' + E(fmt(last.at)) + '</span>' : '<span class="n0">Never counted</span>'}</small></summary>` +
+        (rows.length ? rows.map(r => { const d = r.counted - r.expected, c = d === 0 ? 'ng' : d < 0 ? 'n0' : 'nb'; return `<div class="hr ${d === 0 ? 'z' : d < 0 ? 'n' : 'p'}"><b class="dt">${E(fmt(r.at))}</b> · ${E(r.code || r.name)} · ${E(r.loc)}<br>Expected <b>${r.expected}</b> <span class="${c}">→</span> counted <b class="${c}">${r.counted}</b> <span class="${c}">${d === 0 ? '✓ match' : d < 0 ? (-d) + ' missing' : '+' + d + ' extra'}</span> · ${r.pushed ? '<span class="ng">pushed to website' + (r.by ? ' by ' + E(r.by) : '') + '</span>' : '<span class="nz">not pushed</span>'}</div>`; }).join('') : '<div class="msg">No saved stock take includes this size.</div>') + '</details>';
     }).join('') + '<div class="msg">Built from saved stock takes (latest 80).</div>');
   } catch (e) { frame(`<div class="msg bad">${E(e.message)}</div>`); }
 }
@@ -1323,7 +1327,7 @@ async function showUncounted() {
       ${scopeCol || scopePids.length ? `<div class="chips" style="margin:0 0 6px"><button type="button" class="in" data-allcol>${E(scopeCol || 'Selected designs')}${scopePids.length && scopeCol ? ' · ' + scopePids.length + ' design' + (scopePids.length === 1 ? '' : 's') : ''} ✕</button><small style="color:var(--muted);align-self:center">Tap ✕ to look at every collection</small></div>` : ''}
       <div class="msg">${busy ? 'Looking…' : `${shown.length} product${shown.length === 1 ? '' : 's'} (${pcs} pieces) active on the website with stock${scopeCol ? ' in ' + E(scopeCol) : ''}, ${since ? 'not counted since ' + E(since) : 'not yet in this count'}.`}</div>
       <input type="text" id="ucQ" placeholder="Search these products…" autocomplete="off" value="${E(q)}" style="margin:6px 0">
-      <div class="pfs" id="ucG">${shown.slice(0, 80).map(p => { const st = stockOf(p.vs); return `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}<span class="bd${st.out ? ' out' : ''}">${E(st.txt)}</span></span><span>${E(p.pt)}</span></button>`; }).join('')}</div>
+      <div class="pfs" id="ucG">${shown.slice(0, 80).map(p => { const st = stockOf(p.vs); return `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}<span class="bd${st.out ? ' out' : ''}">${cn(st.txt)}</span></span><span>${E(p.pt)}</span></button>`; }).join('')}</div>
       ${shown.length > 80 ? `<div class="msg">Showing 80 of ${shown.length}. Search to narrow.</div>` : ''}
       <div class="foot"><span class="sum">Tap a product to see its history.</span><button type="button" class="pri" data-go ${!shown.length || busy ? 'disabled' : ''}>${run ? 'Add these to this count' : 'Count these ' + shown.length}</button></div></div>`;
   };
@@ -1504,7 +1508,7 @@ $('tkEnd').onclick = async () => {
   s.vids.forEach(([vid, ex]) => { const n = s.counts[vid] || 0, v = byVid.get(vid); if (v && n !== ex) rows.push({v, ex, n}); });
   Object.keys(s.counts).forEach(k => { if (!em.has(k) && s.counts[k] > 0 && byVid.get(k)) rows.push({v: byVid.get(k), ex: 0, n: s.counts[k]}); });
   Object.entries(s.outside || {}).forEach(([k, o]) => { if (o.n > 0) rows.push({v: {pt: o.pt, t: o.t}, ex: 0, n: o.n, out: true}); });
-  $('rsList').innerHTML = rows.length ? rows.sort((a, b) => a.v.pt.localeCompare(b.v.pt)).map(r => { const d = r.n - r.ex; return `<div class="sess"><div class="nm"><b>${E(r.v.pt)}</b><span class="tag">${E(r.v.t)}</span>${r.out ? '<small>outside the filter</small>' : ''}</div><span class="pill cards" style="padding:2px 10px;border-radius:99px;font-weight:800;background:${d < 0 ? 'var(--red-bg)' : 'var(--orange-bg)'};color:${d < 0 ? 'var(--red)' : 'var(--orange)'}">${d < 0 ? 'missing ' + (-d) : 'extra +' + d}</span></div>`; }).join('') : '<div class="empty">Everything matched. 🎉</div>';
+  $('rsList').innerHTML = rows.length ? rows.sort((a, b) => a.v.pt.localeCompare(b.v.pt)).map(r => { const d = r.n - r.ex; return `<div class="sess"><div class="nm"><b>${E(r.v.pt)}</b><span class="tag">${E(r.v.t)}</span>${r.out ? '<small>outside the filter</small>' : ''}</div><span class="pill cards" style="padding:2px 10px;border-radius:99px;font-weight:800;background:${d < 0 ? 'var(--red-bg)' : 'var(--info-bg)'};color:${d < 0 ? 'var(--red)' : 'var(--info)'}">${d < 0 ? 'missing ' + (-d) : 'extra +' + d}</span></div>`; }).join('') : '<div class="empty">Everything matched. 🎉</div>';
 };
 
 /* ---------- push counts to the website ---------- */
