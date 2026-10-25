@@ -90,13 +90,13 @@
   "reason": ""
  },
  "seo-report": {
-  "at": "2026-10-22T05:59+11:00",
-  "code_sha": "a63962bafdd1246fc6c57a88916e2163196df7c7",
+  "at": "2026-10-25T23:11+11:00",
+  "code_sha": "4be278a0564a6b475406baf6c7fe62a1137219ec",
   "data_through": null,
-  "last_ok": "2026-10-16T08:02+11:00",
+  "last_ok": "2026-10-25T23:11+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
-  "ok": false,
-  "reason": "Semrush calls reported non-zero API unit costs (domain/backlinks/competitor/tracking reports 10-600 units each); stopped without publishing"
+  "ok": true,
+  "reason": ""
  },
  "stock": {
   "at": "2026-10-25T22:36+11:00",
