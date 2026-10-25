@@ -1018,7 +1018,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
       lbTick.forEach(pid => V.filter(v => v.pid === pid && v.bc[0]).forEach(v => { const n = Math.min(500, rec ? sumQ(v) : (v.q[loc] || 0)); if (n > 0) items.push({vid: v.vid, qty: n}); }));
       if (!items.length) { lbMsg('Nothing to add: the ticked products have no pieces or no barcodes yet.', 'bad'); return; }
       $('lbTickGo').disabled = true;
-      try { await Store.labels('add', items); const t = items.reduce((a, i) => a + i.qty, 0), np = lbTick.size; lbTick.clear(); await loadLabels(); drawShort(); lbMsg(`${t} label${t === 1 ? '' : 's'} added for ${np} product${np === 1 ? '' : 's'}.`, 'ok'); WZ.set('2', true, `${t} label${t === 1 ? '' : 's'} added`); }
+      try { await Store.labels('add', items); const t = items.reduce((a, i) => a + i.qty, 0), np = lbTick.size; lbTick.clear(); await loadLabels(); drawShort(); lbMsg(`${t} label${t === 1 ? '' : 's'} added for ${np} product${np === 1 ? '' : 's'}.`, 'ok'); WZ.set('2', true, `${t} label${t === 1 ? '' : 's'} added`); setTimeout(() => { const w = $('wzPrint'); if (w && !w.hidden) w.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 80); }
       catch (err) { lbMsg(err.message, 'bad'); $('lbTickGo').disabled = false; }
       return;
     }
@@ -1049,7 +1049,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
       const items = Object.entries(lbN).filter(([vid, n]) => n > 0 && (byVid.get(vid) || {bc: []}).bc[0]).map(([vid, n]) => ({vid, qty: n}));
       if (!items.length) return;
       $('lbGo').disabled = true;
-      try { await Store.labels('add', items); const t = items.reduce((a, i) => a + i.qty, 0); lbPid = ''; lbN = {}; drawCard(); await loadLabels(); lbMsg(`${t} label${t === 1 ? '' : 's'} added to the list.`, 'ok'); WZ.set('2', true, `${t} label${t === 1 ? '' : 's'} added`); }
+      try { await Store.labels('add', items); const t = items.reduce((a, i) => a + i.qty, 0); lbPid = ''; lbN = {}; drawCard(); await loadLabels(); lbMsg(`${t} label${t === 1 ? '' : 's'} added to the list.`, 'ok'); WZ.set('2', true, `${t} label${t === 1 ? '' : 's'} added`);  setTimeout(() => { const w = $('wzPrint'); if (w && !w.hidden) w.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 80); }
       catch (err) { lbMsg(err.message, 'bad'); drawCard(); }
     }
   };
