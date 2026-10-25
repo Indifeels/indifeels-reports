@@ -473,7 +473,7 @@ function ProductFind(input, opt) {
   let prods = null;
   const build = () => { if (prods) return prods; const m = new Map(); V.forEach(v => { if (!m.has(v.pid)) m.set(v.pid, {pid: v.pid, pt: v.pt, image: v.image, vs: []}); m.get(v.pid).vs.push(v); }); return prods = [...m.values()]; };
   const hasText = () => /[a-z]/i.test(input.value);
-  const matches = () => { const t = input.value.toLowerCase().split(/\s+/).filter(Boolean); return build().filter(p => { const n = p.pt.toLowerCase(); return (!opt.only || opt.only(p)) && t.every(x => n.includes(x)); }).slice(0, 12); };
+  const matches = () => { const t = input.value.toLowerCase().split(/\s+/).filter(Boolean); return build().filter(p => { const n = p.pt.toLowerCase(); return (!opt.only || opt.only(p)) && t.every(x => n.includes(x)); }).slice(0, 24); };
   const clear = () => { box.innerHTML = ''; };
   const img = p => p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase());
   function suggest() {
@@ -593,7 +593,7 @@ $('theme').onclick = () => { const t = document.documentElement.dataset.theme ==
 /* ---------- locations (shared) ---------- */
 let locs = [], locsP = null;
 const locName = id => (locs.find(l => l.id === String(id)) || {}).name || '';
-const loadLocs = () => locsP || (locsP = Store.locs().then(r => { locs = r.locations || []; return locs; }).catch(e => { locsP = null; throw e; }));
+const loadLocs = () => locsP || (locsP = Store.locs().then(r => { locs = r.locations || []; try { window.lbColRefresh && window.lbColRefresh(); } catch (e) {} return locs; }).catch(e => { locsP = null; throw e; }));
 
 /* ---------- searchable select ---------- */
 const pidImg = new Map(V.map(v => [v.pid, v.image]));
@@ -990,9 +990,11 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   }
   async function showProduct(pid) { try { await loadLocs(); } catch (e) {} lbPid = pid; lbN = {}; lbPrefill(); drawCard(); { const q0 = V.find(v => v.pid === pid); WZ.set('1', true, q0 ? q0.pt : ''); } lbMsg($('lbRecent').checked ? 'Label counts set to the quantity uploaded. Adjust if needed.' : ''); }
   /* collection shortlist: pick a collection, then tap a product to open its sizes; name search is limited to it */
-  const ssLb = Sel($('ssLbCol'), 'All collections');
+  const ssLb = Sel($('ssLbCol'), 'All collections', true, false, true);
   const lbCols = new Map(); V.forEach(v => v.cols.forEach(c => { if (!lbCols.has(c)) lbCols.set(c, new Set()); lbCols.get(c).add(v.pid); }));
-  ssLb.set([...lbCols.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([c, s]) => ({v: c, l: c, s: s.size + ' products'})));
+  ssLb.set(collectionOpts().filter(o => lbCols.has(o.v)));
+  window.lbColRefresh = () => ssLb.set(collectionOpts().filter(o => lbCols.has(o.v)));
+  loadLocs().catch(() => {});
   const inLbCol = p => { const c = ssLb.get(); return (!c || p.vs.some(v => v.cols.includes(c))) && p.vs.some(lbSupOk); };
   const sumQ = v => Object.values(v.q || {}).reduce((a, n) => a + (Number(n) || 0), 0);
   const fmtD = d => { const t = new Date(d); return isNaN(t) ? '' : t.toLocaleDateString('en-AU', {day: 'numeric', month: 'short'}); };
