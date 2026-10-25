@@ -90,13 +90,13 @@
   "reason": ""
  },
  "seo-report": {
-  "at": "2026-10-25T23:11+11:00",
-  "code_sha": "4be278a0564a6b475406baf6c7fe62a1137219ec",
+  "at": "2026-10-26T05:58+11:00",
+  "code_sha": "85a17fa74acc5e1a5c054af0e2684abec5bd1f3d",
   "data_through": null,
   "last_ok": "2026-10-25T23:11+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
-  "ok": true,
-  "reason": ""
+  "ok": false,
+  "reason": "Semrush snapshot call reported 10000 API units (over budget); refresh stopped, nothing published"
  },
  "stock": {
   "at": "2026-10-25T22:36+11:00",
