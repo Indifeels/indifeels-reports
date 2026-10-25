@@ -468,6 +468,16 @@ window.addEventListener('message', e => {
 });
 const lbMsg = (t, k) => { const m = $('lbMsg'); if (!m) return; m.textContent = t || ''; m.className = 'msg' + (k ? ' ' + k : ''); };
 /* Find a product by name next to a barcode box. opt.onVariant(v) is called when a size is tapped, opt.onProduct(pid) replaces the size chips. */
+/* size order: XXS < XS < S < M < L < XL < 2XL(XXL) < 3XL ..., then plain numbers (7, 8, 9, 10, 2-3 Years), then anything else */
+const sizeKey = t => {
+  const u = String(t || '').toUpperCase().trim(), num = (u.match(/\d+(\.\d+)?/) || [])[0];
+  const m = u.match(/(?:^|[^A-Z0-9])(\d*)(XXXL|XXL|XXS|XS|XL|S|M|L)(?![A-Z])/);
+  if (m) { const k = m[2], n = m[1] ? +m[1] : 0; let r = {XXS: 0, XS: 1, S: 2, M: 3, L: 4, XL: 5, XXL: 6, XXXL: 7}[k]; if (n && k === 'XL') r = 4 + n; return [0, r, num ? +num : 0, u]; }
+  if (num !== undefined && !/FREE|ONE/.test(u)) return [1, +num, 0, u];
+  return [2, 0, 0, u];
+};
+const sizeCmpG = (a, b) => { const x = sizeKey(a), y = sizeKey(b); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2] || x[3].localeCompare(y[3], undefined, {numeric: true}); };
+const sizeCmpV = (a, b) => sizeCmpG(a.t, b.t);
 function ProductFind(input, opt) {
   const host = input.closest('.scan'), box = document.createElement('div'); box.className = 'pf'; host.after(box);
   let prods = null;
@@ -485,7 +495,7 @@ function ProductFind(input, opt) {
     input.value = ''; clear();
     if (opt.onProduct) { opt.onProduct(pid); return; }
     const p = build().find(x => x.pid === pid); if (!p) return;
-    box.innerHTML = `<div class="msg" style="margin-top:8px"><b>${E(p.pt)}</b>: tap a size to count it</div><div class="chips">` + p.vs.slice().sort((a, b) => a.t.localeCompare(b.t, undefined, {numeric: true})).map(v => `<button type="button" data-v="${E(v.vid)}">${E(v.t)}<small>stock ${(opt.loc && opt.loc() ? v.q[opt.loc()] : 0) || 0}</small></button>`).join('') + '</div>';
+    box.innerHTML = `<div class="msg" style="margin-top:8px"><b>${E(p.pt)}</b>: tap a size to count it</div><div class="chips">` + p.vs.slice().sort(sizeCmpV).map(v => `<button type="button" data-v="${E(v.vid)}">${E(v.t)}<small>stock ${(opt.loc && opt.loc() ? v.q[opt.loc()] : 0) || 0}</small></button>`).join('') + '</div>';
   }
   input.addEventListener('input', suggest);
   input.addEventListener('keydown', e => { if (e.key === 'Enter' && hasText()) { e.preventDefault(); e.stopImmediatePropagation(); const m = matches(); if (m.length) pick(m[0].pid); } }, true);
@@ -772,7 +782,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
 (function () {
   let mode = 'add', items = [], armed = false, busy = false, ready = false, labelRows = [];
   const loc = () => $('adLoc').value;
-  const sizeCmp = (a, b) => a.t.localeCompare(b.t, undefined, {numeric: true});
+  const sizeCmp = sizeCmpV;
   const sel = Sel($('adProd'), 'Search product…', true, false, true);
   const colSel = Sel($('adCol'), 'All collections', true, false, true);
   let scope = 'variant', editing = false;
@@ -983,7 +993,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
   /* ----- add labels: scan any size or search by name, then choose how many of each size ----- */
   let lbPid = '', lbN = {};
   const shopLoc = () => { const l = (locs || []).find(x => /shop/i.test(x.name)) || (locs || [])[0]; return l ? l.id : ''; };
-  const sizeCmp2 = (a, b) => a.t.localeCompare(b.t, undefined, {numeric: true});
+  const sizeCmp2 = sizeCmpV;
   function drawCard() {
     if (!lbPid) { $('lbCard').innerHTML = ''; return; }
     const vs = V.filter(v => v.pid === lbPid).sort(sizeCmp2); if (!vs.length) { $('lbCard').innerHTML = ''; return; }
@@ -1107,7 +1117,7 @@ function setupScope() {
 function refreshSetupLists() {
   const col = ssCol.get(), inCol = V.filter(v => !col || v.cols.includes(col));
   const sz = new Map(); inCol.forEach(v => sz.set(v.t, (sz.get(v.t) || 0) + 1));
-  ssSize.set([{v: '', l: 'All sizes'}].concat([...sz.keys()].sort((a, b) => a.localeCompare(b, undefined, {numeric: true})).map(t => ({v: t, l: t, s: sz.get(t) + ' design' + (sz.get(t) === 1 ? '' : 's')}))));
+  ssSize.set([{v: '', l: 'All sizes'}].concat([...sz.keys()].sort(sizeCmpG).map(t => ({v: t, l: t, s: sz.get(t) + ' design' + (sz.get(t) === 1 ? '' : 's')}))));
   ssDes.set(designOpts(col, ssSize.get()));
   ssSize.disable(!col); ssDes.disable(!col);
 }
@@ -1339,7 +1349,7 @@ function drawTake(flash) {
 
 /* Stock history of a product: every saved stock take that included each size */
 async function showHistory(pid) {
-  const vs = V.filter(v => v.pid === pid).sort((a, b) => a.t.localeCompare(b.t, undefined, {numeric: true}));
+  const vs = V.filter(v => v.pid === pid).sort(sizeCmpV);
   if (!vs.length) return;
   const ov = document.createElement('div'); ov.className = 'dupov';
   const frame = inner => { ov.innerHTML = `<div><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1">${E(vs[0].pt)}</h3>${curTab === 'adj' ? '' : '<button type="button" class="pri" data-addrem>Add / remove stock</button>'}<button type="button" data-x>Close</button></div>${inner}</div>`; };
