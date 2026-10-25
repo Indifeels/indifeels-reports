@@ -1314,12 +1314,14 @@ async function showHistory(pid) {
 async function showUncounted() {
   const run = !!take, ov = document.createElement('div'); ov.className = 'dupov';
   const day = n => { const d = new Date(); d.setMonth(d.getMonth() - n); return d.toISOString().slice(0, 10); };
-  let since = run ? '' : day(6), list = [], q = '', busy = false;
+  const fl0 = run ? (take.filters || {}) : {col: ssCol.get(), pids: ssDes.get()};
+  let scopeCol = fl0.col || '', scopePids = (fl0.pids || []).slice(), since = run ? '' : day(6), list = [], q = '', busy = false;
   const body = () => {
     const shown = list.filter(p => !q || p.pt.toLowerCase().includes(q)), pcs = shown.reduce((a, p) => a + p.t, 0);
     ov.innerHTML = `<div><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1">Not counted</h3><button type="button" data-x>Close</button></div>
       <div class="chips" style="margin:8px 0">${run ? `<button type="button" data-per="" class="${since === '' ? 'in' : ''}">This count</button>` : ''}${[1, 3, 6, 12].map(n => `<button type="button" data-per="${n}" class="${since === day(n) ? 'in' : ''}">Last ${n} month${n === 1 ? '' : 's'}</button>`).join('')}<label class="fld" style="flex:none;min-width:150px">or since<input type="date" id="ucD" value="${E(since)}" max="${new Date().toISOString().slice(0, 10)}"></label></div>
-      <div class="msg">${busy ? 'Looking…' : `${shown.length} product${shown.length === 1 ? '' : 's'} (${pcs} pieces) active on the website with stock, ${since ? 'not counted since ' + E(since) : 'not yet in this count'}.`}</div>
+      ${scopeCol || scopePids.length ? `<div class="chips" style="margin:0 0 6px"><button type="button" class="in" data-allcol>${E(scopeCol || 'Selected designs')}${scopePids.length && scopeCol ? ' · ' + scopePids.length + ' design' + (scopePids.length === 1 ? '' : 's') : ''} ✕</button><small style="color:var(--muted);align-self:center">Tap ✕ to look at every collection</small></div>` : ''}
+      <div class="msg">${busy ? 'Looking…' : `${shown.length} product${shown.length === 1 ? '' : 's'} (${pcs} pieces) active on the website with stock${scopeCol ? ' in ' + E(scopeCol) : ''}, ${since ? 'not counted since ' + E(since) : 'not yet in this count'}.`}</div>
       <input type="text" id="ucQ" placeholder="Search these products…" autocomplete="off" value="${E(q)}" style="margin:6px 0">
       <div class="pfs" id="ucG">${shown.slice(0, 80).map(p => { const st = stockOf(p.vs); return `<button type="button" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}<span class="bd${st.out ? ' out' : ''}">${E(st.txt)}</span></span><span>${E(p.pt)}</span></button>`; }).join('')}</div>
       ${shown.length > 80 ? `<div class="msg">Showing 80 of ${shown.length}. Search to narrow.</div>` : ''}
@@ -1330,12 +1332,13 @@ async function showUncounted() {
     try {
       const done = new Set(); if (since) Object.keys(await Store.counted(new Date(since).toISOString())).forEach(k => done.add(k));
       if (take) Object.keys(take.counts).forEach(k => { if (take.counts[k] > 0) done.add(k); });
-      list = [...byPid.values()].filter(vs => /^active$/i.test(vs[0].st) && vs.some(v => tot(v) > 0) && !vs.some(v => done.has(v.vid))).map(vs => ({pid: vs[0].pid, pt: vs[0].pt, image: vs[0].image, t: vs.reduce((a, v) => a + tot(v), 0), vs})).sort((a, b) => a.pt.localeCompare(b.pt));
+      list = [...byPid.values()].filter(vs => /^active$/i.test(vs[0].st) && vs.some(v => tot(v) > 0) && !vs.some(v => done.has(v.vid)) && (!scopeCol || vs[0].cols.includes(scopeCol)) && (!scopePids.length || scopePids.includes(vs[0].pid))).map(vs => ({pid: vs[0].pid, pt: vs[0].pt, image: vs[0].image, t: vs.reduce((a, v) => a + tot(v), 0), vs})).sort((a, b) => a.pt.localeCompare(b.pt));
     } catch (e) { list = []; ov.innerHTML = `<div><div class="msg bad">${E(e.message)}</div><button type="button" data-x>Close</button></div>`; busy = false; return; }
     busy = false; body();
   };
   ov.onclick = e => {
     if (e.target === ov || e.target.closest('[data-x]')) { ov.remove(); return; }
+    if (e.target.closest('[data-allcol]')) { scopeCol = ''; scopePids = []; load(); return; }
     const pr = e.target.closest('[data-per]'); if (pr) { since = pr.dataset.per === '' ? '' : day(+pr.dataset.per); load(); return; }
     const pb = e.target.closest('[data-p]'); if (pb) { showHistory(pb.dataset.p); return; }
     if (e.target.closest('[data-go]')) {
