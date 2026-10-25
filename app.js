@@ -1959,7 +1959,7 @@
     const reply = (o) => { try { fr.contentWindow?.postMessage(Object.assign({ type: "size-feedback-state" }, o), "*"); } catch (_) {} };
     const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
     const list = async () => {
-      const { data } = await sb.from("size_feedback").select("*").order("created_at", { ascending: false }).limit(40);
+      const { data } = await sb.from("size_feedback").select("*").order("created_at", { ascending: false }).limit(1000);
       return data || [];
     };
     if (d.action === "list") {
