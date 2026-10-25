@@ -1866,6 +1866,15 @@
         const b = bars(r.b), mod = Math.min(0.41, 33 / b.total), bx = x + (W - b.total * mod) / 2;
         doc.setFillColor(0, 0, 0); b.rects.forEach(([rx, rw]) => doc.rect(bx + rx * mod, y + 16.2, rw * mod, 4.3, "F"));
       });
+      if (d.print) {
+        // Open the browser's print dialog straight away (no download): PDF in a hidden frame, then print it.
+        const url = URL.createObjectURL(doc.output("blob")), fr = document.createElement("iframe");
+        fr.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0"; fr.src = url; document.body.appendChild(fr);
+        await new Promise((res) => { fr.onload = res; setTimeout(res, 4000); });
+        try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { window.open(url, "_blank"); }
+        setTimeout(() => { try { fr.remove(); URL.revokeObjectURL(url); } catch (e) {} }, 120000);
+        return { ok: true, labels: flat.length, sheets: pages, printed: true };
+      }
       doc.save("indifeels-barcode-labels-" + new Date().toISOString().slice(0, 10) + ".pdf");
       return { ok: true, labels: flat.length, sheets: pages };
     },

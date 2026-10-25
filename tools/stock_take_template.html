@@ -302,7 +302,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
           <div id="lqTitle" style="font-weight:700;margin-bottom:6px">Labels to print</div>
           <div class="seg" id="lqBar" hidden><button type="button" id="lqUndo">↶ Undo</button><button type="button" id="lqRedo">↷ Redo</button><button type="button" id="lqClear">🗑 Clear list</button></div>
           <div id="lqList"><div class="empty">No labels in the list yet.</div></div>
-          <div class="foot" id="lqFoot" hidden><label class="fld" style="flex:none;width:170px">Start at slot (1 to 65)<input type="text" id="lqSlot" value="1" inputmode="numeric" autocomplete="off"></label><span class="sum"></span><button type="button" class="pri" id="lqPrint">Download PDF</button></div>
+          <div class="foot" id="lqFoot" hidden><label class="fld" style="flex:none;width:170px">Start at slot (1 to 65)<input type="text" id="lqSlot" value="1" inputmode="numeric" autocomplete="off"></label><span class="sum"></span><button type="button" class="pri" id="lqPrintNow">Print</button><button type="button" class="pri" id="lqPrint">Download PDF</button></div>
           <div class="msg" id="lqMsg"></div>
         </div></section>
       <section class="bk wzs" data-s="4"><div class="wzh"><span class="wzn">4</span><b>Barcodes applied on the products</b><span class="wzsum"></span></div>
@@ -537,7 +537,7 @@ const Store = PREVIEW ? {
   deleteVariant: vid => call('deletevariant', {vid}, 40000),
   setStatus: (pid, status) => call('setstatus', {pid, status}, 40000),
   previewLabel: r => { const v = byVid.get(String(r.vid)) || {}; return call('previewlabel', {product: r.product, variant: r.variant, barcode: r.barcode, image: v.image || '', price: v.pr || '', colour: v.col || ''}, 30000); },
-  printLabels: (labels, start) => call('printlabels', {labels: labels.map(r => { const v = byVid.get(String(r.vid)) || {}; return {product: r.product, variant: r.variant, barcode: r.barcode, copies: r.copies, image: v.image || '', price: v.pr || '', colour: v.col || ''}; }), start}, 60000),
+  printLabels: (labels, start, print) => call('printlabels', {labels: labels.map(r => { const v = byVid.get(String(r.vid)) || {}; return {product: r.product, variant: r.variant, barcode: r.barcode, copies: r.copies, image: v.image || '', price: v.pr || '', colour: v.col || ''}; }), start, print: !!print}, 60000),
   labels: (op, items) => call('labelqueue', {op, items}),
   takeList: () => call('takelist'),
   takeSave: s => call('takesave', {session: s}),
@@ -953,6 +953,11 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
       if (c) { const n = Math.max(1, Math.min(5000, r.copies + Number(c.dataset.lc))); if (n === r.copies) return; pushUndo(); await Store.labels('setcopies', [{vid: r.vid, qty: n}]); r.copies = n; drawLabels(); }
       else if (x) { pushUndo(); await Store.labels('remove', [{vid: r.vid, qty: 1}]); labelRows = labelRows.filter(y => y !== r); drawLabels(); }
     } catch (err) { lqMsg(err.message, 'bad'); }
+  };
+  $('lqPrintNow').onclick = async () => {
+    const start = Math.max(1, Math.min(65, parseInt($('lqSlot').value, 10) || 1)); lqMsg('Preparing the print…');
+    try { const r = await Store.printLabels(labelRows, start, true); lqMsg(`Print window opened: ${r.labels} labels on ${r.sheets} sheet${r.sheets === 1 ? '' : 's'}. Choose the barcode paper and set scale to 100%, then confirm in the next step.`, 'ok'); WZ.set('3', true, r.labels + ' labels · sent to print'); }
+    catch (e) { lqMsg(e.message, 'bad'); }
   };
   $('lqPrint').onclick = async () => {
     const start = Math.max(1, Math.min(65, parseInt($('lqSlot').value, 10) || 1)); lqMsg('Making the PDF…');
