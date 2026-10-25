@@ -1981,6 +1981,7 @@
         chest: num(r.chest), tummy: num(r.tummy), tall: !!r.tall, shoulders: String(r.shoulders || "").slice(0, 10),
         rec_size: num(r.rec_size), alt_size: num(r.alt_size), alt_type: String(r.alt_type || "").slice(0, 10) || null,
         tried_size: num(r.tried_size), slider: num(r.slider), verdict: r.verdict, note: String(r.note || "").slice(0, 400) || null,
+        flags: Array.isArray(r.flags) ? r.flags.map((x) => String(x).slice(0, 24)).slice(0, 20) : null, height_in: num(r.height_in), base_size: num(r.base_size),
       });
       reply({ saved: !error, rows: await list() });
     } else if (d.action === "delete") {
