@@ -162,7 +162,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .hv{border-top:1px solid var(--border);padding:8px 0}.hv summary{cursor:pointer;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}.hv summary small{color:var(--muted)}.hv .hl{margin-left:auto}
 .hr{padding:5px 0 5px 10px;font-size:13px;border-left:3px solid var(--border);margin:6px 0 6px 4px;line-height:1.5}.hr.z{border-color:var(--green)}.hr.n{border-color:var(--red)}.hr.p{border-color:var(--info)}.hr span{font-weight:700}
 .mk{border-color:var(--green);color:var(--green);font-weight:700}.mk.arm{background:var(--green);color:#06140a}
-.lbmulti{position:sticky;top:0;z-index:5;background:var(--card);padding:8px 0;flex-wrap:wrap;gap:8px}
+.foot.lbmulti{position:sticky;top:0;bottom:auto;z-index:30;background:var(--card);padding:8px 0;margin:0 0 8px;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--border)}
 .uct{position:relative}.uct .tkb{position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:8px;border:2px solid #fff;background:#0008;color:transparent;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;z-index:2}.uct.on .tkb{background:var(--green);border-color:var(--green);color:#06140a}.uct.on{outline:3px solid var(--green);outline-offset:-3px}
 .hbtn{font-size:11.5px;color:var(--info);font-weight:700;text-decoration:underline;padding:2px 0}
 .bk.cmp{padding-top:8px;padding-bottom:10px}
@@ -1007,7 +1007,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     const gen = DATA.generatedAt ? new Date(DATA.generatedAt).toLocaleString('en-AU', {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'}) : '';
     const shownP = list.slice(0, 120);
     box.innerHTML = list.length ? `<div class="sum" style="margin-bottom:6px">${list.length} product${list.length === 1 ? '' : 's'}${c ? ' in ' + E(c) : ''}${rec ? ', newest first' : ''}. Tap a photo to pick its sizes, or tick several and add them together.${gen ? ` <span style="color:var(--muted)">Product data from <span class="dt">${E(gen)}</span></span>` : ''}</div>
-      <div class="foot lbmulti"><span class="sum"><b id="lbTn">${lbTick.size}</b> ticked · ${rec ? 'one label per piece uploaded' : 'one label per piece in stock at ' + E(((locs || []).find(x => x.id === shopLoc()) || {}).name || 'the shop')}</span><button type="button" id="lbTickAll">Tick all shown</button><button type="button" id="lbTickNone">Clear ticks</button><button type="button" class="pri" id="lbTickGo" ${lbTick.size ? '' : 'disabled'}>Add ticked to label list</button></div><div class="pfs">` +
+      <div class="foot lbmulti"><span class="sum"><b id="lbTn">${lbTick.size}</b> ticked · ${rec ? 'all sizes, one label per piece uploaded' : 'all sizes, one label per piece in stock at ' + E(((locs || []).find(x => x.id === shopLoc()) || {}).name || 'the shop')} (at least 1 per size)</span><button type="button" id="lbTickAll">Tick all shown</button><button type="button" id="lbTickNone">Clear ticks</button><button type="button" class="pri" id="lbTickGo" ${lbTick.size ? '' : 'disabled'}>Add ticked to label list</button></div><div class="pfs">` +
       shownP.map(p => `<button type="button" class="uct${lbTick.has(p.pid) ? ' on' : ''}" data-p="${E(p.pid)}"><span class="im">${p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase())}<span class="tkb" data-tick="${E(p.pid)}">✓</span></span><span>${E(p.pt)}</span>${rec ? `<small>${fmtD(p.ca) ? 'Uploaded ' + fmtD(p.ca) + ' · ' : ''}${p.n} pcs</small>` : `<small>${p.n} pcs</small>`}</button>`).join('') + '</div>' : '<div class="msg">No products found.</div>';
     window.__lbShown = shownP.map(p => p.pid);
   }
@@ -1025,8 +1025,8 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     if (e.target.closest('#lbTickNone')) { lbTick.clear(); lbTickSync(); return; }
     if (e.target.closest('#lbTickGo')) {
       const loc = shopLoc(), rec = $('lbRecent').checked, items = [];
-      lbTick.forEach(pid => V.filter(v => v.pid === pid && v.bc[0]).forEach(v => { const n = Math.min(500, rec ? sumQ(v) : (v.q[loc] || 0)); if (n > 0) items.push({vid: v.vid, qty: n}); }));
-      if (!items.length) { lbMsg('Nothing to add: the ticked products have no pieces or no barcodes yet.', 'bad'); return; }
+      lbTick.forEach(pid => V.filter(v => v.pid === pid && v.bc[0]).forEach(v => { const n = Math.max(1, Math.min(500, rec ? sumQ(v) : (v.q[loc] || 0))); items.push({vid: v.vid, qty: n}); }));
+      if (!items.length) { lbMsg('Nothing to add: the ticked products have no barcodes yet.', 'bad'); return; }
       $('lbTickGo').disabled = true;
       try { await Store.labels('add', items); const t = items.reduce((a, i) => a + i.qty, 0), np = lbTick.size; lbTick.clear(); await loadLabels(); drawShort(); lbMsg(`${t} label${t === 1 ? '' : 's'} added for ${np} product${np === 1 ? '' : 's'}.`, 'ok'); WZ.set('2', true, `${t} label${t === 1 ? '' : 's'} added`); setTimeout(() => { const w = $('wzPrint'); if (w && !w.hidden) w.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 80); }
       catch (err) { lbMsg(err.message, 'bad'); $('lbTickGo').disabled = false; }
