@@ -2225,6 +2225,15 @@
     else if (p === "password") { page("password", "Change password"); }
     else if (p === "admin" && me?.is_admin) { page("admin", "Report Access"); renderAdmin(); }
   }
+  // A shortcut opened while the app is already running only changes the address; follow it.
+  const followLink = () => {
+    if (!me || !reports.length) return;
+    let id = location.hash.slice(1);
+    if (!id) { try { id = new URLSearchParams(location.search).get("open") || ""; } catch (_) {} }
+    if (id && reports.some((r) => r.id === id) && localStorage.getItem("ir-last-route") !== id) openReport(id);
+  };
+  window.addEventListener("hashchange", followLink);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") followLink(); });
   window.addEventListener("popstate", () => { const id = location.hash.slice(1); if (id && reports.some((r) => r.id === id)) openReport(id); else { page("home"); renderHome(); } });
 
   // Startup is retried automatically: a slow or dropped connection (common when the installed app wakes from the background)
@@ -2246,6 +2255,7 @@
     await withTimeout(loadReports(), 15000);
     startAttributionRealtime(); updateOrderNotifyButton(); phonePushState();
     let id = location.hash.slice(1);
+    if (!id) { try { id = new URLSearchParams(location.search).get("open") || ""; } catch (_) {} }   // home-screen shortcuts: ?open=<report id>
     if (!id) { try { id = localStorage.getItem("ir-last-route") || ""; } catch (_) {} }   // reload / reopened app: back to the screen that was open
     if (id && reports.some((r) => r.id === id)) openReport(id); else { page("home"); renderHome(); }
   }

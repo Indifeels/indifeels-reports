@@ -4,6 +4,11 @@
   "description": "Indifeels performance reports",
   "start_url": "./",
   "scope": "./",
+  "shortcuts": [
+    { "name": "Project Board", "short_name": "Board", "url": "./?open=project-board", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Restock Planner", "short_name": "Restock", "url": "./?open=restock-plan", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Daily Report", "short_name": "Daily", "url": "./?open=daily", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ],
   "display": "standalone",
   "background_color": "#1E1C1B",
   "theme_color": "#14213D",
