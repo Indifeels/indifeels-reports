@@ -95,7 +95,7 @@ const RULES=[["ROAS 3× or more for 3 days","Raise budget 20%. Repeat every 3 da
 const $=n=>"$"+Math.round(n).toLocaleString("en-AU");
 const RG={POOR:"r",AVERAGE:"a",GOOD:"g",EXCELLENT:"g"};
 const col=c=>c?`var(--${c})`:"var(--n)";
-let S={done:[],tick:{},samp:false,open:{wed:true}};
+let S={done:[],tick:{},samp:false,open:{}};
 try{S=Object.assign(S,JSON.parse(localStorage.getItem("gat")||"{}"))}catch(e){}
 const sv=()=>{try{localStorage.setItem("gat",JSON.stringify(S))}catch(e){}};
 const chip=(t,c,e)=>`<span class="chip ${c||""}">${t}${e?`<em>${e}</em>`:""}</span>`;
@@ -114,10 +114,10 @@ function camp(c){
   if(r[1]==="Negatives"){const l=[...(c.adneg||[]),...c.neg];if(l.length)v+=more(c.id+"ng","Show negatives",`<div class="chips">${l.map(x=>chip(x)).join("")}</div>`)}
   if(r[1]==="Locations"&&c.postcodes)v+=more(c.id+"pc","Show postcodes",`<div class="chips">${c.postcodes.map(x=>chip(x)).join("")}</div>`);
   return `<div class="row ${r[3]}"><span class="nn">${r[0]}</span><span class="k">${r[1]}</span><div class="v">${v}</div><span class="dot"></span></div>`}).join("");
- return tile(c.id,`<span class="nm">${c.name}</span><span class="cnt">${cn.r?`<span class="r">${cn.r}</span>`:""}${cn.a?`<span class="a">${cn.a}</span>`:""}<span class="g">${cn.g}</span><span class="ch">${isOpen(c.id)?"▴":"▾"}</span></span><span class="perf">${perf}</span>`,`<div class="tbl">${rows}</div>`)}
+ return tile(c.id,`<span class="nm">${c.name} <span class="tag" style="--c:var(--g)">${c.status||"Active"}</span></span><span class="cnt">${cn.r?`<span class="r">${cn.r}</span>`:""}${cn.a?`<span class="a">${cn.a}</span>`:""}<span class="g">${cn.g}</span><span class="ch">${isOpen(c.id)?"▴":"▾"}</span></span><span class="perf">${perf}</span>`,`<div class="tbl">${rows}</div>`)}
 function wed(){
  const cur=S.done.length,pct=Math.round(cur/STEPS.length*100),show=S.samp,launched=cur>=STEPS.length;
- const hc=show?KPI[0][2](SM.roas):null;
+ 
  let b=`<div class="bar" style="padding-top:6px"><div class="tr"><div class="fl" style="width:${pct}%"></div></div><div class="lb"><span>Setup: step ${Math.min(cur+1,STEPS.length)} of ${STEPS.length}</span><span>${pct}%</span></div></div><div class="hint" style="padding-top:0">One step at a time. Tick every line to unlock the button; the next step stays locked until then.</div>`;
  STEPS.forEach((s,i)=>{
   const st=i<cur?"done":i===cur?"cur":"lock",tk=S.tick[i]||[],all=s.items.every((_,j)=>tk[j]);
@@ -135,7 +135,7 @@ function wed(){
  <div class="note">${show?"SAMPLE numbers to show the look. Not real data.":"Fills with live data once the campaign is running. Nothing is judged before day 3."}</div>
  <div class="sechd">WHAT’S GOING WRONG?</div><div class="rows">${CHK.map(c=>{const hit=show&&c[2](SM);const cc=hit?"r":show?"g":null;return `<div class="rw ${hit?"hit":""}" style="--c:${col(cc)}"><span class="d"></span><div><b>${c[0]}</b><small>${c[1]}</small></div></div>`}).join("")}</div>
  <div class="sechd">IF THIS, DO THIS</div><div class="rows">${RULES.map(r=>`<div class="rw" style="--c:${col(r[2])}"><span class="d"></span><div><b>${r[0]}</b><small>${r[1]}</small></div></div>`).join("")}</div>`;
- const head=`<span class="nm">TEST · Wedding PMax 01 <span class="tag ${hc==="a"?"a":""}" style="--c:${col(hc||"n")}">${show?(hc==="g"?"On track":hc==="a"?"Watch":"Fix"):launched?"Live, waiting for data":"Not launched"}</span></span><span class="cnt"><span style="background:var(--tile2);color:var(--tx)">ROAS ${show?SM.roas.toFixed(2)+"×":"—"}</span><span class="ch">${isOpen("wed")?"▴":"▾"}</span></span><span class="perf"><div>Setup <b>step ${Math.min(cur+1,STEPS.length)} of ${STEPS.length}</b></div><div>Spend <b>${show?"$184":"—"}</b></div><div>Purchases <b>${show?"9":"—"}</b></div><div>Value <b>${show?"$627":"—"}</b></div><span>new test, independent of the campaigns below</span></span>`;
+ const head=`<span class="nm">TEST · Wedding PMax 01 <span class="tag" style="--c:${launched?"var(--g)":"var(--ac)"}">${launched?"Active":"To create"}</span></span><span class="cnt"><span style="background:var(--tile2);color:var(--tx)">ROAS ${show?SM.roas.toFixed(2)+"×":"—"}</span><span class="ch">${isOpen("wed")?"▴":"▾"}</span></span><span class="perf"><div>Setup <b>step ${Math.min(cur+1,STEPS.length)} of ${STEPS.length}</b></div><div>Spend <b>${show?"$184":"—"}</b></div><div>Purchases <b>${show?"9":"—"}</b></div><div>Value <b>${show?"$627":"—"}</b></div><span>new test, independent of the campaigns below</span></span>`;
  return tile("wed",head,b)}
 function render(){
  const g=(t,p,l)=>`<div class="grp"><h2>${t}</h2><p>${p}</p></div>`+l.join("");
