@@ -43,7 +43,7 @@ PRODUCTS = """{ products(query:"status:active"){ edges{ node{
   disc: metafield(namespace:"custom", key:"discountinued"){ value }
   collections{ edges{ node{ id title } } }
   variants{ edges{ node{ id title inventoryQuantity barcode } } } } } } }"""
-ORDERS = """{ orders{ edges{ node{ id cancelledAt processedAt lineItems{ edges{ node{ id quantity variant{ id } product{ id } } } } } } } }"""
+ORDERS = """{ orders{ edges{ node{ id cancelledAt processedAt lineItems{ edges{ node{ id quantity title variantTitle variant{ id } product{ id } } } } } } } }"""
 SCOPES = "query { currentAppInstallation { accessScopes { handle } } }"
 START = "mutation($q:String!){ bulkOperationRunQuery(query:$q){ bulkOperation{ id status } userErrors{ field message } } }"
 POLL = "query($id:ID!){ node(id:$id){ ... on BulkOperation { status errorCode objectCount url } } }"
@@ -322,6 +322,27 @@ def melbourne_day(iso):
     return dt.datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(MEL).strftime("%Y-%m-%d")
 
 
+def size_key(l):
+    """Old WooCommerce orders kept the product but lost the variant: recover the size/colour text from the line.
+    variantTitle ("M-38", "Maroon / L-40") first, else whatever follows the last " - " in the line title."""
+    vt = (l.get("variantTitle") or "").strip()
+    if not vt:
+        t = (l.get("title") or "")
+        vt = t.rsplit(" - ", 1)[1].strip() if " - " in t else ""
+    return vt.lower()
+
+
+def match_variant(variants, key):
+    """exact variant title, else a unique variant whose title ends with the size ("maroon / l-40" for "l-40")"""
+    if not key:
+        return None
+    if key in variants:
+        return key
+    tail = key.rsplit("/", 1)[-1].strip()
+    hits = [k for k in variants if k == tail or k.endswith("/ " + tail) or k.endswith("/" + tail)]
+    return hits[0] if len(hits) == 1 else None
+
+
 def build():
     require_scopes()
     sync_discontinued()          # before reading products, so this build already carries the new value
@@ -337,6 +358,7 @@ def build():
     since30 = (dt.datetime.now(MEL) - dt.timedelta(days=30)).strftime("%Y-%m-%d")
     variant_sold, product_sold, lines = {}, {}, 0
     variant_last, product_last, variant_30, product_30 = {}, {}, {}, {}
+    orphans = []
     for l in order_lines:
         if "/LineItem/" not in l.get("id", "") or l.get("__parentId") in cancelled:
             continue
@@ -344,6 +366,8 @@ def build():
         q = int(l.get("quantity") or 0)
         vid, pid = num((l.get("variant") or {}).get("id")), num((l.get("product") or {}).get("id"))
         day = placed.get(l.get("__parentId"), "")
+        if pid and not vid:
+            orphans.append((str(pid), size_key(l), q, day))   # product known, variant lost (migrated order)
         if vid:
             variant_sold[vid] = variant_sold.get(vid, 0) + q
             if day > variant_last.get(vid, ""):
@@ -395,6 +419,25 @@ def build():
             if bc and bc not in cur[5]:
                 cur[5].append(bc)
 
+    # variant-less (migrated) order lines: add their units to the matching size row; sizes that no longer exist stay in the product total
+    other = {}
+    for pid, key, q, day in orphans:
+        P = products.get("gid://shopify/Product/" + pid)
+        if not P:
+            continue
+        k = match_variant(P["variants"], key)
+        if k:
+            row = P["variants"][k]
+            row[2] += q
+            if day > row[3]:
+                row[3] = day
+            if day >= since30:
+                row[4] += q
+        else:
+            o = other.setdefault(pid, {})
+            o[key or "unknown"] = o.get(key or "unknown", 0) + q
+    matched = sum(q for pid, key, q, day in orphans if "gid://shopify/Product/" + pid in products and match_variant(products["gid://shopify/Product/" + pid]["variants"], key))
+
     out = []
     for gid in order:
         p = products[gid]
@@ -403,7 +446,8 @@ def build():
             continue      # nothing ever sold: no days-to-sell, nothing to restock
         out.append({"id": p["id"], "title": p["title"], "image": p["image"], "url": p["url"], "published": p["published"],
                     "supplier": p["supplier"], "sales": sales, "last": product_last.get(p["id"], ""), "sold30": product_30.get(p["id"], 0),
-                    "disc": p["disc"], "cols": sorted(p["cols"]), "variants": list(p["variants"].values())})
+                    "disc": p["disc"], "cols": sorted(p["cols"]), "variants": list(p["variants"].values()),
+                    "otherSizes": sorted(other.get(str(p["id"]), {}).items(), key=lambda kv: -kv[1])})
     sync_product_cols(products)
     no_meta = sum(1 for p in products.values() if p["migrated"] and not p["fromMeta"])
 
@@ -424,7 +468,7 @@ def build():
     pv.write_encrypted(key, f"{RID}.meta.bin", json.dumps(meta).encode())
     pv.RID = RID
     pv.set_status(True)
-    print(json.dumps({"products": len(products), "with_sales": len(out), "order_lines": lines, "sold_out_variants": oos,
+    print(json.dumps({"products": len(products), "with_sales": len(out), "order_lines": lines, "migrated_lines_matched_to_size": matched, "sold_out_variants": oos,
                       "migrated_without_metafield": no_meta, "page_kb": round(len(page) / 1024)}))
 
 

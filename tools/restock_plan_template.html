@@ -925,6 +925,7 @@ select.sel{appearance:none;-webkit-appearance:none}
   #viewSup .svctl .svsel{display:flex;gap:8px;align-items:center;margin:0}#viewSup .svctl .svsel select{flex:1;min-width:0}
   #viewSup .svbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}#viewSup .svbtns button{padding:9px 6px;margin:0;width:100%}
   #svExport:disabled{opacity:.45}
+.osz{margin:6px 0 2px;padding:6px 10px;font-size:12px;color:var(--mut,#9aa3b2);background:rgba(120,140,170,.10);border-radius:8px}
 </style>
 <style>
 /* ---- Stock health gauge ---- */
@@ -1292,6 +1293,11 @@ function pipeline(vk){
 
 /* variants shown for a product: its Shopify variants minus removed sizes, plus sizes added through Add size (a live order line with no Shopify variant).
    Added sizes are shown as normal rows until the order is received. */
+function otherSizesHtml(P){
+  const o = (P.p.otherSizes || []).filter(x => x[1] > 0); if (!o.length) return '';
+  const n = o.reduce((a, x) => a + x[1], 0);
+  return `<div class="osz" title="Old orders for sizes this product no longer has. They count in the product total.">${n} sold in sizes no longer listed: ${o.map(x => esc(x[0].toUpperCase()) + ' ×' + x[1]).join(', ')}</div>`;
+}
 function variantsOf(p){
   const pid = String(p.id), raw = new Set(p.variants.map(v => keyOf(p.id, v[0])));
   const base = p.variants.filter(v => !hiddenSizes.has(keyOf(p.id, v[0])));
@@ -1568,7 +1574,7 @@ function cardHtml(g){
         <div class="tile ${ordCls}"><b>${P.units}</b><span>To order</span></div>
       </div>
       <div class="hnum ${P.units ? '' : 'zero'}"><div class="prow">${pTag(g)}</div><div class="pnum"><b>${P.units}</b><span>to order</span></div><div class="psd" title="Total units sold, all variants"><b>${P.total}</b> sold</div></div></div>
-    <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>${P.disc ? '' : addSizeHtml(P)}
+    <div class="body">${g.banner ? `<div class="banner">📦 Stock More Variants<span class="s">${P.total} units sold, 1 every ${fmt(P.pDTS)} days — consider adding new sizes/colours.</span><button data-done="${esc(P.p.id)}">✅ Done</button></div>` : ''}<div class="pbar">${btns('pbtn')}</div>${otherSizesHtml(P)}${P.disc ? '' : addSizeHtml(P)}
       <div class="scroll dtable"><table>
       <thead><tr><th>Priority</th><th>Variant</th><th>Sold</th><th>Days / 1 sold</th><th>Days left</th><th class="g1">Current stock</th><th class="g2">Required stock</th><th class="g3">To order</th><th>Supplier</th><th>Status</th></tr></thead>
       <tbody>${rows.map(x => x.tr).join('')}</tbody></table></div>
