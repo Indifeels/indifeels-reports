@@ -36,10 +36,10 @@
   "reason": ""
  },
  "google-ads-test": {
-  "at": "2026-10-27T00:36+11:00",
-  "code_sha": "be0c7f577e8364c6ddeba1f997116689c3e7fe9d",
+  "at": "2026-10-27T00:39+11:00",
+  "code_sha": "4cd5629a98c8aa580981ff22e4a225e10fb72915",
   "data_through": null,
-  "last_ok": "2026-10-27T00:36+11:00",
+  "last_ok": "2026-10-27T00:39+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
