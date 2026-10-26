@@ -144,14 +144,11 @@ function wed(){
  <div class="sechd">IF THIS, DO THIS</div><div class="rows">${RULES.map(r=>`<div class="rw" style="--c:${col(r[2])}"><span class="d"></span><div><b>${r[0]}</b><small>${r[1]}</small></div></div>`).join("")}</div>`;
  const head=`<div class="r1"><span class="nm">TEST · Wedding PMax 01</span><span class="ch">${isOpen("wed")?"▴":"▾"}</span></div><div class="r2"><span class="tag" style="--c:${launched?"var(--g)":"var(--ac)"}">${launched?"Active":"To create"}</span></div><div class="stats"><div><i>Setup</i><b>${Math.min(cur+1,STEPS.length)} of ${STEPS.length}</b></div><div><i>Spend</i><b>${show?"$184":"—"}</b></div><div><i>Purchases</i><b>${show?"9":"—"}</b></div><div><i>ROAS</i><b style="color:${show?"var(--g)":"inherit"}">${show?SM.roas.toFixed(2)+"×":"—"}</b></div></div>`;
  return tile("wed",head,b)}
-const isG=k=>S.open[k]!==false;
+const isG=k=>!!S.open[k];
 function grp(k,t,p,list){return `<div class="card ${isG(k)?"open":""}" data-k="${k}"><button class="hd" data-t><div class="r1"><span class="nm">${t}</span><span class="cnt"><span class="n2">${list.length}</span><span class="ch">${isG(k)?"▴":"▾"}</span></span></div></button><div class="cslide"><div><div class="gdef">${p}</div><div class="sub">${list.join("")}</div></div></div></div>`}
 function render(){
  document.getElementById("app").innerHTML=
- `<div class="card top"><div class="r1"><span class="nm big2">Google Ads</span><span class="mu">Indifeels Australia</span></div><div class="mu s12">Existing campaigns: 30 days to 25 Oct 2026</div>
- <div class="legend"><span><i style="background:var(--r)"></i>Missing / poor</span><span><i style="background:var(--a)"></i>Needs attention</span><span><i style="background:var(--g)"></i>OK</span></div>
- <div class="mu s12">The circles on each campaign count its settings in each status. Numbers in a table show priority, 1 first.</div>
- <div class="btns"><button class="pillb ${S.samp?"on":""}" id="samp">Show sample data</button><button class="pillb" id="theme">Light / Dark</button></div></div>`
+ ""
  +grp("g_new","New test","Built fresh for wedding season. Setup steps unlock one at a time.",[wed()])
  +grp("g_pmax","Performance Max","One campaign across all Google channels. Google’s AI picks where to show; you set budget, goal, assets and location. No keywords.",C.filter(c=>c.grp==="pmax").map(camp))
  +grp("g_search","Search","Text ads on Google results. You choose keywords, match types and negatives.",C.filter(c=>c.grp==="search").map(camp))}
