@@ -382,6 +382,28 @@
       ],
       "supabase_sync": false,
       "schedule_control": "report_schedules"
+    },
+    {
+      "id": "google-ads-test",
+      "title": "Google Ads Test",
+      "workflow": "claude-scheduled-task",
+      "refresh_times": [
+        "on request"
+      ],
+      "required_env": [
+        "GOOGLE_ADS_TEST_KEY"
+      ],
+      "builders": [
+        "tools/google_ads_test.py",
+        "tools/google_ads_test_template.html",
+        "tools/google_ads_test_REFRESH.md"
+      ],
+      "outputs": [
+        "r/google-ads-test.bin",
+        "r/google-ads-test.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "none"
     }
   ]
 }

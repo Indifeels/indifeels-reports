@@ -35,6 +35,15 @@
   "ok": true,
   "reason": ""
  },
+ "google-ads-test": {
+  "at": "2026-10-27T00:26+11:00",
+  "code_sha": "0e042212fe0c889ccf433b03318747f0530aeb21",
+  "data_through": null,
+  "last_ok": "2026-10-27T00:26+11:00",
+  "manifest_version": "2026-10-19.stock-take.1",
+  "ok": true,
+  "reason": ""
+ },
  "google-scorecard": {
   "at": "2026-10-26T13:58+11:00",
   "code_sha": "e4f6bdf64ae32f07036a0a8b4841a284451d1046",

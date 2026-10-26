@@ -1,0 +1,114 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Wedding PMax Test</title>
+<style>
+:root{--bg:#eef0f3;--tile:#fff;--tile2:#f3f5f8;--tx:#1c2027;--mu:#6b7482;--ln:#e3e6ea;--g:#0f9d66;--a:#b97f00;--r:#d23b38;--n:#9aa3af;--sh:rgba(40,50,70,.14);--st:#d3d7de;--ac:#2a76d4}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#17191d;--tile:#20242a;--tile2:#2a2f37;--tx:#eceef2;--mu:#8d96a3;--ln:#2e333b;--g:#2fbf86;--a:#f0b232;--r:#f0605d;--n:#6b7482;--sh:rgba(0,0,0,.4);--st:#111317;--ac:#58a6ff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17191d;--tile:#20242a;--tile2:#2a2f37;--tx:#eceef2;--mu:#8d96a3;--ln:#2e333b;--g:#2fbf86;--a:#f0b232;--r:#f0605d;--n:#6b7482;--sh:rgba(0,0,0,.4);--st:#111317;--ac:#58a6ff;color-scheme:dark}
+
+*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--tx);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding-block:16px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}.top p{font-size:12px;color:var(--mu)}
+.pillb{background:var(--tile);border-radius:999px;padding:6px 12px;font-size:12px;box-shadow:0 2px 0 var(--st)}.pillb.on{outline:2px solid var(--ac)}
+.card{background:var(--tile);border-radius:14px;margin-bottom:14px;box-shadow:0 3px 0 var(--st),0 10px 18px var(--sh)}
+.hero{padding:18px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;border-left:6px solid var(--c,var(--n))}
+.hero h1{font-size:18px}.hero .sub{font-size:12.5px;color:var(--mu);margin-top:2px}
+.big{text-align:right}.big b{font-size:38px;line-height:1;color:var(--c,var(--n))}.big span{display:block;font-size:11px;color:var(--mu);letter-spacing:.06em}
+.mini{grid-column:1/-1;display:flex;gap:22px;flex-wrap:wrap;font-size:13px;color:var(--mu)}.mini b{color:var(--tx);font-weight:650}
+.tag{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;background:var(--c,var(--n));color:#fff;margin-left:6px;vertical-align:middle}.tag.a{color:#1a1a1a}
+h2{font-size:15px;padding:16px 16px 4px}.hint{font-size:12.5px;color:var(--mu);padding:0 16px 10px}
+.bar{padding:0 16px 14px}.bar .tr{height:10px;background:var(--tile2);border-radius:99px;overflow:hidden}.bar .fl{height:100%;background:var(--g);width:0;transition:width .4s}.bar .lb{display:flex;justify-content:space-between;font-size:12px;color:var(--mu);margin-top:6px}
+.step{margin:0 12px 10px;border-radius:12px;background:var(--tile2);overflow:hidden}.step .sh{display:flex;gap:10px;align-items:center;padding:12px 14px;width:100%}
+.num{flex:0 0 26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;background:var(--tile);color:var(--mu)}
+.step.cur .num{background:var(--ac);color:#fff}.step.done .num{background:var(--g);color:#fff}
+.sn{font-weight:600}.st{margin-left:auto;font-size:11px;color:var(--mu)}.step.lock{opacity:.5}
+.sb{display:none;padding:0 14px 14px}.step.cur .sb{display:block}
+.ck{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--ln);cursor:pointer}.ck input{margin-top:3px;width:17px;height:17px;accent-color:var(--g)}
+.ck span{flex:1}.copy{margin:8px 0;background:var(--tile);border-radius:8px;padding:10px 12px;font-size:12.5px}.copy b{display:block;color:var(--mu);font-size:11px;letter-spacing:.06em;margin:6px 0 2px}.copy b:first-child{margin-top:0}.copy i{font-style:normal;color:var(--mu);font-size:11px;margin-left:6px}
+.go{margin-top:10px;background:var(--ac);color:#fff;border-radius:9px;padding:9px 16px;font-weight:650}.go:disabled{background:var(--tile);color:var(--mu);cursor:not-allowed}
+.undo{font-size:11px;color:var(--ac);margin-left:8px}
+.funnel{display:flex;gap:4px;padding:0 16px 8px;overflow-x:auto}.fn{flex:1;min-width:84px;background:var(--tile2);border-radius:10px;padding:9px 10px;border-top:4px solid var(--c,var(--n))}.fn i{font-style:normal;display:block;font-size:11px;color:var(--mu)}.fn b{font-size:16px}.fn small{display:block;font-size:11px;color:var(--c,var(--mu))}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;padding:0 16px 14px}.kp{background:var(--tile2);border-radius:10px;padding:10px 12px;border-left:5px solid var(--c,var(--n))}.kp i{font-style:normal;font-size:11px;color:var(--mu);display:block}.kp b{font-size:18px}.kp small{display:block;font-size:11px;color:var(--mu)}
+.rows{padding:0 16px 14px}.rw{display:grid;grid-template-columns:12px 1fr;gap:10px;padding:9px 10px;border-top:1px solid var(--ln);border-radius:8px}.rw .d{width:11px;height:11px;border-radius:50%;background:var(--c,var(--n));margin-top:4px}
+.rw.hit{background:color-mix(in srgb,var(--c) 14%,transparent)}.rw small{display:block;color:var(--mu);font-size:12px}.rw b{font-weight:600}
+.note{font-size:11px;color:var(--mu);padding:0 16px 14px}
+</style>
+<div class="wrap">
+<div class="top"><div><b>Marketing Analysis › Google Ads › Test campaigns</b><p>PREVIEW, not published</p></div><div><button class="pillb" id="samp">Show sample data</button> <button class="pillb" id="theme">Light / Dark</button></div></div>
+<div id="app"></div></div>
+<script>
+const COPY={
+ h:["Indian Wedding Wear Australia","Lehengas, Sarees & Sherwanis","Wedding Guest Outfits","Shop Bridal & Festive Looks","Melbourne Indian Wedding Wear"],
+ lh:["Indian wedding outfits for the bride, groom and every guest","Lehengas, sarees, sherwanis and kurta sets delivered across Australia"],
+ d:["Shop Indian wedding wear online. Lehengas, sarees, sherwanis and more for every guest.","Dress for the big day with outfits for brides, grooms and wedding guests.","Visit our Melbourne store or order online. Indifeels Australia."],
+ t:["indian wedding outfits","lehenga australia","sherwani melbourne","indian wedding guest outfit","bridal lehenga melbourne"]};
+const STEPS=[
+ {n:"Copy Feed Only",items:["Google Ads → Campaigns","Tick MM · Feed Only (do not change it)","Edit → Copy","Untick it, then Edit → Paste → Paste as new campaign","Check the new campaign says Paused","Rename it TEST · Wedding PMax 01"]},
+ {n:"Budget, bidding and goal",items:["Open TEST · Wedding PMax 01 → Settings","Budget: $25 a day","Bidding: Maximise conversion value, leave Target ROAS empty","Goals: Purchase only","Save"]},
+ {n:"Locations and language",items:["Locations: Australia","Location options: Presence (people in or regularly in your locations)","Languages: English","Final URL expansion: Off","Save"]},
+ {n:"Wedding products only",items:["On indifeels.com confirm a wedding collection exists, copy its link","Campaign → Asset groups → open each copied asset group","Listing groups → Subdivide by Product type or Custom label","Keep only wedding items, exclude everything else","Save"]},
+ {n:"Wedding asset group",copy:true,items:["Asset groups → + New asset group, name it Wedding","Final URL: the wedding collection link from Step 4","Paste the headlines, long headlines and descriptions below","Add 5+ wedding images (landscape, square, portrait) and your logo","Pause the two copied asset groups, Women’s and All Products","Ad strength shows Good or Excellent, not Poor"]},
+ {n:"Search themes",items:["Open the Wedding asset group → Audience signal","Add the search themes below","Save"]},
+ {n:"Final check and launch",items:["Budget $25, bidding and goal as set","Only the Wedding asset group is enabled","Write down today’s date as the start date","Enable the campaign","Make no changes for 7 days"]}
+];
+const KPI=[ // key,label,fmt,rule(v)->g/a/r,sample
+ ["roas","ROAS",v=>v.toFixed(2)+"×",v=>v>=3?"g":v>=2?"a":"r",3.4,"Target 3× or more"],
+ ["cpa","Cost per purchase",v=>"$"+v.toFixed(0),v=>v<=45?"g":v<=70?"a":"r",52,"Under $45 is good"],
+ ["cvr","Conversion rate",v=>v.toFixed(1)+"%",v=>v>=2?"g":v>=1?"a":"r",1.6,"2% or more"],
+ ["aov","Average order",v=>"$"+v.toFixed(0),v=>v>=90?"g":v>=60?"a":"r",118,"Weddings should beat $90"],
+ ["pace","Budget used",v=>v.toFixed(0)+"%",v=>v>=80&&v<=105?"g":v>=50?"a":"r",92,"80 to 105% of $25"],
+ ["asset","Ad strength",v=>["Poor","Average","Good","Excellent"][v],v=>v>=2?"g":v==1?"a":"r",2,"Good or better"]];
+const FUN=[["Clicks",412],["Add to cart",58],["Checkout",21],["Purchases",9]];
+const CHK=[ // id,label,why,test(sampleState)
+ ["a","Spend with no purchases","Spent over $50 and 0 purchases → check tracking and landing page",s=>false],
+ ["b","Clicks but few add to cart","Under 5% add to cart → the page or products don’t match the ad",s=>(FUN[1][1]/FUN[0][1])<0.05],
+ ["c","Add to cart but no checkout","Under 40% reach checkout → shipping cost or checkout friction",s=>(FUN[2][1]/FUN[1][1])<0.4],
+ ["d","ROAS under 2× after day 7","Weak return → fix assets before adding budget",s=>s.roas<2],
+ ["e","Ad strength Poor","Add more images, headlines, descriptions",s=>s.asset==0],
+ ["f","Budget not spending","Under 50% used → bid too restrictive or audience too small",s=>s.pace<50]];
+const RULES=[
+ ["ROAS 3× or more for 3 days","Raise budget 20%. Repeat every 3 days."],
+ ["ROAS 2× to 3×","Hold. Improve images and headlines."],
+ ["ROAS under 2× after 7 days","Cut budget by half, fix the weak link above."],
+ ["Spend over $50, 0 purchases","Stop, check purchase tracking first."],
+ ["Day 1 to 7","Learning. Make no changes."]];
+let S={done:[],tick:{},samp:false};try{S=Object.assign(S,JSON.parse(localStorage.getItem("wed")||"{}"))}catch(e){}
+const sv=()=>{try{localStorage.setItem("wed",JSON.stringify(S))}catch(e){}};
+const col=c=>c?`var(--${c})`:"var(--n)";
+function render(){
+ const cur=S.done.length,pct=Math.round(cur/STEPS.length*100);
+ const sm={roas:3.4,pace:92,asset:2};
+ const launched=cur>=STEPS.length;
+ const show=S.samp;
+ const hc=show?KPI[0][3](sm.roas):null;
+ let h=`<div class="card hero" style="--c:${col(hc)}"><div><h1>TEST · Wedding PMax 01 <span class="tag ${hc==="a"?"a":""}" style="--c:${col(hc||"n")}">${show?(hc==="g"?"On track":hc==="a"?"Watch":"Fix"):launched?"Live, waiting for data":"Not launched"}</span></h1><div class="sub">Performance Max · independent of all other campaigns · $25 a day</div></div>
+ <div class="big"><b>${show?sm.roas.toFixed(2)+"×":"—"}</b><span>ROAS</span></div>
+ <div class="mini"><span>Day <b>${show?"8":launched?"1":"0"}</b></span><span>Spend <b>${show?"$184":"—"}</b></span><span>Purchases <b>${show?"9":"—"}</b></span><span>Value <b>${show?"$627":"—"}</b></span></div></div>`;
+ h+=`<div class="card"><h2>Setup: step by step</h2><div class="hint">One step at a time. Tick every line to unlock the button. The next step stays locked until then.</div>
+ <div class="bar"><div class="tr"><div class="fl" style="width:${pct}%"></div></div><div class="lb"><span>Step ${Math.min(cur+1,STEPS.length)} of ${STEPS.length}</span><span>${pct}%</span></div></div>`;
+ STEPS.forEach((s,i)=>{
+  const st=i<cur?"done":i===cur?"cur":"lock",tk=S.tick[i]||[];
+  const all=s.items.every((_,j)=>tk[j]);
+  h+=`<div class="step ${st}"><div class="sh"><span class="num">${i<cur?"✓":i+1}</span><span class="sn">Step ${i+1}: ${s.n}</span><span class="st">${st==="done"?"Done":st==="cur"?"Now":"Locked"}${i===cur-1?`<button class="undo" data-undo>Undo</button>`:""}</span></div>`;
+  if(st==="cur"){
+   h+=`<div class="sb">${s.items.map((t,j)=>`<label class="ck"><input type="checkbox" data-s="${i}" data-j="${j}" ${tk[j]?"checked":""}><span>${t}</span></label>`).join("")}`;
+   if(s.copy)h+=`<div class="copy"><b>HEADLINES (30 characters max)</b>${COPY.h.map(x=>`<div>${x}<i>${x.length}</i></div>`).join("")}<b>LONG HEADLINES (90 max)</b>${COPY.lh.map(x=>`<div>${x}<i>${x.length}</i></div>`).join("")}<b>DESCRIPTIONS (90 max)</b>${COPY.d.map(x=>`<div>${x}<i>${x.length}</i></div>`).join("")}</div>`;
+   if(i===5)h+=`<div class="copy"><b>SEARCH THEMES</b>${COPY.t.map(x=>`<div>${x}</div>`).join("")}</div>`;
+   h+=`<button class="go" data-go="${i}" ${all?"":"disabled"}>${i===STEPS.length-1?"Launched, finish setup":"Step done, unlock Step "+(i+2)}</button></div>`}
+  h+=`</div>`});
+ h+=`<div style="height:4px"></div></div>`;
+ h+=`<div class="card"><h2>The story, in order</h2><div class="hint">Where people drop off tells you what to fix.</div><div class="funnel">${FUN.map((f,i)=>{
+   const p=i?f[1]/FUN[i-1][1]:null,c=!show?null:!i?"g":(i===1?(p>=.05?"g":p>=.03?"a":"r"):i===2?(p>=.4?"g":p>=.25?"a":"r"):(p>=.3?"g":p>=.15?"a":"r"));
+   return `<div class="fn" style="--c:${col(c)}"><i>${f[0]}</i><b>${show?f[1]:"—"}</b><small>${show&&p!=null?(p*100).toFixed(0)+"% of previous":" "}</small></div>`}).join("")}</div>
+ <div class="grid">${KPI.map(k=>{const c=show?k[3](k[4]):null;return `<div class="kp" style="--c:${col(c)}"><i>${k[1]}</i><b>${show?k[2](k[4]):"—"}</b><small>${k[5]}</small></div>`}).join("")}</div>
+ <div class="note">${show?"SAMPLE numbers to show the look. Not real data.":"Fills with live data once the campaign is running. Nothing is judged before day 3."}</div></div>`;
+ h+=`<div class="card"><h2>What’s going wrong?</h2><div class="hint">Checked every day. A row lights up when it applies.</div><div class="rows">${CHK.map(c=>{const hit=show&&c[3](sm);const cc=hit?"r":show?"g":null;return `<div class="rw ${hit?"hit":""}" style="--c:${col(cc)}"><span class="d"></span><div><b>${c[1]}</b><small>${c[2]}</small></div></div>`}).join("")}</div></div>`;
+ h+=`<div class="card"><h2>If this, do this</h2><div class="hint">The next move for you, from the numbers.</div><div class="rows">${RULES.map((r,i)=>`<div class="rw" style="--c:${col(["g","a","r","r","n"][i])}"><span class="d"></span><div><b>${r[0]}</b><small>${r[1]}</small></div></div>`).join("")}</div></div>`;
+ document.getElementById("app").innerHTML=h;document.getElementById("samp").classList.toggle("on",S.samp)}
+document.addEventListener("change",e=>{const t=e.target;if(t.dataset.s===undefined)return;const i=+t.dataset.s,j=+t.dataset.j;S.tick[i]=S.tick[i]||[];S.tick[i][j]=t.checked;sv();render()});
+document.addEventListener("click",e=>{const g=e.target.closest("[data-go]");if(g){S.done.push(+g.dataset.go);sv();render();return}
+ if(e.target.closest("[data-undo]")){e.stopPropagation();S.done.pop();sv();render();return}
+ if(e.target.id==="samp"){S.samp=!S.samp;sv();render()}});
+try{const t=localStorage.getItem("gi-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}
+document.getElementById("theme").onclick=()=>{const r=document.documentElement,cu=r.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"),n=cu==="dark"?"light":"dark";r.setAttribute("data-theme",n);try{localStorage.setItem("gi-theme",n)}catch(e){}};
+render();
+</script>
