@@ -63,6 +63,8 @@ h2{font-size:15px;padding:16px 16px 4px}.hint{font-size:12.5px;color:var(--mu);p
 .tag{display:inline-block;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--c);margin:0}
 .gdef{padding:0 16px 12px;font-size:12.5px;color:var(--mu)}.sub{padding:0 12px 12px}.sub .card{--tile:var(--lv2);--tile2:var(--lv3);box-shadow:0 2px 0 var(--st);margin-bottom:10px}
 .cnt .ch{background:none;min-width:0}
+.cnt .os{background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--c);font-weight:700;min-width:0;padding:2px 10px;margin-right:4px;white-space:nowrap}
+.cnt .os i{font-style:normal;font-weight:500;color:var(--mu);margin-right:4px}
 </style>
 <div class="wrap"><div id="app"></div></div>
 <script>
@@ -145,13 +147,16 @@ function wed(){
  const head=`<div class="r1"><span class="nm">TEST · Wedding PMax 01</span><span class="ch">${isOpen("wed")?"▴":"▾"}</span></div><div class="r2"><span class="tag" style="--c:${launched?"var(--g)":"var(--ac)"}">${launched?"Active":"To create"}</span></div><div class="stats"><div><i>Setup</i><b>${Math.min(cur+1,STEPS.length)} of ${STEPS.length}</b></div><div><i>Spend</i><b>${show?"$184":"—"}</b></div><div><i>Purchases</i><b>${show?"9":"—"}</b></div><div><i>ROAS</i><b style="color:${show?"var(--g)":"inherit"}">${show?SM.roas.toFixed(2)+"×":"—"}</b></div></div>`;
  return tile("wed",head,b)}
 const isG=k=>!!S.open[k];
-function grp(k,t,p,list){return `<div class="card ${isG(k)?"open":""}" data-k="${k}"><button class="hd" data-t><div class="r1"><span class="nm">${t}</span><span class="cnt"><span class="n2">${list.length}</span><span class="ch">${isG(k)?"▴":"▾"}</span></span></div></button><div class="cslide"><div><div class="gdef">${p}</div><div class="sub">${list.join("")}</div></div></div></div>`}
+const OPT={feed:71,best:96,dus:64,karwa:92,nt:76,search:61};
+const optAvg=ids=>{const v=ids.map(i=>OPT[i]).filter(x=>x!=null);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):null};
+const optCol=n=>n==null?"var(--mu)":n>=80?"var(--g)":n>=50?"var(--a)":"var(--r)";
+function grp(k,t,p,list,sc){const os=`<span class="os" style="--c:${optCol(sc)}" title="Overall optimization score (Google Ads)"><i>Opt</i>${sc==null?"—":sc+"%"}</span>`;return `<div class="card ${isG(k)?"open":""}" data-k="${k}"><button class="hd" data-t><div class="r1"><span class="nm">${t}</span><span class="cnt">${os}<span class="n2">${list.length}</span><span class="ch">${isG(k)?"▴":"▾"}</span></span></div></button><div class="cslide"><div><div class="gdef">${p}</div><div class="sub">${list.join("")}</div></div></div></div>`}
 function render(){
  document.getElementById("app").innerHTML=
  ""
- +grp("g_new","New test","Built fresh for wedding season. Setup steps unlock one at a time.",[wed()])
- +grp("g_pmax","Performance Max","One campaign across all Google channels. Google’s AI picks where to show; you set budget, goal, assets and location. No keywords.",C.filter(c=>c.grp==="pmax").map(camp))
- +grp("g_search","Search","Text ads on Google results. You choose keywords, match types and negatives.",C.filter(c=>c.grp==="search").map(camp))}
+ +grp("g_new","New test","Built fresh for wedding season. Setup steps unlock one at a time.",[wed()],null)
+ +grp("g_pmax","Performance Max","One campaign across all Google channels. Google’s AI picks where to show; you set budget, goal, assets and location. No keywords.",C.filter(c=>c.grp==="pmax").map(camp)),optAvg(C.filter(c=>c.grp==="pmax").map(c=>c.id))
+ +grp("g_search","Search","Text ads on Google results. You choose keywords, match types and negatives.",C.filter(c=>c.grp==="search").map(camp)),optAvg(C.filter(c=>c.grp==="search").map(c=>c.id))}
 document.addEventListener("change",e=>{const t=e.target;if(t.dataset.s===undefined)return;const i=+t.dataset.s,j=+t.dataset.j;S.tick[i]=S.tick[i]||[];S.tick[i][j]=t.checked;sv();render()});
 document.addEventListener("click",e=>{
  const g=e.target.closest("[data-go]");if(g){S.done.push(+g.dataset.go);sv();render();return}
