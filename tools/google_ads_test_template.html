@@ -155,8 +155,8 @@ function render(){
  document.getElementById("app").innerHTML=
  ""
  +grp("g_new","New test","Built fresh for wedding season. Setup steps unlock one at a time.",[wed()],null)
- +grp("g_pmax","Performance Max","One campaign across all Google channels. Google’s AI picks where to show; you set budget, goal, assets and location. No keywords.",C.filter(c=>c.grp==="pmax").map(camp)),optAvg(C.filter(c=>c.grp==="pmax").map(c=>c.id))
- +grp("g_search","Search","Text ads on Google results. You choose keywords, match types and negatives.",C.filter(c=>c.grp==="search").map(camp)),optAvg(C.filter(c=>c.grp==="search").map(c=>c.id))}
+ +grp("g_pmax","Performance Max","One campaign across all Google channels. Google’s AI picks where to show; you set budget, goal, assets and location. No keywords.",C.filter(c=>c.grp==="pmax").map(camp),optAvg(C.filter(c=>c.grp==="pmax").map(c=>c.id)))
+ +grp("g_search","Search","Text ads on Google results. You choose keywords, match types and negatives.",C.filter(c=>c.grp==="search").map(camp),optAvg(C.filter(c=>c.grp==="search").map(c=>c.id)))}
 document.addEventListener("change",e=>{const t=e.target;if(t.dataset.s===undefined)return;const i=+t.dataset.s,j=+t.dataset.j;S.tick[i]=S.tick[i]||[];S.tick[i][j]=t.checked;sv();render()});
 document.addEventListener("click",e=>{
  const g=e.target.closest("[data-go]");if(g){S.done.push(+g.dataset.go);sv();render();return}
