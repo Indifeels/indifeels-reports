@@ -562,6 +562,7 @@ const Store = PREVIEW ? {
   adds: async () => ({}),
   adjLog: async () => [],
   labelHist: async () => [],
+  boxPrint: async () => [],
   takeCancel: async id => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== id); LS.set('st-demo-takes', a); return {ok: true}; },
   takeEnd: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {status: 'ended', updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
 } : {
@@ -575,6 +576,7 @@ const Store = PREVIEW ? {
   adjust: (loc, mode, items, dry, box) => call('adjustlist', {loc, mode, items, dry, box: box || ''}, 120000),
   adjLog: () => call('adjlog', {}, 30000),
   labelHist: () => call('labelhist', {}, 30000),
+  boxPrint: () => call('boxprint', {}, 30000),
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
   deleteVariant: vid => call('deletevariant', {vid}, 40000),
   setStatus: (pid, status) => call('setstatus', {pid, status}, 40000),
@@ -647,19 +649,42 @@ $('tabBulk').onclick = () => show('bulk'); $('tabTake').onclick = () => show('ta
   $('lgFilter').onchange = draw; $('lgSearch').oninput = draw; $('lgRefresh').onclick = () => window.lgLoad();
 })();
 
-/* ----- Barcodes tab: labels already printed, newest batch first ----- */
+/* ----- Barcodes tab: labels already printed, newest batch first, with the box it belongs to, box qty vs printed qty and the stock published ----- */
 (() => {
   const fmt = s => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleString('en-AU', {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'}); };
+  const norm = x => String(x || '').trim().toLowerCase();
   async function load() {
-    let rows = [];
-    try { rows = (await Store.labelHist()) || []; } catch (e) { $('phList').innerHTML = `<div class="empty">Could not load: ${E(e.message)}</div>`; return; }
+    let rows = [], bx = [], adj = [];
+    try { [rows, bx, adj] = await Promise.all([Store.labelHist(), Store.boxPrint().catch(() => []), Store.adjLog().catch(() => [])]); rows = rows || []; bx = bx || []; adj = adj || []; }
+    catch (e) { $('phList').innerHTML = `<div class="empty">Could not load: ${E(e.message)}</div>`; return; }
+    const boxes = new Map(); bx.forEach(r => { const k = String(r.product_id) + '|' + norm(r.variant_title); if (!boxes.has(r.box_no)) boxes.set(r.box_no, new Map()); boxes.get(r.box_no).set(k, r); });
+    const pub = new Map(); adj.filter(a => a.box).slice().reverse().forEach(a => { const k = a.box + '|' + a.vid; const p = pub.get(k); if (!p) pub.set(k, {from: a.before, to: a.after, by: a.by, at: a.at}); else { p.to = a.after; p.by = a.by; p.at = a.at; } });
     const g = new Map(); rows.forEach(r => { const k = String(r.printed_at || '').slice(0, 16); if (!g.has(k)) g.set(k, []); g.get(k).push(r); });
-    const batches = [...g.values()].slice(0, 30);
-    $('phList').innerHTML = batches.length ? batches.map((ls, i) => { const tot = ls.reduce((a, r) => a + (r.copies || 0), 0);
-      return `<details style="border-top:1px solid rgba(128,128,128,.25)"><summary style="cursor:pointer;padding:10px 2px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><b>${E(fmt(ls[0].printed_at))}</b><span style="color:var(--muted);font-size:13px">${tot} label${tot === 1 ? '' : 's'} · ${ls.length} variant${ls.length === 1 ? '' : 's'}</span></summary>` +
-        ls.map(r => `<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:13px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${E(r.product)} · ${E(r.variant)}</span><span style="white-space:nowrap;color:var(--muted)">${E(r.barcode)} <b style="color:inherit">× ${r.copies}</b></span></div>`).join('') + '</details>'; }).join('') : '<div class="empty">Nothing printed yet.</div>';
+    const keyOf = r => { const v = byVid.get(String(r.vid)); return v ? String(v.pid) + '|' + norm(v.t) : 'v|' + r.vid; };
+    const batches = [...g.values()].slice(0, 30); window.__phBatches = batches;
+    $('phList').innerHTML = batches.length ? batches.map((ls, bi) => {
+      const pk = new Map(); ls.forEach(r => { const k = keyOf(r); const p = pk.get(k) || {copies: 0, r}; p.copies += r.copies || 0; pk.set(k, p); });
+      let best = '', bo = 0; boxes.forEach((m, bn) => { let o = 0; pk.forEach((_, k) => { if (m.has(k)) o++; }); if (o > bo) { bo = o; best = bn; } });
+      const box = best && bo >= Math.max(1, Math.ceil(pk.size * 0.6)) ? best : '', bm = box ? boxes.get(box) : null;
+      const keys = new Map(); if (bm) bm.forEach((r, k) => keys.set(k, {box: r.box_qty + r.over_qty, over: r.over_qty, prod: r.product_title, img: r.image, pid: String(r.product_id), size: r.variant_title, vid: ''}));
+      pk.forEach((p, k) => { const v = byVid.get(String(p.r.vid)); const e = keys.get(k) || {box: 0, over: 0, prod: p.r.product, img: v ? v.image : '', pid: v ? String(v.pid) : k, size: p.r.variant}; e.printed = p.copies; e.vid = String(p.r.vid); e.bc = p.r.barcode; keys.set(k, e); });
+      const all = [...keys.values()], tb = all.reduce((a, e) => a + e.box, 0), tp = all.reduce((a, e) => a + (e.printed || 0), 0), miss = bm && tb !== tp;
+      const prods = new Map(); all.forEach(e => { if (!prods.has(e.pid)) prods.set(e.pid, []); prods.get(e.pid).push(e); });
+      const body = [...prods.values()].map(es => { const f = es[0];
+        return `<div class="bxl" style="align-items:flex-start"><img src="${E(f.img || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(f.prod)}</div>` +
+          es.map(e => { const p = e.printed || 0, p2 = e.vid ? pub.get(box + '|' + e.vid) : null, bad = bm && e.box !== p;
+            return `<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 10px;padding:3px 0;font-size:13px"><b>${E(e.size)}</b><span style="color:var(--muted)">` + (bm ? `Box ${e.box}${e.over ? ` <span style="color:var(--red)">(${e.over} over reported)</span>` : ''} · ` : '') + `Printed <b style="color:${bad ? 'var(--red)' : 'inherit'}">${p}</b>${bad && e.box > p ? ` <span style="color:var(--red);font-weight:700">missing ${e.box - p}</span>` : ''}` + (box ? ` · Stock ${p2 ? `<b style="color:var(--green)">${p2.from} → ${p2.to}</b>` : '<span style="color:var(--muted)">not published</span>'}` : '') + `</span></div>`; }).join('') + '</div></div>'; }).join('');
+      return `<details style="border-top:1px solid rgba(128,128,128,.25)"><summary style="cursor:pointer;padding:10px 2px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><b>${E(fmt(ls[0].printed_at))}</b>${box ? `<span style="padding:1px 8px;border-radius:999px;background:rgba(128,128,128,.2);font-size:12px;font-weight:700">${E(box)}</span>` : ''}<span style="color:var(--muted);font-size:13px">${bm ? `Box ${tb} · ` : ''}Printed <b style="color:${miss ? 'var(--red)' : 'inherit'}">${tp}</b> · ${pk.size} variant${pk.size === 1 ? '' : 's'}</span></summary><div style="padding:2px 0 8px"><button type="button" data-phpdf="${bi}">⬇ Download labels PDF</button> <span class="msg" data-phmsg="${bi}" style="display:inline"></span></div>${body}</details>`; }).join('') : '<div class="empty">Nothing printed yet.</div>';
   }
   window.phLoad = load; $('phRefresh').onclick = load;
+  $('phList').onclick = async e => {
+    const b = e.target.closest('[data-phpdf]'); if (!b) return; e.preventDefault();
+    const ls = (window.__phBatches || [])[+b.dataset.phpdf], m = $('phList').querySelector(`[data-phmsg="${b.dataset.phpdf}"]`); if (!ls) return;
+    b.disabled = true; m.textContent = 'Making the PDF…';
+    try { const r = await Store.printLabels(ls.map(x => ({vid: x.vid, product: x.product, variant: x.variant, barcode: x.barcode, copies: x.copies})), 1); m.textContent = `PDF saved to your Downloads folder: ${r.labels} labels on ${r.sheets} sheet${r.sheets === 1 ? '' : 's'}.`; }
+    catch (err) { m.textContent = err.message; }
+    b.disabled = false;
+  };
 })();
 $('theme').onclick = () => { const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; theme(t); try { parent.postMessage({type: 'stock-take', action: 'theme', theme: t}, '*'); } catch (e) {} };
 
