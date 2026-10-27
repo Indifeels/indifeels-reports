@@ -254,7 +254,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx.open .bx-h .chev{transform:rotate(90deg)}
 .bx-title{font-size:21px;font-weight:800;letter-spacing:.02em}
 .bx-pill{border-radius:999px;padding:3px 13px;font-size:14px;font-weight:700}
-.bx-pill.op{background:#e3b341;color:#2b2100}.bx-pill.sh{background:#3fb950;color:#06240f}
+.bx-pill.op{background:#e3b341;color:#2b2100}.bx-pill.sh{background:#3fb950;color:#06240f}.bx-pill.rc{background:#388bfd;color:#04193a}
 .bx-sum{font-size:16px;color:#d6dae0}
 .bx-right{margin-left:auto;font-size:15px;color:#e6e9ed;display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center}
 .bx-right a{color:#9ccfff;font-weight:600}
@@ -297,9 +297,6 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .sc.sc-ship{--ac:#3fb950;--g1:#2ea043;--g2:#17622a;--g3:#08290f}
 .sc-h{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:'chev title hint' '. count hint';align-items:center;column-gap:12px;row-gap:6px;min-height:92px;box-sizing:border-box;padding:20px 20px;cursor:pointer;user-select:none;color:#fff;background:linear-gradient(180deg,var(--g1) 0%,var(--g2) 55%,var(--g3) 100%);border-top:1px solid rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 -4px 8px rgba(0,0,0,.45)}
 .sc-h:hover{filter:brightness(1.1)}
-.sc{display:block;padding:0;gap:0}
-.bx-prod th{position:static}
-.bx-prod>.suprow{align-self:flex-start;margin-top:2px}
 .sc-h .chev{grid-area:chev;width:18px;color:#fff;transition:transform .15s;flex:none;font-size:16px}
 .sc.open>.sc-h .chev{transform:rotate(90deg)}
 .sc-t{grid-area:title;font-size:25px;font-weight:800;letter-spacing:.01em}
@@ -325,17 +322,6 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .sc-n:empty{display:none}
 .low.addl{background:#4a2f7a!important;color:#e6d9ff!important;border:0!important}
 :root[data-theme=light] .low.addl{background:#e9defa!important;color:#4a2f7a!important}
-
-/* aligned columns: every product row has the same grid, so names, pills and tables line up down the page */
-.bx-prod>.svinfo{flex:0 0 250px;min-width:0}.bx-prod>.svinfo .svpn{margin:2px 0 8px}.bx-prod>.svinfo .suprow{margin:0}
-.bx-prod>.setbody,.bx-prod>.pc{flex:1;min-width:0}.bx-prod>.setbody table{width:100%}
-.bx-prod table.otab,.bx-prod table.shp,.bx-prod table.pkd{width:100%;table-layout:fixed}
-.bx-prod table.otab th:nth-child(2),.bx-prod table.otab td:nth-child(2){width:130px}.bx-prod table.otab th:nth-child(3),.bx-prod table.otab td:nth-child(3){width:170px}
-.bx-prod table.shp th:nth-child(2),.bx-prod table.pkd th:nth-child(2){width:130px}.bx-prod table.shp th:nth-child(3),.bx-prod table.pkd th:nth-child(3){width:130px}
-.bx-prod table.shp th:nth-child(4),.bx-prod table.pkd th:nth-child(4){width:150px}
-.bx-prod table.shp td.q,.bx-prod table.pkd td.q{text-align:center}.bx-prod td.st{text-align:right}
-.bx-prod td.q .low.addl{display:block;width:max-content;max-width:100%;margin:4px auto 0;border-radius:10px;padding:2px 8px;white-space:normal;line-height:1.25}
-@media (max-width:700px){.bx-prod>.svinfo{flex:none}}
 .setrow{margin:0 0 8px}.setpill{display:inline-block;padding:4px 12px;border-radius:999px;background:#17624f;color:#d6fff1;font-weight:800;font-size:13px}
 :root[data-theme=light] .setpill{background:#d3f2e7;color:#0b5a45}
 .setrow{cursor:pointer}.setpill i{font-style:normal;font-weight:600;opacity:.8;margin-left:6px;font-size:12px}.setbody.shut{display:none}
@@ -1187,9 +1173,10 @@ function bxTile(b, lines, o) {
   const shipped = b.status === 'shipped', units = lines.reduce((a, r) => a + bxEff(r), 0), n = lines.length;
   const d = shipped ? bxShipDate(b) : null, url = bxUrl(b.tracking_url);
   const live = lines.filter(r => r.status === 'shipped').length, rem = o.rem || (() => 0);
+  const recvd = shipped && n > 0 && lines.every(r => r.status === 'received');   // whole box landed: keep the tile, show it as Received
   const head = `<div class="bx-h" data-bxt="${bxEsc(b.box_no)}"><span class="chev">▶</span>
     <span class="bx-title">${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
-    <span class="bx-pill ${shipped ? 'sh' : 'op'}">${shipped ? 'Shipped' : 'Packing'}</span>
+    <span class="bx-pill ${recvd ? 'rc' : shipped ? 'sh' : 'op'}">${recvd ? 'Received' : shipped ? 'Shipped' : 'Packing'}</span>
     <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}</span>
     <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${url ? '<a class="bx-trkl" href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track parcel' + (b.tracking_no ? ' · ' + bxEsc(b.tracking_no) : '') + ' ↗</a>' : (b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : '')}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
@@ -1486,9 +1473,7 @@ function liveHtml(live){
 function supHtml(i){
   const pp = pipeline(infos[i].key);
   if (!pp.live.length) {
-    const lr = pp.all.filter(o => o.status === 'received').pop();
-    if (!lr) return '–';
-    return `<span class="badge c-green" title="${esc(timeline(lr))}">✅ Restocked ${dShort(lr.received_at)} · took ${daysBetween(shipDay(lr), new Date(lr.received_at))} days</span>`;
+    return '–';   // received lines no longer show on the tracker; they stay in the Boxes view for 30 days
   }
   return liveHtml(pp.live);
 }
@@ -1649,7 +1634,9 @@ function boxesFor(who){
   return boxes;
 }
 function renderBoxes(){
-  const el = $('boxes'), all = boxesFor('').filter(x => x.lines.some(r => r.status === 'added' || r.status === 'shipped'));
+  /* received lines stay visible in the box tiles for 30 days after they landed, then drop off */
+  const keep = r => r.status !== 'received' || (r.received_at && Date.now() - Date.parse(r.received_at) < 30 * 86400000);
+  const el = $('boxes'), all = boxesFor('').map(x => ({b: x.b, lines: x.lines.filter(keep)})).filter(x => x.lines.some(r => r.status === 'added' || r.status === 'shipped' || r.status === 'received'));
   const sel = $('bxSup'), cur = sel.value, names = [...new Set(all.map(x => x.b.supplier || '(unknown supplier)'))].sort();
   sel.innerHTML = '<option value="">All suppliers</option>' + names.map(n => `<option>${esc(n)}</option>`).join('');
   if (names.includes(cur)) sel.value = cur;
