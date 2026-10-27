@@ -51,6 +51,8 @@ function bxTile(b, lines, o) {
   const uUsed = new Set(), underOf = r => { const k = uKey(r); if (!uMap.has(k) || uUsed.has(k)) return null; uUsed.add(k); return uMap.get(k); };
   const uTotal = unders.reduce((a, u) => a + u.qty, 0), n = lines.length;
   lines = lines.concat([...uMap.entries()].filter(([k]) => !lines.some(r => uKey(r) === k)).map(([k, e]) => { const f = unders.find(u => uKey(u) === k); return Object.assign({}, f, {_u: e, id: 'u:' + f.id, status: 'received', qty: 0, ship_qty: 0}); }));
+  /* received lines of the same size (e.g. a top-up added later) show as ONE row, so ordered / received / over reported add up */
+  lines = (() => { const m = new Map(), out = []; lines.forEach(r => { if (r.status !== 'received') { out.push(r); return; } const k = uKey(r), p = m.get(k); if (!p) { const c = Object.assign({}, r); m.set(k, c); out.push(c); } else { const e = bxEff(p) + bxEff(r); p.qty += r.qty; p.ship_qty = e; } }); return out; })();
   const shipped = b.status === 'shipped', units = lines.reduce((a, r) => a + bxEff(r), 0);
   const d = shipped ? bxShipDate(b) : null, url = bxUrl(b.tracking_url);
   const live = lines.filter(r => r.status === 'shipped').length, rem = o.rem || (() => 0);
