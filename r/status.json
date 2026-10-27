@@ -108,10 +108,10 @@
   "reason": "Semrush snapshot call reported 10000 API units (over budget); refresh stopped, nothing published"
  },
  "stock": {
-  "at": "2026-10-27T20:01+11:00",
-  "code_sha": "247cdf14f182d11166d19db5d88f91a273fcb80a",
+  "at": "2026-10-27T20:10+11:00",
+  "code_sha": "fa5360a4965ee6ae6851ec8b2d583993ea259765",
   "data_through": null,
-  "last_ok": "2026-10-27T20:01+11:00",
+  "last_ok": "2026-10-27T20:10+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
