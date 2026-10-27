@@ -1753,7 +1753,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       try { await Store.labels('add', items); await window.refreshLabels(); const t = items.reduce((a, i) => a + i.qty, 0); msg(`${t} label${t === 1 ? '' : 's'} added to the sheet below.` + (skip.length ? ` Skipped (no barcode/variant): ${skip.join('; ')}.` : ''), skip.length ? 'bad' : 'ok'); WZ.set('2', true, t + ' label' + (t === 1 ? '' : 's') + ' added'); }
       catch (e) { msg(e.message, 'bad'); }
     };
-    /* ----- step 4: did every printed barcode match what arrived? Yes = all of it; No = adjust, the gap is "underreported" ----- */
+    /* ----- step 4: did every printed barcode match what arrived? Yes = all of it; No = adjust, the gap is "overreported" ----- */
     const locName = () => $('bxLoc').selectedOptions[0] ? $('bxLoc').selectedOptions[0].textContent : '';
     const sumBy = (a, f) => a.reduce((s, l) => s + f(l), 0);
     const bxRow = (l, right, sub) => `<div class="bxl"><img src="${E(l.image || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${sub}</div></div>${right}</div>`;
@@ -1761,11 +1761,11 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       const ls = cur();
       $('bxAdjLines').innerHTML = ls.map(l => { const r = rem(l), q = qr(l), s = r - q;
         return bxRow(l, `<span class="stp"><button type="button" data-d="-1" data-i="${E(l.id)}">−</button><b style="min-width:24px;text-align:center">${q}</b><button type="button" data-d="1" data-i="${E(l.id)}">+</button></span>`,
-          `${E(l.variant_title)} · printed ${r}` + (s > 0 ? ` · <span style="color:var(--red);font-weight:700">underreported ${s}</span>` : '')); }).join('');
+          `${E(l.variant_title)} · printed ${r}` + (s > 0 ? ` · <span style="color:var(--red);font-weight:700">overreported ${s}</span>` : '')); }).join('');
       const got = sumBy(ls, qr), all = sumBy(ls, rem);
-      $('bxAdjSum').textContent = `Received ${got} of ${all} pcs` + (all > got ? ` · ${all - got} underreported` : '');
+      $('bxAdjSum').textContent = `Received ${got} of ${all} pcs` + (all > got ? ` · ${all - got} overreported` : '');
     }
-    /* step 5: before / adding / after per variant at the chosen location, plus the underreported list */
+    /* step 5: before / adding / after per variant at the chosen location, plus the overreported list */
     function drawFinal() {
       const loc = $('bxLoc').value, ls = cur(), add = new Map(), under = [];
       ls.forEach(l => { const q = qr(l), v = match(l); if (q > 0 && v) { const o = add.get(v.vid) || {v, l, q: 0}; o.q += q; add.set(v.vid, o); } if (rem(l) - q > 0) under.push({l, n: rem(l) - q}); });
@@ -1775,8 +1775,8 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
         ? `<div class="bxl" style="font-size:12px;color:var(--muted);padding-top:4px;padding-bottom:4px"><div style="flex:1">Product · size</div><span style="width:46px;text-align:right">Before</span><span style="width:46px;text-align:right">Adding</span><span style="width:46px;text-align:right">After</span></div>` +
           rows.map(o => { const b = (o.v.q && o.v.q[loc]) || 0; return bxRow(o.l, `<span ${num}>${b}</span><span ${num} style="width:46px;text-align:right;font-weight:700;color:var(--ok,#3fb950)">+${o.q}</span><span ${num}>${b + o.q}</span>`, E(o.l.variant_title)); }).join('')
         : '<div class="empty">No stock to add.</div>') +
-        (under.length ? `<div style="margin-top:10px;font-weight:700;color:var(--red)">Underreported · ${u} pcs</div>` + under.map(x => bxRow(x.l, `<b style="color:var(--red)">${x.n}</b>`, E(x.l.variant_title))).join('') + `<div style="color:var(--muted);font-size:12.5px;margin-top:4px">These are kept separately and go back to the supplier's "Not received" list.</div>` : '');
-      $('bxFinSum').textContent = `Adding ${tot} of ${all} pcs` + (u ? ` · ${u} underreported` : '');
+        (under.length ? `<div style="margin-top:10px;font-weight:700;color:var(--red)">Overreported · ${u} pcs</div>` + under.map(x => bxRow(x.l, `<b style="color:var(--red)">${x.n}</b>`, E(x.l.variant_title))).join('') + `<div style="color:var(--muted);font-size:12.5px;margin-top:4px">These are kept separately and go back to the supplier's "Not received" list.</div>` : '');
+      $('bxFinSum').textContent = `Adding ${tot} of ${all} pcs` + (u ? ` · ${u} overreported` : '');
     }
     $('bxLoc').onchange = () => { disarm(); drawFinal(); };
     $('bxNo').onclick = () => { $('bxAdj').hidden = false; $('bxNo').classList.add('arm'); drawAdj(); };
@@ -1797,7 +1797,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       if (!ls.length && !under) return msg2('Nothing to add.', 'bad');
       const bad = ls.filter(x => !x.v); if (bad.length) return msg2('No matching variant on the website for: ' + bad.map(x => x.l.product_title + ' · ' + x.l.variant_title).join('; '), 'bad');
       const tot = ls.reduce((a, x) => a + x.q, 0), ln = locName();
-      if (armed !== 'add') { armed = 'add'; $('bxAdd').classList.add('arm'); $('bxAdd').textContent = `Tap again: add ${tot} pcs to ${ln}` + (under ? ` · ${under} underreported` : ''); return; }
+      if (armed !== 'add') { armed = 'add'; $('bxAdd').classList.add('arm'); $('bxAdd').textContent = `Tap again: add ${tot} pcs to ${ln}` + (under ? ` · ${under} overreported` : ''); return; }
       disarm(); $('bxAdd').disabled = true; msg2('Adding stock…');
       try {
         if (ls.length) {
@@ -1809,8 +1809,8 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
         let shortErr = '';
         if (under) { try { await Store.boxShort(box); } catch (e) { shortErr = e.message; } }
         qv = {}; await load(); try { window.lgLoad(); } catch (e) {}
-        msg2(`Box received. ${tot} pcs added to ${ln}.` + (under && !shortErr ? ` ${under} underreported, moved to the supplier's "Not received" list (they can see it).` : '') + (shortErr ? ` Stock WAS added, but the ${under} underreported could not be recorded: ${shortErr}` : ''), shortErr ? 'bad' : 'ok');
-        WZ.set('5', true, `${tot} pcs added` + (under ? ` · ${under} underreported` : ''));
+        msg2(`Box received. ${tot} pcs added to ${ln}.` + (under && !shortErr ? ` ${under} overreported, moved to the supplier's "Not received" list (they can see it).` : '') + (shortErr ? ` Stock WAS added, but the ${under} overreported could not be recorded: ${shortErr}` : ''), shortErr ? 'bad' : 'ok');
+        WZ.set('5', true, `${tot} pcs added` + (under ? ` · ${under} overreported` : ''));
       } catch (e) { msg2(e.message, 'bad'); }
       $('bxAdd').disabled = false;
     };

@@ -1,4 +1,4 @@
--- Under reported pieces: after the owner finishes a box, whatever did not arrive stays as a "Not received" row (status saved, short_box = box).
+-- Over reported pieces: after the owner finishes a box, whatever did not arrive stays as a "Not received" row (status saved, short_box = box).
 -- The supplier must ACCEPT it; only then it joins the normal order list (short_box cleared, unclaimed) and can be packed again.
 
 alter table public.restock_events drop constraint if exists restock_events_action_check;
@@ -22,12 +22,12 @@ end $$;
 revoke all on function public.restock_supplier_accept_short(text[]) from public, anon;
 grant execute on function public.restock_supplier_accept_short(text[]) to authenticated, service_role;
 
--- Guard: an unaccepted under-reported row can't be packed into a box
+-- Guard: an unaccepted over-reported row can't be packed into a box
 create or replace function public.restock_block_unaccepted_short() returns trigger
 language plpgsql set search_path = '' as $$
 begin
   if new.status = 'added' and old.short_box is not null and new.short_box is not null then
-    raise exception 'Accept the under reported items first';
+    raise exception 'Accept the over reported items first';
   end if;
   return new;
 end $$;
