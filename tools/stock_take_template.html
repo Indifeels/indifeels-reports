@@ -247,6 +247,11 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
       <div class="foot"><span class="sum" id="adSum"></span><button type="button" id="adCancel" disabled>Cancel</button><button type="button" class="pri" id="adGo" disabled>Add stock</button></div>
       <div class="msg" id="adRes"></div>
     </div>
+    <div class="bk" id="lgBox"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><b>Stock log</b><button type="button" id="lgRefresh">Refresh</button></div>
+      <div class="sub" style="margin:2px 0 8px">Every add or remove pushed to Shopify, including box uploads: when, who, which box, and the quantity before and after.</div>
+      <div class="row"><label class="fld">Show<select id="lgFilter"><option value="">All changes</option><option value="box">Box uploads</option><option value="add">Added</option><option value="remove">Removed</option></select></label><label class="fld" style="flex:1">Search<input id="lgSearch" type="text" placeholder="Product, box number or person" autocomplete="off"></label></div>
+      <div id="lgList"><div class="empty">Open this tab to load the log.</div></div>
+    </div>
   </div>
 
   <!-- ============ BARCODES ============ -->
@@ -552,6 +557,7 @@ const Store = PREVIEW ? {
   history: async () => ({}),
   counted: async () => ({}),
   adds: async () => ({}),
+  adjLog: async () => [],
   takeCancel: async id => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== id); LS.set('st-demo-takes', a); return {ok: true}; },
   takeEnd: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {status: 'ended', updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
 } : {
@@ -562,7 +568,8 @@ const Store = PREVIEW ? {
   boxList: () => call('boxlist'),
   boxReceive: items => call('boxreceive', {items}, 60000),
   boxShort: box => call('boxshort', {box}, 60000),
-  adjust: (loc, mode, items, dry) => call('adjustlist', {loc, mode, items, dry}, 120000),
+  adjust: (loc, mode, items, dry, box) => call('adjustlist', {loc, mode, items, dry, box: box || ''}, 120000),
+  adjLog: () => call('adjlog', {}, 30000),
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
   deleteVariant: vid => call('deletevariant', {vid}, 40000),
   setStatus: (pid, status) => call('setstatus', {pid, status}, 40000),
@@ -613,11 +620,27 @@ function show(v) {
   $('viewBulk').hidden = v !== 'bulk'; $('viewTake').hidden = v !== 'take'; $('viewAdj').hidden = v !== 'adj'; $('viewBar').hidden = v !== 'bar';
   $('tabBulk').classList.toggle('on', v === 'bulk'); $('tabTake').classList.toggle('on', v === 'take'); $('tabAdj').classList.toggle('on', v === 'adj'); $('tabBar').classList.toggle('on', v === 'bar');
   if (v === 'take') Promise.resolve(takeOpen()).then(() => { try { window.setupApply(); } catch (e) {} });
-  if (v === 'adj') Promise.resolve(adjOpen()).then(() => { try { window.adjApply(); } catch (e) {} });
+  if (v === 'adj') { Promise.resolve(adjOpen()).then(() => { try { window.adjApply(); } catch (e) {} }); try { window.lgLoad && window.lgLoad(); } catch (e) {} }
   if (v === 'bar') { try { window.refreshLabels(); window.refreshBoxes && window.refreshBoxes(); } catch (e) {} }
   curTab = v; saveUi();
 }
 $('tabBulk').onclick = () => show('bulk'); $('tabTake').onclick = () => show('take'); $('tabAdj').onclick = () => show('adj'); $('tabBar').onclick = () => show('bar');
+/* ----- stock log: everything pushed to Shopify from Add / remove and from box uploads ----- */
+(() => {
+  let rows = [];
+  const fmt = t => new Date(t).toLocaleString(undefined, {weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'});
+  function draw() {
+    const f = $('lgFilter').value, q = $('lgSearch').value.trim().toLowerCase();
+    const list = rows.filter(r => (!f || (f === 'box' ? r.box : r.mode === f)) && (!q || (r.product + ' ' + r.box + ' ' + r.by).toLowerCase().includes(q)));
+    if (!list.length) { $('lgList').innerHTML = '<div class="empty">' + (rows.length ? 'Nothing matches.' : 'No stock changes logged yet.') + '</div>'; return; }
+    const g = new Map(); list.forEach(r => { const k = [r.at, r.by, r.box, r.mode].join('|'); if (!g.has(k)) g.set(k, []); g.get(k).push(r); });
+    $('lgList').innerHTML = [...g.values()].slice(0, 60).map(ls => { const h = ls[0], tot = ls.reduce((a, r) => a + r.qty, 0), add = h.mode === 'add', sg = add ? '+' : '−', col = add ? 'var(--green)' : 'var(--red)';
+      return `<div style="border-top:1px solid rgba(128,128,128,.25);padding:10px 0"><div style="display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><b>${E(fmt(h.at))}</b>${h.box ? `<span style="padding:1px 8px;border-radius:999px;background:rgba(128,128,128,.2);font-size:12px;font-weight:700">${E(h.box)}</span>` : ''}<span style="color:var(--muted);font-size:13px">${E(h.by || 'someone')}${h.loc ? ' · ' + E(h.loc) : ''}</span><b style="margin-left:auto;color:${col}">${sg}${tot} pcs</b></div>` +
+        ls.map(r => `<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:13px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${E(r.product)}</span><span style="white-space:nowrap"><span style="color:var(--muted)">${r.before}</span> → <b>${r.after}</b> <span style="color:${col}">(${sg}${r.qty})</span></span></div>`).join('') + '</div>'; }).join('');
+  }
+  window.lgLoad = async () => { try { rows = (await Store.adjLog()) || []; } catch (e) { $('lgList').innerHTML = `<div class="empty">Could not load the log: ${E(e.message)}</div>`; return; } draw(); };
+  $('lgFilter').onchange = draw; $('lgSearch').oninput = draw; $('lgRefresh').onclick = () => window.lgLoad();
+})();
 $('theme').onclick = () => { const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; theme(t); try { parent.postMessage({type: 'stock-take', action: 'theme', theme: t}, '*'); } catch (e) {} };
 
 /* ---------- locations (shared) ---------- */
@@ -935,7 +958,7 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
       let extra = '';
       if (labels.length) { try { await Store.labels('add', labels.map(i => ({vid: i.vid, qty: i.qty}))); extra = ` ${labels.length} label${labels.length === 1 ? '' : 's'} queued for printing.`; loadLabels(); } catch (err) { extra = ' Stock updated, but the labels were not queued: ' + err.message; } }
       $('adRes').className = 'msg ok'; $('adRes').textContent = `Done: ${mode === 'add' ? 'added' : 'removed'} ${r.units} piece${r.units === 1 ? '' : 's'} on ${r.variants} variant${r.variants === 1 ? '' : 's'} at ${where}.` + (r.warn ? ' ' + r.warn : '') + extra;
-      items = [];
+      items = []; try { window.lgLoad(); } catch (e) {}
     } catch (err) { $('adRes').className = 'msg bad'; $('adRes').textContent = 'Not finished: ' + err.message; }
     busy = false; draw();
   };
@@ -1779,13 +1802,13 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       try {
         if (ls.length) {
           const sum = {}; ls.forEach(x => { sum[x.v.vid] = (sum[x.v.vid] || 0) + x.q; });
-          await Store.adjust(loc, 'add', Object.keys(sum).map(vid => ({vid, qty: sum[vid]})), false);
+          await Store.adjust(loc, 'add', Object.keys(sum).map(vid => ({vid, qty: sum[vid]})), false, box);
           if (!PREVIEW) Object.keys(sum).forEach(vid => { const v = byVid.get(String(vid)); if (v) { v.q = v.q || {}; v.q[loc] = (v.q[loc] || 0) + sum[vid]; } });
           try { await Store.boxReceive(ls.map(x => ({id: x.l.id, qty: x.q}))); } catch (e) { msg2('Stock WAS added to Shopify, but the box list could not be updated: ' + e.message + ' — do not add it again. Refresh and check the box.', 'bad'); return; }
         }
         let shortErr = '';
         if (under) { try { await Store.boxShort(box); } catch (e) { shortErr = e.message; } }
-        qv = {}; await load();
+        qv = {}; await load(); try { window.lgLoad(); } catch (e) {}
         msg2(`Box received. ${tot} pcs added to ${ln}.` + (under && !shortErr ? ` ${under} underreported, moved to the supplier's "Not received" list (they can see it).` : '') + (shortErr ? ` Stock WAS added, but the ${under} underreported could not be recorded: ${shortErr}` : ''), shortErr ? 'bad' : 'ok');
         WZ.set('5', true, `${tot} pcs added` + (under ? ` · ${under} underreported` : ''));
       } catch (e) { msg2(e.message, 'bad'); }

@@ -88,18 +88,21 @@ async function adjustList(body: any, svc: any, by: string) {
     if (ue?.length) return json({ error: `Updated ${done} of ${rows.length} variants, then Shopify stopped: ${ue[0].message}. Check the stock and try the rest again.`, updated: done }, 500);
     done += part.length;
   }
+  const box = /^[A-Za-z0-9._-]{1,40}$/.test(String(body.box || "")) ? String(body.box) : "";
+  let logWarn = "";
   try {   // history of separate add / remove changes (never blocks the stock change itself)
     const ln = loc === SHOPLOC ? "Shop location" : loc === BACKUP ? "Backup" : "";
-    await svc.from("stock_adjustments").insert(rows.map((r) => ({ vid: r.vid, product: r.title.slice(0, 200), variant: "", loc: loc.split("/").pop(), loc_name: ln, mode, qty: r.qty, before_qty: r.cur, after_qty: Math.max(0, r.cur + sign * r.qty), by_name: by.slice(0, 80) })));
-  } catch (_) { /* table not created yet */ }
+    const lg = await svc.from("stock_adjustments").insert(rows.map((r) => ({ vid: r.vid, product: r.title.slice(0, 200), variant: "", loc: loc.split("/").pop(), loc_name: ln, mode, qty: r.qty, before_qty: r.cur, after_qty: Math.max(0, r.cur + sign * r.qty), by_name: by.slice(0, 80), box_no: box })));
+    if (lg.error) logWarn = "Stock was updated, but the stock log could not be saved: " + lg.error.message.slice(0, 120);
+  } catch (e) { logWarn = "Stock was updated, but the stock log could not be saved: " + String((e as Error)?.message || e).slice(0, 120); }
   const k = loc === SHOPLOC ? "melbourne_stock" : loc === BACKUP ? "storage_stock" : "";
-  let warn = "";
+  let warn = logWarn;
   if (k) {
     const mfs = rows.map((r) => ({ ownerId: `gid://shopify/ProductVariant/${r.vid}`, namespace: "custom", key: k, type: "number_integer", value: String(Math.max(0, r.cur + sign * r.qty)) }));
     for (const part of chunk(mfs, 25)) {
       const mf = await gql(`mutation($m:[MetafieldsSetInput!]!){ metafieldsSet(metafields:$m){ userErrors{ message } } }`, { m: part });
       const me = mf.metafieldsSet.userErrors;
-      if (me?.length) { warn = "Stock updated, but the website ST number didn't update for some items: " + me[0].message; break; }
+      if (me?.length) { warn = (warn ? warn + " " : "") + "Stock updated, but the website ST number didn't update for some items: " + me[0].message; break; }
     }
   }
   return json({ ok: true, mode, variants: rows.length, units: rows.reduce((a, r) => a + r.qty, 0), ...(warn ? { warn } : {}) });
