@@ -1788,6 +1788,7 @@
       return rpOk(await sb.rpc("restock_supplier_ship_box", { p_box: rpText(d.box, 40), p_date: date || null, p_url: rpText(d.url, 500) || null, p_no: rpText(d.no, 80) || null }));
     },
     discontinue: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); return rpOk(await sb.rpc("restock_supplier_discontinue", { p_product: String(d.product) })); },
+    acceptshort: async (d) => rpOk(await sb.rpc("restock_supplier_accept_short", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 200).map((x) => rpText(x, 140)) })),
     notmine: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); return rpOk(await sb.rpc("restock_supplier_not_mine", { p_product: String(d.product) })); },
     discpending: async () => rpOk(await sb.rpc("restock_supplier_disc_pending")) || [],
     tracking: async (d) => { rpOk(await sb.rpc("restock_supplier_tracking", { p_box: rpText(d.box, 40), p_url: rpText(d.url, 500), p_no: rpText(d.no, 80) })); return true; },
@@ -1903,7 +1904,8 @@
       g.fillStyle = "#000"; [...svg.querySelectorAll("rect")].slice(1).forEach((q) => g.fillRect((bx + (parseFloat(q.getAttribute("x")) || 0) * mod) * S, 16.2 * S, (parseFloat(q.getAttribute("width")) || 0) * mod * S, 4.3 * S));
       return { png: cv.toDataURL("image/png"), mm: [W, H] };
     },
-    adjustlist: async (d) => rpAdjCall({ action: "adjustlist", loc: rpText(d.loc, 40), mode: d.mode === "remove" ? "remove" : "add", dry: !!d.dry, items: rpVidQty(d.items, 500) }, "Couldn't update the stock"),
+    adjustlist: async (d) => rpAdjCall({ action: "adjustlist", loc: rpText(d.loc, 40), mode: d.mode === "remove" ? "remove" : "add", dry: !!d.dry, items: rpVidQty(d.items, 500), box: rpText(d.box, 40) }, "Couldn't update the stock"),
+    adjlog: async () => { const { data, error } = await sb.from("stock_adjustments").select("vid,product,loc_name,mode,qty,before_qty,after_qty,box_no,by_name,created_at").order("created_at", { ascending: false }).limit(600); if (error) throw new Error(error.message); return (data || []).map((r) => ({ vid: r.vid, product: r.product || "", loc: r.loc_name || "", mode: r.mode, qty: r.qty, before: r.before_qty, after: r.after_qty, box: r.box_no || "", by: r.by_name || "", at: r.created_at })); },
     deletevariant: async (d) => rpAdjCall({ action: "deletevariant", vid: rpText(d.vid, 20) }, "Couldn't delete the variant"),
     setbarcode: async (d) => rpAdjCall({ action: "setbarcode", vid: rpText(d.vid, 20), barcode: rpText(d.barcode, 40) }, "Couldn't save the barcode"),
     labelqueue: async (d) => rpAdjCall({ action: "labelqueue", op: ["add", "list", "done", "setcopies", "remove"].includes(d.op) ? d.op : "list", items: rpVidQty(d.items, 200) }, "Couldn't update the label list"),
