@@ -8,7 +8,7 @@
 .bx.open .bx-h .chev{transform:rotate(90deg)}
 .bx-title{font-size:21px;font-weight:800;letter-spacing:.02em}
 .bx-pill{border-radius:999px;padding:3px 13px;font-size:14px;font-weight:700}
-.bx-pill.op{background:#e3b341;color:#2b2100}.bx-pill.sh{background:#3fb950;color:#06240f}
+.bx-pill.op{background:#e3b341;color:#2b2100}.bx-pill.sh{background:#3fb950;color:#06240f}.bx-pill.rc{background:#388bfd;color:#04193a}
 .bx-sum{font-size:16px;color:#d6dae0}
 .bx-right{margin-left:auto;font-size:15px;color:#e6e9ed;display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center}
 .bx-right a{color:#9ccfff;font-weight:600}

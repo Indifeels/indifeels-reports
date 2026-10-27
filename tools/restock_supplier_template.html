@@ -57,7 +57,7 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .bx.open .bx-h .chev{transform:rotate(90deg)}
 .bx-title{font-size:21px;font-weight:800;letter-spacing:.02em}
 .bx-pill{border-radius:999px;padding:3px 13px;font-size:14px;font-weight:700}
-.bx-pill.op{background:#e3b341;color:#2b2100}.bx-pill.sh{background:#3fb950;color:#06240f}
+.bx-pill.op{background:#e3b341;color:#2b2100}.bx-pill.sh{background:#3fb950;color:#06240f}.bx-pill.rc{background:#388bfd;color:#04193a}
 .bx-sum{font-size:16px;color:#d6dae0}
 .bx-right{margin-left:auto;font-size:15px;color:#e6e9ed;display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center}
 .bx-right a{color:#9ccfff;font-weight:600}
@@ -650,9 +650,10 @@ function bxTile(b, lines, o) {
   const shipped = b.status === 'shipped', units = lines.reduce((a, r) => a + bxEff(r), 0), n = lines.length;
   const d = shipped ? bxShipDate(b) : null, url = bxUrl(b.tracking_url);
   const live = lines.filter(r => r.status === 'shipped').length, rem = o.rem || (() => 0);
+  const recvd = shipped && n > 0 && lines.every(r => r.status === 'received');   // whole box landed: keep the tile, show it as Received
   const head = `<div class="bx-h" data-bxt="${bxEsc(b.box_no)}"><span class="chev">▶</span>
     <span class="bx-title">${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
-    <span class="bx-pill ${shipped ? 'sh' : 'op'}">${shipped ? 'Shipped' : 'Packing'}</span>
+    <span class="bx-pill ${recvd ? 'rc' : shipped ? 'sh' : 'op'}">${recvd ? 'Received' : shipped ? 'Shipped' : 'Packing'}</span>
     <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}</span>
     <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${url ? '<a class="bx-trkl" href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track parcel' + (b.tracking_no ? ' · ' + bxEsc(b.tracking_no) : '') + ' ↗</a>' : (b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : '')}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
@@ -750,6 +751,8 @@ function render(){
   let shHtml = '', pkN = 0, pkItems = 0, shN = 0;
   order.forEach(b => {
     const lines = S.orders.filter(r => r.box_no === b.box_no && ['added', 'shipped', 'received'].includes(r.status));
+    /* a fully received box stays visible for 30 days (counted from shipping), then drops off */
+    if (b.status !== 'open' && lines.length && lines.every(r => r.status === 'received') && bxShipDate(b) && Date.now() - bxShipDate(b).getTime() > 30 * 86400000) return;
     const isOpen = openState.has(b.box_no) ? openState.get(b.box_no) : b.status === 'open';
     const t = bxTile(b, lines, {rem: remOf, ro: false, open: isOpen, openBoxes: openNos, armDel, delTo, selP, lastOpen: openNos[0], canDisc: true, discPend: discSet(), armDisc});
     if (b.status === 'open') { html += t; pkN++; pkItems += lines.length; } else { shHtml += t; shN++; }
