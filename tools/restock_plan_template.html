@@ -297,6 +297,9 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .sc.sc-ship{--ac:#3fb950;--g1:#2ea043;--g2:#17622a;--g3:#08290f}
 .sc-h{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:'chev title hint' '. count hint';align-items:center;column-gap:12px;row-gap:6px;min-height:92px;box-sizing:border-box;padding:20px 20px;cursor:pointer;user-select:none;color:#fff;background:linear-gradient(180deg,var(--g1) 0%,var(--g2) 55%,var(--g3) 100%);border-top:1px solid rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 -4px 8px rgba(0,0,0,.45)}
 .sc-h:hover{filter:brightness(1.1)}
+.sc{display:block;padding:0;gap:0}
+.bx-prod th{position:static}
+.bx-prod>.suprow{align-self:flex-start;margin-top:2px}
 .sc-h .chev{grid-area:chev;width:18px;color:#fff;transition:transform .15s;flex:none;font-size:16px}
 .sc.open>.sc-h .chev{transform:rotate(90deg)}
 .sc-t{grid-area:title;font-size:25px;font-weight:800;letter-spacing:.01em}
@@ -322,6 +325,17 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .sc-n:empty{display:none}
 .low.addl{background:#4a2f7a!important;color:#e6d9ff!important;border:0!important}
 :root[data-theme=light] .low.addl{background:#e9defa!important;color:#4a2f7a!important}
+
+/* aligned columns: every product row has the same grid, so names, pills and tables line up down the page */
+.bx-prod>.svinfo{flex:0 0 250px;min-width:0}.bx-prod>.svinfo .svpn{margin:2px 0 8px}.bx-prod>.svinfo .suprow{margin:0}
+.bx-prod>.setbody,.bx-prod>.pc{flex:1;min-width:0}.bx-prod>.setbody table{width:100%}
+.bx-prod table.otab,.bx-prod table.shp,.bx-prod table.pkd{width:100%;table-layout:fixed}
+.bx-prod table.otab th:nth-child(2),.bx-prod table.otab td:nth-child(2){width:130px}.bx-prod table.otab th:nth-child(3),.bx-prod table.otab td:nth-child(3){width:170px}
+.bx-prod table.shp th:nth-child(2),.bx-prod table.pkd th:nth-child(2){width:130px}.bx-prod table.shp th:nth-child(3),.bx-prod table.pkd th:nth-child(3){width:130px}
+.bx-prod table.shp th:nth-child(4),.bx-prod table.pkd th:nth-child(4){width:150px}
+.bx-prod table.shp td.q,.bx-prod table.pkd td.q{text-align:center}.bx-prod td.st{text-align:right}
+.bx-prod td.q .low.addl{display:block;width:max-content;max-width:100%;margin:4px auto 0;border-radius:10px;padding:2px 8px;white-space:normal;line-height:1.25}
+@media (max-width:700px){.bx-prod>.svinfo{flex:none}}
 .setrow{margin:0 0 8px}.setpill{display:inline-block;padding:4px 12px;border-radius:999px;background:#17624f;color:#d6fff1;font-weight:800;font-size:13px}
 :root[data-theme=light] .setpill{background:#d3f2e7;color:#0b5a45}
 .setrow{cursor:pointer}.setpill i{font-style:normal;font-weight:600;opacity:.8;margin-left:6px;font-size:12px}.setbody.shut{display:none}
@@ -1473,7 +1487,9 @@ function liveHtml(live){
 function supHtml(i){
   const pp = pipeline(infos[i].key);
   if (!pp.live.length) {
-    return '–';   // received lines no longer show on the tracker; they stay in the Boxes view for 30 days
+    const lr = pp.all.filter(o => o.status === 'received').pop();
+    if (!lr) return '–';
+    return `<span class="badge c-green" title="${esc(timeline(lr))}">✅ Restocked ${dShort(lr.received_at)} · took ${daysBetween(shipDay(lr), new Date(lr.received_at))} days</span>`;
   }
   return liveHtml(pp.live);
 }
