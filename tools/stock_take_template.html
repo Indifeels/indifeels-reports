@@ -265,6 +265,9 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
       <div id="wzWait" hidden style="margin-top:10px"><button type="button" id="wzGoPrint" style="width:100%;text-align:left;padding:12px 14px"><b id="wzWaitT"></b><small style="display:block;color:var(--muted)">Already in the label list. Tap to go to printing.</small></button></div>
     </div>
 
+    <div class="bk" id="phBox"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><b>Recently printed barcodes</b><button type="button" id="phRefresh">Refresh</button></div>
+      <div id="phList"><div class="empty">Loading…</div></div></div>
+
     <div id="wzBox" hidden>
       <section class="bk wzs" data-s="1"><div class="wzh"><span class="wzn">1</span><b>Select the box</b><span class="wzsum"></span><button type="button" class="wzchg">Change</button></div>
         <div class="wzb">
@@ -558,6 +561,7 @@ const Store = PREVIEW ? {
   counted: async () => ({}),
   adds: async () => ({}),
   adjLog: async () => [],
+  labelHist: async () => [],
   takeCancel: async id => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== id); LS.set('st-demo-takes', a); return {ok: true}; },
   takeEnd: async s => { const a = (LS.get('st-demo-takes') || []).filter(x => x.id !== s.id); a.unshift(Object.assign({}, s, {status: 'ended', updated: new Date().toISOString()})); LS.set('st-demo-takes', a.slice(0, 30)); return {ok: true}; },
 } : {
@@ -570,6 +574,7 @@ const Store = PREVIEW ? {
   boxShort: box => call('boxshort', {box}, 60000),
   adjust: (loc, mode, items, dry, box) => call('adjustlist', {loc, mode, items, dry, box: box || ''}, 120000),
   adjLog: () => call('adjlog', {}, 30000),
+  labelHist: () => call('labelhist', {}, 30000),
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
   deleteVariant: vid => call('deletevariant', {vid}, 40000),
   setStatus: (pid, status) => call('setstatus', {pid, status}, 40000),
@@ -621,7 +626,7 @@ function show(v) {
   $('tabBulk').classList.toggle('on', v === 'bulk'); $('tabTake').classList.toggle('on', v === 'take'); $('tabAdj').classList.toggle('on', v === 'adj'); $('tabBar').classList.toggle('on', v === 'bar');
   if (v === 'take') Promise.resolve(takeOpen()).then(() => { try { window.setupApply(); } catch (e) {} });
   if (v === 'adj') { Promise.resolve(adjOpen()).then(() => { try { window.adjApply(); } catch (e) {} }); try { window.lgLoad && window.lgLoad(); } catch (e) {} }
-  if (v === 'bar') { try { window.refreshLabels(); window.refreshBoxes && window.refreshBoxes(); } catch (e) {} }
+  if (v === 'bar') { try { window.refreshLabels(); window.refreshBoxes && window.refreshBoxes(); } catch (e) {} try { window.phLoad && window.phLoad(); } catch (e) {} }
   curTab = v; saveUi();
 }
 $('tabBulk').onclick = () => show('bulk'); $('tabTake').onclick = () => show('take'); $('tabAdj').onclick = () => show('adj'); $('tabBar').onclick = () => show('bar');
@@ -640,6 +645,21 @@ $('tabBulk').onclick = () => show('bulk'); $('tabTake').onclick = () => show('ta
   }
   window.lgLoad = async () => { try { rows = (await Store.adjLog()) || []; } catch (e) { $('lgList').innerHTML = `<div class="empty">Could not load the log: ${E(e.message)}</div>`; return; } draw(); };
   $('lgFilter').onchange = draw; $('lgSearch').oninput = draw; $('lgRefresh').onclick = () => window.lgLoad();
+})();
+
+/* ----- Barcodes tab: labels already printed, newest batch first ----- */
+(() => {
+  const fmt = s => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleString('en-AU', {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'}); };
+  async function load() {
+    let rows = [];
+    try { rows = (await Store.labelHist()) || []; } catch (e) { $('phList').innerHTML = `<div class="empty">Could not load: ${E(e.message)}</div>`; return; }
+    const g = new Map(); rows.forEach(r => { const k = String(r.printed_at || '').slice(0, 16); if (!g.has(k)) g.set(k, []); g.get(k).push(r); });
+    const batches = [...g.values()].slice(0, 30);
+    $('phList').innerHTML = batches.length ? batches.map((ls, i) => { const tot = ls.reduce((a, r) => a + (r.copies || 0), 0);
+      return `<details style="border-top:1px solid rgba(128,128,128,.25)"><summary style="cursor:pointer;padding:10px 2px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><b>${E(fmt(ls[0].printed_at))}</b><span style="color:var(--muted);font-size:13px">${tot} label${tot === 1 ? '' : 's'} · ${ls.length} variant${ls.length === 1 ? '' : 's'}</span></summary>` +
+        ls.map(r => `<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:13px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${E(r.product)} · ${E(r.variant)}</span><span style="white-space:nowrap;color:var(--muted)">${E(r.barcode)} <b style="color:inherit">× ${r.copies}</b></span></div>`).join('') + '</details>'; }).join('') : '<div class="empty">Nothing printed yet.</div>';
+  }
+  window.phLoad = load; $('phRefresh').onclick = load;
 })();
 $('theme').onclick = () => { const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; theme(t); try { parent.postMessage({type: 'stock-take', action: 'theme', theme: t}, '*'); } catch (e) {} };
 
