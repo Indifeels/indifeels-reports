@@ -117,10 +117,10 @@
   "reason": ""
  },
  "stock-take": {
-  "at": "2026-10-27T16:19+11:00",
-  "code_sha": "5a8d7d807710a35888f7f5263c62dcb6976725f0",
+  "at": "2026-10-27T17:15+11:00",
+  "code_sha": "67b9a47df81e722b216a0076a988f9828990dc82",
   "data_through": null,
-  "last_ok": "2026-10-27T16:19+11:00",
+  "last_ok": "2026-10-27T17:15+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
