@@ -1145,10 +1145,16 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     if (e.target.closest('#lbTickAll')) { (window.__lbShown || []).forEach(id => lbTick.add(id)); lbTickSync(); return; }
     if (e.target.closest('#lbTickNone')) { lbTick.clear(); lbTickSync(); return; }
     if (e.target.closest('#lbTickGo')) {
-      const loc = shopLoc(), rec = $('lbRecent').checked, items = [];
+      const loc = shopLoc(), rec = $('lbRecent').checked, items = [], go = $('lbTickGo');
+      go.disabled = true;
+      /* products with no barcode yet (new uploads): create the missing ones first, then add everything */
+      const todo = []; lbTick.forEach(pid => V.filter(v => v.pid === pid && !v.bc[0]).forEach(v => todo.push(v)));
+      let made = 0;
+      try { for (const v of todo) { go.textContent = `Creating barcodes ${made + 1} of ${todo.length}…`; const r = await autoBarcode(v.vid); regBc(v, r.barcode); made++; } }
+      catch (err) { go.textContent = 'Add ticked to label list'; go.disabled = false; lbMsg((made ? made + ' barcodes created, then: ' : '') + err.message, 'bad'); try { $('lbMsg').scrollIntoView({behavior: 'smooth', block: 'center'}); } catch (e2) {} return; }
+      go.textContent = 'Add ticked to label list';
       lbTick.forEach(pid => V.filter(v => v.pid === pid && v.bc[0]).forEach(v => { const n = Math.max(1, Math.min(500, rec ? sumQ(v) : (v.q[loc] || 0))); items.push({vid: v.vid, qty: n}); }));
-      if (!items.length) { lbMsg('Nothing to add: the ticked products have no barcodes yet.', 'bad'); return; }
-      $('lbTickGo').disabled = true;
+      if (!items.length) { go.disabled = false; lbMsg('Nothing to add: the ticked products have no sizes.', 'bad'); try { $('lbMsg').scrollIntoView({behavior: 'smooth', block: 'center'}); } catch (e2) {} return; }
       try { await Store.labels('add', items); const t = items.reduce((a, i) => a + i.qty, 0), np = lbTick.size; lbTick.clear(); await loadLabels(); drawShort(); lbMsg(`${t} label${t === 1 ? '' : 's'} added for ${np} product${np === 1 ? '' : 's'}.`, 'ok'); WZ.set('2', true, `${t} label${t === 1 ? '' : 's'} added`); setTimeout(() => { const w = $('wzPrint'); if (w && !w.hidden) w.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 80); }
       catch (err) { lbMsg(err.message, 'bad'); $('lbTickGo').disabled = false; }
       return;
