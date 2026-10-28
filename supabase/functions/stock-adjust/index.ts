@@ -4,6 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // Stock Take and Transfer -> "Add / remove" tab. Admin only.
 //  adjustlist : add or remove pieces at ONE Shopify location for a list of variants (+ website ST metafield)
 //  setbarcode : put a barcode on a variant that has none
+//  createvariant : create a missing size (variant) on a product, with a barcode
 //  labelqueue : barcode labels to print on the next run of the Indifeels label template (table label_queue)
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -122,6 +123,30 @@ async function setBarcode(body: any) {
   return json({ ok: true, vid, barcode: bc });
 }
 
+async function createVariant(body: any) {
+  const pid = String(body.pid || ""), title = String(body.title || "").trim().slice(0, 100), bc = String(body.barcode || "").trim();
+  if (!VID.test(pid) || !title) return json({ error: "Bad product or size" }, 400);
+  if (bc && !/^[0-9A-Za-z._-]{3,40}$/.test(bc)) return json({ error: "Barcode must be 3 to 40 letters or numbers" }, 400);
+  const d = await gql(`query($id:ID!){ product(id:$id){ id options{ name } variants(first:100){ nodes{ id title price compareAtPrice selectedOptions{ name value } } } } }`, { id: `gid://shopify/Product/${pid}` });
+  const p = d.product; if (!p) return json({ error: "Product not found on Shopify" }, 404);
+  const nodes = p.variants.nodes;
+  if (nodes.some((n: any) => n.title.trim().toLowerCase() === title.toLowerCase())) return json({ error: "That size already exists on this product" }, 400);
+  const names = p.options.map((o: any) => o.name), parts = title.split(" / ").map((x) => x.trim());
+  if (parts.length !== names.length) return json({ error: `This product has ${names.length} option(s) (${names.join(", ")}) so "${title}" can't be created automatically` }, 400);
+  if (bc) {
+    const dup = await gql(`query($q:String!){ productVariants(first:1, query:$q){ nodes{ id } } }`, { q: `barcode:${bc}` });
+    if (dup.productVariants.nodes.length) return json({ error: "Another variant already uses this barcode" }, 400);
+  }
+  const base = nodes[0] || {};
+  const v: any = { optionValues: parts.map((name, i) => ({ optionName: names[i], name })), price: base.price || "0.00", inventoryItem: { tracked: true } };
+  if (base.compareAtPrice) v.compareAtPrice = base.compareAtPrice;
+  if (bc) v.barcode = bc;
+  const m = await gql(`mutation($p:ID!,$v:[ProductVariantsBulkInput!]!){ productVariantsBulkCreate(productId:$p, variants:$v){ productVariants{ id title barcode } userErrors{ message } } }`, { p: p.id, v: [v] });
+  const ue = m.productVariantsBulkCreate.userErrors; if (ue?.length) return json({ error: ue[0].message }, 400);
+  const nv = m.productVariantsBulkCreate.productVariants[0];
+  return json({ ok: true, vid: nv.id.split("/").pop(), title: nv.title, barcode: nv.barcode || "", price: v.price });
+}
+
 async function setStatus(body: any) {
   const pid = String(body.pid || ""), st = body.status === "UNLISTED" ? "UNLISTED" : "ACTIVE";
   if (!VID.test(pid)) return json({ error: "Bad product" }, 400);
@@ -209,6 +234,7 @@ Deno.serve(async (req: Request) => {
   try {
     if (body.action === "adjustlist") return await adjustList(body, svc, String(prof.display_name || prof.username || ""));
     if (body.action === "setbarcode") return await setBarcode(body);
+    if (body.action === "createvariant") return await createVariant(body);
     if (body.action === "setstatus") return await setStatus(body);
     if (body.action === "deletevariant") return await deleteVariant(body);
     if (body.action === "labelqueue") return await labelQueue(body, svc);

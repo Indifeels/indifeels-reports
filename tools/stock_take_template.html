@@ -278,7 +278,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
         <div class="wzb">
           <div id="bxDetail" hidden>
             <details id="bxDet"><summary id="bxDetS" style="cursor:pointer;font-weight:700;padding:10px 2px">Items in this box</summary><div id="bxLines"></div></details>
-            <div class="foot"><span class="sum" id="bxSum"></span><button type="button" id="bxGenAll" hidden>Create missing barcodes</button><button type="button" class="pri" id="bxBar">Add barcodes to the sheet</button></div>
+            <div class="foot"><span class="sum" id="bxSum"></span><button type="button" id="bxMkAll" hidden>Create missing variants</button><button type="button" id="bxGenAll" hidden>Create missing barcodes</button><button type="button" class="pri" id="bxBar">Add barcodes to the sheet</button></div>
           </div>
           <div class="msg" id="bxMsg"></div>
         </div></section>
@@ -548,6 +548,7 @@ const Store = PREVIEW ? {
   boxShort: async box => ({ok: true}),
   adjust: async (loc, mode, items, dry) => { await new Promise(r => setTimeout(r, 400)); if (!dry) items.forEach(i => { const v = byVid.get(i.vid); v.q[loc] = Math.max(0, (v.q[loc] || 0) + (mode === 'remove' ? -i.qty : i.qty)); }); return {ok: true, variants: items.length, units: items.reduce((a, i) => a + i.qty, 0)}; },
   setBarcode: async (vid, barcode) => ({ok: true, vid, barcode}),
+  createVariant: async (pid, title, barcode) => ({ok: true, vid: String(Date.now()), title, barcode, price: '0'}),
   deleteVariant: async vid => ({ok: true, vid}),
   printLabels: async () => { throw new Error('The PDF works inside the app, not in this preview.'); },
   previewLabel: async () => { throw new Error('The label preview works inside the app, not in this preview.'); },
@@ -578,6 +579,7 @@ const Store = PREVIEW ? {
   labelHist: () => call('labelhist', {}, 30000),
   boxPrint: () => call('boxprint', {}, 30000),
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
+  createVariant: (pid, title, barcode) => call('createvariant', {pid, title, barcode}, 60000),
   deleteVariant: vid => call('deletevariant', {vid}, 40000),
   setStatus: (pid, status) => call('setstatus', {pid, status}, 40000),
   previewLabel: r => { const v = byVid.get(String(r.vid)) || {}; return call('previewlabel', {product: r.product, variant: r.variant, barcode: r.barcode, image: v.image || '', price: v.pr || '', colour: v.col || ''}, 30000); },
@@ -1772,10 +1774,11 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       const sh = isShipped(); window.__bxRecv = sh;
       { const ls = cur(); $('bxDetS').textContent = `Items in this box · ${ls.length} line${ls.length === 1 ? '' : 's'}, ${ls.reduce((a, l) => a + rem(l), 0)} pcs (tap to show)`; }
       $('bxLines').innerHTML = cur().map(l => { const v = match(l), r = rem(l);
-        return `<div class="bxl"><img src="${E(l.image || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${E(l.variant_title)} · sent ${l.qty}${l.recv_qty ? ' · already added ' + l.recv_qty : ''}${v ? '' : ' · <span style="color:var(--red)">no matching variant</span>'}${v && !v.bc.length ? ' · <span style="color:var(--red)">no barcode</span> <button type="button" data-g="' + E(v.vid) + '" style="padding:2px 10px;font-size:12px">Create</button>' : ''}</div></div>${r > 0 ? `<b>${r}</b>` : '<span class="sum">done</span>'}</div>`; }).join('');
+        return `<div class="bxl"><img src="${E(l.image || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${E(l.variant_title)} · sent ${l.qty}${l.recv_qty ? ' · already added ' + l.recv_qty : ''}${v ? '' : ' · <span style="color:var(--red)">not on the website</span> <button type="button" data-cv="' + E(l.id) + '" style="padding:2px 10px;font-size:12px">Create + barcode</button>'}${v && !v.bc.length ? ' · <span style="color:var(--red)">no barcode</span> <button type="button" data-g="' + E(v.vid) + '" style="padding:2px 10px;font-size:12px">Create</button>' : ''}</div></div>${r > 0 ? `<b>${r}</b>` : '<span class="sum">done</span>'}</div>`; }).join('');
       const all = cur().reduce((a, l) => a + rem(l), 0);
       $('bxSum').textContent = sh ? `${all} pcs in this box. Print all the barcodes first; you confirm what you received after printing.` : `${all} pcs packed — barcodes only until it is shipped`;
       const miss = cur().filter(l => { const v = match(l); return v && !v.bc.length; }).length;
+      { const nm = cur().filter(l => !match(l)).length; $('bxMkAll').hidden = !nm; $('bxMkAll').classList.toggle('pri', !!nm); if (nm) $('bxSum').textContent = `${nm} line${nm === 1 ? ' is' : 's are'} not on the website yet. Create ${nm === 1 ? 'it' : 'them'} first (with barcodes).`; }
       $('bxGenAll').hidden = !miss; $('bxBar').hidden = !!miss; $('bxGenAll').classList.toggle('pri', !!miss);
       if (miss) $('bxSum').textContent = `${miss} line${miss === 1 ? ' has' : 's have'} no barcode. Create ${miss === 1 ? 'it' : 'them'} first, then you can add the box to the label list.`;
       WZ.render();
@@ -1790,6 +1793,10 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; box = b.dataset.b; qv = {}; $('bxDet').open = false; disarm(); $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); msg(''); msg2(''); drawTiles(); drawLines(); { const bb = boxes().find(z => z.box === box); WZ.set('1', true, box + (bb ? ' · ' + bb.units + ' pcs' : '')); } };
     const gen1 = async vid => { const r = await autoBarcode(vid); const v = byVid.get(String(vid)); if (v) { v.bc = [r.barcode]; byBc.set(bcn(r.barcode), v); } return r; };
     $('bxLines').addEventListener('click', async e => { const g = e.target.closest('[data-g]'); if (!g) return; e.stopImmediatePropagation(); g.disabled = true; try { const r = await gen1(g.dataset.g); msg('Barcode ' + r.barcode + ' created.', 'ok'); drawLines(); } catch (err) { msg(err.message, 'bad'); g.disabled = false; } }, true);
+    const regVar = (l, r) => { const p = DATA.products.find(x => String(x.id) === String(l.product_id)); const base = V.find(x => x.pid === String(l.product_id)); const nv = {vid: String(r.vid), pid: String(l.product_id), pt: base ? base.pt : l.product_title, image: base ? base.image : (l.image || ''), pr: r.price || (base ? base.pr : ''), ca: base ? base.ca : '', sup: base ? base.sup : '', st: base ? base.st : '', t: r.title || l.variant_title, col: base ? base.col : '', cols: base ? base.cols : [], bc: r.barcode ? [r.barcode] : [], q: {}}; V.push(nv); byVid.set(nv.vid, nv); if (nv.bc[0]) { const k = bcn(nv.bc[0]); byBc.set(k, nv); allBc.set(k, [nv]); } if (p) p.variants.push({vid: nv.vid, t: nv.t, pr: nv.pr, bc: nv.bc, q: {}}); return nv; };
+    const mkVar = async l => { let last = null; for (let k = 0; k < 6; k++) { try { return regVar(l, await Store.createVariant(String(l.product_id), l.variant_title, genBc())); } catch (e) { last = e; if (!/already uses/i.test(e.message || '')) throw e; } } throw last; };
+    $('bxLines').addEventListener('click', async e => { const c = e.target.closest('[data-cv]'); if (!c) return; e.stopImmediatePropagation(); const l = lines.find(x => String(x.id) === c.dataset.cv); if (!l) return; c.disabled = true; c.textContent = 'Creating…'; try { const v = await mkVar(l); msg(l.product_title + ' · ' + v.t + ' created on Shopify with barcode ' + (v.bc[0] || '') + '.', 'ok'); drawLines(); } catch (err) { msg(err.message, 'bad'); c.disabled = false; c.textContent = 'Create + barcode'; } }, true);
+    $('bxMkAll').onclick = async () => { const todo = cur().filter(l => !match(l)); if (!todo.length) return; $('bxMkAll').disabled = true; let ok = 0; try { for (const l of todo) { await mkVar(l); ok++; } msg(ok + ' variant' + (ok === 1 ? '' : 's') + ' created with barcodes.', 'ok'); } catch (err) { msg(ok + ' created, then: ' + err.message, 'bad'); } $('bxMkAll').disabled = false; drawLines(); };
     $('bxGenAll').onclick = async () => { const todo = cur().map(match).filter(v => v && !v.bc.length); if (!todo.length) return; $('bxGenAll').disabled = true; let ok = 0; try { for (const v of todo) { await gen1(v.vid); ok++; } msg(ok + ' barcode' + (ok === 1 ? '' : 's') + ' created.', 'ok'); } catch (err) { msg(ok + ' created, then: ' + err.message, 'bad'); } $('bxGenAll').disabled = false; drawLines(); };
     $('bxBar').onclick = async () => {
       const items = [], skip = [];
@@ -1840,7 +1847,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     $('bxAdd').onclick = async () => {
       const loc = $('bxLoc').value, ls = cur().map(l => ({l, q: qr(l), v: match(l)})).filter(x => x.q > 0), under = sumBy(cur(), l => rem(l) - qr(l));
       if (!ls.length && !under) return msg2('Nothing to add.', 'bad');
-      const bad = ls.filter(x => !x.v); if (bad.length) return msg2('No matching variant on the website for: ' + bad.map(x => x.l.product_title + ' · ' + x.l.variant_title).join('; '), 'bad');
+      const bad = ls.filter(x => !x.v); if (bad.length) return msg2('Not on the website yet: ' + bad.map(x => x.l.product_title + ' · ' + x.l.variant_title).join('; ') + '. Open "Items in this box" and tap Create + barcode (or Create missing variants).', 'bad');
       const tot = ls.reduce((a, x) => a + x.q, 0), ln = locName();
       if (armed !== 'add') { armed = 'add'; $('bxAdd').classList.add('arm'); $('bxAdd').textContent = `Tap again: add ${tot} pcs to ${ln}` + (under ? ` · ${under} overreported` : ''); return; }
       disarm(); $('bxAdd').disabled = true; msg2('Adding stock…');
