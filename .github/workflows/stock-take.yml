@@ -1,7 +1,7 @@
 name: Stock Take and Transfer
 
 # Stock Take and Transfer: every active product with its collections, barcodes and stock per Shopify location.
-# Runs on code change, from the Schedule Panel, or by hand. Saved counts live in Supabase (stock_takes), not in this build.
+# Runs on code change, from the Schedule Panel, when a product is added or published (Shopify webhook), or by hand. Saved counts live in Supabase (stock_takes), not in this build.
 run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
 
 on:
@@ -12,7 +12,7 @@ on:
       - tools/stock_take_template.html
       - .github/workflows/stock-take.yml
   repository_dispatch:
-    types: [report-schedule]
+    types: [report-schedule, product-published]
   workflow_dispatch:
 
 concurrency:
