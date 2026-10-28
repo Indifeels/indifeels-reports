@@ -453,6 +453,18 @@ $('wzGoPrint').onclick = () => WZ.start('print');
 $('wzAgain').onclick = () => WZ.reset();
 document.querySelectorAll('#viewBar .wzchg').forEach(b => { b.onclick = () => { const el = b.closest('.wzs'); WZ.reopen(el.dataset.re || el.dataset.s); }; });
 WZ.render();
+/* Sizes created after the last report refresh are missing from DATA: merge the live list from Shopify into V when a product is opened */
+function mergeLive(pid, list) {
+  const base = V.find(x => x.pid === String(pid)); if (!base || !Array.isArray(list)) return;
+  const prod = DATA.products.find(x => String(x.id) === String(pid));
+  list.forEach(r => {
+    const vid = String(r.vid), ex = byVid.get(vid), bcv = r.barcode ? [r.barcode] : [];
+    if (ex) { if (!ex.bc.length && bcv.length) { ex.bc = bcv; const k = bcn(bcv[0]); allBc.set(k, [ex]); byBc.set(k, ex); } if (r.q) ex.q = Object.assign({}, ex.q, r.q); return; }
+    const nv = {vid, pid: String(pid), pt: base.pt, image: base.image, pr: r.price || base.pr, ca: base.ca, sup: base.sup, st: base.st, t: r.title, col: base.col, cols: base.cols, bc: bcv, q: r.q || {}};
+    V.push(nv); byVid.set(vid, nv); if (bcv.length) { const k = bcn(bcv[0]); allBc.set(k, [nv]); byBc.set(k, nv); }
+    if (prod) prod.variants.push({vid, t: nv.t, pr: nv.pr, bc: bcv, q: nv.q});
+  });
+}
 async function autoBarcode(vid) {
   let last = null;
   for (let k = 0; k < 6; k++) { try { return await Store.setBarcode(vid, genBc()); } catch (e) { last = e; if (!/already uses/i.test(e.message || '')) throw e; } }
@@ -549,6 +561,7 @@ const Store = PREVIEW ? {
   adjust: async (loc, mode, items, dry) => { await new Promise(r => setTimeout(r, 400)); if (!dry) items.forEach(i => { const v = byVid.get(i.vid); v.q[loc] = Math.max(0, (v.q[loc] || 0) + (mode === 'remove' ? -i.qty : i.qty)); }); return {ok: true, variants: items.length, units: items.reduce((a, i) => a + i.qty, 0)}; },
   setBarcode: async (vid, barcode) => ({ok: true, vid, barcode}),
   createVariant: async (pid, title, barcode) => ({ok: true, vid: String(Date.now()), title, barcode, price: '0'}),
+  productVariants: async pid => ({ok: true, pid, variants: []}),
   deleteVariant: async vid => ({ok: true, vid}),
   printLabels: async () => { throw new Error('The PDF works inside the app, not in this preview.'); },
   previewLabel: async () => { throw new Error('The label preview works inside the app, not in this preview.'); },
@@ -580,6 +593,7 @@ const Store = PREVIEW ? {
   boxPrint: () => call('boxprint', {}, 30000),
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
   createVariant: (pid, title, barcode) => call('createvariant', {pid, title, barcode}, 60000),
+  productVariants: pid => call('productvariants', {pid}, 30000),
   deleteVariant: vid => call('deletevariant', {vid}, 40000),
   setStatus: (pid, status) => call('setstatus', {pid, status}, 40000),
   previewLabel: r => { const v = byVid.get(String(r.vid)) || {}; return call('previewlabel', {product: r.product, variant: r.variant, barcode: r.barcode, image: v.image || '', price: v.pr || '', colour: v.col || ''}, 30000); },
@@ -608,12 +622,12 @@ window.setupRestore = async st => {
   setupScope();
 };
 let uiLock = true; setTimeout(() => { uiLock = false; }, 4000);
-function saveUi() { if (uiLock) return; try { let t = '', f = 'all'; try { t = take ? take.id : ''; f = filt; } catch (e) {} const ui = {tab: curTab, take: t, filt: f}; try { ui.adj = window.adjGet && window.adjGet(); ui.setup = window.setupGet(); ui.bulk = window.bulkGet && window.bulkGet(); } catch (e) {} parent.postMessage({type: 'stock-take', action: 'ui', ui}, '*'); } catch (e) {} }
+function saveUi() { if (uiLock) return; try { let t = '', f = 'all'; try { t = take ? take.id : ''; f = filt; } catch (e) {} const ui = {tab: curTab, take: t, filt: f}; try { ui.adj = window.adjGet && window.adjGet(); ui.setup = window.setupGet(); ui.bulk = window.bulkGet && window.bulkGet(); ui.bar = window.lbGet && window.lbGet(); } catch (e) {} parent.postMessage({type: 'stock-take', action: 'ui', ui}, '*'); } catch (e) {} }
 async function applyUi(ui) {
   if (!ui || typeof ui !== 'object') return;
   const tab = ['bulk', 'take', 'adj', 'bar'].includes(ui.tab) ? ui.tab : 'bulk';
   show(tab);
-  try { await Promise.all([window.adjRestore(ui.adj), window.bulkRestore(ui.bulk)]); } catch (e) {}
+  try { await Promise.all([window.adjRestore(ui.adj), window.bulkRestore(ui.bulk), window.lbRestore && window.lbRestore(ui.bar)]); } catch (e) {}
   if (tab === 'take' && !ui.take && !take) { try { await window.setupRestore(ui.setup); } catch (e) {} }
   if (tab === 'take' && ui.take && !take) {
     try {
@@ -1090,10 +1104,10 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     const loc = shopLoc(), p = vs[0], im = p.image ? `<img src="${E(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(p.pt.slice(0, 2).toUpperCase());
     const n = vs.reduce((a, v) => a + (v.bc[0] ? (lbN[v.vid] || 0) : 0), 0);
     $('lbCard').innerHTML = `<div class="lbc"><div class="lbh"><div class="im">${im}</div><b>${E(p.pt)}</b><button type="button" id="lbStock">Set to stock quantity</button><button type="button" id="lbZero">Set all to 0</button>${vs.some(v => !v.bc[0]) ? '<button type="button" id="lbGen">Create missing barcodes</button>' : ''}<button type="button" id="lbX" title="Close">✕</button></div>` +
-      vs.map(v => `<div class="lbr" data-v="${E(v.vid)}"><div class="nm"><span class="tag">${E(v.t)}</span><small>${v.bc[0] ? 'Stock ' + (v.q[loc] || 0) + ' · ' + E(v.bc[0]) : '<span class="bad">No barcode yet. Add one in the Add / remove tab.</span>'}</small></div><div class="stp"><button type="button" data-b="-1" ${v.bc[0] ? '' : 'disabled'}>−</button><b>${lbN[v.vid] || 0}</b><button type="button" data-b="1" ${v.bc[0] ? '' : 'disabled'}>+</button></div></div>`).join('') +
+      vs.map(v => `<div class="lbr" data-v="${E(v.vid)}"><div class="nm"><span class="tag">${E(v.t)}</span><small>${v.bc[0] ? 'Stock ' + (v.q[loc] || 0) + ' · ' + E(v.bc[0]) : '<span class="bad">No barcode yet. Tap "Create missing barcodes" above.</span>'}</small></div><div class="stp"><button type="button" data-b="-1" ${v.bc[0] ? '' : 'disabled'}>−</button><b>${lbN[v.vid] || 0}</b><button type="button" data-b="1" ${v.bc[0] ? '' : 'disabled'}>+</button></div></div>`).join('') +
       `<div class="foot" style="padding:8px 10px"><span class="sum">${n} label${n === 1 ? '' : 's'} to add</span><button type="button" class="pri" id="lbGo" ${n ? '' : 'disabled'}>Add to label list</button></div></div>`;
   }
-  async function showProduct(pid) { try { await loadLocs(); } catch (e) {} lbPid = pid; lbN = {}; lbPrefill(); drawCard(); { const q0 = V.find(v => v.pid === pid); WZ.set('1', true, q0 ? q0.pt : ''); } lbMsg($('lbRecent').checked ? 'Label counts set to the quantity uploaded. Adjust if needed.' : ''); }
+  async function showProduct(pid) { try { await loadLocs(); } catch (e) {} try { const r = await Store.productVariants(String(pid)); mergeLive(pid, r && r.variants); } catch (e) {} lbPid = pid; lbN = {}; lbPrefill(); drawCard(); { const q0 = V.find(v => v.pid === pid); WZ.set('1', true, q0 ? q0.pt : ''); } lbMsg($('lbRecent').checked ? 'Label counts set to the quantity uploaded. Adjust if needed.' : ''); }
   /* collection shortlist: pick a collection, then tap a product to open its sizes; name search is limited to it */
   const ssLb = Sel($('ssLbCol'), 'All collections', true, false, true);
   const lbCols = new Map(); V.forEach(v => v.cols.forEach(c => { if (!lbCols.has(c)) lbCols.set(c, new Set()); lbCols.get(c).add(v.pid); }));
@@ -1142,6 +1156,8 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     const b = e.target.closest('[data-p]'); if (b) showProduct(b.dataset.p);
   };
   const lbFind = ProductFind($('lbIn'), {onProduct: showProduct, addBtn: $('lbAdd'), only: inLbCol});
+  window.lbGet = () => ({pid: lbPid, n: lbN});
+  window.lbRestore = async st => { if (!st || !st.pid || !V.some(v => v.pid === String(st.pid))) return; await showProduct(String(st.pid)); if (st.n && typeof st.n === 'object') { Object.keys(st.n).forEach(k => { if (byVid.has(k) && byVid.get(k).pid === lbPid) lbN[k] = Math.max(0, Math.min(500, Math.trunc(Number(st.n[k]) || 0))); }); drawCard(); } };
   window.lbReset = () => { lbPid = ''; lbN = {}; drawCard(); lbMsg('Pick a product to set how many labels each size needs.'); };
   window.barScan = async (code, forced) => {
     if (!['new', 'col'].includes(WZ.flow)) WZ.start('col');

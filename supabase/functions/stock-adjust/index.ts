@@ -147,6 +147,20 @@ async function createVariant(body: any) {
   return json({ ok: true, vid: nv.id.split("/").pop(), title: nv.title, barcode: nv.barcode || "", price: v.price });
 }
 
+// Live sizes of one product (so a size added after the last report refresh still shows up on the Barcodes page)
+async function productVariants(body: any) {
+  const pid = String(body.pid || "");
+  if (!VID.test(pid)) return json({ error: "Bad product" }, 400);
+  const d = await gql(`query($id:ID!){ product(id:$id){ id variants(first:100){ nodes{ id title price barcode inventoryItem{ inventoryLevels(first:10){ nodes{ location{ id } quantities(names:["available"]){ quantity } } } } } } } }`, { id: `gid://shopify/Product/${pid}` });
+  if (!d.product) return json({ error: "Product not found" }, 404);
+  const rows = d.product.variants.nodes.map((n: any) => {
+    const qy: Record<string, number> = {};
+    (n.inventoryItem?.inventoryLevels?.nodes || []).forEach((l: any) => { qy[String(l.location.id).split("/").pop()!] = q(l); });
+    return { vid: String(n.id).split("/").pop(), title: n.title, price: n.price, barcode: n.barcode || "", q: qy };
+  });
+  return json({ ok: true, pid, variants: rows });
+}
+
 async function setStatus(body: any) {
   const pid = String(body.pid || ""), st = body.status === "UNLISTED" ? "UNLISTED" : "ACTIVE";
   if (!VID.test(pid)) return json({ error: "Bad product" }, 400);
@@ -235,6 +249,7 @@ Deno.serve(async (req: Request) => {
     if (body.action === "adjustlist") return await adjustList(body, svc, String(prof.display_name || prof.username || ""));
     if (body.action === "setbarcode") return await setBarcode(body);
     if (body.action === "createvariant") return await createVariant(body);
+    if (body.action === "productvariants") return await productVariants(body);
     if (body.action === "setstatus") return await setStatus(body);
     if (body.action === "deletevariant") return await deleteVariant(body);
     if (body.action === "labelqueue") return await labelQueue(body, svc);
