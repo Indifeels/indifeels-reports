@@ -99,13 +99,13 @@
   "reason": ""
  },
  "seo-report": {
-  "at": "2026-10-26T05:58+11:00",
-  "code_sha": "85a17fa74acc5e1a5c054af0e2684abec5bd1f3d",
+  "at": "2026-10-29T05:59+11:00",
+  "code_sha": "1a438a78bedb2b087252f48303c2ba36952b3f01",
   "data_through": null,
   "last_ok": "2026-10-25T23:11+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": false,
-  "reason": "Semrush snapshot call reported 10000 API units (over budget); refresh stopped, nothing published"
+  "reason": "Semrush reported API unit charges (Position Tracking 100+200 units); stopped per cost rule"
  },
  "stock": {
   "at": "2026-10-29T00:04+11:00",
