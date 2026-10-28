@@ -609,6 +609,8 @@ const Store = PREVIEW ? {
   counted: since => call('takecounted', {since}, 60000),
   adds: vids => call('takeadjusts', {vids}, 30000).catch(() => ({})),
 };
+/* Shopify can lag a few seconds before a just-saved barcode is readable: retry the label add instead of failing */
+{ const _lab = Store.labels; Store.labels = async (op, items) => { for (let k = 0; ; k++) { try { return await _lab(op, items); } catch (e) { if (op === 'add' && k < 4 && /no barcode yet/i.test(String(e && e.message))) { await new Promise(r => setTimeout(r, 3000)); continue; } throw e; } } }; }
 
 /* ---------- tabs ---------- */
 let curTab = 'bulk';
