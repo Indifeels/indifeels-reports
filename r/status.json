@@ -1,9 +1,9 @@
 {
  "cash-report": {
-  "at": "2026-10-29T17:18+11:00",
-  "code_sha": "9c2ccd3d93cda95ca936ba4a4a4ca197c099296a",
+  "at": "2026-10-29T19:20+11:00",
+  "code_sha": "c86149dea07a0a57f0fcdd50f5a4516e253c32a1",
   "data_through": null,
-  "last_ok": "2026-10-29T17:18+11:00",
+  "last_ok": "2026-10-29T19:20+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
