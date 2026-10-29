@@ -1853,14 +1853,31 @@
       const money = (p) => { const n = parseFloat(p); return Number.isFinite(n) ? "$" + (Math.abs(n - Math.round(n)) < 0.005 ? String(Math.round(n)) : n.toFixed(2)) : ""; };
       const TX = 13.7, TW = 23.4;  // text column: starts 12.36 mm from the label edge, 25.3 mm wide
       const fit = (text) => { const words = String(text).split(/\s+/).filter(Boolean); let out = ""; for (const w of words) { const t = out ? out + " " + w : w; if (doc.getTextWidth(t) > TW && out) break; out = t; } return out; };
+      const nameLines = (text, mw, tw, max = 2) => {
+        const cut = (t) => { let o = ""; for (const ch of t) { if (tw(o + ch) > mw) break; o += ch; } return o; };
+        const lines = [""];
+        for (let w of String(text).split(/\s+/).filter(Boolean)) {
+          for (;;) {
+            const li = lines.length - 1, cur = lines[li], t = cur ? cur + " " + w : w;
+            if (tw(t) <= mw) { lines[li] = t; break; }
+            if (cur && li < max - 1) { lines.push(""); continue; }
+            if (li === max - 1) { lines[li] = cut(t).trimEnd(); return lines.filter(Boolean); }
+            const part = cut(w); if (!part) return lines.filter(Boolean);
+            lines[li] = part; lines.push(""); w = w.slice(part.length); if (!w) break;
+          }
+        }
+        return lines.filter(Boolean);
+      };
+
       flat.forEach((r, i) => {
         const slot = start - 1 + i, pg = Math.floor(slot / 65), k = slot % 65;
         if (k === 0 && pg > 0) doc.addPage();
         const x = 5 + (k % 5) * pitch, y = 10.7 + Math.floor(k / 5) * H;
         const pic = pics.get(r.img);
         if (pic) doc.addImage(pic, "JPEG", x + 1.4, y + 1.5, PW, PH); else { doc.setFillColor(235, 235, 235); doc.rect(x + 1.4, y + 1.5, PW, PH, "F"); }
-        doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "bold"); doc.setFontSize(8.3);
-        doc.text(fit(r.p), x + TX, y + 4.4);
+        doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal"); doc.setFontSize(6.4);
+        { const nl = nameLines(r.p, TW, (t) => doc.getTextWidth(t)); if (nl.length > 1) { doc.text(nl[0], x + TX, y + 3.5); doc.text(nl[1], x + TX, y + 5.9); } else if (nl.length) doc.text(nl[0], x + TX, y + 4.6); }
+        doc.setFont("helvetica", "bold");
         const big = (t, size, yy) => { let z = size; doc.setFontSize(z); while (z > 6 && doc.getTextWidth(t) > TW) { z -= 0.3; doc.setFontSize(z); } doc.text(t, x + TX, yy); };
         big(r.c ? r.v + " / " + r.c : r.v, 10.4, y + 9.4);
         const pr = money(r.pr); if (pr) { doc.setTextColor(0, 110, 0); big(pr, 11, y + 15); }
@@ -1893,8 +1910,23 @@
       g.restore();
       const font = (pt) => { g.font = "bold " + (pt * PT) + "px Helvetica, Arial, sans-serif"; }; g.textBaseline = "alphabetic";
       const tw = (t) => g.measureText(t).width / S;
-      font(8.3); let out = ""; for (const w of r.p.split(/\s+/).filter(Boolean)) { const t = out ? out + " " + w : w; if (tw(t) > TW && out) break; out = t; }
-      g.fillStyle = "#000"; g.fillText(out, TX * S, 4.4 * S);
+      g.font = (6.4 * PT) + "px Helvetica, Arial, sans-serif";
+      const nameLines = (text, mw, tw, max = 2) => {
+        const cut = (t) => { let o = ""; for (const ch of t) { if (tw(o + ch) > mw) break; o += ch; } return o; };
+        const lines = [""];
+        for (let w of String(text).split(/\s+/).filter(Boolean)) {
+          for (;;) {
+            const li = lines.length - 1, cur = lines[li], t = cur ? cur + " " + w : w;
+            if (tw(t) <= mw) { lines[li] = t; break; }
+            if (cur && li < max - 1) { lines.push(""); continue; }
+            if (li === max - 1) { lines[li] = cut(t).trimEnd(); return lines.filter(Boolean); }
+            const part = cut(w); if (!part) return lines.filter(Boolean);
+            lines[li] = part; lines.push(""); w = w.slice(part.length); if (!w) break;
+          }
+        }
+        return lines.filter(Boolean);
+      };
+      g.fillStyle = "#000"; { const nl = nameLines(r.p, TW, tw); if (nl.length > 1) { g.fillText(nl[0], TX * S, 3.5 * S); g.fillText(nl[1], TX * S, 5.9 * S); } else if (nl.length) g.fillText(nl[0], TX * S, 4.6 * S); }
       const big = (t, size, yy) => { let z = size; font(z); while (z > 6 && tw(t) > TW) { z -= 0.3; font(z); } g.fillText(t, TX * S, yy * S); };
       big(r.c ? r.v + " / " + r.c : r.v, 10.4, 9.4);
       const n = parseFloat(r.pr), pr = Number.isFinite(n) ? "$" + (Math.abs(n - Math.round(n)) < 0.005 ? String(Math.round(n)) : n.toFixed(2)) : "";

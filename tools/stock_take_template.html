@@ -278,6 +278,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
         <div class="wzb">
           <div id="bxDetail" hidden>
             <details id="bxDet"><summary id="bxDetS" style="cursor:pointer;font-weight:700;padding:10px 2px">Items in this box</summary><div id="bxLines"></div></details>
+            <div class="msg" id="bxCount" style="margin:8px 0"></div>
             <div class="foot"><span class="sum" id="bxSum"></span><button type="button" id="bxMkAll" hidden>Create missing variants</button><button type="button" id="bxGenAll" hidden>Create missing barcodes</button><button type="button" class="pri" id="bxBar">Add barcodes to the sheet</button></div>
           </div>
           <div class="msg" id="bxMsg"></div>
@@ -454,8 +455,8 @@ $('wzAgain').onclick = () => WZ.reset();
 document.querySelectorAll('#viewBar .wzchg').forEach(b => { b.onclick = () => { const el = b.closest('.wzs'); WZ.reopen(el.dataset.re || el.dataset.s); }; });
 WZ.render();
 /* Sizes created after the last report refresh are missing from DATA: merge the live list from Shopify into V when a product is opened */
-function mergeLive(pid, list) {
-  const base = V.find(x => x.pid === String(pid)); if (!base || !Array.isArray(list)) return;
+function mergeLive(pid, list, fb) {
+  const base = V.find(x => x.pid === String(pid)) || (fb ? {pt: fb.product_title || '', image: fb.image || '', pr: '', ca: '', sup: '', st: '', col: '', cols: []} : null); if (!base || !Array.isArray(list)) return;
   const prod = DATA.products.find(x => String(x.id) === String(pid));
   list.forEach(r => {
     const vid = String(r.vid), ex = byVid.get(vid), bcv = r.barcode ? [r.barcode] : [];
@@ -1782,7 +1783,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     const norm = x => String(x || '').trim().toLowerCase();
     const match = l => V.find(v => v.pid === String(l.product_id) && norm(v.t) === norm(l.variant_title));
     const rem = l => Math.max(0, (l.qty || 0) - (l.recv_qty || 0));
-    const boxes = () => { const m = new Map(); lines.forEach(l => { const b = m.get(l.box_no) || {box: l.box_no, shipped: l.line_status === 'shipped' || l.box_status === 'shipped', date: l.shipped_at, sup: l.supplier || '', units: 0, n: 0}; b.units += rem(l); b.n++; m.set(l.box_no, b); }); return [...m.values()]; };
+    const boxes = () => { const m = new Map(); lines.forEach(l => { const b = m.get(l.box_no) || {box: l.box_no, shipped: l.line_status === 'shipped' || l.box_status === 'shipped', date: l.shipped_at, sup: l.supplier || '', units: 0, n: 0}; b.units += (l.qty || 0); b.n++; m.set(l.box_no, b); }); return [...m.values()]; };
     const cur = () => lines.filter(l => l.box_no === box);
     const isShipped = () => { const b = boxes().find(x => x.box === box); return !!(b && b.shipped); };
     const disarm = () => { armed = ''; yesArmed = false; $('bxAdd').classList.remove('arm'); $('bxAdd').textContent = 'Add stock to Shopify'; $('bxYes').textContent = 'Yes, all barcodes applied'; };
@@ -1796,15 +1797,21 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     function drawLines() {
       $('bxDetail').hidden = !box; if (!box) return;
       const sh = isShipped(); window.__bxRecv = sh;
-      { const ls = cur(); $('bxDetS').textContent = `Items in this box · ${ls.length} line${ls.length === 1 ? '' : 's'}, ${ls.reduce((a, l) => a + rem(l), 0)} pcs (tap to show)`; }
-      $('bxLines').innerHTML = cur().map(l => { const v = match(l), r = rem(l);
-        return `<div class="bxl"><img src="${E(l.image || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${E(l.variant_title)} · sent ${l.qty}${l.recv_qty ? ' · already added ' + l.recv_qty : ''}${v ? '' : ' · <span style="color:var(--red)">not on the website</span> <button type="button" data-cv="' + E(l.id) + '" style="padding:2px 10px;font-size:12px">Create + barcode</button>'}${v && !v.bc.length ? ' · <span style="color:var(--red)">no barcode</span> <button type="button" data-g="' + E(v.vid) + '" style="padding:2px 10px;font-size:12px">Create</button>' : ''}</div></div>${r > 0 ? `<b>${r}</b>` : '<span class="sum">done</span>'}</div>`; }).join('');
-      const all = cur().reduce((a, l) => a + rem(l), 0);
-      $('bxSum').textContent = sh ? `${all} pcs in this box. Print all the barcodes first; you confirm what you received after printing.` : `${all} pcs packed — barcodes only until it is shipped`;
-      const miss = cur().filter(l => { const v = match(l); return v && !v.bc.length; }).length;
-      { const nm = cur().filter(l => !match(l)).length; $('bxMkAll').hidden = !nm; $('bxMkAll').classList.toggle('pri', !!nm); if (nm) $('bxSum').textContent = `${nm} line${nm === 1 ? ' is' : 's are'} not on the website yet. Create ${nm === 1 ? 'it' : 'them'} first (with barcodes).`; }
-      $('bxGenAll').hidden = !miss; $('bxBar').hidden = !!miss; $('bxGenAll').classList.toggle('pri', !!miss);
-      if (miss) $('bxSum').textContent = `${miss} line${miss === 1 ? ' has' : 's have'} no barcode. Create ${miss === 1 ? 'it' : 'them'} first, then you can add the box to the label list.`;
+      { const ls = cur(); $('bxDetS').textContent = `Items in this box · ${ls.length} line${ls.length === 1 ? '' : 's'}, ${ls.reduce((a, l) => a + (l.qty || 0), 0)} pcs shipped (tap to show)`; }
+      $('bxLines').innerHTML = cur().map(l => { const v = match(l);
+        return `<div class="bxl"><img src="${E(l.image || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${E(l.variant_title)} · shipped ${l.qty}${l.recv_qty ? ' · <span style="color:var(--amber,#e0a030)">' + l.recv_qty + ' already added to stock earlier (label still printed)</span>' : ''}${v ? '' : ' · <span style="color:var(--red)">not on the website</span> <button type="button" data-cv="' + E(l.id) + '" style="padding:2px 10px;font-size:12px">Create + barcode</button>'}${v && !v.bc.length ? ' · <span style="color:var(--red)">no barcode</span> <button type="button" data-g="' + E(v.vid) + '" style="padding:2px 10px;font-size:12px">Create</button>' : ''}</div></div><b>${l.qty}</b></div>`; }).join('');
+      /* strict count: one label per piece the supplier shipped. Nothing may be skipped, so printing stays locked until every line has a Shopify variant and barcode. */
+      const ls = cur(), shipped = ls.reduce((a, l) => a + (l.qty || 0), 0);
+      const noVar = ls.filter(l => !match(l)), noBc = ls.filter(l => { const v = match(l); return v && !v.bc.length; });
+      const missQty = [...noVar, ...noBc].reduce((a, l) => a + (l.qty || 0), 0), ready = shipped - missQty;
+      const cEl = $('bxCount'), blocked = noVar.length + noBc.length;
+      if (!ls.length) { cEl.textContent = ''; cEl.className = 'msg'; }
+      else if (!blocked) { cEl.className = 'msg ok'; cEl.innerHTML = `<b>Supplier shipped ${shipped} pcs</b> (${ls.length} line${ls.length === 1 ? '' : 's'}) · <b>${shipped} barcodes will print</b> · exact match ✓`; }
+      else { cEl.className = 'msg bad'; cEl.innerHTML = `<b>Supplier shipped ${shipped} pcs</b> (${ls.length} line${ls.length === 1 ? '' : 's'}) · barcodes ready for ${ready} · <b>${missQty} pcs NOT ready</b>.<br>` + (noVar.length ? `Not on Shopify yet (${noVar.length}): ` + noVar.map(l => E(l.product_title + ' · ' + l.variant_title) + ' ×' + l.qty).join('; ') + '. ' : '') + (noBc.length ? `No barcode (${noBc.length}): ` + noBc.map(l => E(l.product_title + ' · ' + l.variant_title) + ' ×' + l.qty).join('; ') + '.' : '') + '<br>Create them first. Printing stays locked so no barcode is missed.'; }
+      $('bxSum').textContent = sh ? `Print all the barcodes first; you confirm what you received after printing.` : `Packed — barcodes only until it is shipped`;
+      $('bxMkAll').hidden = !noVar.length; $('bxMkAll').classList.toggle('pri', !!noVar.length);
+      $('bxGenAll').hidden = !noBc.length || !!noVar.length; $('bxGenAll').classList.toggle('pri', !!noBc.length && !noVar.length);
+      $('bxBar').hidden = !!blocked || !ls.length;
       WZ.render();
     }
     async function load() {
@@ -1814,19 +1821,32 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     window.bxReset = () => { box = ''; qv = {}; window.__bxRecv = false; try { disarm(); } catch (e) {} $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); $('bxPrev').innerHTML = ''; msg(''); msg2(''); drawTiles(); drawLines(); };
     $('bxSup').onchange = () => { box = ''; drawTiles(); drawLines(); };
     $('bxRefresh').onclick = () => { disarm(); load(); };
-    $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; box = b.dataset.b; qv = {}; $('bxDet').open = false; disarm(); $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); msg(''); msg2(''); drawTiles(); drawLines(); { const bb = boxes().find(z => z.box === box); WZ.set('1', true, box + (bb ? ' · ' + bb.units + ' pcs' : '')); } };
+    $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; box = b.dataset.b; qv = {}; $('bxDet').open = false; disarm(); $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); msg(''); msg2(''); try { bxArm = false; $('bxBar').textContent = 'Add barcodes to the sheet'; } catch (e) {} drawTiles(); drawLines(); { const bb = boxes().find(z => z.box === box); WZ.set('1', true, box + (bb ? ' · ' + bb.units + ' pcs' : '')); } liveFix(); };
+    /* DATA can be hours old: re-read the live sizes + barcodes from Shopify for this box's products so nothing shows as missing by mistake */
+    let liveTok = 0;
+    const liveFix = async () => {
+      const my = ++liveTok, ls = cur().filter(l => { const v = match(l); return !v || !v.bc.length; });
+      const pids = [...new Set(ls.map(l => String(l.product_id)))]; if (!pids.length) return;
+      for (const pid of pids) { if (my !== liveTok) return; try { const r = await Store.productVariants(pid); mergeLive(pid, r && r.variants, ls.find(l => String(l.product_id) === pid)); } catch (e) {} }
+      if (my === liveTok) drawLines();
+    };
     const gen1 = async vid => { const r = await autoBarcode(vid); const v = byVid.get(String(vid)); if (v) { v.bc = [r.barcode]; byBc.set(bcn(r.barcode), v); } return r; };
     $('bxLines').addEventListener('click', async e => { const g = e.target.closest('[data-g]'); if (!g) return; e.stopImmediatePropagation(); g.disabled = true; try { const r = await gen1(g.dataset.g); msg('Barcode ' + r.barcode + ' created.', 'ok'); drawLines(); } catch (err) { msg(err.message, 'bad'); g.disabled = false; } }, true);
     const regVar = (l, r) => { const p = DATA.products.find(x => String(x.id) === String(l.product_id)); const base = V.find(x => x.pid === String(l.product_id)); const nv = {vid: String(r.vid), pid: String(l.product_id), pt: base ? base.pt : l.product_title, image: base ? base.image : (l.image || ''), pr: r.price || (base ? base.pr : ''), ca: base ? base.ca : '', sup: base ? base.sup : '', st: base ? base.st : '', t: r.title || l.variant_title, col: base ? base.col : '', cols: base ? base.cols : [], bc: r.barcode ? [r.barcode] : [], q: {}}; V.push(nv); byVid.set(nv.vid, nv); if (nv.bc[0]) { const k = bcn(nv.bc[0]); byBc.set(k, nv); allBc.set(k, [nv]); } if (p) p.variants.push({vid: nv.vid, t: nv.t, pr: nv.pr, bc: nv.bc, q: {}}); return nv; };
-    const mkVar = async l => { let last = null; for (let k = 0; k < 6; k++) { try { return regVar(l, await Store.createVariant(String(l.product_id), l.variant_title, genBc())); } catch (e) { last = e; if (!/already uses/i.test(e.message || '')) throw e; } } throw last; };
+    const mkVar = async l => { let last = null; for (let k = 0; k < 6; k++) { try { return regVar(l, await Store.createVariant(String(l.product_id), l.variant_title, genBc())); } catch (e) { last = e; if (/already exists/i.test(e.message || '')) { try { const r = await Store.productVariants(String(l.product_id)); mergeLive(l.product_id, r && r.variants, l); const m = match(l); if (m) return m; } catch (e2) {} } if (!/already uses/i.test(e.message || '')) throw e; } } throw last; };
     $('bxLines').addEventListener('click', async e => { const c = e.target.closest('[data-cv]'); if (!c) return; e.stopImmediatePropagation(); const l = lines.find(x => String(x.id) === c.dataset.cv); if (!l) return; c.disabled = true; c.textContent = 'Creating…'; try { const v = await mkVar(l); msg(l.product_title + ' · ' + v.t + ' created on Shopify with barcode ' + (v.bc[0] || '') + '.', 'ok'); drawLines(); } catch (err) { msg(err.message, 'bad'); c.disabled = false; c.textContent = 'Create + barcode'; } }, true);
     $('bxMkAll').onclick = async () => { const todo = cur().filter(l => !match(l)); if (!todo.length) return; $('bxMkAll').disabled = true; let ok = 0; try { for (const l of todo) { await mkVar(l); ok++; } msg(ok + ' variant' + (ok === 1 ? '' : 's') + ' created with barcodes.', 'ok'); } catch (err) { msg(ok + ' created, then: ' + err.message, 'bad'); } $('bxMkAll').disabled = false; drawLines(); };
     $('bxGenAll').onclick = async () => { const todo = cur().map(match).filter(v => v && !v.bc.length); if (!todo.length) return; $('bxGenAll').disabled = true; let ok = 0; try { for (const v of todo) { await gen1(v.vid); ok++; } msg(ok + ' barcode' + (ok === 1 ? '' : 's') + ' created.', 'ok'); } catch (err) { msg(ok + ' created, then: ' + err.message, 'bad'); } $('bxGenAll').disabled = false; drawLines(); };
+    const bxAdded = new Set(); let bxArm = false;
     $('bxBar').onclick = async () => {
-      const items = [], skip = [];
-      cur().forEach(l => { const q = rem(l); if (q <= 0) return; const v = match(l); if (v && v.bc.length) items.push({vid: v.vid, qty: q}); else skip.push(l.product_title + ' · ' + l.variant_title); });
-      if (!items.length) return msg('Nothing to add: none of these lines has a barcode.', 'bad');
-      try { await Store.labels('add', items); await window.refreshLabels(); const t = items.reduce((a, i) => a + i.qty, 0); msg(`${t} label${t === 1 ? '' : 's'} added to the sheet below.` + (skip.length ? ` Skipped (no barcode/variant): ${skip.join('; ')}.` : ''), skip.length ? 'bad' : 'ok'); WZ.set('2', true, t + ' label' + (t === 1 ? '' : 's') + ' added'); }
+      const ls = cur(), items = [], bad = [];
+      ls.forEach(l => { const q = l.qty || 0; if (q <= 0) return; const v = match(l); if (v && v.bc.length) items.push({vid: v.vid, qty: q}); else bad.push(l.product_title + ' · ' + l.variant_title + ' ×' + q); });
+      if (bad.length) return msg('Cannot print yet. Not ready: ' + bad.join('; ') + '. Create them first.', 'bad');
+      if (!items.length) return msg('Nothing to add.', 'bad');
+      const shipped = ls.reduce((a, l) => a + (l.qty || 0), 0), t = items.reduce((a, i) => a + i.qty, 0);
+      if (t !== shipped) return msg(`Count mismatch: ${t} labels vs ${shipped} shipped. Nothing added.`, 'bad');
+      if (bxAdded.has(box) && !bxArm) { bxArm = true; $('bxBar').textContent = 'Tap again: add a 2nd copy'; msg('The labels for this box are already in the list. Tap again only if you want them added a second time.', 'bad'); return; }
+      try { await Store.labels('add', items); await window.refreshLabels(); bxAdded.add(box); bxArm = false; $('bxBar').textContent = 'Add barcodes to the sheet'; msg(`${t} label${t === 1 ? '' : 's'} added = ${shipped} shipped ✓ (${items.length} line${items.length === 1 ? '' : 's'}).`, 'ok'); WZ.set('2', true, t + ' label' + (t === 1 ? '' : 's') + ' added'); }
       catch (e) { msg(e.message, 'bad'); }
     };
     /* ----- step 4: did every printed barcode match what arrived? Yes = all of it; No = adjust, the gap is "overreported" ----- */
