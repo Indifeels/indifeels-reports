@@ -90,10 +90,10 @@
   "reason": ""
  },
  "restock-plan": {
-  "at": "2026-10-30T00:00+11:00",
-  "code_sha": "40a71a44b5ebfba9cecb2c91f4e9c2adf171a545",
+  "at": "2026-10-30T07:31+11:00",
+  "code_sha": "77f83f87784f9d4995d93ada6385d45ff39791ae",
   "data_through": null,
-  "last_ok": "2026-10-30T00:00+11:00",
+  "last_ok": "2026-10-30T07:31+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
