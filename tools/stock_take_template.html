@@ -563,6 +563,7 @@ const Store = PREVIEW ? {
   setBarcode: async (vid, barcode) => ({ok: true, vid, barcode}),
   createVariant: async (pid, title, barcode) => ({ok: true, vid: String(Date.now()), title, barcode, price: '0'}),
   productVariants: async pid => ({ok: true, pid, variants: []}),
+  labelInfo: async () => ({ok: true, rows: []}),
   deleteVariant: async vid => ({ok: true, vid}),
   printLabels: async () => { throw new Error('The PDF works inside the app, not in this preview.'); },
   previewLabel: async () => { throw new Error('The label preview works inside the app, not in this preview.'); },
@@ -595,6 +596,7 @@ const Store = PREVIEW ? {
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
   createVariant: (pid, title, barcode) => call('createvariant', {pid, title, barcode}, 60000),
   productVariants: pid => call('productvariants', {pid}, 30000),
+  labelInfo: vids => call('labelinfo', {items: vids.map(v => ({vid: v, qty: 1}))}, 30000),
   deleteVariant: vid => call('deletevariant', {vid}, 40000),
   setStatus: (pid, status) => call('setstatus', {pid, status}, 40000),
   previewLabel: r => { const v = byVid.get(String(r.vid)) || {}; return call('previewlabel', {product: r.product, variant: r.variant, barcode: r.barcode, image: v.image || '', price: v.pr || '', colour: v.col || ''}, 30000); },
@@ -612,6 +614,20 @@ const Store = PREVIEW ? {
 };
 /* Shopify can lag a few seconds before a just-saved barcode is readable: retry the label add instead of failing */
 { const _lab = Store.labels; Store.labels = async (op, items) => { for (let k = 0; ; k++) { try { return await _lab(op, items); } catch (e) { if (op === 'add' && k < 4 && /no barcode yet/i.test(String(e && e.message))) { await new Promise(r => setTimeout(r, 3000)); continue; } throw e; } } }; }
+/* Labels always use the CURRENT name, price, photo and barcode from Shopify (edits made after a label was queued must show up) */
+{
+  const liveC = new Map();
+  const liveRows = async vids => { const ids = [...new Set(vids.map(String))], need = ids.filter(v => !liveC.has(v) || Date.now() - liveC.get(v).t > 20000);
+    for (let i = 0; i < need.length; i += 150) { try { const r = await Store.labelInfo(need.slice(i, i + 150)); (r.rows || []).forEach(x => liveC.set(String(x.vid), {t: Date.now(), x})); } catch (e) {} }
+    return ids.map(v => (liveC.get(v) || {}).x).filter(Boolean); };
+  const applyLive = (x) => { const v = byVid.get(String(x.vid)); if (!v) return; if (x.product) v.pt = x.product; if (x.variant) v.t = x.variant; if (x.price) v.pr = x.price; if (x.image) v.image = x.image; if (x.barcode && v.bc[0] !== x.barcode) v.bc = [x.barcode]; };
+  const patchRow = (r, m) => { const x = m.get(String(r.vid)); if (!x) return; if (x.product) r.product = x.product; if (x.variant) r.variant = x.variant; if (x.barcode) r.barcode = x.barcode; };
+  const sync = async rows => { const live = await liveRows(rows.map(r => r.vid)); live.forEach(applyLive); const m = new Map(live.map(x => [String(x.vid), x])); rows.forEach(r => patchRow(r, m)); };
+  const _pl = Store.printLabels, _pv = Store.previewLabel, _ll = Store.labels;
+  Store.printLabels = async (labels, start, print) => { await sync(labels); return _pl(labels, start, print); };
+  Store.previewLabel = async r => { await sync([r]); return _pv(r); };
+  Store.labels = async (op, items) => { const out = await _ll(op, items); if (op === 'list' && out && Array.isArray(out.rows) && out.rows.length) await sync(out.rows); return out; };
+}
 
 /* ---------- tabs ---------- */
 let curTab = 'bulk';

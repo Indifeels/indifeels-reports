@@ -161,6 +161,18 @@ async function productVariants(body: any) {
   return json({ ok: true, pid, variants: rows });
 }
 
+// Current name / price / photo / barcode of variants straight from Shopify, so labels reflect edits made after they were queued
+async function labelInfo(body: any, svc: any) {
+  const want = items(body, 200, 1000);
+  const out: any[] = [];
+  for (const ids of chunk([...want.keys()], 50)) {
+    const d = await gql(`query($ids:[ID!]!){ nodes(ids:$ids){ ... on ProductVariant{ id title price barcode product{ title featuredMedia{ preview{ image{ url } } } } } } }`, { ids: ids.map((i) => `gid://shopify/ProductVariant/${i}`) });
+    d.nodes.forEach((n: any) => { if (!n) return; out.push({ vid: String(n.id).split("/").pop(), product: n.product?.title || "", variant: n.title || "", barcode: n.barcode || "", price: n.price || "", image: n.product?.featuredMedia?.preview?.image?.url || "" }); });
+  }
+  await Promise.all(out.filter((r) => r.barcode).map((r) => svc.from("label_queue").update({ product: r.product, variant: r.variant, barcode: r.barcode }).eq("vid", r.vid).is("printed_at", null)));
+  return json({ ok: true, rows: out });
+}
+
 async function setStatus(body: any) {
   const pid = String(body.pid || ""), st = body.status === "UNLISTED" ? "UNLISTED" : "ACTIVE";
   if (!VID.test(pid)) return json({ error: "Bad product" }, 400);
@@ -250,6 +262,7 @@ Deno.serve(async (req: Request) => {
     if (body.action === "setbarcode") return await setBarcode(body);
     if (body.action === "createvariant") return await createVariant(body);
     if (body.action === "productvariants") return await productVariants(body);
+    if (body.action === "labelinfo") return await labelInfo(body, svc);
     if (body.action === "setstatus") return await setStatus(body);
     if (body.action === "deletevariant") return await deleteVariant(body);
     if (body.action === "labelqueue") return await labelQueue(body, svc);
