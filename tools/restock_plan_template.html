@@ -1496,10 +1496,7 @@ function liveHtml(live){
 function supHtml(i){
   const pp = pipeline(infos[i].key);
   if (!pp.live.length) {
-    const lr = pp.all.filter(o => o.status === 'received').pop();
-    if (!lr) return '–';
-    if (!(infos[i].r.stock > 0)) return '–';   // out of stock now: an old receipt is stale, don't claim it was restocked
-    return `<span class="badge c-green" title="${esc(timeline(lr))}">✅ Restocked ${dShort(lr.received_at)} · took ${daysBetween(shipDay(lr), new Date(lr.received_at))} days</span>`;
+    return '–';   // restocked = cycle finished: show nothing until a new order starts
   }
   return liveHtml(pp.live);
 }
