@@ -1827,9 +1827,9 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       $('lcList').innerHTML = (list.length ? `<div class="foot lbmulti"><span class="sum"><b id="lcTn">${tick.size}</b> ticked · <b id="lcLn">${total()}</b> labels</span><button type="button" id="lcAll">Tick all shown</button><button type="button" id="lcNone">Clear ticks</button><button type="button" class="pri" id="lcAdd" ${tick.size ? '' : 'disabled'}>Add ticked to label list</button></div><div class="pfs">` +
         list.map(g => { const k = kind + ':' + g.pid, im = g.image ? `<img src="${E(g.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(String(g.title).slice(0, 2).toUpperCase());
           const sub = kind === 'n' ? `New · ${g.variants.reduce((a, v) => a + (v.qty || 0), 0)} pcs · ${fmt(g.publishedAt && Date.parse(g.publishedAt) > Date.parse(g.createdAt) ? g.publishedAt : g.createdAt)}` : `+${g.variants.reduce((a, v) => a + v.added, 0)} added · ${fmt(g.at)}`;
-          const sz = kind === 'a' ? `<small>${g.variants.slice(0, 5).map(v => E(v.title) + ' +' + v.added).join(' · ')}${g.variants.length > 5 ? ' …' : ''}${g.variants.some(v => v.box) ? ' · ' + E([...new Set(g.variants.map(v => v.box).filter(Boolean))].join(', ')) : ''}</small>` : (g.more ? '<small>first 40 sizes shown</small>' : '');
+          const sz = kind === 'a' ? `<small>${g.variants.slice(0, 5).map(v => E(v.title) + ' +' + v.added).join(' · ')}${g.variants.length > 5 ? ' …' : ''}${g.variants.some(v => v.box) ? ' · ' + E([...new Set(g.variants.map(v => v.box).filter(Boolean))].join(', ')) : ''}${g.variants.some(v => v.shopify) ? ' · Shopify' : ''}</small>` : (g.more ? '<small>first 40 sizes shown</small>' : '');
           return `<button type="button" class="uct${tick.has(k) ? ' on' : ''}${inList.has(k) ? ' dim' : ''}" data-k="${E(k)}"><span class="im">${im}<span class="tkb" data-tick="${E(k)}">✓</span></span><span>${E(g.title)}</span><small>${inList.has(k) ? '✓ in label list' : sub}</small>${sz}</button>`; }).join('') + '</div>'
-        : `<div class="empty">${tab === 'news' ? 'No new or newly published products since then.' : 'No stock was added through this app since then.'}</div>`);
+        : `<div class="empty">${tab === 'news' ? 'No new or newly published products since then.' : 'No stock was added since then.'}</div>`);
     }
     const sync = () => { const a = $('lcAdd'); if ($('lcTn')) $('lcTn').textContent = tick.size; if ($('lcLn')) $('lcLn').textContent = total(); if (a) a.disabled = !tick.size || busy; $('lcList').querySelectorAll('.uct').forEach(b => b.classList.toggle('on', tick.has(b.dataset.k))); };
     async function load() {
@@ -1843,7 +1843,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
         data.added.forEach(g => mergeLive(g.pid, g.variants.map(v => ({vid: v.vid, title: v.title, price: v.price, barcode: v.barcode, q: {}})), {product_title: g.title, image: g.image}));
         const pcs = data.added.reduce((a, g) => a + g.variants.reduce((b, v) => b + v.added, 0), 0);
         if (!data.news.length && data.added.length) tab = 'added'; else if (data.news.length && !data.added.length) tab = 'news';
-        info(`Since <b>${E(fmt(d))}</b>: <b>${data.news.length}</b> new product${data.news.length === 1 ? '' : 's'}, <b>${pcs}</b> piece${pcs === 1 ? '' : 's'} of stock added on <b>${data.added.length}</b> product${data.added.length === 1 ? '' : 's'}. Tick what you want labels for.`, 'ok');
+        info(`Since <b>${E(fmt(d))}</b>: <b>${data.news.length}</b> new product${data.news.length === 1 ? '' : 's'}, <b>${pcs}</b> piece${pcs === 1 ? '' : 's'} of stock added on <b>${data.added.length}</b> product${data.added.length === 1 ? '' : 's'}. Tick what you want labels for.` + (r.warn ? ' <span style="color:var(--red)">' + E(r.warn) + '</span>' : ''), 'ok');
       } catch (e) { data = null; info(e.message, 'bad'); }
       $('lcGo').disabled = false; draw();
     }
