@@ -404,6 +404,29 @@
       ],
       "supabase_sync": false,
       "schedule_control": "none"
+    },
+    {
+      "id": "procurement",
+      "title": "Procurement",
+      "workflow": "procurement.yml",
+      "refresh_times": [
+        "manual"
+      ],
+      "required_env": [
+        "SHOPIFY_TOKEN",
+        "STOCK_KEY"
+      ],
+      "builders": [
+        "tools/procurement.py",
+        "tools/procurement_template.html",
+        "tools/procurement_demand.json"
+      ],
+      "outputs": [
+        "r/procurement.bin",
+        "r/procurement.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "none"
     }
   ]
 }

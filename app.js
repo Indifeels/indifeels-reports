@@ -228,6 +228,7 @@
     "product-visibility": { c: "purple", icon: "eye", stat: ["eye", "tag", "alert"], line: ["purple", "teal", "rose"] },
     "restock-plan": { c: "orange", icon: "box", stat: ["box", "alert"], line: [] },
     "restock-supplier": { c: "teal", icon: "box", stat: [], line: [] },
+    procurement: { c: "purple", icon: "bars", stat: ["bars", "alert"], line: [] },
     "stock-take": { c: "teal", icon: "box", stat: ["box", "tag"], line: [] },
     footwear: { c: "rose", icon: "search", stat: ["search", "bars", "trend"], line: ["rose", "purple", "green"] },
     "facebook-tracked": { c: "purple", icon: "chart", stat: ["dollar", "bag", "trend", "tag"], line: ["purple", "purple", "green", "teal"] },
@@ -272,7 +273,7 @@
     {name:"Sales Analysis",color:"#568F8C",ids:["order-source","order-attribution"]},
     {name:"Facebook",color:"#986D7E",ids:["facebook-tracked","daily","monthly"]},
     {name:"Google",color:"#AD915A",ids:["google-tracked","google-non-tracked"]},
-    {name:"Stock Management",color:"#708C74",ids:["restock-plan","stock-take","stock","product-visibility"]},
+    {name:"Stock Management",color:"#708C74",ids:["restock-plan","procurement","stock-take","stock","product-visibility"]},
     {name:"SEO",color:"#927CA2",ids:["footwear"]},
     {name:"Admin Panel",color:"#838099",ids:["schedule-panel","tech-availability","project-board"]}
   ];

@@ -1,0 +1,84 @@
+name: Procurement
+
+# Procurement: demand (Shopify sales + search volume) vs stock per collection, by size and colour.
+# Runs by hand now; add to the Schedule Panel once approved.
+run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
+
+on:
+  repository_dispatch:
+    types: [report-schedule]
+  workflow_dispatch:
+
+concurrency:
+  # Per-workflow lock: prevents duplicate runs of this workflow from cancelling unrelated report refreshes.
+  group: ${{ github.event.action == 'report-schedule' && !(contains(github.event.client_payload.report_ids, 'procurement')) && format('ignored-{0}', github.event.client_payload.schedule_group) || 'indifeels-procurement' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: (github.event.action != 'report-schedule' || (contains(github.event.client_payload.report_ids, 'procurement')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Schedule Panel dispatch gate
+        id: gate
+        run: |
+          echo "go=1" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.go == '1'
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.go == '1'
+        with:
+          python-version: "3.12"
+
+      - name: Install report dependency
+        if: steps.gate.outputs.go == '1'
+        run: pip install cryptography
+
+      - name: Validate report contract
+        if: steps.gate.outputs.go == '1'
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          STOCK_KEY: ${{ secrets.STOCK_KEY }}
+        run: python3 tools/report_preflight.py --phase pre procurement
+
+      - name: Build Procurement
+        if: steps.gate.outputs.go == '1'
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
+          STOCK_KEY: ${{ secrets.STOCK_KEY }}
+        run: python3 tools/procurement.py
+
+      - name: Verify report files
+        if: steps.gate.outputs.go == '1'
+        run: |
+          test -s r/procurement.bin
+          test -s r/procurement.meta.bin
+          grep -q '"procurement"' r/status.json
+
+      - name: Publish report
+        if: always() && steps.gate.outputs.go == '1'
+        run: |
+          python3 tools/report_preflight.py --phase post procurement
+          git config user.name "Indifeels procurement bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add r/status.json
+          [ -f r/procurement.bin ] && git add r/procurement.bin || true
+          [ -f r/procurement.meta.bin ] && git add r/procurement.meta.bin || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh Procurement (${{ github.event.client_payload.order || github.event_name }})"
+          for i in 1 2 3; do
+            git pull --rebase -q origin main
+            git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
+

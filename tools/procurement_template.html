@@ -1,0 +1,110 @@
+<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Procurement</title>
+<style>
+:root{--bg:#f4f5f7;--tile:#ffffff;--tile2:#eef0f3;--fg:#1b1d21;--mut:#626873;--line:#dde0e5;--bar:#c9d3e6;--mark:#1b1d21;
+ --g:#1d8f5a;--gb:rgba(29,143,90,.14);--a:#b87400;--ab:rgba(184,116,0,.15);--r:#d23c42;--rb:rgba(210,60,66,.14);--b:#3a6fd8;--bb:rgba(58,111,216,.14);--n:#6b7280;--nb:rgba(107,114,128,.16)}
+[data-theme=dark]{--bg:#121315;--tile:#1f2023;--tile2:#2a2b2f;--fg:#f1f2f4;--mut:#a9adb5;--line:#34363b;--bar:#4a5f86;--mark:#f1f2f4;
+ --g:#4fd08c;--gb:rgba(79,208,140,.16);--a:#e8b04a;--ab:rgba(232,176,74,.16);--r:#ff7d82;--rb:rgba(255,125,130,.16);--b:#8aa9f0;--bb:rgba(138,169,240,.16);--n:#a9adb5;--nb:rgba(169,173,181,.14)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:14px 12px 40px}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{margin:0;font-size:20px;letter-spacing:-.01em}.sub{color:var(--mut);font-size:11px;margin-top:2px}
+.btn{font:inherit;font-size:12px;font-weight:600;color:var(--fg);background:var(--tile);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.tile{background:var(--tile);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.tile b{display:block;font-size:20px;font-variant-numeric:tabular-nums}.tile span{color:var(--mut);font-size:11px}
+.box{background:var(--tile);border:1px solid var(--line);border-radius:16px;padding:12px}
+.ttl{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin:0 0 8px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}
+.ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ctl input[type=range]{flex:1;min-width:140px;accent-color:#5b7fc7}
+select{font:inherit;font-size:13px;color:var(--fg);background:var(--tile2);border:1px solid var(--line);border-radius:10px;padding:7px 10px;max-width:100%}
+table{width:100%;border-collapse:collapse}th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);text-align:right;padding:4px 6px;font-weight:700}
+th:first-child,td:first-child{text-align:left}td{padding:7px 6px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+tr.row{cursor:pointer}tr.row:hover td{background:var(--tile2)}tr.sel td{background:var(--tile2)}
+.pill{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.p-g{color:var(--g);background:var(--gb)}.p-a{color:var(--a);background:var(--ab)}.p-r{color:var(--r);background:var(--rb)}.p-b{color:var(--b);background:var(--bb)}.p-n{color:var(--n);background:var(--nb)}
+.mins{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.min{background:var(--tile2);border-radius:12px;padding:10px 12px}.min b{font-size:18px}.min small{display:block;color:var(--mut);margin-top:3px;font-size:11px}
+.lst{display:flex;flex-direction:column;gap:6px}
+.sz{display:grid;grid-template-columns:54px 1fr 92px;gap:8px;align-items:center}
+.sz .nm{font-weight:700;font-size:12px}.bar{position:relative;height:14px;background:var(--tile2);border-radius:7px;overflow:visible}
+.fill{position:absolute;left:0;top:0;bottom:0;background:var(--bar);border-radius:7px}
+.mk{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--mark);border-radius:2px}
+.num{font-size:11px;color:var(--mut);text-align:right;font-variant-numeric:tabular-nums}.num b{color:var(--fg)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--mut);font-size:11px;margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--bar);margin-right:4px;vertical-align:-1px}.legend i.m{width:3px;height:12px;background:var(--mark);border-radius:2px}
+.cl{display:grid;grid-template-columns:78px 1fr 58px 78px;gap:8px;align-items:center}
+.d2{display:flex;flex-direction:column;gap:3px}.d2 .bar{height:7px}.d2 .f1{background:#5b7fc7}.d2 .f2{background:#9c7bd6}.d2 .f3{background:#4fa38f}
+.note{color:var(--mut);font-size:11px;margin-top:8px}
+@media(max-width:520px){.cl{grid-template-columns:64px 1fr 52px 70px}th,td{padding-left:4px;padding-right:4px}}
+</style></head><body><div class="wrap">
+<div class="top"><div><h1>Procurement</h1><div class="sub" id="src"></div></div><button class="btn" id="theme" type="button">Light</button></div>
+<div class="box"><div class="ctl"><b style="font-size:12px">Stock target</b><input id="cover" type="range" min="30" max="180" step="15" value="90"><b id="coverv" style="font-size:12px;min-width:64px;text-align:right">90 days</b></div>
+<div class="note" style="margin-top:4px">Target stock = units you sell in that many days. Each size's threshold = its share of sales × the target.</div></div>
+<div class="tiles" id="tiles"></div>
+<div class="box"><p class="ttl"><span>All products vs demand</span><span style="text-transform:none;letter-spacing:0;font-weight:500">tap a row to open it</span></p>
+<table id="all"><thead><tr><th>Collection</th><th>Sold 12m</th><th class="hide-s">Search/mo</th><th>Stock</th><th>Cover</th><th></th></tr></thead><tbody></tbody></table>
+<div class="note">Search/mo = Semrush Australia volume for the category term. A product can sit in more than one collection, so rows don't add up to the store total.</div></div>
+<div class="box"><p class="ttl"><span id="dname">Collection</span><select id="pick" aria-label="Collection"></select></p><div id="detail"></div></div>
+</div>
+<script>
+const D=__DATA__;
+const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let st={cover:90,sel:null,theme:'dark'};
+try{const x=JSON.parse(localStorage.getItem('ir-procurement')||'null');if(x&&typeof x==='object')st=Object.assign(st,x)}catch(e){}
+const save=()=>{try{localStorage.setItem('ir-procurement',JSON.stringify(st))}catch(e){}};
+const fmt=n=>n==null?'–':Number(n).toLocaleString('en-AU');
+const pill=(c,t)=>`<span class="pill p-${c}">${esc(t)}</span>`;
+const N=D.windowDays;
+function calc(c){
+  const perDay=c.sold/N,T=perDay*st.cover,tot=c.sizes.reduce((a,s)=>a+s.sold,0);
+  const sizes=c.sizes.map(s=>{const share=tot?s.sold/tot:0,thr=share>0?Math.max(1,Math.round(share*T)):0;
+    let k='g',lab='OK';
+    if(thr>0&&s.stock<thr){k='r';lab='Short '+(thr-s.stock)}else if(thr>0&&s.stock>2*thr){k='b';lab='Excess'}else if(thr===0&&s.stock>0){k='n';lab='No sales'}else if(thr===0){k='n';lab='–'}
+    return Object.assign({},s,{share,thr,k,lab,buy:thr>s.stock?thr-s.stock:0})});
+  const known=c.colours.filter(x=>x.colour!=='Unspecified'),unk=c.colours.filter(x=>x.colour==='Unspecified').reduce((a,x)=>a+x.sold,0);
+  const names=new Set(known.map(x=>x.colour));Object.keys(c.search||{}).forEach(k=>names.add(k));
+  const sTot=known.reduce((a,x)=>a+x.sold,0),qTot=Object.values(c.search||{}).reduce((a,v)=>a+v,0),hasQ=qTot>0;
+  const rows=[...names].map(n=>{const x=known.find(y=>y.colour===n)||{colour:n,sold:0,stock:0,designs:0};
+    const ss=sTot?x.sold/sTot:0,qs=hasQ?(c.search[n]||0)/qTot:0,bl=hasQ?(sTot?0.7*ss+0.3*qs:qs):ss;
+    return Object.assign({},x,{ss,qs,bl})}).sort((a,b)=>b.bl-a.bl);
+  rows.forEach(r=>{r.rec=Math.round(r.bl*c.designsIn);r.delta=r.rec-r.designs});
+  let run=0;const minC=[];for(const r of rows){if(r.bl<=0)break;minC.push(r);run+=r.bl;if(run>=0.8)break}
+  const sBy=[...sizes].filter(s=>s.sold>0).sort((a,b)=>b.sold-a.sold);run=0;const minS=[];for(const s of sBy){minS.push(s);run+=s.share;if(run>=0.8)break}
+  const buy=sizes.reduce((a,s)=>a+s.buy,0),cover=c.sold>0?c.stock/perDay:Infinity;
+  return{c,sizes,rows,minC,minS,buy,cover,unk,hasQ,T}
+}
+function status(k){if(k.c.sold===0)return pill('n','No sales');if(k.cover<st.cover*0.6)return pill('r','Short');if(k.cover<st.cover)return pill('a','Low');if(k.cover>st.cover*2.5)return pill('b','Excess');return pill('g','OK')}
+function render(){
+  $('#src').textContent=D.source;$('#coverv').textContent=st.cover+' days';$('#cover').value=st.cover;
+  document.documentElement.dataset.theme=st.theme;$('#theme').textContent=st.theme==='dark'?'Light':'Dark';
+  const K=D.collections.map(calc);
+  const shortC=K.filter(k=>k.c.sold>0&&k.cover<st.cover).length,sizeShort=K.reduce((a,k)=>a+k.sizes.filter(s=>s.k==='r').length,0),buy=K.reduce((a,k)=>a+k.buy,0);
+  const addCol=K.reduce((a,k)=>a+k.rows.filter(r=>r.delta>0&&r.bl>0).length,0);
+  $('#tiles').innerHTML=[[shortC,'collections under target'],[sizeShort,'sizes below threshold'],[fmt(buy),'units to buy (size gaps)'],[addCol,'colour gaps to fill']].map(t=>`<div class="tile"><b>${t[0]}</b><span>${t[1]}</span></div>`).join('');
+  $('#all tbody').innerHTML=[...K].sort((a,b)=>(a.cover===Infinity)-(b.cover===Infinity)||a.cover-b.cover).map(k=>`<tr class="row ${k.c.name===st.sel?'sel':''}" data-n="${esc(k.c.name)}"><td><b>${esc(k.c.name)}</b></td><td>${fmt(k.c.sold)}</td><td class="hide-s">${fmt(k.c.catSearch)}</td><td>${fmt(k.c.stock)}</td><td>${k.cover===Infinity?'–':Math.round(k.cover)+'d'}</td><td>${status(k)}</td></tr>`).join('');
+  $('#pick').innerHTML=D.collections.map(c=>`<option ${c.name===st.sel?'selected':''}>${esc(c.name)}</option>`).join('');
+  const k=K.find(x=>x.c.name===st.sel)||K[0];st.sel=k.c.name;$('#dname').textContent=k.c.name;$('#detail').innerHTML=detail(k);
+}
+function detail(k){
+  const c=k.c,haveS=k.sizes.filter(s=>s.stock>0).length,haveC=k.rows.filter(r=>r.stock>0).length;
+  const missS=k.minS.filter(s=>s.stock<=0).map(s=>s.size),missC=k.minC.filter(r=>r.stock<=0).map(r=>r.colour);
+  let h=`<div class="mins">
+  <div class="min"><b>${k.minC.length}</b> colours<small>cover 80% of colour demand${k.hasQ?' (70% sales, 30% search)':' (sales only)'}: ${esc(k.minC.map(r=>r.colour).join(', ')||'–')}. In stock: ${haveC}${missC.length?` · <span style="color:var(--r)">missing ${esc(missC.join(', '))}</span>`:''}</small></div>
+  <div class="min"><b>${k.minS.length}</b> sizes<small>cover 80% of sales: ${esc(k.minS.map(s=>s.size).join(', ')||'–')}. In stock: ${haveS}${missS.length?` · <span style="color:var(--r)">missing ${esc(missS.join(', '))}</span>`:''}</small></div>
+  <div class="min"><b>${c.n80}</b> designs<small>drive 80% of sales (${c.designsSold} designs sold in 12m). In stock now: ${c.designsIn} of ${c.designs}</small></div></div>`;
+  h+=`<p class="ttl" style="margin-top:14px"><span>Sizes: sold vs stock</span><span style="text-transform:none;letter-spacing:0;font-weight:500">target ${fmt(Math.round(k.T))} units · ${k.buy?fmt(k.buy)+' to buy':'no gaps'}</span></p><div class="lst">`;
+  const mx=Math.max(1,...k.sizes.map(s=>Math.max(s.stock,s.thr)))*1.1;
+  h+=k.sizes.map(s=>`<div class="sz"><div class="nm">${esc(s.size)}</div><div class="bar" title="stock ${s.stock}, threshold ${s.thr}"><div class="fill" style="width:${Math.min(100,s.stock/mx*100)}%"></div>${s.thr>0?`<div class="mk" style="left:calc(${Math.min(99,s.thr/mx*100)}% - 1px)"></div>`:''}</div><div style="text-align:right"><div class="num"><b>${s.stock}</b> / ${s.thr} · sold ${s.sold}</div>${pill(s.k,s.lab)}</div></div>`).join('')||'<div class="note">No sizes.</div>';
+  h+=`</div><div class="legend"><span><i></i>stock now</span><span><i class="m"></i>threshold (min to hold)</span></div>`;
+  h+=`<p class="ttl" style="margin-top:16px"><span>Colours: demand vs stock</span><span style="text-transform:none;letter-spacing:0;font-weight:500">${c.designsIn} designs in stock</span></p><div class="lst">`;
+  h+=k.rows.slice(0,14).map(r=>{const d=r.delta;const p=r.bl<=0?pill('n','No demand'):d>0?pill('r','Add '+d):d<0?pill('b','Cut '+(-d)):pill('g','OK');
+    const tot=r.stock;return`<div class="cl"><div class="nm" style="font-weight:700;font-size:12px">${esc(r.colour)}</div><div class="d2" title="sales share · search share · stock"><div class="bar"><div class="fill f1" style="width:${r.ss*100}%"></div></div>${k.hasQ?`<div class="bar"><div class="fill f2" style="width:${r.qs*100}%"></div></div>`:''}<div class="bar"><div class="fill f3" style="width:${Math.min(100,tot/Math.max(1,c.stock)*100)}%"></div></div></div><div class="num"><b>${r.designs}</b> now<br>want ${r.rec}</div><div style="text-align:right">${p}</div></div>`}).join('')||'<div class="note">No colours.</div>';
+  h+=`</div><div class="legend"><span><i style="background:#5b7fc7"></i>sales share</span>${k.hasQ?'<span><i style="background:#9c7bd6"></i>search share</span>':''}<span><i style="background:#4fa38f"></i>stock share</span></div>`;
+  h+=`<div class="note">Designs now = designs with stock in that colour. Want = demand share × ${c.designsIn} designs in stock. ${k.unk?fmt(k.unk)+' units sold have no colour set (left out of shares). ':''}${k.hasQ?'':'No colour search data for this collection yet. '}Colour comes from the Colour option, else the colour word in the product title.</div>`;
+  return h;
+}
+$('#cover').addEventListener('input',e=>{st.cover=+e.target.value;save();render()});
+$('#theme').addEventListener('click',()=>{st.theme=st.theme==='dark'?'light':'dark';save();render()});
+$('#pick').addEventListener('change',e=>{st.sel=e.target.value;save();render()});
+$('#all tbody').addEventListener('click',e=>{const tr=e.target.closest('tr.row');if(tr){st.sel=tr.dataset.n;save();render();$('#dname').scrollIntoView({block:'start'})}});
+render();
+</script></body></html>
