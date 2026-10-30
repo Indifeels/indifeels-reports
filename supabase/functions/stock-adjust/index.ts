@@ -173,6 +173,60 @@ async function labelInfo(body: any, svc: any) {
   return json({ ok: true, rows: out });
 }
 
+// Latest changes since a date/time: (1) products created or published since then, (2) stock ADDED since then (net of removals) from the stock log.
+async function latest(body: any, svc: any) {
+  const t = Date.parse(String(body.since || ""));
+  if (!Number.isFinite(t) || t > Date.now() + 86400000) return json({ error: "Bad date or time" }, 400);
+  const since = new Date(t).toISOString(), sq = since.slice(0, 19) + "Z";
+  const pid = (g: string) => String(g).split("/").pop()!;
+  const img = (n: any) => n?.featuredMedia?.preview?.image?.url || "";
+  // 1) new or newly published, active products (read live, so no report rebuild is needed)
+  const NQ = `query($q:String!,$after:String){ products(first:10, after:$after, query:$q, sortKey:CREATED_AT, reverse:true){ pageInfo{ hasNextPage endCursor } nodes{ id title status createdAt publishedAt featuredMedia{ preview{ image{ url } } } variantsCount{ count } variants(first:40){ nodes{ id title price barcode inventoryQuantity } } } } }`;
+  const news = new Map<string, any>();
+  for (const f of ["created_at", "published_at"]) {
+    let after: string | null = null;
+    for (let pg = 0; pg < 4; pg++) {
+      const d: any = await gql(NQ, { q: `${f}:>=${sq} AND status:active`, after });
+      for (const n of d.products.nodes) {
+        if (n.status !== "ACTIVE" || news.has(pid(n.id))) continue;
+        const ok = (Date.parse(n.createdAt) >= t) || (n.publishedAt && Date.parse(n.publishedAt) >= t);
+        if (!ok) continue;
+        news.set(pid(n.id), { pid: pid(n.id), title: n.title, image: img(n), createdAt: n.createdAt, publishedAt: n.publishedAt || "", more: (n.variantsCount?.count || 0) > n.variants.nodes.length,
+          variants: n.variants.nodes.map((v: any) => ({ vid: pid(v.id), title: v.title, price: v.price, barcode: v.barcode || "", qty: Math.max(0, Number(v.inventoryQuantity) || 0) })) });
+      }
+      if (!d.products.pageInfo.hasNextPage) break;
+      after = d.products.pageInfo.endCursor;
+    }
+  }
+  // 2) stock added through the app since then (Add / remove tab and box receiving), net of removals
+  const { data: adj, error } = await svc.from("stock_adjustments").select("vid,qty,mode,box_no,created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(3000);
+  if (error) throw new Error(error.message);
+  const net = new Map<string, { n: number; at: string; box: Set<string> }>();
+  for (const r of adj || []) {
+    const e = net.get(String(r.vid)) || { n: 0, at: "", box: new Set<string>() };
+    e.n += (r.mode === "remove" ? -1 : 1) * (Number(r.qty) || 0);
+    if (!e.at || r.created_at > e.at) e.at = r.created_at;
+    if (r.box_no && r.mode !== "remove") e.box.add(String(r.box_no));
+    net.set(String(r.vid), e);
+  }
+  const vids = [...net.entries()].filter(([, e]) => e.n > 0).map(([v]) => v);
+  const groups = new Map<string, any>();
+  for (const ids of chunk(vids, 50)) {
+    const d = await gql(`query($ids:[ID!]!){ nodes(ids:$ids){ ... on ProductVariant{ id title price barcode product{ id title featuredMedia{ preview{ image{ url } } } } } } }`, { ids: ids.map((i) => `gid://shopify/ProductVariant/${i}`) });
+    d.nodes.forEach((n: any) => {
+      if (!n?.product) return;
+      const p = pid(n.product.id); if (news.has(p)) return;   // a new product already prints its full stock
+      const e = net.get(pid(n.id))!;
+      const g = groups.get(p) || { pid: p, title: n.product.title, image: img(n.product), at: "", variants: [] };
+      g.variants.push({ vid: pid(n.id), title: n.title, price: n.price, barcode: n.barcode || "", added: e.n, box: [...e.box].join(", "), at: e.at });
+      if (!g.at || e.at > g.at) g.at = e.at;
+      groups.set(p, g);
+    });
+  }
+  const added = [...groups.values()].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  return json({ ok: true, since, news: [...news.values()], added });
+}
+
 async function setStatus(body: any) {
   const pid = String(body.pid || ""), st = body.status === "UNLISTED" ? "UNLISTED" : "ACTIVE";
   if (!VID.test(pid)) return json({ error: "Bad product" }, 400);
@@ -263,6 +317,7 @@ Deno.serve(async (req: Request) => {
     if (body.action === "createvariant") return await createVariant(body);
     if (body.action === "productvariants") return await productVariants(body);
     if (body.action === "labelinfo") return await labelInfo(body, svc);
+    if (body.action === "latest") return await latest(body, svc);
     if (body.action === "setstatus") return await setStatus(body);
     if (body.action === "deletevariant") return await deleteVariant(body);
     if (body.action === "labelqueue") return await labelQueue(body, svc);

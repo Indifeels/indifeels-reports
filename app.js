@@ -1942,6 +1942,7 @@
     createvariant: async (d) => rpAdjCall({ action: "createvariant", pid: rpText(d.pid, 20), title: rpText(d.title, 100), barcode: rpText(d.barcode, 40) }, "Couldn't create the variant"),
     productvariants: async (d) => rpAdjCall({ action: "productvariants", pid: rpText(d.pid, 20) }, "Couldn't load the sizes"),
     labelinfo: async (d) => rpAdjCall({ action: "labelinfo", items: rpVidQty(d.items, 200) }, "Couldn't read the current product details"),
+    latest: async (d) => rpAdjCall({ action: "latest", since: rpText(d.since, 40) }, "Couldn't load the latest changes"),
     setbarcode: async (d) => rpAdjCall({ action: "setbarcode", vid: rpText(d.vid, 20), barcode: rpText(d.barcode, 40) }, "Couldn't save the barcode"),
     labelhist: async () => { const { data, error } = await sb.from("label_queue").select("vid,product,variant,barcode,copies,printed_at").not("printed_at", "is", null).order("printed_at", { ascending: false }).limit(1500); if (error) throw new Error(error.message); return (data || []).map((r) => ({ vid: rpText(r.vid, 20), product: rpText(r.product, 200), variant: rpText(r.variant, 120), barcode: rpText(r.barcode, 60), copies: Math.max(0, Math.trunc(Number(r.copies) || 0)), printed_at: r.printed_at })); },
     labelqueue: async (d) => rpAdjCall({ action: "labelqueue", op: ["add", "list", "done", "setcopies", "remove"].includes(d.op) ? d.op : "list", items: rpVidQty(d.items, 200) }, "Couldn't update the label list"),

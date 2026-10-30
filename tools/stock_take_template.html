@@ -14,7 +14,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 -apple-system
 .wrap{max-width:860px;margin:0 auto;padding:0 12px 60px}
 header{display:flex;align-items:center;gap:10px;padding:12px 0 4px}
 header h1{flex:1;margin:0;font-size:20px}
-button,select,input[type=text]{font:inherit;color:var(--text)}
+button,select,input[type=text],input[type=date],input[type=time]{font:inherit;color:var(--text)}
 button{border:1px solid var(--border);background:var(--grey-bg);border-radius:10px;padding:7px 14px;cursor:pointer;font-weight:600}
 button:disabled{opacity:.45;cursor:default}
 button.pri{background:var(--blue);border-color:var(--blue);color:#06101c;font-weight:800}
@@ -32,7 +32,7 @@ button.pri.arm{background:#e3b341;border-color:#e3b341}
 .bxl{display:flex!important;flex-direction:row!important;flex-wrap:nowrap;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}.bxl:last-child{border-bottom:0}.bxl img{width:40px;height:52px;flex:none;object-fit:cover;border-radius:6px;background:#0002}.bxl>div{flex:1;min-width:0}.bxl>div>div:first-child{font-size:14px;line-height:1.25;white-space:normal!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.bxl .stp button{width:36px;height:36px;padding:0;font-size:18px}.bxl>b{flex:none;font-size:16px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
 .fld{flex:1 1 170px;display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);font-weight:600;min-width:0}
-select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:15px;min-width:0;width:100%}
+select,input[type=text],input[type=date],input[type=time],.ssb{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:15px;min-width:0;width:100%}
 .ss{position:relative}
 .ssb{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;font-weight:500;cursor:pointer}
 .ssb .ssl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ssb i{font-style:normal;color:var(--muted)}
@@ -163,7 +163,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
 .hr{padding:5px 0 5px 10px;font-size:13px;border-left:3px solid var(--border);margin:6px 0 6px 4px;line-height:1.5}.hr.z{border-color:var(--green)}.hr.n{border-color:var(--red)}.hr.p{border-color:var(--info)}.hr span{font-weight:700}
 .mk{border-color:var(--green);color:var(--green);font-weight:700}.mk.arm{background:var(--green);color:#06140a}
 .foot.lbmulti{position:sticky;top:0;bottom:auto;z-index:30;background:var(--card);padding:8px 0;margin:0 0 8px;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--border)}
-.uct{position:relative}.uct .tkb{position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:8px;border:2px solid #fff;background:#0008;color:transparent;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;z-index:2}.uct.on .tkb{background:var(--green);border-color:var(--green);color:#06140a}.uct.on{outline:3px solid var(--green);outline-offset:-3px}
+.uct{position:relative}.uct.dim{opacity:.55}.uct .tkb{position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:8px;border:2px solid #fff;background:#0008;color:transparent;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;z-index:2}.uct.on .tkb{background:var(--green);border-color:var(--green);color:#06140a}.uct.on{outline:3px solid var(--green);outline-offset:-3px}
 .hbtn{font-size:11.5px;color:var(--info);font-weight:700;text-decoration:underline;padding:2px 0}
 .bk.cmp{padding-top:8px;padding-bottom:10px}
 .adsum{display:flex;align-items:center;gap:8px;margin:0 0 4px}.adsum b{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.adsum button{padding:5px 12px;font-size:13px;flex:none}
@@ -179,7 +179,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
  .bk{padding:14px 12px}
  .row{flex-direction:column;align-items:stretch}
  .fld{flex:1 1 auto;width:100%;font-size:15px;gap:6px}
- select,input[type=text],.ssb{font-size:18px;padding:14px 12px;border-radius:12px}
+ select,input[type=text],input[type=date],input[type=time],.ssb{font-size:18px;padding:14px 12px;border-radius:12px}
  .ssp{position:static;margin-top:6px;padding:10px;box-shadow:none}
  .sso{max-height:55vh}
  .sso div{font-size:18px;padding:14px 12px;align-items:center}
@@ -259,6 +259,7 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
     <div class="bk"><h3 style="margin:0 0 4px">What do you want to print barcodes for?</h3>
       <div class="flows" id="wzFlows">
         <button type="button" data-f="new"><b>New products</b><small>Recently added, one label per piece uploaded</small></button>
+        <button type="button" data-f="upd"><b>Latest changes</b><small>Pick a date and time: new products and stock you added since</small></button>
         <button type="button" data-f="box"><b>Boxes</b><small>Packed or shipped supplier boxes</small></button>
         <button type="button" data-f="col"><b>Collection / product</b><small>Pick a collection or scan a product</small></button>
       </div>
@@ -282,6 +283,16 @@ select,input[type=text],.ssb{background:var(--bg);border:1px solid var(--border)
             <div class="foot"><span class="sum" id="bxSum"></span><button type="button" id="bxMkAll" hidden>Create missing variants</button><button type="button" id="bxGenAll" hidden>Create missing barcodes</button><button type="button" class="pri" id="bxBar">Add barcodes to the sheet</button></div>
           </div>
           <div class="msg" id="bxMsg"></div>
+        </div></section>
+    </div>
+
+    <div id="wzUp" hidden>
+      <section class="bk wzs" data-s="1"><div class="wzh"><span class="wzn">1</span><b>What changed since…</b><span class="wzsum"></span><button type="button" class="wzchg">Change</button></div>
+        <div class="wzb">
+          <div class="row" style="align-items:flex-end;gap:8px;flex-wrap:wrap"><label class="fld">Date<input type="date" id="lcDate"></label><label class="fld">From time<input type="time" id="lcTime" value="00:00"></label><button type="button" class="pri" id="lcGo">Show</button></div>
+          <div class="seg" id="lcSeg"><button type="button" data-t="added" class="on">Stock added</button><button type="button" data-t="news">New products</button></div>
+          <div class="msg" id="lcInfo">Pick the date and the time you want to start from, then tap Show.</div>
+          <div id="lcList"></div>
         </div></section>
     </div>
 
@@ -401,7 +412,7 @@ const regBc = (v, code) => { v.bc = [code]; byBc.set(bcn(code), v); const k = bc
 /* ----- Barcodes tab wizard: 3 flows, numbered steps that unlock one after the other ----- */
 const WZ = (() => {
   const st = {}; let flow = '';
-  const PAN = {box: ['wzBox', 'wzPrint'], new: ['wzLb', 'wzPrint'], col: ['wzLb', 'wzPrint'], print: ['wzPrint']};
+  const PAN = {upd: ['wzUp', 'wzPrint'], box: ['wzBox', 'wzPrint'], new: ['wzLb', 'wzPrint'], col: ['wzLb', 'wzPrint'], print: ['wzPrint']};
   const fresh = n => ({done: false, open: false, reached: n === '1', sum: ''});
   const init = () => ['1', '2', '3', '4', '5'].forEach(n => { st[n] = fresh(n); });
   init();
@@ -409,7 +420,7 @@ const WZ = (() => {
   const recvFlow = () => flow === 'box' && window.__bxRecv === true;
   function render() {
     const panels = PAN[flow] || [];
-    ['wzBox', 'wzLb', 'wzPrint'].forEach(id => { $(id).hidden = !panels.includes(id); });
+    ['wzBox', 'wzLb', 'wzUp', 'wzPrint'].forEach(id => { $(id).hidden = !panels.includes(id); });
     $('wzRecv').hidden = !recvFlow();
     $('lqDoneBox').hidden = !recvFlow(); $('lqDoneStd').hidden = recvFlow();
     document.querySelectorAll('#viewBar .wzs').forEach(el => {
@@ -433,6 +444,7 @@ const WZ = (() => {
       try { window.bxReset && window.bxReset(); window.lbReset && window.lbReset(); } catch (e) {}
       if (f === 'new' || f === 'col') { $('lbRecent').checked = f === 'new'; if ($('lbRecent').onchange) $('lbRecent').onchange(); }
       if (f === 'box') { try { window.refreshBoxes && window.refreshBoxes(); } catch (e) {} }
+      if (f === 'upd') { try { window.lcOpen && window.lcOpen(); } catch (e) {} }
       render();
     },
     set(n, ok, sum) {
@@ -563,6 +575,7 @@ const Store = PREVIEW ? {
   setBarcode: async (vid, barcode) => ({ok: true, vid, barcode}),
   createVariant: async (pid, title, barcode) => ({ok: true, vid: String(Date.now()), title, barcode, price: '0'}),
   productVariants: async pid => ({ok: true, pid, variants: []}),
+  latest: async () => ({ok: true, news: [], added: []}),
   labelInfo: async () => ({ok: true, rows: []}),
   deleteVariant: async vid => ({ok: true, vid}),
   printLabels: async () => { throw new Error('The PDF works inside the app, not in this preview.'); },
@@ -596,6 +609,7 @@ const Store = PREVIEW ? {
   setBarcode: (vid, barcode) => call('setbarcode', {vid, barcode}),
   createVariant: (pid, title, barcode) => call('createvariant', {pid, title, barcode}, 60000),
   productVariants: pid => call('productvariants', {pid}, 30000),
+  latest: since => call('latest', {since}, 90000),
   labelInfo: vids => call('labelinfo', {items: vids.map(v => ({vid: v, qty: 1}))}, 30000),
   deleteVariant: vid => call('deletevariant', {vid}, 40000),
   setStatus: (pid, status) => call('setstatus', {pid, status}, 40000),
@@ -1789,6 +1803,76 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
   }
   bulkInit();
   try { parent.postMessage({type: 'stock-take', action: 'ready'}, '*'); } catch (e) {}
+
+  /* ----- Latest changes: new products + stock added since a date and time ----- */
+  (() => {
+    let data = null, tab = 'added', busy = false;
+    const tick = new Set(), inList = new Set();
+    const pad = n => String(n).padStart(2, '0');
+    const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+    const fmt = iso => { try { return new Date(iso).toLocaleString('en-AU', {day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'}); } catch (e) { return ''; } };
+    const info = (t, k) => { const e = $('lcInfo'); e.className = 'msg' + (k ? ' ' + k : ''); e.innerHTML = t; };
+    const since = () => { const d = new Date($('lcDate').value + 'T' + ($('lcTime').value || '00:00')); return isNaN(d) ? null : d; };
+    const saveSel = () => LS.set('st-lc', {d: $('lcDate').value, t: $('lcTime').value});
+    const items = k => {   /* labels for one card: new product = one per piece in stock (at least 1 per size); stock added = exactly what was added */
+      const [kind, pid] = [k[0], k.slice(2)], src = kind === 'n' ? (data.news || []) : (data.added || []), g = src.find(x => x.pid === pid); if (!g) return [];
+      return g.variants.map(v => ({vid: v.vid, qty: kind === 'n' ? Math.max(1, Math.min(500, v.qty || 0)) : Math.max(0, Math.min(500, v.added || 0)), v})).filter(x => x.qty > 0);
+    };
+    const total = () => { let n = 0; tick.forEach(k => items(k).forEach(x => { n += x.qty; })); return n; };
+    function draw() {
+      const list = data ? (tab === 'news' ? data.news : data.added) : [];
+      document.querySelectorAll('#lcSeg button').forEach(b => { b.classList.toggle('on', b.dataset.t === tab); if (data) b.textContent = (b.dataset.t === 'news' ? 'New products' : 'Stock added') + ' (' + (b.dataset.t === 'news' ? data.news : data.added).length + ')'; });
+      if (!data) { $('lcList').innerHTML = ''; return; }
+      const kind = tab === 'news' ? 'n' : 'a';
+      $('lcList').innerHTML = (list.length ? `<div class="foot lbmulti"><span class="sum"><b id="lcTn">${tick.size}</b> ticked · <b id="lcLn">${total()}</b> labels</span><button type="button" id="lcAll">Tick all shown</button><button type="button" id="lcNone">Clear ticks</button><button type="button" class="pri" id="lcAdd" ${tick.size ? '' : 'disabled'}>Add ticked to label list</button></div><div class="pfs">` +
+        list.map(g => { const k = kind + ':' + g.pid, im = g.image ? `<img src="${E(g.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : E(String(g.title).slice(0, 2).toUpperCase());
+          const sub = kind === 'n' ? `New · ${g.variants.reduce((a, v) => a + (v.qty || 0), 0)} pcs · ${fmt(g.publishedAt && Date.parse(g.publishedAt) > Date.parse(g.createdAt) ? g.publishedAt : g.createdAt)}` : `+${g.variants.reduce((a, v) => a + v.added, 0)} added · ${fmt(g.at)}`;
+          const sz = kind === 'a' ? `<small>${g.variants.slice(0, 5).map(v => E(v.title) + ' +' + v.added).join(' · ')}${g.variants.length > 5 ? ' …' : ''}${g.variants.some(v => v.box) ? ' · ' + E([...new Set(g.variants.map(v => v.box).filter(Boolean))].join(', ')) : ''}</small>` : (g.more ? '<small>first 40 sizes shown</small>' : '');
+          return `<button type="button" class="uct${tick.has(k) ? ' on' : ''}${inList.has(k) ? ' dim' : ''}" data-k="${E(k)}"><span class="im">${im}<span class="tkb" data-tick="${E(k)}">✓</span></span><span>${E(g.title)}</span><small>${inList.has(k) ? '✓ in label list' : sub}</small>${sz}</button>`; }).join('') + '</div>'
+        : `<div class="empty">${tab === 'news' ? 'No new or newly published products since then.' : 'No stock was added through this app since then.'}</div>`);
+    }
+    const sync = () => { const a = $('lcAdd'); if ($('lcTn')) $('lcTn').textContent = tick.size; if ($('lcLn')) $('lcLn').textContent = total(); if (a) a.disabled = !tick.size || busy; $('lcList').querySelectorAll('.uct').forEach(b => b.classList.toggle('on', tick.has(b.dataset.k))); };
+    async function load() {
+      const d = since(); if (!d) return info('Pick a valid date and time.', 'bad');
+      saveSel(); $('lcGo').disabled = true; info('Reading the latest from Shopify…');
+      try {
+        const r = await Store.latest(d.toISOString());
+        data = {news: r.news || [], added: r.added || []}; tick.clear();
+        /* keep the app's product index in step with Shopify (new products, new sizes, new barcodes) */
+        data.news.forEach(g => mergeLive(g.pid, g.variants.map(v => ({vid: v.vid, title: v.title, price: v.price, barcode: v.barcode, q: {}})), {product_title: g.title, image: g.image}));
+        data.added.forEach(g => mergeLive(g.pid, g.variants.map(v => ({vid: v.vid, title: v.title, price: v.price, barcode: v.barcode, q: {}})), {product_title: g.title, image: g.image}));
+        const pcs = data.added.reduce((a, g) => a + g.variants.reduce((b, v) => b + v.added, 0), 0);
+        if (!data.news.length && data.added.length) tab = 'added'; else if (data.news.length && !data.added.length) tab = 'news';
+        info(`Since <b>${E(fmt(d))}</b>: <b>${data.news.length}</b> new product${data.news.length === 1 ? '' : 's'}, <b>${pcs}</b> piece${pcs === 1 ? '' : 's'} of stock added on <b>${data.added.length}</b> product${data.added.length === 1 ? '' : 's'}. Tick what you want labels for.`, 'ok');
+      } catch (e) { data = null; info(e.message, 'bad'); }
+      $('lcGo').disabled = false; draw();
+    }
+    window.lcOpen = () => { const sv = LS.get('st-lc') || {}, t = todayStr(); $('lcDate').value = sv.d && sv.d <= t ? sv.d : t; $('lcTime').value = sv.t || '00:00'; tick.clear(); inList.clear(); data = null; tab = 'added'; draw(); load(); };
+    $('lcGo').onclick = load;
+    $('lcSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; tab = b.dataset.t; draw(); };
+    $('lcList').onclick = async e => {
+      if (e.target.closest('#lcAll')) { (tab === 'news' ? data.news : data.added).forEach(g => { const k = (tab === 'news' ? 'n:' : 'a:') + g.pid; if (!inList.has(k)) tick.add(k); }); sync(); return; }
+      if (e.target.closest('#lcNone')) { tick.clear(); sync(); return; }
+      if (e.target.closest('#lcAdd')) {
+        if (busy || !tick.size) return; busy = true; const go = $('lcAdd'); go.disabled = true;
+        try {
+          const all = []; tick.forEach(k => items(k).forEach(x => all.push(x)));
+          const need = all.filter(x => { const v = byVid.get(String(x.vid)); return !(v && v.bc[0]) && !x.v.barcode; }); let made = 0;
+          for (const x of need) { go.textContent = `Creating barcodes ${made + 1} of ${need.length}…`; const r = await autoBarcode(x.vid); const v = byVid.get(String(x.vid)); if (v) regBc(v, r.barcode); x.v.barcode = r.barcode; made++; }
+          go.textContent = 'Add ticked to label list';
+          const merged = new Map(); all.forEach(x => merged.set(x.vid, (merged.get(x.vid) || 0) + x.qty));
+          const list = [...merged.entries()].map(([vid, qty]) => ({vid, qty})), t = list.reduce((a, i) => a + i.qty, 0), np = tick.size;
+          await Store.labels('add', list); tick.forEach(k => inList.add(k)); tick.clear(); try { await window.refreshLabels(); } catch (e2) {}
+          info(`${t} label${t === 1 ? '' : 's'} added for ${np} product${np === 1 ? '' : 's'}${made ? ` (${made} barcode${made === 1 ? '' : 's'} created)` : ''}.`, 'ok'); beep('ok');
+          WZ.set('1', true, `${t} label${t === 1 ? '' : 's'}`); WZ.set('2', true, `${t} label${t === 1 ? '' : 's'} added`);
+          setTimeout(() => { const w = $('wzPrint'); if (w && !w.hidden) w.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 80);
+        } catch (err) { go.textContent = 'Add ticked to label list'; info(err.message, 'bad'); try { $('lcInfo').scrollIntoView({behavior: 'smooth', block: 'center'}); } catch (e3) {} }
+        busy = false; draw(); return;
+      }
+      const c = e.target.closest('[data-k]'); if (!c) return; const k = c.dataset.k; if (inList.has(k)) return;
+      if (tick.has(k)) tick.delete(k); else tick.add(k); sync();
+    };
+  })();
 
   /* ----- print barcodes for a box + add its stock to Shopify ----- */
   (() => {
