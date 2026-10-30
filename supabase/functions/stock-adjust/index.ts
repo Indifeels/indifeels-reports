@@ -209,6 +209,27 @@ async function latest(body: any, svc: any) {
     if (r.box_no && r.mode !== "remove") e.box.add(String(r.box_no));
     net.set(String(r.vid), e);
   }
+  // 2b) stock added DIRECTLY in Shopify (admin / POS), read from Shopify's own inventory history. App changes use reason "correction", so they are skipped here (already in the app log above).
+  const shopifyVids = new Set<string>(); let shopifyWarn = "";
+  try {
+    const days = Math.min(60, Math.ceil((Date.now() - t) / 86400000) + 1), hourFloor = Math.floor(t / 3600000) * 3600000;
+    const sd: any = await gql(`query($q:String!){ shopifyqlQuery(query:$q){ parseErrors tableData{ columns{ name } rows } } }`,
+      { q: `FROM inventory_adjustment_history SHOW inventory_adjustment_change GROUP BY product_variant_id, inventory_change_reason, hour SINCE startOfDay(-${days}d) UNTIL today LIMIT 1000` });
+    const res = sd.shopifyqlQuery;
+    if (res?.parseErrors?.length) throw new Error(JSON.stringify(res.parseErrors).slice(0, 120));
+    const cols = (res?.tableData?.columns || []).map((c: any) => c.name);
+    const ix = (n: string) => cols.indexOf(n);
+    for (const row of res?.tableData?.rows || []) {
+      const o = Array.isArray(row) ? { v: row[ix("product_variant_id")], r: row[ix("inventory_change_reason")], h: row[ix("hour")], c: row[ix("inventory_adjustment_change")] }
+        : { v: row.product_variant_id, r: row.inventory_change_reason, h: row.hour, c: row.inventory_adjustment_change };
+      const c = Number(o.c) || 0, ht = Date.parse(String(o.h));
+      if (c <= 0 || !o.v || !Number.isFinite(ht) || ht < hourFloor) continue;
+      if (!["manual_adjustment", "initial_adjustment", "received"].includes(String(o.r))) continue;
+      const v = String(o.v).split("/").pop()!, e = net.get(v) || { n: 0, at: "", box: new Set<string>() };
+      e.n += c; const at = new Date(ht).toISOString(); if (!e.at || at > e.at) e.at = at;
+      net.set(v, e); shopifyVids.add(v);
+    }
+  } catch (e) { shopifyWarn = "Could not read Shopify's own stock history: " + String((e as Error)?.message || e).slice(0, 140); }
   const vids = [...net.entries()].filter(([, e]) => e.n > 0).map(([v]) => v);
   const groups = new Map<string, any>();
   for (const ids of chunk(vids, 50)) {
@@ -218,13 +239,13 @@ async function latest(body: any, svc: any) {
       const p = pid(n.product.id); if (news.has(p)) return;   // a new product already prints its full stock
       const e = net.get(pid(n.id))!;
       const g = groups.get(p) || { pid: p, title: n.product.title, image: img(n.product), at: "", variants: [] };
-      g.variants.push({ vid: pid(n.id), title: n.title, price: n.price, barcode: n.barcode || "", added: e.n, box: [...e.box].join(", "), at: e.at });
+      g.variants.push({ vid: pid(n.id), title: n.title, price: n.price, barcode: n.barcode || "", added: e.n, box: [...e.box].join(", "), at: e.at, shopify: shopifyVids.has(pid(n.id)) });
       if (!g.at || e.at > g.at) g.at = e.at;
       groups.set(p, g);
     });
   }
   const added = [...groups.values()].sort((a, b) => String(b.at).localeCompare(String(a.at)));
-  return json({ ok: true, since, news: [...news.values()], added });
+  return json({ ok: true, since, news: [...news.values()], added, ...(shopifyWarn ? { warn: shopifyWarn } : {}) });
 }
 
 async function setStatus(body: any) {
