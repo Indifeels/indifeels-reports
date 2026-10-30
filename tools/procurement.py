@@ -28,31 +28,31 @@ RID = "procurement"
 DEMAND_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "procurement_demand.json")
 WINDOW_DAYS = 365
 
-# display name, Shopify collection title (case-insensitive), Semrush category key, Semrush colour-type key
+# display name, Shopify collection title (case-insensitive), Semrush search terms (monthly AU volume summed), Semrush colour-type key
 COLLECTIONS = [
-    ("Kurta Pajama", "Kurta Pajama", "kurta pajama", "kurta pajama"),
-    ("Kurti for Women", "Kurti For Women", "kurti", "kurti"),
-    ("Short Top Kurti", "SHORT TOP KURTI", "kurti", "kurti"),
-    ("Short Kurta for Men", "Short Kurta For Men", "kurta pajama for men", "kurta pajama"),
-    ("Anarkali Dress", "Anarkali Dress", "anarkali", "anarkali"),
-    ("Suits", "Suits", "punjabi suit", "punjabi suit"),
-    ("Top + Bottom Set", "Top+Bottom Set", "kurti pant set", None),
-    ("Lehenga", "Lehenga", "lehenga", "lehenga"),
-    ("Sarees", "Sarees", "saree", "saree"),
-    ("Saree Blouses", "Saree Blouses", "saree blouse", None),
-    ("Nehru Jacket", "Nehru Jacket", "nehru jacket", None),
-    ("Bottom Only", "Bottom Only", None, None),
-    ("Dupatta / Phulkari", "Dupatta/ Phulkari", "dupatta", None),
-    ("Pocket Square", "Pocket Square", None, None),
-    ("Women Footwear", "Women Footwear", "indian shoes", None),
-    ("Footwear", "Footwear", "indian shoes", None),
-    ("Kids", "Kids", "kids ethnic wear", None),
-    ("Bangles", "Bangles", "bangles", None),
-    ("Earrings", "Earrings", "indian jewellery", None),
-    ("Necklace", "Necklace", "indian jewellery", None),
-    ("Rings", "Rings", None, None),
-    ("Oxidised Jewellery", "Oxidised Jewellery", "oxidised jewellery", None),
-    ("Maang Tikka Sets", "Maang Tikka Earrings Set", "maang tikka", None),
+    ("Kurta Pajama", "Kurta Pajama", ["kurta pajama", "kurta pajama for men", "kurta for men", "mens kurta", "pathani kurta"], "kurta pajama"),
+    ("Kurti for Women", "Kurti For Women", ["kurti", "kurti for women"], "kurti"),
+    ("Anarkali Dress", "Anarkali Dress", ["anarkali", "anarkali dress", "anarkali suit"], "anarkali"),
+    ("Suits", "Suits", ["punjabi suit", "salwar suit", "punjabi suit for women", "patiala suit"], "punjabi suit"),
+    ("Top + Bottom Set", "Top+Bottom Set", ["kurti pant set", "kurta set for women"], None),
+    ("Lehenga", "Lehenga", ["lehenga", "lehenga choli", "bridal lehenga", "designer lehenga", "lehenga online"], "lehenga"),
+    ("Sarees", "Sarees", ["saree", "silk saree", "saree online", "cotton saree", "party wear saree"], "saree"),
+    ("Saree Blouses", "Saree Blouses", ["saree blouse"], None),
+    ("Nehru Jacket", "Nehru Jacket", ["nehru jacket", "nehru jacket for men"], None),
+    ("Bottom Only", "Bottom Only", ["churidar", "dhoti pants"], None),
+    ("Dupatta / Phulkari", "Dupatta/ Phulkari", ["dupatta"], None),
+    ("Pocket Square", "Pocket Square", ["pocket square"], None),
+    ("Women Footwear", "Women Footwear", ["indian shoes", "juttis", "mojari", "punjabi juttis", "kolhapuri chappal"], None),
+    ("Footwear", "Footwear", [], None),
+    ("Kids", "Kids", ["kids kurta", "kids lehenga", "kids kurta pajama", "boys kurta pajama", "girls lehenga", "kids ethnic wear"], None),
+    ("Bangles", "Bangles", ["bangles", "bridal bangles", "glass bangles", "kada bangles"], None),
+    ("Earrings", "Earrings", ["indian earrings", "jhumka earrings", "jhumka"], None),
+    ("Necklace", "Necklace", ["indian necklace", "kundan necklace", "indian necklace set"], None),
+    ("Anklets", "Anklets", ["anklet", "payal"], None),
+    ("Rings", "Rings", [], None),
+    ("Oxidised Jewellery", "Oxidised Jewellery", ["oxidised jewellery"], None),
+    ("Maang Tikka Sets", "Maang Tikka Earrings Set", ["maang tikka"], None),
+    ("Rakhi", "Rakhi", ["rakhi"], None),
 ]
 
 # longest phrases first so "navy blue" wins over "blue"
@@ -70,7 +70,7 @@ SEARCH_COLOUR = {"navy blue": "Blue", "black": "Black", "white": "White", "blue"
                  "maroon": "Maroon", "yellow": "Yellow", "mustard": "Mustard", "beige": "Beige", "grey": "Grey", "pink": "Pink"}
 
 PRODUCTS = """{ products(query:"status:active"){ edges{ node{
-  id title
+  id title onlineStoreUrl featuredImage{ url }
   collections{ edges{ node{ id title } } }
   variants{ edges{ node{ id title inventoryQuantity selectedOptions{ name value } } } } } } } }"""
 ORDERS = rp.ORDERS
@@ -118,7 +118,8 @@ def aggregate(prod_lines, order_lines, demand, today=None):
     products = {}
     for l in prod_lines:
         if "/Product/" in l.get("id", "") and "__parentId" not in l:
-            products[l["id"]] = {"id": rp.num(l["id"]), "title": l.get("title") or "", "cols": set(), "variants": {}}
+            products[l["id"]] = {"id": rp.num(l["id"]), "title": l.get("title") or "", "cols": set(), "variants": {},
+                                 "img": ((l.get("featuredImage") or {}).get("url")) or "", "url": l.get("onlineStoreUrl") or ""}
     for l in prod_lines:
         pid = l.get("__parentId")
         if pid not in products:
@@ -165,14 +166,14 @@ def aggregate(prod_lines, order_lines, demand, today=None):
         raise RuntimeError(f"Only {lines} order lines in the last {WINDOW_DAYS} days: refusing to publish incomplete sales history")
 
     out = []
-    for disp, title, sem_cat, sem_col in COLLECTIONS:
+    for disp, title, terms, sem_col in COLLECTIONS:
         members = [P for P in products.values() if title.lower() in P["cols"]]
         if not members:
             continue
         sizes, colours = {}, {}
         sold_total = stock_total = 0
         designs_in = designs_sold = 0
-        design_sales = []
+        design_sales, dead = [], []
         for P in members:
             vs = list(P["variants"].values())
             p_sold = sum(v["sold"] for v in vs) + P.get("loose", 0)
@@ -183,6 +184,8 @@ def aggregate(prod_lines, order_lines, demand, today=None):
             designs_sold += 1 if p_sold > 0 else 0
             if p_sold > 0:
                 design_sales.append(p_sold)
+            elif p_stock > 0:
+                dead.append((p_stock, P))
             seen_s, seen_c = set(), set()
             for v in vs:
                 if v["size"]:
@@ -214,11 +217,13 @@ def aggregate(prod_lines, order_lines, demand, today=None):
         out.append({
             "name": disp, "designs": len(members), "designsIn": designs_in, "designsSold": designs_sold, "n80": n80,
             "sold": sold_total, "stock": stock_total,
-            "catSearch": int((demand.get("category") or {}).get(sem_cat, 0)) if sem_cat else None,
-            "catTerm": sem_cat,
+            "search": sum(int((demand.get("terms") or {}).get(t, 0)) for t in terms), "terms": [[t, int((demand.get("terms") or {}).get(t, 0))] for t in terms],
+            "dead": {"designs": len(dead), "units": sum(x[0] for x in dead),
+                     "items": [{"t": P["title"], "s": q, "i": (P["img"] + ("&" if "?" in P["img"] else "?") + "width=160") if P["img"] else "", "u": P["url"]}
+                               for q, P in sorted(dead, key=lambda x: -x[0])[:10]]},
             "sizes": sorted(sizes.values(), key=lambda s: size_rank(s["size"])),
             "colours": sorted(colours.values(), key=lambda c: -c["sold"]),
-            "search": search,
+            "colSearch": search,
         })
     return out, {"lines": lines, "unmapped_units": unmapped, "products": len(products)}
 
@@ -231,8 +236,8 @@ def build_page(cols, info, demand, now):
     assert page.count("__DATA__") == 1
     page = page.replace("__DATA__", json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/"))
     updated = now.strftime("%-d %b %Y, %-I:%M %p").replace("AM", "am").replace("PM", "pm")
-    short = sum(1 for c in cols if c["sold"] and c["stock"] < c["sold"] / WINDOW_DAYS * 90)
-    meta = {"updated": updated, "stats": [[str(len(cols)), "collections tracked"], [str(short), "under 90 days of stock"]]}
+    dead = sum(c["dead"]["units"] for c in cols)
+    meta = {"updated": updated, "stats": [[str(len(cols)), "collections tracked"], [f"{dead:,}", "units of dead stock"]]}
     return page, meta
 
 
