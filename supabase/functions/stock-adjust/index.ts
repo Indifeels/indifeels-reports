@@ -76,7 +76,7 @@ async function adjustList(body: any, svc: any, by: string) {
   }
   if (body.dry) return json({ ok: true, dry: true, variants: rows.length, units: rows.reduce((a, r) => a + r.qty, 0) });
   if (mode === "add") for (const r of rows) if (!r.has) {
-    const a = await gql(`mutation($i:ID!,$l:ID!){ inventoryActivate(inventoryItemId:$i, locationId:$l){ userErrors{ message } } }`, { i: r.item, l: loc });
+    const a = await gql(`mutation($i:ID!,$l:ID!,$key:String!){ inventoryActivate(inventoryItemId:$i, locationId:$l) @idempotent(key:$key){ userErrors{ message } } }`, { i: r.item, l: loc, key: crypto.randomUUID() });
     const e = a.inventoryActivate.userErrors; if (e?.length) throw new Error(`${r.title}: ${e[0].message}`);
   }
   const ref = `indifeels://stock-${mode}/` + crypto.randomUUID();

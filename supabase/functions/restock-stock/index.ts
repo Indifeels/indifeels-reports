@@ -98,7 +98,7 @@ async function bulk(body: any) {
     };
     if (body.dry) return json({ ok: true, dry: true, ...summary });
     for (const r of chg) if (!r.has) {
-      const a = await gql(`mutation($i:ID!,$l:ID!){ inventoryActivate(inventoryItemId:$i, locationId:$l){ userErrors{ message } } }`, { i: r.item, l: loc });
+      const a = await gql(`mutation($i:ID!,$l:ID!,$key:String!){ inventoryActivate(inventoryItemId:$i, locationId:$l) @idempotent(key:$key){ userErrors{ message } } }`, { i: r.item, l: loc, key: crypto.randomUUID() });
       const e = a.inventoryActivate.userErrors; if (e?.length) throw new Error(`${r.title}: ${e[0].message}`);
     }
     const ref = "indifeels://stock-take/" + crypto.randomUUID();
@@ -172,7 +172,7 @@ async function bulk(body: any) {
   if (short.length) return json({ error: "Not enough stock at the From location for: " + short.slice(0, 5).map((r) => `${r.title} (has ${r.fq}, scanned ${r.qty})`).join("; ") + (short.length > 5 ? ` and ${short.length - 5} more` : ""), short: short.map((r) => r.vid) }, 400);
 
   for (const r of rows) if (!r.hasTo) {
-    const a = await gql(`mutation($i:ID!,$l:ID!){ inventoryActivate(inventoryItemId:$i, locationId:$l){ userErrors{ message } } }`, { i: r.item, l: to });
+    const a = await gql(`mutation($i:ID!,$l:ID!,$key:String!){ inventoryActivate(inventoryItemId:$i, locationId:$l) @idempotent(key:$key){ userErrors{ message } } }`, { i: r.item, l: to, key: crypto.randomUUID() });
     const e = a.inventoryActivate.userErrors; if (e?.length) throw new Error(`${r.title}: ${e[0].message}`);
   }
   const key = crypto.randomUUID();
@@ -273,7 +273,7 @@ Deno.serve(async (req: Request) => {
       // a location the variant isn't stocked at yet has to be activated before it can hold stock
       for (const [d, has, loc] of [[dS, r.hasShop, SHOPLOC], [dB, r.hasBackup, BACKUP]] as [number, boolean, string][]) {
         if (d > 0 && !has) {
-          const a = await gql(`mutation($i:ID!,$l:ID!){ inventoryActivate(inventoryItemId:$i, locationId:$l){ userErrors{ message } } }`, { i: r.item, l: loc });
+          const a = await gql(`mutation($i:ID!,$l:ID!,$key:String!){ inventoryActivate(inventoryItemId:$i, locationId:$l) @idempotent(key:$key){ userErrors{ message } } }`, { i: r.item, l: loc, key: crypto.randomUUID() });
           const e = a.inventoryActivate.userErrors; if (e?.length) throw new Error(e[0].message);
         }
       }
