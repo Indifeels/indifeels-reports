@@ -117,10 +117,10 @@
   "reason": "Semrush reported API unit charges (Position Tracking 100+200 units); stopped per cost rule"
  },
  "stock": {
-  "at": "2026-10-31T13:36+11:00",
-  "code_sha": "1768fc1afa7fe21bf5febcadf9e0560819a099c6",
+  "at": "2026-10-31T14:13+11:00",
+  "code_sha": "1d224ab245f421f2eded69199a6102de8c1755d4",
   "data_through": null,
-  "last_ok": "2026-10-31T13:36+11:00",
+  "last_ok": "2026-10-31T14:13+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
