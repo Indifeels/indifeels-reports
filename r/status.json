@@ -108,13 +108,13 @@
   "reason": ""
  },
  "seo-report": {
-  "at": "2026-10-29T05:59+11:00",
-  "code_sha": "1a438a78bedb2b087252f48303c2ba36952b3f01",
+  "at": "2026-11-01T00:26+11:00",
+  "code_sha": "eb1a393769755df2bf3f06b681bea88179a398a8",
   "data_through": null,
   "last_ok": "2026-10-25T23:11+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": false,
-  "reason": "Semrush reported API unit charges (Position Tracking 100+200 units); stopped per cost rule"
+  "reason": "Semrush units charged on required calls (position tracking 100, backlinks 140, rank history 140, domain 10); stopped per cost rules"
  },
  "stock": {
   "at": "2026-10-31T22:43+11:00",
