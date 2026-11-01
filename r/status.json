@@ -54,10 +54,10 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-11-01T14:00+11:00",
-  "code_sha": "40a346f6f77af912d806dd6691fcba11130be170",
+  "at": "2026-11-01T20:00+11:00",
+  "code_sha": "b67d2defab4dfd5490ea9c8587497ec8f03aadf1",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-11-01T14:00+11:00",
+  "last_ok": "2026-11-01T20:00+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
