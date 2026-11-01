@@ -117,10 +117,10 @@
   "reason": "Semrush units charged on required calls (position tracking 100, backlinks 140, rank history 140, domain 10); stopped per cost rules"
  },
  "stock": {
-  "at": "2026-11-01T13:19+11:00",
-  "code_sha": "8f6325a0cda41056f2d9cda5fb9ec65408c414b7",
+  "at": "2026-11-01T14:17+11:00",
+  "code_sha": "b675e678aa954425069e53ef1828e34771dbef55",
   "data_through": null,
-  "last_ok": "2026-11-01T13:19+11:00",
+  "last_ok": "2026-11-01T14:17+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
