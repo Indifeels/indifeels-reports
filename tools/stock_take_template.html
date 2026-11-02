@@ -1837,7 +1837,8 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       saveSel(); $('lcGo').disabled = true; info('Reading the latest from Shopify…');
       try {
         const r = await Store.latest(d.toISOString());
-        data = {news: r.news || [], added: r.added || []}; tick.clear();
+        /* a product only counts as "newly published" if it was published within 14 days of being created (a bulk re-publish of old products must not flood the list) */
+        data = {news: (r.news || []).filter(g => Date.parse(g.createdAt) >= d.getTime() || (Date.parse(g.publishedAt) - Date.parse(g.createdAt)) <= 14 * 86400000), added: r.added || []}; tick.clear();
         /* keep the app's product index in step with Shopify (new products, new sizes, new barcodes) */
         data.news.forEach(g => mergeLive(g.pid, g.variants.map(v => ({vid: v.vid, title: v.title, price: v.price, barcode: v.barcode, q: {}})), {product_title: g.title, image: g.image}));
         data.added.forEach(g => mergeLive(g.pid, g.variants.map(v => ({vid: v.vid, title: v.title, price: v.price, barcode: v.barcode, q: {}})), {product_title: g.title, image: g.image}));
