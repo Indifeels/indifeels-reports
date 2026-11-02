@@ -1103,6 +1103,7 @@ const Store = {
   order: row => call('order', { row }),
   cancel: id => call('cancel', { id }),
   received: ids => call('received', { ids }),
+  tracking: (box, url, no) => call('tracking', { box, url, no }),
   disc: (product, value) => call('disc', { product, value }),
   discList: () => call('disclist'),
   users: () => call('users'),
@@ -1200,7 +1201,7 @@ function bxTile(b, lines, o) {
     <span class="bx-title">${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
     <span class="bx-pill ${recvd ? 'rc' : shipped ? 'sh' : 'op'}">${recvd ? 'Received' : shipped ? 'Shipped' : 'Packing'}</span>
     <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}${uTotal ? ' · <b style="color:#e5484d">' + uTotal + ' over reported</b>' : ''}</span>
-    <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${url ? '<a class="bx-trkl" href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track parcel' + (b.tracking_no ? ' · ' + bxEsc(b.tracking_no) : '') + ' ↗</a>' : (b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : '')}</span></div>`;
+    <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${url ? '<a class="bx-trkl" href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track parcel' + (b.tracking_no ? ' · ' + bxEsc(b.tracking_no) : '') + ' ↗</a>' : (b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : (shipped && o.trk ? '<span class="bx-trkl">＋ Add tracking</span>' : ''))}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
   const mvSel = (key, label) => `<select data-mvg="${bxEsc(key)}"><option value="">${label}</option>${others.map(x => `<option value="${bxEsc(x)}">${bxEsc(x)}</option>`).join('')}<option value="__master">↩ Back to order list</option></select>`;
   const selN = o.selP ? [...o.selP].filter(k => k.startsWith(b.box_no + '|')).length : 0;
@@ -1223,7 +1224,7 @@ function bxTile(b, lines, o) {
   }
   let trkHtml = '';
   if (shipped) {
-    trkHtml = o.ro ? ((url || b.tracking_no) ? `<div class="bx-trk"><span><b>Tracking</b> ${b.tracking_no ? bxEsc(b.tracking_no) : ''} ${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">' + bxEsc(url.length > 60 ? url.slice(0, 57) + '…' : url) + '</a>' : ''}</span></div>` : '')
+    trkHtml = (o.ro && !o.trk) ? ((url || b.tracking_no) ? `<div class="bx-trk"><span><b>Tracking</b> ${b.tracking_no ? bxEsc(b.tracking_no) : ''} ${url ? '<a href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">' + bxEsc(url.length > 60 ? url.slice(0, 57) + '…' : url) + '</a>' : ''}</span></div>` : '')
       : `<div class="bx-trk" data-trkbox="${bxEsc(b.box_no)}"><label>Tracking link<input type="text" class="bx-url u" value="${bxEsc(b.tracking_url || '')}" placeholder="https://…" maxlength="500"></label>
       <label>Tracking number<input type="text" class="bx-no" value="${bxEsc(b.tracking_no || '')}" maxlength="80"></label><button data-trk="${bxEsc(b.box_no)}">Save tracking</button></div>`;
   }
@@ -1667,7 +1668,7 @@ function renderBoxes(){
   const pk = list.filter(x => x.b.status !== 'shipped'), sh = list.filter(x => x.b.status === 'shipped');
   $('bxCount').textContent = bxPlural(pk.length, 'box') + ' packing · ' + bxPlural(sh.length, 'box') + ' shipped';
   const unders = [...orders.values()].filter(r => r.status === 'saved' && r.short_box);
-  const tile = ({b, lines}) => bxTile(b, lines, {ro: true, recv: true, rem: remOf, open: myOpen.get(b.box_no) === true, who: b.supplier, unders});
+  const tile = ({b, lines}) => bxTile(b, lines, {ro: true, trk: true, recv: true, rem: remOf, open: myOpen.get(b.box_no) === true, who: b.supplier, unders});
   el.innerHTML = bxSec('bx-pack', '📦 Packing', bxPlural(pk.length, 'box') + (pk.length ? ' · ' + bxPlural(pk.reduce((t, x) => t + x.lines.length, 0), 'item') : ''), pk.length ? pk.map(tile).join('') : '<div class="empty">Nothing is being packed. Boxes appear when a supplier adds an item.</div>', {cls: 'pack'})
     + bxSec('bx-ship', '🚚 Shipped', bxPlural(sh.length, 'box'), sh.length ? sh.map(tile).join('') : '<div class="empty">No shipped boxes yet.</div>', {cls: 'ship'});
 }
@@ -2010,6 +2011,19 @@ function armBtn(btn, key){
   armRecvT = setTimeout(() => { armRecv = ''; if (btn.isConnected) { btn.textContent = btn.getAttribute('data-orig'); btn.removeAttribute('data-armed'); btn.classList.remove('arm'); } }, 4000);
   return false;
 }
+document.addEventListener('click', async e => {
+  const tk = e.target.closest('[data-trk]'); if (!tk) return;
+  const box = tk.getAttribute('data-trk'), pn = tk.closest('[data-trkbox]'); if (!pn) return;
+  const url = pn.querySelector('.bx-url').value.trim(), no = pn.querySelector('.bx-no').value.trim();
+  if (url && !/^https?:\/\//i.test(url)) { notify('The tracking link must start with https://'); return; }
+  tk.disabled = true;
+  try {
+    await Store.tracking(box, url, no);
+    const b = boxesData.find(x => x.box_no === box); if (b) { b.tracking_url = url || null; b.tracking_no = no || null; }
+    notify('Tracking saved · ' + box, true);
+  } catch (err) { notify('Could not save tracking: ' + err.message); }
+  tk.disabled = false; renderBoxes(); renderSv();
+});
 function onClick(e){
   const t = e.target;
   const rb = t.closest('[data-recvbox]');
@@ -2324,7 +2338,7 @@ function renderSv(){
   const shortSec = shortRows.length ? `<div style="margin-top:14px;padding:10px;border:2px solid #e5484d;border-radius:14px;background:rgba(229,72,77,.08)"><h3 style="margin:0 0 4px;color:#e5484d;font-size:16px">⚠ Not received (${shortRows.reduce((t, r) => t + r.qty, 0)} pcs)</h3><p class="sub" style="margin:0 0 10px">Marked as sent but did not arrive. The supplier sees this list too.</p>${mTbl(shortRows)}</div>` : '';
   $('svList').innerHTML = bxSec('sv-order', '📋 Order list', bxPlural(master.length, 'item') + ' waiting', '<p class="sub" style="margin:0 0 10px">' + (who ? 'Only ' + esc(who) + '\'s products. ' : 'Every supplier sees these until one adds them to a box.') + '</p>' + mTable + shortSec);
   const boxes = boxesFor(who);
-  const tile = ({b, lines}) => bxTile(b, lines, {ro: true, rem: remOf, open: svOpen.has(b.box_no) ? svOpen.get(b.box_no) : false, who: b.supplier, unders: shortRows});
+  const tile = ({b, lines}) => bxTile(b, lines, {ro: true, trk: true, rem: remOf, open: svOpen.has(b.box_no) ? svOpen.get(b.box_no) : false, who: b.supplier, unders: shortRows});
   const pk = boxes.filter(x => x.b.status !== 'shipped'), sh = boxes.filter(x => x.b.status === 'shipped');
   $('svShipped').innerHTML = bxSec('sv-pack', '📦 Packing', bxPlural(pk.length, 'box') + (pk.length ? ' · ' + bxPlural(pk.reduce((t, x) => t + x.lines.length, 0), 'item') : ''), pk.length ? pk.map(tile).join('') : '<div class="empty">Nothing is being packed. Boxes appear when a supplier adds an item.</div>')
     + bxSec('sv-ship', '🚚 Shipped', bxPlural(sh.length, 'box'), sh.length ? sh.map(tile).join('') : '<div class="empty">No shipped boxes yet.</div>');

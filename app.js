@@ -1744,6 +1744,7 @@
     disc: async (d) => { if (!/^\d{1,20}$/.test(String(d.product || ""))) throw new Error("Bad product"); rpOk(await sb.rpc("restock_owner_set_discontinued", { p_product: String(d.product), p_value: !!d.value })); return true; },
     disclist: async () => rpOk(await sb.from("restock_discontinued").select("product_id,discontinued,synced_at")) || [],
     boxes: async () => rpOk(await sb.from("restock_boxes").select("box_no,supplier,status,seq,created_at,shipped_at,ship_date,tracking_url,tracking_no").order("created_at", { ascending: false }).limit(500)) || [],
+    tracking: async (d) => { rpOk(await sb.rpc("restock_owner_tracking", { p_box: rpText(d.box, 40), p_url: rpText(d.url, 500), p_no: rpText(d.no, 80) })); return true; },
     received: async (d) => rpOk(await sb.rpc("restock_owner_received", { p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 500).map((x) => rpText(x, 140)) })),
     users: async () => rpOk(await sb.rpc("restock_supplier_users_list")),
     events: async () => rpOk(await sb.from("restock_events").select("at,order_id,label,supplier,actor_name,actor_role,action,qty_from,qty_to,box_no").order("at", { ascending: false }).limit(300)) || [],
