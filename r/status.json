@@ -18,10 +18,10 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-11-03T14:06+11:00",
-  "code_sha": "22374e65f21c3c9fbc2c2f5a88e4b519be4b35ea",
-  "data_through": "2026-11-03T14:00:14.791571+11:00",
-  "last_ok": "2026-11-03T14:06+11:00",
+  "at": "2026-11-03T21:37+11:00",
+  "code_sha": "73af0de630a0b79f87429b28b3e23270cfcc8068",
+  "data_through": "2026-11-03T21:30:17.018462+11:00",
+  "last_ok": "2026-11-03T21:37+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
@@ -63,10 +63,10 @@
   "reason": "Google tracked refresh failed; check GitHub Actions"
  },
  "monthly": {
-  "at": "2026-11-03T14:06+11:00",
-  "code_sha": "22374e65f21c3c9fbc2c2f5a88e4b519be4b35ea",
-  "data_through": "2026-11-03T14:00:14.791571+11:00",
-  "last_ok": "2026-11-03T14:06+11:00",
+  "at": "2026-11-03T21:37+11:00",
+  "code_sha": "73af0de630a0b79f87429b28b3e23270cfcc8068",
+  "data_through": "2026-11-03T21:30:17.018462+11:00",
+  "last_ok": "2026-11-03T21:37+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
