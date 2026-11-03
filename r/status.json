@@ -117,10 +117,10 @@
   "reason": "Semrush Position Tracking call cost 100 API units (only snapshots allowed); refresh stopped, nothing published"
  },
  "stock": {
-  "at": "2026-11-03T14:58+11:00",
-  "code_sha": "f75a5abc540f361a3c74adcfaae00bc524595ba0",
+  "at": "2026-11-03T15:01+11:00",
+  "code_sha": "40f14865869bd2a5e66301bb443730df74f83784",
   "data_through": null,
-  "last_ok": "2026-11-03T14:58+11:00",
+  "last_ok": "2026-11-03T15:01+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
