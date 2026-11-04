@@ -18,13 +18,13 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-11-04T21:38+11:00",
+  "at": "2026-11-04T21:39+11:00",
   "code_sha": "ecb7b3d8152e475bc9ca1859f299eee13d85d3fe",
   "data_through": "2026-11-04T21:30:20.508603+11:00",
   "last_ok": "2026-11-04T21:38+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
-  "ok": true,
-  "reason": ""
+  "ok": false,
+  "reason": "Daily/Monthly workflow failed; check GitHub Actions"
  },
  "facebook-tracked": {
   "at": "2026-11-04T20:00+11:00",
@@ -63,13 +63,13 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-11-04T21:38+11:00",
+  "at": "2026-11-04T21:39+11:00",
   "code_sha": "ecb7b3d8152e475bc9ca1859f299eee13d85d3fe",
   "data_through": "2026-11-04T21:30:20.508603+11:00",
   "last_ok": "2026-11-04T21:38+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
-  "ok": true,
-  "reason": ""
+  "ok": false,
+  "reason": "Daily/Monthly workflow failed; check GitHub Actions"
  },
  "order-source": {
   "at": "2026-11-04T20:00+11:00",
