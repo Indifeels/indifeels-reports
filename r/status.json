@@ -72,10 +72,10 @@
   "reason": "Daily/Monthly workflow failed; check GitHub Actions"
  },
  "order-source": {
-  "at": "2026-11-04T20:00+11:00",
-  "code_sha": "0828d2f2f02064ba93ccfe7155c75915768047a1",
+  "at": "2026-11-05T06:00+11:00",
+  "code_sha": "7a15b10dc5e291a05aa80e7a574b62d4ee1bbd2c",
   "data_through": null,
-  "last_ok": "2026-11-04T20:00+11:00",
+  "last_ok": "2026-11-05T06:00+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
