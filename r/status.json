@@ -90,10 +90,10 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-11-05T07:00+11:00",
-  "code_sha": "54c9c1924d175a863f86cd9bd51129fc28bf5fbe",
+  "at": "2026-11-05T20:00+11:00",
+  "code_sha": "06518b116b25c8bc7bf5a8dcb4529a230dfbfcc2",
   "data_through": null,
-  "last_ok": "2026-11-05T07:00+11:00",
+  "last_ok": "2026-11-05T20:00+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
