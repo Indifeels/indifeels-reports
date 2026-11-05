@@ -117,13 +117,13 @@
   "reason": "Semrush snapshot report charged 10000 API units; refresh stopped, no data published"
  },
  "stock": {
-  "at": "2026-11-05T13:30+11:00",
-  "code_sha": "ea35d64eed6147296f0f95eae258219cc892b269",
+  "at": "2026-11-05T13:32+11:00",
+  "code_sha": "ec247bbd7978962b9f2e2479c377f5c0a70f07c7",
   "data_through": null,
   "last_ok": "2026-11-05T13:30+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
-  "ok": true,
-  "reason": ""
+  "ok": false,
+  "reason": "Order-triggered stock refresh failed: The read operation timed out. Fix: check the SHOPIFY_TOKEN secret and the Actions log."
  },
  "stock-take": {
   "at": "2026-11-02T11:11+11:00",
