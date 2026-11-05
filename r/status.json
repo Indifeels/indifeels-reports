@@ -117,10 +117,10 @@
   "reason": "Semrush snapshot report charged 10000 API units; refresh stopped, no data published"
  },
  "stock": {
-  "at": "2026-11-05T17:09+11:00",
-  "code_sha": "a91740fa39f238f1b40eef464a9a67fe8d0ff73a",
+  "at": "2026-11-05T17:49+11:00",
+  "code_sha": "dabb917839cdffe3dda027bf231c871749bd0d5a",
   "data_through": null,
-  "last_ok": "2026-11-05T17:09+11:00",
+  "last_ok": "2026-11-05T17:49+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
