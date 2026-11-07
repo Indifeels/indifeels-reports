@@ -54,13 +54,13 @@
   "reason": "encryption key unavailable (Supabase key read denied)"
  },
  "google-tracked": {
-  "at": "2026-11-07T20:00+11:00",
-  "code_sha": "6e8f64e0a75f81db4789563c682322c612e92690",
+  "at": "2026-11-08T06:00+11:00",
+  "code_sha": "598d1722ceb752d182f6c5518b8fbc2c7316cbeb",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-11-07T14:00+11:00",
+  "last_ok": "2026-11-08T06:00+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
-  "ok": false,
-  "reason": "Google tracked refresh failed; check GitHub Actions"
+  "ok": true,
+  "reason": ""
  },
  "monthly": {
   "at": "2026-11-07T21:37+11:00",
