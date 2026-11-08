@@ -108,13 +108,13 @@
   "reason": ""
  },
  "seo-report": {
-  "at": "2026-11-05T05:58+11:00",
-  "code_sha": "2eff93187fd94e209d64621959399f5f9af50de5",
+  "at": "2026-11-09T05:57+11:00",
+  "code_sha": "5861055c3fdfc4595bf35ff6bd26d22badfa4f2a",
   "data_through": null,
   "last_ok": "2026-10-25T23:11+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": false,
-  "reason": "Semrush snapshot report charged 10000 API units; refresh stopped, no data published"
+  "reason": "encryption key unavailable (key read from Supabase denied)"
  },
  "stock": {
   "at": "2026-11-08T21:01+11:00",
