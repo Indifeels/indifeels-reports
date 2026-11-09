@@ -117,10 +117,10 @@
   "reason": "encryption key unavailable (key read from Supabase denied)"
  },
  "stock": {
-  "at": "2026-11-09T19:35+11:00",
-  "code_sha": "3404e54e677b320168d9ef72dbf57c7c0cb7cc68",
+  "at": "2026-11-09T20:01+11:00",
+  "code_sha": "5e77d8eba197c2816f37aa923b82cdb1df7e2922",
   "data_through": null,
-  "last_ok": "2026-11-09T19:35+11:00",
+  "last_ok": "2026-11-09T20:01+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
