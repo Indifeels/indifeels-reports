@@ -72,10 +72,10 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-11-09T20:00+11:00",
-  "code_sha": "5e77d8eba197c2816f37aa923b82cdb1df7e2922",
+  "at": "2026-11-10T06:00+11:00",
+  "code_sha": "9f6c45ef32ffd55f3820a3f832d4d317dc86b4e1",
   "data_through": null,
-  "last_ok": "2026-11-09T20:00+11:00",
+  "last_ok": "2026-11-10T06:00+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
