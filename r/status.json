@@ -45,13 +45,13 @@
   "reason": ""
  },
  "google-scorecard": {
-  "at": "2026-11-09T05:55+11:00",
-  "code_sha": "5478cee7ca48dfca6996fd9445e4b622a089a4a8",
+  "at": "2026-11-10T05:57+11:00",
+  "code_sha": "1d2903f0c15c80b5351e94e28f01ab7916f67d73",
   "data_through": null,
-  "last_ok": "2026-11-06T06:01+11:00",
+  "last_ok": "2026-11-10T05:57+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
-  "ok": false,
-  "reason": "encryption key could not be loaded (Supabase query blocked)"
+  "ok": true,
+  "reason": ""
  },
  "google-tracked": {
   "at": "2026-11-09T20:01+11:00",
