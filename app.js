@@ -445,13 +445,22 @@
     SM = { moves: log.moves || [], fixes: log.fixes || [], neg: log.negatives || [], now: log.now || {}, ticks: Object.fromEntries((data || []).map((t) => [t.move_id, t])) };
     return SM;
   }
-  const smPending = () => SM.moves.filter((m) => !SM.ticks[m.id]?.finalised_at).sort((a, b) => b.moved_at.localeCompare(a.moved_at));
+  // One row per variant: a newer move for the same variant means the earlier piece already sold (moves only happen when Shop is exactly 0),
+  // and a variant whose Shop stock is now 0 or less has nothing left to bring down, so neither stays on the tick list.
+  const smNowShop = (m) => SM.now[m.item]?.shop ?? m.shop_after;
+  const smOpen = () => {
+    const latest = {};
+    for (const m of SM.moves) if (!latest[m.item] || m.moved_at > latest[m.item].moved_at) latest[m.item] = m;
+    return Object.values(latest).filter((m) => !SM.ticks[m.id]?.finalised_at);
+  };
+  const smPending = () => smOpen().filter((m) => smNowShop(m) > 0).sort((a, b) => b.moved_at.localeCompare(a.moved_at));
+  const smClearedSold = () => { const cut = new Date(Date.now() - 7 * 86400000).toISOString(); return smOpen().filter((m) => smNowShop(m) <= 0 && m.moved_at >= cut); };
   const smDone = () => SM.moves.filter((m) => SM.ticks[m.id]?.finalised_at).sort((a, b) => SM.ticks[b.id].finalised_at.localeCompare(SM.ticks[a.id].finalised_at)).slice(0, 40);
-  const smSold = (m) => (SM.now[m.item]?.shop ?? m.shop_after) < 0;
+  const smSold = (m) => smNowShop(m) < 0;
   function stockStats() {
-    const p = smPending(), t = p.filter((m) => SM.ticks[m.id]?.ticked).length, sold = p.filter(smSold).length;
+    const p = smPending(), t = p.filter((m) => SM.ticks[m.id]?.ticked).length, sold = smClearedSold().length;
     return { stats: [[String(p.length - t), "to move and tick"], [String(t), "ticked, not finalised"], [String(sold), "sold before moved"]],
-      warn: sold ? `${sold} sold before they were moved` : "" };
+      warn: "" };
   }
   function smRow(m, done) {
     const tk = SM.ticks[m.id] || {}, now = SM.now[m.item] || { shop: m.shop_after, backup: m.backup_after }, sold = now.shop < 0;
