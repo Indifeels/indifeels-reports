@@ -54,13 +54,13 @@
   "reason": "encryption key could not be loaded (Supabase query blocked)"
  },
  "google-tracked": {
-  "at": "2026-11-09T14:01+11:00",
-  "code_sha": "a098f4dc4ee99de67bb4a93b2af5731eac2d7a11",
+  "at": "2026-11-09T20:01+11:00",
+  "code_sha": "5e77d8eba197c2816f37aa923b82cdb1df7e2922",
   "data_through": "2026-10-05T23:59:59+11:00",
   "last_ok": "2026-11-09T14:01+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
-  "ok": true,
-  "reason": ""
+  "ok": false,
+  "reason": "Google tracked refresh failed; check GitHub Actions"
  },
  "monthly": {
   "at": "2026-11-09T14:08+11:00",
