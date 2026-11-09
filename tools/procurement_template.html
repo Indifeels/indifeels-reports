@@ -40,9 +40,19 @@ select{font:inherit;font-size:13px;color:var(--fg);background:var(--tile2);borde
 .cl{display:grid;grid-template-columns:78px 1fr 58px 78px;gap:8px;align-items:center}
 .d2{display:flex;flex-direction:column;gap:3px}.d2 .sbar{height:7px}.d2 .f1{background:#5b7fc7}.d2 .f2{background:#9c7bd6}.d2 .f3{background:#4fa38f}
 .note{color:var(--mut);font-size:11px;margin-top:8px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 0 2px;-webkit-overflow-scrolling:touch}.chips button{flex:none;font:inherit;font-size:12px;font-weight:600;color:var(--mut);background:var(--tile2);border:1px solid transparent;border-radius:999px;padding:5px 11px;cursor:pointer}.chips button.on{color:var(--fg);border-color:var(--line);background:var(--tile)}
+.fc{width:100%;height:auto;display:block;margin-top:6px;overflow:visible}.fc text{font-size:9px;fill:var(--mut);font-variant-numeric:tabular-nums}.fc .lbl{fill:var(--fg);font-weight:600}.fc .gl{stroke:var(--line);stroke-width:1}
+.ln{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:3px}
+.ft{display:grid;grid-template-columns:62px 1fr 1fr 58px;gap:8px;align-items:center;padding:7px 4px;border-radius:9px;font-size:12px;font-variant-numeric:tabular-nums}.ft.h{color:var(--mut);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}.ft.r{cursor:pointer}.ft.r:hover{background:var(--tile2)}.ft.t{border-top:1px solid var(--line);font-weight:700}.ft b{font-weight:600}.ft .e{color:var(--g)}.ft .n{color:var(--r)}.ft>*:nth-child(n+2){text-align:right}
 @media(max-width:520px){.cl{grid-template-columns:64px 1fr 52px 70px}}
 </style></head><body><div class="wrap">
 <div class="top"><div><h1>Procurement</h1><div class="sub" id="src"></div></div><button class="btn" id="theme" type="button">Light</button></div>
+<div class="box" id="flowbox" hidden><p class="ttl"><span>Introduced vs cleared</span><em id="flowsub"></em></p>
+<div class="tiles" id="flowtiles"></div>
+<div class="ctl" style="margin-top:10px"><span class="seg" id="fview"><button data-v="intro">Introduced</button><button data-v="clear">Cleared</button><button data-v="hand">On hand</button></span><span class="seg" id="funit"><button data-u="count">Count</button><button data-u="value">Value</button></span></div>
+<div class="chips" id="fychips"></div><div id="fchart"></div>
+<div class="legend"><span><i class="ln" style="background:var(--g)"></i>Eligible</span><span><i class="ln" style="background:var(--r)"></i>Not eligible</span></div>
+<div id="ftable" style="margin-top:8px"></div><div class="note" id="fnote"></div></div>
 <div class="box"><div class="ctl"><b style="font-size:12px">Demand</b><span class="seg" id="mode"><button data-m="search">Search</button><button data-m="blend">Blend</button><button data-m="sales">My sales</button></span></div>
 <div class="ctl" style="margin-top:8px"><b style="font-size:12px">Stock target</b><input id="cover" type="range" min="30" max="180" step="15" value="90"><b id="coverv" style="font-size:12px;min-width:64px;text-align:right">90 days</b></div>
 <div class="note" style="margin-top:6px">Search = Semrush monthly searches in Australia. Blend = 60% your sales + 40% search. Collections with no search data use their sales share.</div></div>
@@ -57,7 +67,7 @@ select{font:inherit;font-size:13px;color:var(--fg);background:var(--tile2);borde
 <script>
 const D=__DATA__;
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let st={cover:90,mode:'search',sel:null,theme:'dark'};
+let st={cover:90,mode:'search',sel:null,theme:'dark',fview:'intro',funit:'count',ffy:null};
 try{const x=JSON.parse(localStorage.getItem('ir-procurement')||'null');if(x&&typeof x==='object')st=Object.assign(st,x)}catch(e){}
 const save=()=>{try{localStorage.setItem('ir-procurement',JSON.stringify(st))}catch(e){}};
 const fmt=n=>n==null?'–':Number(n).toLocaleString('en-AU'),pc=n=>Math.round(n*100)+'%';
@@ -138,10 +148,78 @@ function detail(k){
   h+=`<div class="note">Designs now = designs with stock in that colour. Want = colour demand share × designs needed. ${k.unk?fmt(k.unk)+' units sold have no colour set (left out). ':''}Colour comes from the Colour option, else the colour word in the product title.</div>`;
   return h;
 }
+/* ---- Introduced vs cleared: eligible vs not eligible, Australian financial years (Jul-Jun), drill into months ---- */
+const F=D.flow,MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fyOf=k=>{const y=+k.slice(0,4),m=+k.slice(5,7);return 'FY'+String((m>=7?y+1:y)%100).padStart(2,'0')};
+const mlab=k=>MON[+k.slice(5,7)-1]+' '+k.slice(2,4);
+const money=n=>{const a=Math.abs(n),s=n<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(2)+'M':a>=1e4?s+'$'+Math.round(a/1e3)+'k':a>=1e3?s+'$'+(a/1e3).toFixed(1)+'k':s+'$'+Math.round(a)};
+function flowSeries(g,view,unit){
+  const x=F[g];
+  if(view==='intro')return unit==='count'?x.ic:x.iv;
+  if(view==='clear')return unit==='count'?x.su:x.sv;
+  const a=unit==='count'?x.iu:x.iv,b=unit==='count'?x.su:x.sl;let run=0;return a.map((v,i)=>run+=v-b[i]);
+}
+function flowPeriods(){
+  const by={};F.months.forEach((k,i)=>{(by[fyOf(k)]=by[fyOf(k)]||[]).push(i)});
+  if(st.ffy&&by[st.ffy])return by[st.ffy].map(i=>({label:mlab(F.months[i]),idx:[i]}));
+  return Object.keys(by).sort().map(f=>({label:f,fy:f,idx:by[f],part:by[f].length<12}));
+}
+const flowAgg=(arr,idx,view)=>view==='hand'?arr[idx[idx.length-1]]:idx.reduce((a,i)=>a+arr[i],0);
+function flowChart(rows,u){
+  const W=360,H=176,L=46,R=24,T=16,B=22,f=u==='value'?money:fmt;
+  const vals=rows.flatMap(r=>[r.e,r.n]),mx=Math.max(1,...vals),mn=Math.min(0,...vals),span=(mx-mn)||1;
+  const X=i=>rows.length<2?(L+W-R)/2:L+(W-L-R)*i/(rows.length-1),Y=v=>T+(H-T-B)*(1-(v-mn)/span);
+  let s=`<svg class="fc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Eligible vs not eligible">`;
+  for(let g=0;g<=3;g++){const v=mn+span*g/3,y=Y(v);s+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text x="${L-4}" y="${(y+3).toFixed(1)}" text-anchor="end">${f(Math.round(v))}</text>`}
+  const step=Math.max(1,Math.ceil(rows.length/8));
+  rows.forEach((r,i)=>{if(i%step===0)s+=`<text x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="middle">${esc(r.p.label)}</text>`});
+  [['e','var(--g)',-6],['n','var(--r)',13]].forEach(([k,c,dy])=>{
+    s+=`<polyline fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" points="${rows.map((r,i)=>X(i).toFixed(1)+','+Y(r[k]).toFixed(1)).join(' ')}"/>`;
+    rows.forEach((r,i)=>{s+=`<circle cx="${X(i).toFixed(1)}" cy="${Y(r[k]).toFixed(1)}" r="2.6" fill="${c}"/>`;
+      if(rows.length<=8||i%step===0)s+=`<text class="lbl" x="${X(i).toFixed(1)}" y="${(Y(r[k])+dy).toFixed(1)}" text-anchor="middle" style="fill:${c}">${f(r[k])}</text>`})});
+  return s+'</svg>';
+}
+const FNOTE={
+  intro:{count:'Products introduced, by their real published date (published_date_old for migrated products).',value:'Units ever stocked (stock now + units sold) at sale price, by published month. The original buy quantity is not stored, so this is the stock you carried at the start.'},
+  clear:{count:'Units sold, by the real order date.',value:'What the units actually sold for after line discounts, by the real order date.'},
+  hand:{count:'Units on hand, running total (introduced minus sold). Ends on today’s stock.',value:'Stock value at sale price, running total (introduced minus sold). Ends on today’s stock value.'}};
+function renderFlow(){
+  const box=$('#flowbox');
+  if(!F||!F.months||!F.months.length){box.hidden=true;return}
+  box.hidden=false;
+  const S=F.snap,v=st.fview,u=st.funit,f=u==='value'?money:fmt;
+  $('#flowsub').textContent='as of '+F.asOf+' · eligible = under '+F.maxDts+' days to sell 1 unit';
+  const tiles=[[money(S.e.value),'eligible stock · '+fmt(S.e.units)+' units, '+fmt(S.e.stocked)+' products','g'],
+    [money(S.n.value),'not eligible stock · '+fmt(S.n.units)+' units, '+fmt(S.n.stocked)+' products','r'],
+    [fmt(S.t.products),'in testing, not counted · introduced in the last '+F.testDays+' days ('+money(S.t.value)+' stock)','b']];
+  if(S.x.products)tiles.push([fmt(S.x.products),'no published date, not counted · '+fmt(S.x.units)+' units in stock','a']);
+  $('#flowtiles').innerHTML=tiles.map(t=>`<div class="tile"><b style="color:var(--${t[2]})">${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join('');
+  document.querySelectorAll('#fview button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  document.querySelectorAll('#funit button').forEach(b=>b.classList.toggle('on',b.dataset.u===u));
+  const fys=[...new Set(F.months.map(fyOf))].sort();
+  if(st.ffy&&!fys.includes(st.ffy))st.ffy=null;
+  $('#fychips').innerHTML=[['','All years'],...fys.map(x=>[x,x])].map(([k,l])=>`<button data-f="${k}" class="${(st.ffy||'')===k?'on':''}">${l}</button>`).join('');
+  const P=flowPeriods(),E=flowSeries('e',v,u),N=flowSeries('n',v,u);
+  const rows=P.map(p=>({p,e:flowAgg(E,p.idx,v),n:flowAgg(N,p.idx,v)}));
+  $('#fchart').innerHTML=flowChart(rows,u);
+  const share=r=>{const t=r.e+r.n;return t>0?r.e/t:null};
+  const pl=s=>s==null?'<span class="pill p-n">–</span>':`<span class="pill p-${s>=.6?'g':s>=.4?'a':'r'}">${Math.round(s*100)}%</span>`;
+  let h=`<div class="ft h"><span>${st.ffy?'Month':'Year'}</span><span>Eligible</span><span>Not eligible</span><span>Elig %</span></div>`;
+  h+=rows.map(r=>`<div class="ft${st.ffy?'':' r'}"${st.ffy?'':` data-f="${r.p.fy}"`}><b>${esc(r.p.label)}${r.p.part?'*':''}</b><span class="e">${f(r.e)}</span><span class="n">${f(r.n)}</span>${pl(share(r))}</div>`).join('');
+  if(v!=='hand'){const t={e:rows.reduce((a,r)=>a+r.e,0),n:rows.reduce((a,r)=>a+r.n,0)};h+=`<div class="ft t"><span>Total</span><span class="e">${f(t.e)}</span><span class="n">${f(t.n)}</span>${pl(share(t))}</div>`}
+  $('#ftable').innerHTML=h;
+  $('#fnote').innerHTML=esc(FNOTE[v][u])+' '+(st.ffy?'Financial year '+esc(st.ffy)+' runs July to June; tap All years to go back.':'Tap a year to see its months.')+(rows.some(r=>r.p.part)?' * part year.':'')+
+    '<br>Eligible = the Restock Planner rule (days since published ÷ units sold under '+F.maxDts+'); no sales = not eligible. Each product keeps today’s status across its whole history. Elig % is green at 60%+, amber 40–59%, red under 40%.'+
+    (F.unmapped&&F.unmapped.units?'<br>Left out: '+fmt(F.unmapped.units)+' units ('+money(F.unmapped.value)+') sold on custom items or products no longer in the store.':'');
+}
+$('#fview').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.fview=b.dataset.v;save();renderFlow()}});
+$('#funit').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.funit=b.dataset.u;save();renderFlow()}});
+$('#fychips').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.ffy=b.dataset.f||null;save();renderFlow()}});
+$('#ftable').addEventListener('click',e=>{const r=e.target.closest('.ft.r');if(r){st.ffy=r.dataset.f;save();renderFlow()}});
 $('#cover').addEventListener('input',e=>{st.cover=+e.target.value;save();render()});
 $('#theme').addEventListener('click',()=>{st.theme=st.theme==='dark'?'light':'dark';save();render()});
 $('#mode').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.mode=b.dataset.m;save();render()}});
 $('#pick').addEventListener('change',e=>{st.sel=e.target.value;save();render()});
 $('#split').addEventListener('click',e=>{const c=e.target.closest('.card');if(c){st.sel=c.dataset.n;save();render();$('#dname').scrollIntoView({block:'start'})}});
-render();
+render();renderFlow();
 </script></body></html>

@@ -10,6 +10,10 @@ Per collection it ships raw aggregates; the page does the maths (cover-days slid
 Colour: the variant's Colour/Color option, else the first colour word in the product title. Size: the Size option.
 Needs read_products, read_orders, read_all_orders on SHOPIFY_TOKEN (same as the Restock Planner).
 
+Also "Introduced vs cleared" (flow_aggregate): eligible vs not eligible products by real published month and real sale month,
+by Australian financial year with a month drill-down. Eligible = Restock Planner rule (days since published / units sold < 50).
+Needs one more bulk query (all products) and the line sale value on the orders query.
+
 Env: SHOPIFY_TOKEN, SHOPIFY_SHOP, STOCK_KEY
 Writes: r/procurement.bin, r/procurement.meta.bin, r/status.json
 Offline test: python3 tools/procurement.py --fixture lines.json --out DIR   (no Shopify, no key, no status)
@@ -73,7 +77,17 @@ PRODUCTS = """{ products(query:"status:active"){ edges{ node{
   id title onlineStoreUrl featuredImage{ url }
   collections{ edges{ node{ id title } } }
   variants{ edges{ node{ id title inventoryQuantity selectedOptions{ name value } } } } } } } }"""
-ORDERS = rp.ORDERS
+# same lines as the Restock Planner plus each line's sale value (after line discounts), for the introduced-vs-cleared view
+ORDERS = """{ orders{ edges{ node{ id cancelledAt processedAt lineItems{ edges{ node{ id quantity title variantTitle variant{ id } product{ id }
+  discountedTotalSet{ shopMoney{ amount } } } } } } } } }"""
+# every product that was ever on the site (active + archived; drafts never launched), with the real published date and stock/price
+FLOW_PRODUCTS = """{ products{ edges{ node{ id status createdAt
+  metafield(namespace:"custom", key:"published_date_old"){ value }
+  variants{ edges{ node{ id inventoryQuantity price } } } } } } }"""
+
+# Introduced vs cleared. Eligibility = the Restock Planner's units-sold-per-day rule (days since published / units sold < 50 days).
+FLOW_TEST_DAYS = 30      # published in the last 30 days = still in testing: left out of the graphs and totals
+FLOW_MAX_DTS = 50        # same as MAX_PRODUCT_DTS in tools/restock_plan_template.html
 
 
 def norm_colour(text):
@@ -228,8 +242,117 @@ def aggregate(prod_lines, order_lines, demand, today=None):
     return out, {"lines": lines, "unmapped_units": unmapped, "products": len(products)}
 
 
-def build_page(cols, info, demand, now):
-    data = {"generatedAt": now.isoformat(), "windowDays": WINDOW_DAYS, "collections": cols,
+def fy_label(month):
+    """'2025-08' -> 'FY26': Australian financial year (1 Jul to 30 Jun), named by the year it ends."""
+    y, m = int(month[:4]), int(month[5:7])
+    return "FY%02d" % ((y + 1 if m >= 7 else y) % 100)
+
+
+def flow_aggregate(prod_lines, order_lines, today=None):
+    """Products introduced vs cleared per month, eligible vs not eligible.
+
+    Introduced = month of the real published date (published_date_old for products migrated from WooCommerce, else the
+    created date). Units introduced = stock now + units ever sold (the original buy quantity is not stored), valued at the
+    product's average variant sale price. Cleared = real sale date (processedAt) of each order line: units, and the actual
+    sale value after line discounts. List-priced cleared value is kept too so the stock-on-hand line ends on today's stock.
+    Group (today's status, applied to the whole history): g='e' eligible, 'n' not eligible (no sales, or 50+ days per unit),
+    't' testing (published under 30 days ago: shown on a tile only), 'x' migrated with no published date (never guessed).
+    Parked / discontinued do not matter here."""
+    today = today or dt.datetime.now(rp.MEL).date()
+    products, drafts = {}, 0
+    for l in prod_lines:
+        if "/Product/" not in l.get("id", "") or "__parentId" in l:
+            continue
+        status = (l.get("status") or "").upper()
+        if status == "DRAFT":
+            drafts += 1
+            continue
+        created = dt.datetime.fromisoformat(l["createdAt"].replace("Z", "+00:00"))
+        meta = ((l.get("metafield") or {}).get("value") or "")
+        if created < rp.MIGRATION_CUTOFF:
+            published = meta[:10] if re.match(r"^\d{4}-\d{2}-\d{2}", meta) else ""
+        else:
+            published = rp.melbourne_day(l["createdAt"])
+        products[l["id"]] = {"id": rp.num(l["id"]), "published": published, "stock": 0, "value": 0.0, "prices": [],
+                             "sold": 0, "monthly": {}}
+    for l in prod_lines:
+        P = products.get(l.get("__parentId"))
+        if P and "/ProductVariant/" in l.get("id", ""):
+            q, price = max(0, int(l.get("inventoryQuantity") or 0)), float(l.get("price") or 0)
+            P["stock"] += q
+            P["value"] += q * price
+            if price > 0:
+                P["prices"].append(price)
+
+    cancelled = {l["id"] for l in order_lines if "/Order/" in l.get("id", "") and l.get("cancelledAt")}
+    placed = {l["id"]: rp.melbourne_day(l["processedAt"]) for l in order_lines if "/Order/" in l.get("id", "") and l.get("processedAt")}
+    by_pid = {P["id"]: P for P in products.values()}
+    lines = unmapped_units = 0
+    unmapped_rev = 0.0
+    for l in order_lines:
+        if "/LineItem/" not in l.get("id", "") or l.get("__parentId") in cancelled:
+            continue
+        lines += 1
+        q = int(l.get("quantity") or 0)
+        rev = float((((l.get("discountedTotalSet") or {}).get("shopMoney")) or {}).get("amount") or 0)
+        day = placed.get(l.get("__parentId"), "")
+        P = by_pid.get(rp.num((l.get("product") or {}).get("id")))
+        if not P or not day:
+            unmapped_units += q       # custom items, POS items and products deleted from the store
+            unmapped_rev += rev
+            continue
+        P["sold"] += q
+        cur = P["monthly"].setdefault(day[:7], [0, 0.0])
+        cur[0] += q
+        cur[1] += rev
+    if lines < 50:
+        raise RuntimeError(f"Only {lines} order lines came back: refusing to publish incomplete sales history")
+
+    months = {}
+    snap = {g: {"products": 0, "stocked": 0, "units": 0, "value": 0.0} for g in "entx"}
+    slot = lambda m: months.setdefault(m, {g: [0, 0, 0.0, 0, 0.0, 0.0] for g in "en"})   # intro products, intro units, intro value, sold units, sold value, sold at list
+    for P in products.values():
+        avg = sum(P["prices"]) / len(P["prices"]) if P["prices"] else 0.0
+        if not P["published"]:
+            g = "x"
+        else:
+            days = max(0, (today - dt.date.fromisoformat(P["published"])).days)
+            g = "t" if days < FLOW_TEST_DAYS else ("e" if P["sold"] > 0 and days / P["sold"] < FLOW_MAX_DTS else "n")
+        s = snap[g]
+        s["products"] += 1
+        s["stocked"] += 1 if P["stock"] > 0 else 0
+        s["units"] += P["stock"]
+        s["value"] += P["value"]
+        if g in "en":
+            a = slot(P["published"][:7])[g]
+            a[0] += 1
+            a[1] += P["stock"] + P["sold"]
+            a[2] += (P["stock"] + P["sold"]) * avg
+            for m, (u, rev) in P["monthly"].items():
+                b = slot(m)[g]
+                b[3] += u
+                b[4] += rev
+                b[5] += u * avg
+    if not months:
+        return None
+    last = max(max(months), today.strftime("%Y-%m"))
+    keys, y, m = [], int(min(months)[:4]), int(min(months)[5:7])
+    while True:
+        k = "%04d-%02d" % (y, m)
+        keys.append(k)
+        if k >= last:
+            break
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    out = {"asOf": today.isoformat(), "months": keys, "testDays": FLOW_TEST_DAYS, "maxDts": FLOW_MAX_DTS,
+           "drafts": drafts, "unmapped": {"units": unmapped_units, "value": round(unmapped_rev)}}
+    for g in "en":
+        out[g] = {n: [round(months.get(k, {}).get(g, [0] * 6)[i]) for k in keys] for i, n in enumerate(("ic", "iu", "iv", "su", "sv", "sl"))}
+    out["snap"] = {g: {k: (round(v) if k == "value" else v) for k, v in s.items()} for g, s in snap.items()}
+    return out
+
+
+def build_page(cols, info, demand, now, flow=None):
+    data = {"generatedAt": now.isoformat(), "windowDays": WINDOW_DAYS, "collections": cols, "flow": flow,
             "source": f"Shopify · {info['products']:,} active products · {info['lines']:,} order lines, last {WINDOW_DAYS} days · "
                       f"search: {demand.get('source', 'none')} ({demand.get('fetched', '')})"}
     page = open(os.path.join(pv.ROOT, "tools", "procurement_template.html"), encoding="utf-8").read()
@@ -254,7 +377,12 @@ def build():
     order_lines = rp.bulk(ORDERS, "orders")
     demand = load_demand()
     cols, info = aggregate(prod_lines, order_lines, demand)
-    page, meta = build_page(cols, info, demand, dt.datetime.now(rp.SYD))
+    flow = None
+    try:   # the introduced-vs-cleared view must never take the rest of the report down
+        flow = flow_aggregate(rp.bulk(FLOW_PRODUCTS, "flow products"), order_lines)
+    except Exception as exc:
+        print("introduced-vs-cleared view skipped:", str(exc)[:300])
+    page, meta = build_page(cols, info, demand, dt.datetime.now(rp.SYD), flow)
     key = os.environ["STOCK_KEY"]
     pv.write_encrypted(key, f"{RID}.bin", page.encode())
     pv.write_encrypted(key, f"{RID}.meta.bin", json.dumps(meta).encode())
@@ -270,8 +398,10 @@ if __name__ == "__main__":
         out = sys.argv[sys.argv.index("--out") + 1]
         os.makedirs(out, exist_ok=True)
         demand = load_demand()
-        cols, info = aggregate(fx["products"], fx["orders"], demand, today=dt.date.fromisoformat(fx.get("today", "2026-10-30")))
-        page, meta = build_page(cols, info, demand, dt.datetime.now(rp.SYD))
+        today = dt.date.fromisoformat(fx.get("today", "2026-10-30"))
+        cols, info = aggregate(fx["products"], fx["orders"], demand, today=today)
+        flow = flow_aggregate(fx["flow_products"], fx["orders"], today=today) if fx.get("flow_products") else None
+        page, meta = build_page(cols, info, demand, dt.datetime.now(rp.SYD), flow)
         open(os.path.join(out, "procurement.html"), "w", encoding="utf-8").write(page)
         print(json.dumps({"info": info, "meta": meta}))
         sys.exit(0)
