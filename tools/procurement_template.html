@@ -227,15 +227,12 @@ function renderSup(){
   if(!X||!X.rows.length){box.hidden=true;return}
   box.hidden=false;
   const A=X.cov.active,O=X.cov.other,tot=A.has+A.missing,key=st.ssort||'dts';
-  const rows=X.rows.filter(r=>r.dts!=null).sort((a,b)=>key==='dts'?a.dts-b.dts:key==='slow'?b.dts-a.dts:b[key]-a[key]);
-  const sorts=[['dts','Fastest selling'],['slow','Slowest'],['sold','Most units'],['upp','Per product'],['upv','Per variant']],g='grid-template-columns:1.6fr .8fr .8fr .8fr .8fr .8fr';
+  const rows=X.rows.filter(r=>r.dts!=null).sort((a,b)=>a.dts-b.dts),g='grid-template-columns:.5fr 2fr 1.2fr';
   box.innerHTML=`<div class="note" style="margin:12px 0 6px"><b>Suppliers.</b> ${fmt(A.has)} of ${fmt(tot)} active products have a supplier set; ${fmt(A.missing)} do not (${fmt(A.missingStock)} of those have stock). Archived: ${fmt(O.has)} with, ${fmt(O.missing)} without.</div>
-  <div class="ctl"><span class="seg" id="ssort">${sorts.map(([k,l])=>`<button data-k="${k}" class="${k===key?'on':''}">${l}</button>`).join('')}</span></div>
-  <div class="ft h" style="${g}"><span>Supplier</span><span>Products</span><span>Units sold</span><span>Days / unit</span><span>Units / product</span><span>Units / variant</span></div>`+
-  rows.map((r,i)=>`<div class="ft" style="${g}"><b>${i+1}. ${esc(r.name)}</b><span>${fmt(r.products)}</span><span>${fmt(r.sold)}</span><span>${r.dts}</span><span>${r.upp}</span><span>${r.upv}</span></div>`).join('')+
-  `<div class="note">Ranked by Days / unit: total days on market of the supplier's products ÷ total units sold (lower sells faster; same clock as the Restock Planner). Units / product and Units / variant = units sold to date ÷ products or variants. Products in testing or with no publish date are left out. Suppliers with no sales are not listed.</div>`;
+  <div class="ft h" style="${g}"><span>Rank</span><span>Supplier</span><span>Avg units sold per product</span></div>`+
+  rows.map((r,i)=>`<div class="ft" style="${g}"><b>${i+1}</b><b>${esc(r.name)}</b><span>${r.upp}</span></div>`).join('')+
+  `<div class="note">Rank 1 = fastest selling supplier: total days on market of their products ÷ total units sold (same clock as the Restock Planner). Average = units sold to date ÷ number of their products. Products in testing or with no publish date are left out; suppliers with no sales are not listed.</div>`;
 }
-$('#supbox').addEventListener('click',e=>{const b=e.target.closest('#ssort button');if(b){st.ssort=b.dataset.k;save();renderSup()}});
 $('#fview').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.fview=b.dataset.v;save();renderFlow()}});
 $('#fcum').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.fcum=b.dataset.c==='1';save();renderFlow()}});
 $('#funit').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.funit=b.dataset.u;save();renderFlow()}});
