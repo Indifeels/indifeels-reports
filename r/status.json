@@ -9,10 +9,10 @@
   "reason": ""
  },
  "color-game": {
-  "at": "2026-11-09T10:01+11:00",
-  "code_sha": "6e6fcd7919d1e738d38044d70ca874e168788d53",
+  "at": "2026-11-10T13:21+11:00",
+  "code_sha": "c03a74d8d1a26aed482290bdea9551b076795ecc",
   "data_through": null,
-  "last_ok": "2026-11-09T10:01+11:00",
+  "last_ok": "2026-11-10T13:21+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
