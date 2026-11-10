@@ -191,11 +191,14 @@ function renderFlow(){
   const S=F.snap,v=st.fview,u=v==='intro'?'count':st.funit,f=u==='value'?money:fmt;
   $('#funit').style.display=v==='intro'?'none':'';
   $('#flowsub').textContent='as of '+F.asOf+' · eligible = under '+F.maxDts+' days to sell 1 unit';
-  const tiles=[[money(S.e.value),'eligible stock · '+fmt(S.e.units)+' units, '+fmt(S.e.stocked)+' products','g'],
-    [money(S.n.value),'not eligible stock · '+fmt(S.n.units)+' units, '+fmt(S.n.stocked)+' products','r'],
-    [fmt(S.t.products),'in testing, not counted · introduced in the last '+F.testDays+' days ('+money(S.t.value)+' stock)','b']];
-  if(S.x.products)tiles.push([fmt(S.x.products),'no published date, not counted · '+fmt(S.x.units)+' units in stock','a']);
-  $('#flowtiles').innerHTML=tiles.map(t=>`<div class="tile"><b style="color:var(--${t[2]})">${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join('');
+  const out=g=>S[g].products-S[g].stocked;
+  const tiles=[[money(S.e.value),'ELIGIBLE stock on the shelf now: '+fmt(S.e.stocked)+' products in stock ('+fmt(S.e.units)+' units). Another '+fmt(out('e'))+' eligible products are sold out.','g'],
+    [money(S.n.value),'NOT ELIGIBLE stock on the shelf now: '+fmt(S.n.stocked)+' products in stock ('+fmt(S.n.units)+' units). Another '+fmt(out('n'))+' not-eligible products are sold out.','r'],
+    [fmt(S.t.products),'IN TESTING (published in the last '+F.testDays+' days), not counted above: '+fmt(S.t.stocked)+' in stock, '+money(S.t.value)+' stock value.','b']];
+  if(S.x.products)tiles.push([fmt(S.x.products),'NO PUBLISH DATE, not counted above: '+fmt(S.x.stocked)+' in stock, '+fmt(S.x.units)+' units.','a']);
+  const G=['e','n','t','x'],TP=G.reduce((a,g)=>a+S[g].products,0),TS=G.reduce((a,g)=>a+S[g].stocked,0);
+  $('#flowtiles').innerHTML=tiles.map(t=>`<div class="tile"><b style="color:var(--${t[2]})">${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join('')+
+    `<div class="note" style="grid-column:1/-1">All ${fmt(TP)} products (active and archived, drafts left out) = ${fmt(S.e.products)} eligible + ${fmt(S.n.products)} not eligible + ${fmt(S.t.products)} in testing`+(S.x.products?` + ${fmt(S.x.products)} no date`:'')+`. ${fmt(TS)} of them have stock on the shelf; ${fmt(TP-TS)} are sold out. The big dollar and product numbers above count only products that still have stock.</div>`;
   document.querySelectorAll('#fview button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   document.querySelectorAll('#funit button').forEach(b=>b.classList.toggle('on',b.dataset.u===u));
   const fys=[...new Set(F.months.map(fyOf))].sort();
@@ -207,7 +210,7 @@ function renderFlow(){
   $('#fchart').innerHTML=flowChart(rows,u);
   const share=v==='shelf'?(r=>{const t=r.sold+r.shelf;return t>0?r.sold/t:null}):(r=>{const t=r.e+r.n;return t>0?r.e/t:null});
   const pl=s=>s==null?'<span class="pill p-n">–</span>':v==='shelf'?`<span class="pill p-n">${Math.round(s*100)}%</span>`:`<span class="pill p-${s>=.6?'g':s>=.4?'a':'r'}">${Math.round(s*100)}%</span>`;
-  let h=`<div class="ft h"><span>${st.ffy?'Month':'Year'}</span><span>Eligible</span><span>Not eligible</span><span>${v==='shelf'?'Sold %':'Elig %'}</span></div>`;
+  let h=`<div class="ft h"><span>${st.ffy?'Month':'Year'}</span><span>Eligible${u==='count'&&v!=='intro'?' (units)':u==='count'?' (products)':''}</span><span>Not eligible${u==='count'&&v!=='intro'?' (units)':u==='count'?' (products)':''}</span><span>${v==='shelf'?'Sold %':'Elig %'}</span></div>`;
   h+=rows.map(r=>`<div class="ft${st.ffy?'':' r'}"${st.ffy?'':` data-f="${r.p.fy}"`}><b>${esc(r.p.label)}${r.p.part?'*':''}</b><span class="e">${f(r.e)}</span><span class="n">${f(r.n)}</span>${pl(share(r))}</div>`).join('');
   {const t={e:rows.reduce((a,r)=>a+r.e,0),n:rows.reduce((a,r)=>a+r.n,0),sold:rows.reduce((a,r)=>a+r.sold,0),shelf:rows.reduce((a,r)=>a+r.shelf,0)};h+=`<div class="ft t"><span>Total</span><span class="e">${f(t.e)}</span><span class="n">${f(t.n)}</span>${pl(share(t))}</div>`}
   $('#ftable').innerHTML=h;
