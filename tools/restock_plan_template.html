@@ -862,6 +862,7 @@ select.sel{appearance:none;-webkit-appearance:none}
 .pv .ud .sld{display:block;margin-top:3px;font-size:11.5px;color:#aeb1b8;white-space:nowrap}.pv .ud .sld b{display:inline!important;font-size:12.5px!important;color:#e6e8ec!important}
 .hnum .psd{font-size:11.5px;color:#aeb1b8;white-space:nowrap;margin-top:1px}.hnum .psd b{display:inline!important;font-size:12.5px!important;color:#e6e8ec!important}
 .pv .udt{border-radius:10px;padding:3px 10px;text-align:center;line-height:1.05;border:1px solid #ffffff14}
+.pv .udt+.udt{margin-top:3px}
 .pv .udt b,.pv .udt span{color:inherit!important;opacity:1!important}.pv .ud b{display:block;font-size:12px;color:var(--muted);font-weight:700}.pv .ud span{text-transform:uppercase;display:block;margin:0;font-size:8.5px;color:var(--muted)}
 .hnum small.pud{display:block;font-size:8.5px;color:#9aa0a8;margin-top:1px}
 
@@ -1333,14 +1334,21 @@ function compute(){
     const days = Math.max(0, Math.round((now.getTime() - parseDay(p.published)) / DAY));
     const total = p.sales != null ? p.sales : p.variants.reduce((a,v)=>a+v[2],0);
     const pDTS = total > 0 ? days / total : Infinity;
+    // D.U new: same maths, but the clock stops at the last sale once the product is sold out or discontinued (instead of running to today).
+    const stockNowP = p.variants.reduce((x,v)=>x+Math.max(0,v[1]||0),0);
+    const endP = (discOf(p) || stockNowP <= 0) && p.last ? Math.min(now.getTime(), parseDay(p.last)) : now.getTime();
+    const daysN = Math.max(1, Math.round((endP - parseDay(p.published)) / DAY));
+    const pDTSn = total > 0 ? daysN / total : Infinity;
     const cat = catOf(p), share = allUnits ? (catUnits[cat] || 0) / allUnits : 0, catW = 0.6 + 0.4 * Math.min(1, share / 0.25);
     const disc = discOf(p);
     const newSlow = days < 60 && total < 5;     // launched under 2 months ago and under 5 sold: never ranked high
-    const P = {parked: parkOf(p), p, days, total, pDTS, newSlow, isNew: days < 60, elig: pDTS < MAX_PRODUCT_DTS, eligible: !disc && days >= MIN_MARKET_DAYS && pDTS < MAX_PRODUCT_DTS && total >= MIN_UNITS, disc, cat, catW, supplier: p.supplier || ''};
+    const P = {parked: parkOf(p), p, days, total, pDTS, pDTSn, newSlow, isNew: days < 60, elig: pDTS < MAX_PRODUCT_DTS, eligible: !disc && days >= MIN_MARKET_DAYS && pDTS < MAX_PRODUCT_DTS && total >= MIN_UNITS, disc, cat, catW, supplier: p.supplier || ''};
     const maxSales = Math.max(0, ...p.variants.map(v=>v[2]));
     P.rows = variantsOf(p).map(([title,stock,sales,last,s30,bc,vids,extra]) => {
       last = last || ''; s30 = s30 || 0;
       const dts = sales > 0 ? days / sales : Infinity;
+      const endV = (stock <= 0 || disc) && last ? Math.min(now.getTime(), parseDay(last)) : now.getTime();
+      const dtsN = sales > 0 ? Math.max(1, Math.round((endV - parseDay(p.published)) / DAY)) / sales : Infinity;
       const required = sales > 0 && !disc ? Math.ceil(Math.ceil(LEAD_DAYS / dts) * mult - 1e-9) : 0;
       const pp = pipeline(keyOf(p.id, title));
       const toOrder = Math.max(0, required - stock - pp.total);          // net-new: what is still not covered by stock or by orders in progress
@@ -1357,7 +1365,7 @@ function compute(){
         if (s30 >= 5 && ratio > 2) damp = Math.max(0.35, 1 / (1 + (ratio - 2) * (SEASONAL.has(cat) ? 0.5 : 0.2)));
         score = Math.round(short * conf * catW * damp * (P.newSlow ? 0.25 : 1) * 10) / 10;
       }
-      return {P,title,extra: !!extra,bc: bc || [],vids: vids || [],stock,sales,last,s30,dts,required,toOrder,left,level,score,conf,damp,
+      return {P,title,extra: !!extra,bc: bc || [],vids: vids || [],stock,sales,last,s30,dts,dtsN,required,toOrder,left,level,score,conf,damp,
         cSales: sales === 0 ? 'grey' : share >= .5 ? 'green' : share >= .2 ? 'amber' : 'red',
         cDts: sales === 0 ? 'grey' : dts < 20 ? 'green' : dts < 50 ? 'amber' : 'red',
         cStock: sales === 0 ? (stock > 0 ? 'info' : 'grey') : stock <= 0 ? 'red' : stock < required ? 'amber' : 'green',
@@ -1532,6 +1540,8 @@ function pTag(g){
   // Header D.U is always the PRODUCT figure (days on market ÷ total units sold).
   const d = P.pDTS;
   if (isFinite(d)) h += mk(fmt2(d) + '<small>D.U</small>', dtsCol(d), 'Product: days to sell 1 unit');
+  const dn = P.pDTSn;
+  if (isFinite(dn) && Math.abs(dn - d) >= 0.05) h += mk(fmt2(dn) + '<small>D.U new</small>', dtsCol(dn), 'Product: days to sell 1 unit, clock stops at the last sale when sold out or discontinued');
   // Variant sort: show the fastest variant as a second, smaller pill so the two are never confused.
   if (mode === 'vdts') {
     const f = Math.min(...g.rows.filter(r => r.sales > 0).map(r => r.dts));
@@ -1558,7 +1568,7 @@ function rowHtml(r){
   const stTxt = r.level === 'red' ? 'Out of stock' : (r.level === 'orange' || r.level === 'yellow') ? 'Low stock · ' + dTxt : r.level === 'green' ? 'OK · ' + dTxt : 'No sales';
   const needC = needClr(r);
   const mv = `<div class="pv lc-${r.level}${hit ? ' hit' : ''}"><div class="vh"><b class="szt" data-sz="${i}" title="${r.P.disc ? '' : 'Hold to remove this size'}">${esc(r.title)}</b><span class="badge c-${r.level}">${stTxt}</span>${vTag(r)}<div class="pipes" data-sup="${i}">${supMv(i)}</div></div>
-    <div class="rw"><div class="mc mc-${sc}" data-stk="${esc((r.vids || []).join(','))}" data-pt="${esc(r.P.p.title)}" data-vt="${esc(r.title)}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><div class="udt c-${r.cDts}"><b>${fmt2(r.dts)}</b><span>D.U</span></div><small class="sld" title="Total units sold"><b>${r.sales}</b> sold</small></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
+    <div class="rw"><div class="mc mc-${sc}" data-stk="${esc((r.vids || []).join(','))}" data-pt="${esc(r.P.p.title)}" data-vt="${esc(r.title)}"><b>${r.stock}</b><span>Stock</span></div><div class="mc ${needC ? 'mc-' + needC + ' need' : ''}"><b>${r.required}</b><span>Req.</span>${needC ? `<em class="gap g-${needC}" title="Still to order">+${r.toOrder}</em>` : ''}</div>${r.sales > 0 && isFinite(r.dts) ? `<div class="ud" title="Days to sell 1 unit"><div class="udt c-${r.cDts}"><b>${fmt2(r.dts)}</b><span>D.U</span></div>${isFinite(r.dtsN) && Math.abs(r.dtsN - r.dts) >= 0.05 ? `<div class="udt c-${dtsCol(r.dtsN)}" title="Days to sell 1 unit, clock stops at the last sale when the size is sold out"><b>${fmt2(r.dtsN)}</b><span>new</span></div>` : ''}<small class="sld" title="Total units sold"><b>${r.sales}</b> sold</small></div>` : ''}<div class="rc"><div class="act" data-ord="${i}">${ordHtml(i)}</div></div></div></div>`;
   return {tr, mv};
 }
 const plink = P => /^https:\/\//.test(P.p.url || '') ? esc(P.p.url) : '';
