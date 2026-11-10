@@ -89,7 +89,7 @@ FLOW_PRODUCTS = """{ products{ edges{ node{ id status createdAt
 
 # Introduced vs cleared. Eligibility = the Restock Planner's "D.U new" rule: days on market / units sold < 50, where the clock
 # stops at the last sale once the product is sold out or discontinued (instead of running to today).
-FLOW_TEST_DAYS = 30      # published in the last 30 days = still in testing: left out of the graphs and totals
+FLOW_TEST_DAYS = 30      # published in the last 30 days: counted as eligible while being tested
 FLOW_MAX_DTS = 50        # same as MAX_PRODUCT_DTS in tools/restock_plan_template.html
 
 
@@ -261,7 +261,7 @@ def flow_aggregate(prod_lines, order_lines, today=None):
     original buy quantity, so there is deliberately NO historical stock-level or "value introduced" series.
     Group (today's status, applied to the whole history): g='e' eligible, 'n' not eligible (no sales, or 50+ days per unit;
     days on market stop at the last sale when the product is sold out or discontinued, same as D.U new in the Restock Planner),
-    't' testing (published under 30 days ago: shown on a tile only), 'x' migrated with no published date (never guessed).
+    'e' also includes products published under 30 days ago (still being tested), 'x' migrated with no published date (never guessed).
     Parked / discontinued do not matter here."""
     today = today or dt.datetime.now(rp.MEL).date()
     products, drafts = {}, 0
@@ -319,7 +319,7 @@ def flow_aggregate(prod_lines, order_lines, today=None):
         raise RuntimeError(f"Only {lines} order lines came back: refusing to publish incomplete sales history")
 
     months = {}
-    snap = {g: {"products": 0, "stocked": 0, "units": 0, "value": 0.0} for g in "entx"}
+    snap = {g: {"products": 0, "stocked": 0, "units": 0, "value": 0.0, "new": 0, "newStocked": 0, "newValue": 0.0} for g in "entx"}
     slot = lambda m: months.setdefault(m, {g: [0, 0, 0.0, 0, 0.0] for g in "en"})   # intro products, sold units (by sale month), sold value (by sale month), shelf units, shelf value
     cohort = lambda m: cohorts.setdefault(m, {g: [0, 0] for g in "en"})            # products published that month: units sold to date, products still stocked
     cohorts = {}
@@ -336,7 +336,8 @@ def flow_aggregate(prod_lines, order_lines, today=None):
             if (P["disc"] or P["stock"] <= 0) and P["last"]:
                 end = min(today, dt.date.fromisoformat(P["last"]))
             days_n = max(1, (end - dt.date.fromisoformat(P["published"])).days)
-            g = "t" if days < FLOW_TEST_DAYS else ("e" if P["sold"] > 0 and days_n / P["sold"] < FLOW_MAX_DTS else "n")
+            P["new"] = days < FLOW_TEST_DAYS      # published in the last 30 days: counted as eligible (still being tested)
+            g = "e" if P["new"] or (P["sold"] > 0 and days_n / P["sold"] < FLOW_MAX_DTS) else "n"
         if P["sup"] and g in "en":
             u = sup.setdefault(P["sup"], {"products": 0, "variants": 0, "sold": 0, "days": 0, "elig": 0, "stockUnits": 0, "stockValue": 0.0, "saleValue": 0.0})
             u["products"] += 1
@@ -354,6 +355,10 @@ def flow_aggregate(prod_lines, order_lines, today=None):
         s = snap[g]
         s["products"] += 1
         s["stocked"] += 1 if P["stock"] > 0 else 0
+        if P.get("new"):
+            s["new"] += 1
+            s["newStocked"] += 1 if P["stock"] > 0 else 0
+            s["newValue"] += P["value"]
         s["units"] += P["stock"]
         s["value"] += P["value"]
         if g in "en":
@@ -392,7 +397,7 @@ def flow_aggregate(prod_lines, order_lines, today=None):
                      "elig": round(100 * u["elig"] / u["products"]), "stockUnits": u["stockUnits"],
                      "stockValue": round(u["stockValue"]), "saleValue": round(u["saleValue"])})
     out["sup"] = {"cov": supcov, "rows": rows}
-    out["snap"] = {g: {k: (round(v) if k == "value" else v) for k, v in s.items()} for g, s in snap.items()}
+    out["snap"] = {g: {k: (round(v) if k in ("value", "newValue") else v) for k, v in s.items()} for g, s in snap.items()}
     return out
 
 

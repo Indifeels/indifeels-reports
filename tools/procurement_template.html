@@ -192,15 +192,14 @@ function renderFlow(){
   const S=F.snap,v=st.fview,u=v==='intro'?'count':st.funit,f=u==='value'?money:fmt;
   $('#funit').style.display=v==='intro'?'none':'';
   $('#flowsub').textContent='as of '+F.asOf+' · eligible = under '+F.maxDts+' days to sell 1 unit';
-  const out=g=>S[g].products-S[g].stocked;
-  const tiles=[[money(S.e.value),'ELIGIBLE stock on the shelf now: '+fmt(S.e.stocked)+' products in stock ('+fmt(S.e.units)+' units). Another '+fmt(out('e'))+' eligible products are sold out.','g'],
-    [money(S.n.value),'NOT ELIGIBLE stock on the shelf now: '+fmt(S.n.stocked)+' products in stock ('+fmt(S.n.units)+' units). Another '+fmt(out('n'))+' not-eligible products are sold out.','r'],
-    [fmt(S.t.products),'IN TESTING (published in the last '+F.testDays+' days), not counted above: '+fmt(S.t.stocked)+' in stock, '+money(S.t.value)+' stock value.','b']];
+  const out=g=>S[g].products-S[g].stocked,nw=S.e.new?' Includes '+fmt(S.e.new)+' new products (published in the last '+F.testDays+' days, counted as eligible while they are tested; '+fmt(S.e.newStocked)+' in stock, '+money(S.e.newValue)+').':'';
+  const tiles=[[money(S.e.value),'ELIGIBLE stock on the shelf now: '+fmt(S.e.stocked)+' products in stock ('+fmt(S.e.units)+' units). Another '+fmt(out('e'))+' eligible products are sold out.'+nw,'g'],
+    [money(S.n.value),'NOT ELIGIBLE stock on the shelf now: '+fmt(S.n.stocked)+' products in stock ('+fmt(S.n.units)+' units). Another '+fmt(out('n'))+' not-eligible products are sold out.','r']];
   if(S.x.products)tiles.push([fmt(S.x.products),'NO PUBLISH DATE, not counted above: '+fmt(S.x.stocked)+' in stock, '+fmt(S.x.units)+' units.','a']);
-  const G=['e','n','t','x'],TP=G.reduce((a,g)=>a+S[g].products,0),TS=G.reduce((a,g)=>a+S[g].stocked,0);
+  const G=['e','n','x'],TP=G.reduce((a,g)=>a+S[g].products,0),TS=G.reduce((a,g)=>a+S[g].stocked,0);
   renderSup();
   $('#flowtiles').innerHTML=tiles.map(t=>`<div class="tile"><b style="color:var(--${t[2]})">${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join('')+
-    `<div class="note" style="grid-column:1/-1">All ${fmt(TP)} products (active and archived, drafts left out) = ${fmt(S.e.products)} eligible + ${fmt(S.n.products)} not eligible + ${fmt(S.t.products)} in testing`+(S.x.products?` + ${fmt(S.x.products)} no date`:'')+`. ${fmt(TS)} of them have stock on the shelf; ${fmt(TP-TS)} are sold out. The big dollar and product numbers above count only products that still have stock.</div>`;
+    `<div class="note" style="grid-column:1/-1">All ${fmt(TP)} products (active and archived, drafts left out) = ${fmt(S.e.products)} eligible + ${fmt(S.n.products)} not eligible`+(S.x.products?` + ${fmt(S.x.products)} no date`:'')+`. ${fmt(TS)} of them have stock on the shelf; ${fmt(TP-TS)} are sold out.</div>`;
   document.querySelectorAll('#fview button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   document.querySelectorAll('#funit button').forEach(b=>b.classList.toggle('on',b.dataset.u===u));
   const fys=[...new Set(F.months.map(fyOf))].sort();
@@ -219,7 +218,7 @@ function renderFlow(){
   {const L=rows[rows.length-1],t=cum?{e:L.e,n:L.n,sold:L.sold,shelf:L.shelf}:{e:rows.reduce((a,r)=>a+r.e,0),n:rows.reduce((a,r)=>a+r.n,0),sold:rows.reduce((a,r)=>a+r.sold,0),shelf:rows.reduce((a,r)=>a+r.shelf,0)};h+=`<div class="ft t"><span>${cum?'So far':'Total'}</span><span class="e">${f(t.e)}</span><span class="n">${f(t.n)}</span>${pl(share(t))}</div>`}
   $('#ftable').innerHTML=h;
   $('#fnote').innerHTML=(cum?'<b>Cumulative:</b> each point is the running total from the first month up to that period, so the last point is the all-time total. ':'')+esc(v==='intro'?FNOTE.intro:FNOTE[v][u])+' '+(st.ffy?'Financial year '+esc(st.ffy)+' runs July to June; tap All years to go back.':'Tap a year to see its months.')+(rows.some(r=>r.p.part)?' * part year.':'')+
-    '<br>Eligible = the Restock Planner’s D.U new rule: days on market ÷ units sold under '+F.maxDts+'; the clock stops at the last sale once a product is sold out or discontinued; no sales = not eligible. Each product keeps today’s status across its whole history. Elig % is green at 60%+, amber 40–59%, red under 40%.<br>Shopify does not keep your original buy quantities, so there is no history of past stock levels here: only what was introduced, what sold, and what is on the shelf now.'+
+    '<br>Eligible = the Restock Planner’s D.U new rule: days on market ÷ units sold under '+F.maxDts+'; the clock stops at the last sale once a product is sold out or discontinued; no sales = not eligible, except products published in the last '+F.testDays+' days, which count as eligible while they are tested. Each product keeps today’s status across its whole history. Elig % is green at 60%+, amber 40–59%, red under 40%.<br>Shopify does not keep your original buy quantities, so there is no history of past stock levels here: only what was introduced, what sold, and what is on the shelf now.'+
     (F.unmapped&&F.unmapped.units?'<br>Left out: '+fmt(F.unmapped.units)+' units ('+money(F.unmapped.value)+') sold on custom items or products no longer in the store.':'');
 }
 function renderSup(){
@@ -231,7 +230,7 @@ function renderSup(){
   box.innerHTML=`<div class="note" style="margin:12px 0 6px"><b>Suppliers.</b> ${fmt(A.has)} of ${fmt(tot)} active products have a supplier set; ${fmt(A.missing)} do not (${fmt(A.missingStock)} of those have stock). Archived: ${fmt(O.has)} with, ${fmt(O.missing)} without.</div>
   <div class="ft h" style="${g}"><span>Rank</span><span>Supplier</span><span>Avg units sold per product</span></div>`+
   rows.map((r,i)=>`<div class="ft" style="${g}"><b>${i+1}</b><b>${esc(r.name)}</b><span>${r.upp}</span></div>`).join('')+
-  `<div class="note">Rank 1 = fastest selling supplier: total days on market of their products ÷ total units sold (same clock as the Restock Planner). Average = units sold to date ÷ number of their products. Products in testing or with no publish date are left out; suppliers with no sales are not listed.</div>`;
+  `<div class="note">Rank 1 = fastest selling supplier: total days on market of their products ÷ total units sold (same clock as the Restock Planner). Average = units sold to date ÷ number of their products. Products with no publish date are left out; suppliers with no sales are not listed.</div>`;
 }
 $('#fview').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.fview=b.dataset.v;save();renderFlow()}});
 $('#fcum').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.fcum=b.dataset.c==='1';save();renderFlow()}});
