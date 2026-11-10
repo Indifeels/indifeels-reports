@@ -1111,8 +1111,7 @@ const Store = {
   exportCreate: (supplier, ids) => call('exportcreate', { supplier, ids }, 90000),
   exportList: () => call('exportlist'),
   exportAgain: code => call('exportagain', { code }, 90000),
-  exportSent: (code, date) => call('exportsent', { code, date }),
-  exportDiscard: code => call('exportdiscard', { code }),
+  exportCancel: code => call('exportcancel', { code }),
   stockGet: vid => call('stockget', { vid }),
   stockAdjust: (vid, dShop, dBackup) => call('stockadjust', { vid, dShop, dBackup }),
 };
@@ -2398,29 +2397,29 @@ $('svExport').addEventListener('click', async () => {
   const b = $('svExport'); b.disabled = true;
   try {
     const r = await Store.exportCreate(who, ids);
-    notify('File ' + r.code + ' downloaded (' + r.n + ' lines, ' + r.units + ' pcs). Press “I sent this file” under PDF orders once you have sent it.' + (r.skipped ? ' ' + r.skipped + ' line(s) were left out: already in another file waiting to be sent.' : ''), true);
+    notify(r.code + ' created and downloaded: ' + r.n + ' lines, ' + r.units + ' pcs moved off the order list. Receive it from Stock Take → Barcodes → Boxes and PDF orders.', true);
     await refresh();
   } catch (err) { notify('Could not export: ' + err.message); }
   b.disabled = false; renderSv();
 });
-/* PDF orders: each exported file has a code (PDF-IN1-01). Nothing counts as sent until the owner says which file was sent. */
+/* PDF orders: each exported file has a code (PDF-IN1-01) and its items are a shipped box with that code. Here: files still waiting to be received. */
 function pdfSec(who, pre) {
-  const list = pdfEx.filter(e => e.status === 'pending' && (!who || String(e.supplier).toLowerCase() === String(who).toLowerCase()));
-  const tile = e => { const a = pdfArm === 's:' + e.code, d = pdfArm === 'd:' + e.code;
-    return `<section class="bx pdfx"><div class="bx-h"><span class="bx-title">📄 ${esc(e.code)} · ${esc(e.supplier)}</span><span class="bx-pill op">Not marked sent</span>
+  const open = new Set([...orders.values()].filter(r => r.status === 'shipped' && r.box_no).map(r => r.box_no));
+  const list = pdfEx.filter(e => e.status === 'sent' && open.has(e.code) && (!who || String(e.supplier).toLowerCase() === String(who).toLowerCase()));
+  const tile = e => { const c = pdfArm === 'c:' + e.code;
+    return `<section class="bx pdfx"><div class="bx-h"><span class="bx-title">📄 ${esc(e.code)} · ${esc(e.supplier)}</span><span class="bx-pill sh">PDF order sent</span>
       <span class="bx-sum">${e.n} item${e.n === 1 ? '' : 's'} · ${e.units} unit${e.units === 1 ? '' : 's'} · exported ${bxFmt(new Date(e.created_at))}</span>
-      <span class="bx-right"><button data-pdfdl="${esc(e.code)}">Download again</button><button class="recvbox" data-pdfsent="${esc(e.code)}">${a ? 'Tap again: yes, I sent ' + esc(e.code) : 'I sent this file'}</button><button class="danger${d ? ' arm' : ''}" data-pdfdis="${esc(e.code)}">${d ? 'Tap again to discard' : 'Discard'}</button></span></div></section>`; };
-  return bxSec(pre + '-pdf', '📄 PDF orders', list.length ? bxPlural(list.length, 'file') + ' waiting for you to confirm' : 'none waiting',
-    '<p class="sub" style="margin:0 0 10px">Each Excel file you export gets its own code. Press “I sent this file” on the one you actually sent: its items then show as a shipped box with that code, and you receive it like any box.</p>' + (list.length ? list.map(tile).join('') : '<div class="empty">No exported files waiting. Export Excel in Supplier view to create one.</div>'), {cls: 'pack', open: list.length > 0});
+      <span class="bx-right"><button data-pdfdl="${esc(e.code)}">Download again</button><button class="danger${c ? ' arm' : ''}" data-pdfcan="${esc(e.code)}">${c ? 'Tap again: put back on order list' : 'Exported by mistake?'}</button></span></div></section>`; };
+  return bxSec(pre + '-pdf', '📄 PDF orders', list.length ? bxPlural(list.length, 'file') + ' waiting to be received' : 'none waiting',
+    '<p class="sub" style="margin:0 0 10px">Exporting an order file moves its items off the Order list into a box with the file code. Receive it from Stock Take → Barcodes → Boxes and PDF orders; anything not received goes back to the Order list.</p>' + (list.length ? list.map(tile).join('') : '<div class="empty">No exported files waiting to be received.</div>'), {cls: 'pack', open: list.length > 0});
 }
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-pdfdl],[data-pdfsent],[data-pdfdis]'); if (!b) return;
-  const dl = b.getAttribute('data-pdfdl'), st = b.getAttribute('data-pdfsent'), ds = b.getAttribute('data-pdfdis'), redraw = () => { renderBoxes(); renderSv(); };
+  const b = e.target.closest('[data-pdfdl],[data-pdfcan]'); if (!b) return;
+  const dl = b.getAttribute('data-pdfdl'), cn = b.getAttribute('data-pdfcan'), redraw = () => { renderBoxes(); renderSv(); };
   try {
     if (dl) { b.disabled = true; await Store.exportAgain(dl); notify(dl + ' downloaded again', true); b.disabled = false; return; }
-    if (st) { if (pdfArm !== 's:' + st) { pdfArm = 's:' + st; redraw(); return; } pdfArm = ''; b.disabled = true;
-      const r = await Store.exportSent(st, null); notify(st + ' marked as sent: ' + r.boxed + ' line(s) are now a shipped box' + (r.skipped ? ' (' + r.skipped + ' line(s) had already changed and were left out)' : ''), true); await refresh(); redraw(); return; }
-    if (ds) { if (pdfArm !== 'd:' + ds) { pdfArm = 'd:' + ds; redraw(); return; } pdfArm = ''; await Store.exportDiscard(ds); notify(ds + ' discarded. Its items are still on the order list.', true); await refresh(); redraw(); }
+    if (pdfArm !== 'c:' + cn) { pdfArm = 'c:' + cn; redraw(); return; }
+    pdfArm = ''; const n = await Store.exportCancel(cn); notify(cn + ' cancelled: ' + n + ' line(s) are back on the order list.', true); await refresh(); redraw();
   } catch (err) { pdfArm = ''; notify(err.message); try { await refresh(); } catch (x) {} redraw(); }
 });
 async function loadAccounts(){

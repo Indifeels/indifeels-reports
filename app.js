@@ -1826,13 +1826,12 @@
     },
     exportlist: async () => rpOk(await sb.rpc("restock_owner_export_list")) || [],
     exportagain: async (d) => {
-      const e = (rpOk(await sb.rpc("restock_owner_export_list")) || []).find((x) => x.code === d.code && x.status === "pending");
-      if (!e) throw new Error("That file is no longer waiting");
+      const e = (rpOk(await sb.rpc("restock_owner_export_list")) || []).find((x) => x.code === d.code);
+      if (!e) throw new Error("File not found");
       await rpDownloadXlsx(rpExportName(e.code, e.supplier) + ".xlsx", rpExportRows(e.lines), e.code);
       return true;
     },
-    exportsent: async (d) => rpOk(await sb.rpc("restock_owner_export_sent", { p_code: rpText(d.code, 60), p_date: /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : null })),
-    exportdiscard: async (d) => rpOk(await sb.rpc("restock_owner_export_discard", { p_code: rpText(d.code, 60) })),
+    exportcancel: async (d) => rpOk(await sb.rpc("restock_owner_export_cancel", { p_code: rpText(d.code, 60) })),
     taglist: async () => rpOk(await sb.rpc("restock_owner_tag_list")) || [],
     parklist: async () => rpOk(await sb.from("restock_parked").select("product_id,parked")) || [],
     hidelist: async () => rpOk(await sb.from("restock_hidden_sizes").select("vkey")) || [],
