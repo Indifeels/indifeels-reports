@@ -18,10 +18,10 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-11-10T21:36+11:00",
-  "code_sha": "dda8b0425e57cb4d1a6040e1cd7fd28ad2366a64",
-  "data_through": "2026-11-10T21:30:18.563365+11:00",
-  "last_ok": "2026-11-10T21:36+11:00",
+  "at": "2026-11-11T06:07+11:00",
+  "code_sha": "af60c811b99a84995aaf0bed685e94c76df318de",
+  "data_through": "2026-11-10T23:59:59+11:00",
+  "last_ok": "2026-11-11T06:07+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
@@ -63,10 +63,10 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-11-10T21:36+11:00",
-  "code_sha": "dda8b0425e57cb4d1a6040e1cd7fd28ad2366a64",
-  "data_through": "2026-11-10T21:30:18.563365+11:00",
-  "last_ok": "2026-11-10T21:36+11:00",
+  "at": "2026-11-11T06:07+11:00",
+  "code_sha": "af60c811b99a84995aaf0bed685e94c76df318de",
+  "data_through": "2026-11-10T23:59:59+11:00",
+  "last_ok": "2026-11-11T06:07+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
