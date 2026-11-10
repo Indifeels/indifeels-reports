@@ -1686,12 +1686,13 @@
     const enc = new TextEncoder(), esc = (v) => String(v == null ? "" : v).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "");
     const fx = (u) => String(u).replace(/"/g, "");
     // download each product photo once, fit it into 300 x 400 and embed it as a real picture (works in Excel and Google Sheets)
-    const pics = new Map(), urls = [...new Set(rows.map((r) => (/^https:\/\//i.test(r.image || "") ? r.image : "")).filter(Boolean))];
+    const pics = new Map(), items = [], seenU = new Set();
+    rows.forEach((r) => { const u = /^https:\/\//i.test(r.image || "") ? r.image : ""; if (u && !seenU.has(u)) { seenU.add(u); items.push({ url: u, pid: r.pid || "" }); } });
     // the browser is not allowed to download Shopify CDN photos directly, so a Supabase function fetches them (12 at a time)
     const fetchBatch = async (batch) => {
       let got = {};
-      try { const { data } = await sb.functions.invoke("export-images", { body: { urls: batch } }); got = (data && data.images) || {}; } catch (_) {}
-      for (const url of batch) {
+      try { const { data } = await sb.functions.invoke("export-images", { body: { items: batch } }); got = (data && data.images) || {}; } catch (_) {}
+      for (const { url } of batch) {
         const b64 = got[url]; if (!b64) continue;
         try {
           const bin = atob(b64), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
@@ -1704,15 +1705,17 @@
         } catch (_) {}
       }
     };
-    const batches = []; for (let i = 0; i < urls.length; i += 12) batches.push(urls.slice(i, i + 12));
+    const batches = []; for (let i = 0; i < items.length; i += 12) batches.push(items.slice(i, i + 12));
     let qi = 0; await Promise.all(Array.from({ length: 3 }, async () => { while (qi < batches.length) await fetchBatch(batches[qi++]); }));
     let pn = 0; pics.forEach((p) => { p.id = ++pn; });
     const cell = (ref, v, st) => `<c r="${ref}" t="inlineStr" s="${st}"><is><t>${esc(v)}</t></is></c>`;
-    let sd = `<row r="1" ht="24" customHeight="1">${cell("A1", "Image", 1)}${cell("B1", "Size variant", 1)}${cell("C1", "Quantity", 1)}</row>`;
+    let sd = `<row r="1" ht="24" customHeight="1">${cell("A1", "Image", 1)}${cell("B1", "Sizes and quantity", 1)}${cell("C1", "Total pcs", 1)}</row>`;
+    // one row per product: all its sizes in one cell, size in black and the quantity in bold green so it stands out
+    const rich = (ref, ls) => `<c r="${ref}" t="inlineStr" s="3"><is>${ls.map((l, i) => `<r><rPr><sz val="16"/><rFont val="Calibri"/></rPr><t xml:space="preserve">${esc(l.size)}   </t></r><r><rPr><b/><sz val="18"/><color rgb="FF1A9E3F"/><rFont val="Calibri"/></rPr><t xml:space="preserve">\u00d7 ${Math.max(0, Math.trunc(Number(l.qty) || 0))}${i < ls.length - 1 ? "\n" : ""}</t></r>`).join("")}</is></c>`;
     rows.forEach((r, i) => {
       const n = i + 2, url = /^https:\/\//i.test(r.image || "") ? r.image : "";
       const img = pics.has(url) ? `<c r="A${n}" s="2"/>` : cell("A" + n, url ? "(photo not available)" : "", 2);
-      sd += `<row r="${n}" ht="300" customHeight="1">${img}${cell("B" + n, r.size, 3)}<c r="C${n}" s="3"><v>${Math.max(0, Math.trunc(Number(r.qty) || 0))}</v></c></row>`;
+      sd += `<row r="${n}" ht="300" customHeight="1">${img}${rich("B" + n, r.lines || [])}<c r="C${n}" s="3"><v>${(r.lines || []).reduce((t, l) => t + Math.max(0, Math.trunc(Number(l.qty) || 0)), 0)}</v></c></row>`;
     });
     const files = {
       "[Content_Types].xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
@@ -1720,7 +1723,7 @@
       "xl/workbook.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' + esc(String(sheetName || "Order list").replace(/[\\\/?*\[\]:]/g, "-").slice(0, 31)) + '" sheetId="1" r:id="rId1"/></sheets><calcPr fullCalcOnLoad="1"/></workbook>',
       "xl/_rels/workbook.xml.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
       "xl/styles.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="12"/><name val="Calibri"/></font><font><sz val="16"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
-      "xl/worksheets/sheet1.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="43" customWidth="1"/><col min="2" max="2" width="22" customWidth="1"/><col min="3" max="3" width="12" customWidth="1"/></cols><sheetData>' + sd + "</sheetData>" + (pics.size ? '<drawing r:id="rId1"/>' : "") + "</worksheet>",
+      "xl/worksheets/sheet1.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="43" customWidth="1"/><col min="2" max="2" width="30" customWidth="1"/><col min="3" max="3" width="12" customWidth="1"/></cols><sheetData>' + sd + "</sheetData>" + (pics.size ? '<drawing r:id="rId1"/>' : "") + "</worksheet>",
     };
     if (pics.size) {
       let an = "", k = 0;
@@ -1754,7 +1757,17 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   };
-  const rpExportRows = (lines) => (Array.isArray(lines) ? lines : []).slice(0, 3000).map((l) => ({ image: String(l.image || ""), size: String(l.size || ""), qty: Number(l.qty) || 0 }));
+  // one row per product (a product can carry a different photo per size: the first photo that loads is used)
+  const rpExportRows = (lines) => {
+    const m = new Map();
+    (Array.isArray(lines) ? lines : []).slice(0, 3000).forEach((l) => {
+      const k = String(l.product || l.image || l.id || "");
+      if (!m.has(k)) m.set(k, { image: String(l.image || ""), pid: String(l.pid || ""), lines: [] });
+      const g = m.get(k); if (!g.image && l.image) g.image = String(l.image);
+      g.lines.push({ size: String(l.size || ""), qty: Number(l.qty) || 0 });
+    });
+    return [...m.values()];
+  };
   const rpExportName = (code, sup) => "Order-" + code + "-" + String(sup || "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const rpOk = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
   async function rpStockCall(body, fallback) {
@@ -1813,7 +1826,7 @@
       } catch (e) { return { shopify: false, error: String(e?.message || e) }; }
     },
     exportxlsx: async (d) => {
-      const rows = (Array.isArray(d.rows) ? d.rows : []).slice(0, 3000).map((r) => ({ image: String(r.image || ""), size: String(r.size || ""), qty: Number(r.qty) || 0 }));
+      const rows = rpExportRows(d.rows);
       if (!rows.length) throw new Error("Nothing to export");
       const a = document.createElement("a");
       a.href = URL.createObjectURL(await xlsxBytes(rows));
@@ -1824,7 +1837,8 @@
     },
     exportcreate: async (d) => {
       const r = rpOk(await sb.rpc("restock_owner_export_create", { p_supplier: rpText(d.supplier, 100), p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 1000).map((x) => rpText(x, 140)) }));
-      await rpDownloadXlsx(rpExportName(r.code, r.supplier) + ".xlsx", rpExportRows(r.lines), r.code);
+      let lines = r.lines; try { const e = (rpOk(await sb.rpc("restock_owner_export_list")) || []).find((x) => x.code === r.code); if (e) lines = e.lines; } catch (_) {}
+      await rpDownloadXlsx(rpExportName(r.code, r.supplier) + ".xlsx", rpExportRows(lines), r.code);
       return { code: r.code, n: (r.lines || []).length, units: r.units, skipped: r.skipped };
     },
     exportlist: async () => rpOk(await sb.rpc("restock_owner_export_list")) || [],
