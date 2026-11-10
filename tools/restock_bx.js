@@ -58,8 +58,8 @@ function bxTile(b, lines, o) {
   const live = lines.filter(r => r.status === 'shipped').length, rem = o.rem || (() => 0);
   const recvd = shipped && n > 0 && lines.every(r => r.status === 'received');   // whole box landed: keep the tile, show it as Received
   const head = `<div class="bx-h" data-bxt="${bxEsc(b.box_no)}"><span class="chev">▶</span>
-    <span class="bx-title">${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
-    <span class="bx-pill ${recvd ? 'rc' : shipped ? 'sh' : 'op'}">${recvd ? 'Received' : shipped ? 'Shipped' : 'Packing'}</span>
+    <span class="bx-title">${/^PDF-/.test(b.box_no) ? '📄 ' : ''}${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
+    <span class="bx-pill ${recvd ? 'rc' : shipped ? 'sh' : 'op'}">${recvd ? 'Received' : shipped ? (/^PDF-/.test(b.box_no) ? 'PDF order sent' : 'Shipped') : 'Packing'}</span>
     <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}${uTotal ? ' · <b style="color:#e5484d">' + uTotal + ' over reported</b>' : ''}</span>
     <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${url ? '<a class="bx-trkl" href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track parcel' + (b.tracking_no ? ' · ' + bxEsc(b.tracking_no) : '') + ' ↗</a>' : (b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : (shipped && o.trk ? '<span class="bx-trkl">＋ Add tracking</span>' : ''))}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);

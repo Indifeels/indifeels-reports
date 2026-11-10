@@ -297,9 +297,6 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .sc.sc-ship{--ac:#3fb950;--g1:#2ea043;--g2:#17622a;--g3:#08290f}
 .sc-h{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:'chev title hint' '. count hint';align-items:center;column-gap:12px;row-gap:6px;min-height:92px;box-sizing:border-box;padding:20px 20px;cursor:pointer;user-select:none;color:#fff;background:linear-gradient(180deg,var(--g1) 0%,var(--g2) 55%,var(--g3) 100%);border-top:1px solid rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 -4px 8px rgba(0,0,0,.45)}
 .sc-h:hover{filter:brightness(1.1)}
-.sc{display:block;padding:0;gap:0}
-.bx-prod th{position:static}
-.bx-prod>.suprow{align-self:flex-start;margin-top:2px}
 .sc-h .chev{grid-area:chev;width:18px;color:#fff;transition:transform .15s;flex:none;font-size:16px}
 .sc.open>.sc-h .chev{transform:rotate(90deg)}
 .sc-t{grid-area:title;font-size:25px;font-weight:800;letter-spacing:.01em}
@@ -325,17 +322,6 @@ try { document.documentElement.dataset.theme = "dark"; } catch(e) {}
 .sc-n:empty{display:none}
 .low.addl{background:#4a2f7a!important;color:#e6d9ff!important;border:0!important}
 :root[data-theme=light] .low.addl{background:#e9defa!important;color:#4a2f7a!important}
-
-/* aligned columns: every product row has the same grid, so names, pills and tables line up down the page */
-.bx-prod>.svinfo{flex:0 0 250px;min-width:0}.bx-prod>.svinfo .svpn{margin:2px 0 8px}.bx-prod>.svinfo .suprow{margin:0}
-.bx-prod>.setbody,.bx-prod>.pc{flex:1;min-width:0}.bx-prod>.setbody table{width:100%}
-.bx-prod table.otab,.bx-prod table.shp,.bx-prod table.pkd{width:100%;table-layout:fixed}
-.bx-prod table.otab th:nth-child(2),.bx-prod table.otab td:nth-child(2){width:130px}.bx-prod table.otab th:nth-child(3),.bx-prod table.otab td:nth-child(3){width:170px}
-.bx-prod table.shp th:nth-child(2),.bx-prod table.pkd th:nth-child(2){width:130px}.bx-prod table.shp th:nth-child(3),.bx-prod table.pkd th:nth-child(3){width:130px}
-.bx-prod table.shp th:nth-child(4),.bx-prod table.pkd th:nth-child(4){width:150px}
-.bx-prod table.shp td.q,.bx-prod table.pkd td.q{text-align:center}.bx-prod td.st{text-align:right}
-.bx-prod td.q .low.addl{display:block;width:max-content;max-width:100%;margin:4px auto 0;border-radius:10px;padding:2px 8px;white-space:normal;line-height:1.25}
-@media (max-width:700px){.bx-prod>.svinfo{flex:none}}
 .setrow{margin:0 0 8px}.setpill{display:inline-block;padding:4px 12px;border-radius:999px;background:#17624f;color:#d6fff1;font-weight:800;font-size:13px}
 :root[data-theme=light] .setpill{background:#d3f2e7;color:#0b5a45}
 .setrow{cursor:pointer}.setpill i{font-style:normal;font-weight:600;opacity:.8;margin-left:6px;font-size:12px}.setbody.shut{display:none}
@@ -925,6 +911,7 @@ select.sel{appearance:none;-webkit-appearance:none}
   #viewSup .svctl .svsel{display:flex;gap:8px;align-items:center;margin:0}#viewSup .svctl .svsel select{flex:1;min-width:0}
   #viewSup .svbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}#viewSup .svbtns button{padding:9px 6px;margin:0;width:100%}
   #svExport:disabled{opacity:.45}
+  .pdfx .bx-h{cursor:default}.pdfx .bx-right{display:inline-flex;gap:8px;flex-wrap:wrap}.pdfx .bx-right button{font-size:13px;padding:7px 12px;border-radius:10px}
 .osz{margin:6px 0 2px;padding:6px 10px;font-size:12px;color:var(--mut,#9aa3b2);background:rgba(120,140,170,.10);border-radius:8px}
 </style>
 <style>
@@ -1121,6 +1108,11 @@ const Store = {
   setTag: (product, supplier) => call('settag', { product, supplier }),
   tagList: () => call('taglist'),
   exportXlsx: (filename, rows) => call('exportxlsx', { filename, rows }, 60000),
+  exportCreate: (supplier, ids) => call('exportcreate', { supplier, ids }, 90000),
+  exportList: () => call('exportlist'),
+  exportAgain: code => call('exportagain', { code }, 90000),
+  exportSent: (code, date) => call('exportsent', { code, date }),
+  exportDiscard: code => call('exportdiscard', { code }),
   stockGet: vid => call('stockget', { vid }),
   stockAdjust: (vid, dShop, dBackup) => call('stockadjust', { vid, dShop, dBackup }),
 };
@@ -1198,8 +1190,8 @@ function bxTile(b, lines, o) {
   const live = lines.filter(r => r.status === 'shipped').length, rem = o.rem || (() => 0);
   const recvd = shipped && n > 0 && lines.every(r => r.status === 'received');   // whole box landed: keep the tile, show it as Received
   const head = `<div class="bx-h" data-bxt="${bxEsc(b.box_no)}"><span class="chev">▶</span>
-    <span class="bx-title">${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
-    <span class="bx-pill ${recvd ? 'rc' : shipped ? 'sh' : 'op'}">${recvd ? 'Received' : shipped ? 'Shipped' : 'Packing'}</span>
+    <span class="bx-title">${/^PDF-/.test(b.box_no) ? '📄 ' : ''}${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
+    <span class="bx-pill ${recvd ? 'rc' : shipped ? 'sh' : 'op'}">${recvd ? 'Received' : shipped ? (/^PDF-/.test(b.box_no) ? 'PDF order sent' : 'Shipped') : 'Packing'}</span>
     <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}${uTotal ? ' · <b style="color:#e5484d">' + uTotal + ' over reported</b>' : ''}</span>
     <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${url ? '<a class="bx-trkl" href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track parcel' + (b.tracking_no ? ' · ' + bxEsc(b.tracking_no) : '') + ' ↗</a>' : (b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : (shipped && o.trk ? '<span class="bx-trkl">＋ Add tracking</span>' : ''))}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
@@ -1646,6 +1638,7 @@ $('discreq').addEventListener('click', async e => {
   } catch (err) { notify('Could not save: ' + err.message); renderDiscReq(); }
 });
 let boxesData = [];
+let pdfEx = [], pdfArm = '';
 const myOpen = new Map();
 const remOf = r => [...orders.values()].filter(x => x.status === 'saved' && !x.claimed && x.vkey === r.vkey).reduce((t, x) => t + x.qty, 0);
 function boxesFor(who){
@@ -1669,7 +1662,7 @@ function renderBoxes(){
   $('bxCount').textContent = bxPlural(pk.length, 'box') + ' packing · ' + bxPlural(sh.length, 'box') + ' shipped';
   const unders = [...orders.values()].filter(r => r.status === 'saved' && r.short_box);
   const tile = ({b, lines}) => bxTile(b, lines, {ro: true, trk: true, recv: true, rem: remOf, open: myOpen.get(b.box_no) === true, who: b.supplier, unders});
-  el.innerHTML = bxSec('bx-pack', '📦 Packing', bxPlural(pk.length, 'box') + (pk.length ? ' · ' + bxPlural(pk.reduce((t, x) => t + x.lines.length, 0), 'item') : ''), pk.length ? pk.map(tile).join('') : '<div class="empty">Nothing is being packed. Boxes appear when a supplier adds an item.</div>', {cls: 'pack'})
+  el.innerHTML = pdfSec(who, 'bx') + bxSec('bx-pack', '📦 Packing', bxPlural(pk.length, 'box') + (pk.length ? ' · ' + bxPlural(pk.reduce((t, x) => t + x.lines.length, 0), 'item') : ''), pk.length ? pk.map(tile).join('') : '<div class="empty">Nothing is being packed. Boxes appear when a supplier adds an item.</div>', {cls: 'pack'})
     + bxSec('bx-ship', '🚚 Shipped', bxPlural(sh.length, 'box'), sh.length ? sh.map(tile).join('') : '<div class="empty">No shipped boxes yet.</div>', {cls: 'ship'});
 }
 $('bxSup').addEventListener('change', renderBoxes);
@@ -2278,7 +2271,8 @@ function liveStock(o){
 let lastSig = '';
 async function refresh(){
   try {
-    const [rows, disc, bx, dreq, pks, hz, tgs] = await Promise.all([Store.list(), Store.discList().catch(() => null), Store.boxes().catch(() => null), Store.discReq().catch(() => null), Store.parkList().catch(() => null), Store.hideList().catch(() => null), Store.tagList().catch(() => null)]);
+    const [rows, disc, bx, dreq, pks, hz, tgs, pex] = await Promise.all([Store.list(), Store.discList().catch(() => null), Store.boxes().catch(() => null), Store.discReq().catch(() => null), Store.parkList().catch(() => null), Store.hideList().catch(() => null), Store.tagList().catch(() => null), Store.exportList().catch(() => null)]);
+    if (Array.isArray(pex)) pdfEx = pex;
     if (Array.isArray(tgs)) { const gen = Date.parse(data.generatedAt) || 0; tgs.forEach(t => { if (Date.parse(t.tagged_at) > gen) { const pr = data.products.find(p => String(p.id) === String(t.product_id)); if (pr) pr.supplier = t.supplier || ''; } }); }   // supplier picked after this build was made wins until the next build
     if (Array.isArray(hz)) { hiddenOk = true; hiddenSizes = new Set(hz.map(d => String(d.vkey))); }
     if (dreq) discReqs = dreq;
@@ -2300,7 +2294,7 @@ async function refresh(){
     if (landed.length) {
       try { await Store.received(landed.map(o => o.id)); landed.forEach(o => { o.status = 'received'; o.received_at = new Date().toISOString(); }); } catch (e) { /* manual Received buttons still work */ }
     }
-    const sig = JSON.stringify([data.products.map(p => p.supplier || ''), [...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty, o.box_no, o.supplier, o.wrong_pick, o.wrong_ack]), [...discMap.entries()], [...parkMap.entries()], [...hiddenSizes], hiddenOk, boxesData.map(x => [x.box_no, x.status, x.tracking_no, x.tracking_url]), discReqs.map(r => r.product_id)]);
+    const sig = JSON.stringify([data.products.map(p => p.supplier || ''), [...orders.values()].map(o => [o.id, o.status, o.qty, o.ship_qty, o.box_no, o.supplier, o.wrong_pick, o.wrong_ack]), [...discMap.entries()], [...parkMap.entries()], [...hiddenSizes], hiddenOk, boxesData.map(x => [x.box_no, x.status, x.tracking_no, x.tracking_url]), pdfEx.map(x => [x.code, x.status]), discReqs.map(r => r.product_id)]);
     if (sig !== lastSig) { lastSig = sig; render(); }
     updateQueue(); if (!$('viewSup').hidden) renderSv();
   } catch (err) { $('sub').textContent = 'Could not load supplier status: ' + err.message; }
@@ -2340,7 +2334,7 @@ function renderSv(){
   const boxes = boxesFor(who);
   const tile = ({b, lines}) => bxTile(b, lines, {ro: true, trk: true, rem: remOf, open: svOpen.has(b.box_no) ? svOpen.get(b.box_no) : false, who: b.supplier, unders: shortRows});
   const pk = boxes.filter(x => x.b.status !== 'shipped'), sh = boxes.filter(x => x.b.status === 'shipped');
-  $('svShipped').innerHTML = bxSec('sv-pack', '📦 Packing', bxPlural(pk.length, 'box') + (pk.length ? ' · ' + bxPlural(pk.reduce((t, x) => t + x.lines.length, 0), 'item') : ''), pk.length ? pk.map(tile).join('') : '<div class="empty">Nothing is being packed. Boxes appear when a supplier adds an item.</div>')
+  $('svShipped').innerHTML = pdfSec(who, 'sv') + bxSec('sv-pack', '📦 Packing', bxPlural(pk.length, 'box') + (pk.length ? ' · ' + bxPlural(pk.reduce((t, x) => t + x.lines.length, 0), 'item') : ''), pk.length ? pk.map(tile).join('') : '<div class="empty">Nothing is being packed. Boxes appear when a supplier adds an item.</div>')
     + bxSec('sv-ship', '🚚 Shipped', bxPlural(sh.length, 'box'), sh.length ? sh.map(tile).join('') : '<div class="empty">No shipped boxes yet.</div>');
 }
 $('svShipped').addEventListener('click', e => {
@@ -2400,11 +2394,34 @@ $('svExport').addEventListener('click', async () => {
   const who = $('svSup').value; if (!who) { notify('Pick a supplier first'); return; }
   const lines = [...orders.values()].filter(r => r.status === 'saved' && !r.claimed && (() => { const pr = data.products.find(p => String(p.id) === String(r.product_id)); return supName((pr && pr.supplier) || r.supplier).toLowerCase() === supName(who).toLowerCase(); })());
   if (!lines.length) { notify('Nothing on the order list for ' + who); return; }
-  const rows = []; bxGroup(lines).forEach(g => g.slice().sort(bxByVariant).forEach(r => rows.push({ image: r.image || '', size: r.variant_title || '', qty: r.qty })));
+  const ids = []; bxGroup(lines).forEach(g => g.slice().sort(bxByVariant).forEach(r => ids.push(r.id)));
   const b = $('svExport'); b.disabled = true;
-  try { await Store.exportXlsx('order-list-' + who.replace(/[^\w]+/g, '-') + '-' + new Date().toISOString().slice(0, 10) + '.xlsx', rows); notify('Excel downloaded: ' + rows.length + ' lines for ' + who, true); }
-  catch (err) { notify('Could not export: ' + err.message); }
-  b.disabled = false;
+  try {
+    const r = await Store.exportCreate(who, ids);
+    notify('File ' + r.code + ' downloaded (' + r.n + ' lines, ' + r.units + ' pcs). Press “I sent this file” under PDF orders once you have sent it.' + (r.skipped ? ' ' + r.skipped + ' line(s) were left out: already in another file waiting to be sent.' : ''), true);
+    await refresh();
+  } catch (err) { notify('Could not export: ' + err.message); }
+  b.disabled = false; renderSv();
+});
+/* PDF orders: each exported file has a code (PDF-IN1-01). Nothing counts as sent until the owner says which file was sent. */
+function pdfSec(who, pre) {
+  const list = pdfEx.filter(e => e.status === 'pending' && (!who || String(e.supplier).toLowerCase() === String(who).toLowerCase()));
+  const tile = e => { const a = pdfArm === 's:' + e.code, d = pdfArm === 'd:' + e.code;
+    return `<section class="bx pdfx"><div class="bx-h"><span class="bx-title">📄 ${esc(e.code)} · ${esc(e.supplier)}</span><span class="bx-pill op">Not marked sent</span>
+      <span class="bx-sum">${e.n} item${e.n === 1 ? '' : 's'} · ${e.units} unit${e.units === 1 ? '' : 's'} · exported ${bxFmt(new Date(e.created_at))}</span>
+      <span class="bx-right"><button data-pdfdl="${esc(e.code)}">Download again</button><button class="recvbox" data-pdfsent="${esc(e.code)}">${a ? 'Tap again: yes, I sent ' + esc(e.code) : 'I sent this file'}</button><button class="danger${d ? ' arm' : ''}" data-pdfdis="${esc(e.code)}">${d ? 'Tap again to discard' : 'Discard'}</button></span></div></section>`; };
+  return bxSec(pre + '-pdf', '📄 PDF orders', list.length ? bxPlural(list.length, 'file') + ' waiting for you to confirm' : 'none waiting',
+    '<p class="sub" style="margin:0 0 10px">Each Excel file you export gets its own code. Press “I sent this file” on the one you actually sent: its items then show as a shipped box with that code, and you receive it like any box.</p>' + (list.length ? list.map(tile).join('') : '<div class="empty">No exported files waiting. Export Excel in Supplier view to create one.</div>'), {cls: 'pack', open: list.length > 0});
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-pdfdl],[data-pdfsent],[data-pdfdis]'); if (!b) return;
+  const dl = b.getAttribute('data-pdfdl'), st = b.getAttribute('data-pdfsent'), ds = b.getAttribute('data-pdfdis'), redraw = () => { renderBoxes(); renderSv(); };
+  try {
+    if (dl) { b.disabled = true; await Store.exportAgain(dl); notify(dl + ' downloaded again', true); b.disabled = false; return; }
+    if (st) { if (pdfArm !== 's:' + st) { pdfArm = 's:' + st; redraw(); return; } pdfArm = ''; b.disabled = true;
+      const r = await Store.exportSent(st, null); notify(st + ' marked as sent: ' + r.boxed + ' line(s) are now a shipped box' + (r.skipped ? ' (' + r.skipped + ' line(s) had already changed and were left out)' : ''), true); await refresh(); redraw(); return; }
+    if (ds) { if (pdfArm !== 'd:' + ds) { pdfArm = 'd:' + ds; redraw(); return; } pdfArm = ''; await Store.exportDiscard(ds); notify(ds + ' discarded. Its items are still on the order list.', true); await refresh(); redraw(); }
+  } catch (err) { pdfArm = ''; notify(err.message); try { await refresh(); } catch (x) {} redraw(); }
 });
 async function loadAccounts(){
   const box = $('svAccounts');
