@@ -268,8 +268,8 @@ Deno.serve(async (req: Request) => {
       if (!dS && !dB) return json({ error: "Nothing to change" }, 400);
       const r = await read(vid);
       const nS = r.shop + dS, nB = r.backup + dB;
-      if (dS && nS < 0) return json({ error: `Shop location can't go below 0 (now ${r.shop})` }, 400);
-      if (dB && nB < 0) return json({ error: `Backup can't go below 0 (now ${r.backup})` }, 400);
+      if (dS < 0 && nS < 0) return json({ error: `Shop location can't go below 0 (now ${r.shop})` }, 400);
+      if (dB < 0 && nB < 0) return json({ error: `Backup can't go below 0 (now ${r.backup})` }, 400);
       // a location the variant isn't stocked at yet has to be activated before it can hold stock
       for (const [d, has, loc] of [[dS, r.hasShop, SHOPLOC], [dB, r.hasBackup, BACKUP]] as [number, boolean, string][]) {
         if (d > 0 && !has) {
