@@ -1,9 +1,9 @@
 <!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Procurement</title>
 <style>
 :root{--bg:#f4f5f7;--tile:#ffffff;--tile2:#eef0f3;--fg:#1b1d21;--mut:#626873;--line:#dde0e5;--bar:#c9d3e6;--mark:#1b1d21;--dem:#5b7fc7;
- --g:#1d8f5a;--gb:rgba(29,143,90,.14);--a:#b87400;--ab:rgba(184,116,0,.15);--r:#d23c42;--rb:rgba(210,60,66,.14);--b:#3a6fd8;--bb:rgba(58,111,216,.14);--n:#6b7280;--nb:rgba(107,114,128,.16)}
+ --blu:#0a84ff;--g:#1d8f5a;--gb:rgba(29,143,90,.14);--a:#b87400;--ab:rgba(184,116,0,.15);--r:#d23c42;--rb:rgba(210,60,66,.14);--b:#3a6fd8;--bb:rgba(58,111,216,.14);--n:#6b7280;--nb:rgba(107,114,128,.16)}
 [data-theme=dark]{--bg:#121315;--tile:#1f2023;--tile2:#2a2b2f;--fg:#f1f2f4;--mut:#a9adb5;--line:#34363b;--bar:#4a5f86;--mark:#f1f2f4;--dem:#6d8fd8;
- --g:#4fd08c;--gb:rgba(79,208,140,.16);--a:#e8b04a;--ab:rgba(232,176,74,.16);--r:#ff7d82;--rb:rgba(255,125,130,.16);--b:#8aa9f0;--bb:rgba(138,169,240,.16);--n:#a9adb5;--nb:rgba(169,173,181,.14)}
+ --blu:#2d9bff;--g:#4fd08c;--gb:rgba(79,208,140,.16);--a:#e8b04a;--ab:rgba(232,176,74,.16);--r:#ff7d82;--rb:rgba(255,125,130,.16);--b:#8aa9f0;--bb:rgba(138,169,240,.16);--n:#a9adb5;--nb:rgba(169,173,181,.14)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:14px 12px 40px}
 .wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
 .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -52,7 +52,7 @@ select{font:inherit;font-size:13px;color:var(--fg);background:var(--tile2);borde
 <div id="supbox" hidden></div>
 <div class="ctl" style="margin-top:10px"><span class="seg" id="fview"><button data-v="intro">Introduced</button><button data-v="clear">Cleared</button><button data-v="shelf">On shelf today</button></span><span class="seg" id="funit"><button data-u="count">Count</button><button data-u="value">Value</button></span><span class="seg" id="fcum"><button data-c="0">By year</button><button data-c="1">Cumulative</button></span></div>
 <div class="chips" id="fychips"></div><div id="fchart"></div>
-<div class="legend"><span><i class="ln" style="background:var(--g)"></i>Eligible</span><span><i class="ln" style="background:var(--r)"></i>Not eligible</span><span><i class="ln" style="background:repeating-linear-gradient(90deg,var(--b) 0 3px,transparent 3px 6px)"></i>Eligible share, % (right axis)</span></div>
+<div class="legend"><span><i class="ln" style="background:var(--g)"></i>Eligible</span><span><i class="ln" style="background:var(--r)"></i>Not eligible</span><span><i class="ln" style="background:repeating-linear-gradient(90deg,var(--blu) 0 3px,transparent 3px 6px)"></i>Eligible share, % (right axis)</span></div>
 <div id="ftable" style="margin-top:8px"></div><div class="note" id="fnote"></div></div>
 <div class="box"><div class="ctl"><b style="font-size:12px">Demand</b><span class="seg" id="mode"><button data-m="search">Search</button><button data-m="blend">Blend</button><button data-m="sales">My sales</button></span></div>
 <div class="ctl" style="margin-top:8px"><b style="font-size:12px">Stock target</b><input id="cover" type="range" min="30" max="180" step="15" value="90"><b id="coverv" style="font-size:12px;min-width:64px;text-align:right">90 days</b></div>
@@ -167,21 +167,20 @@ function flowPeriods(){
 }
 const flowAgg=(arr,idx)=>idx.reduce((a,i)=>a+arr[i],0);
 function flowChart(rows,u){
-  const W=360,H=176,L=46,R=36,T=16,B=22,f=u==='value'?money:fmt;
+  const W=360,H=176,L=46,R=44,T=16,B=22,f=u==='value'?money:fmt;
   const vals=rows.flatMap(r=>[r.e,r.n]),mx=Math.max(1,...vals),mn=Math.min(0,...vals),span=(mx-mn)||1;
   const X=i=>rows.length<2?(L+W-R)/2:L+(W-L-R)*i/(rows.length-1),Y=v=>T+(H-T-B)*(1-(v-mn)/span);
   let s=`<svg class="fc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Eligible vs not eligible">`;
   for(let g=0;g<=3;g++){const v=mn+span*g/3,y=Y(v);s+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text x="${L-4}" y="${(y+3).toFixed(1)}" text-anchor="end">${f(Math.round(v))}</text>`}
   const step=Math.max(1,Math.ceil(rows.length/8)),PY=p=>T+(H-T-B)*(1-p);
-  [0,.5,1].forEach(p=>{s+=`<text x="${W-R+4}" y="${(PY(p)+3).toFixed(1)}" style="fill:var(--b)">${Math.round(p*100)}%</text>`});
+  [0,.5,1].forEach(p=>{s+=`<text x="${W-R+14}" y="${(PY(p)+3).toFixed(1)}" style="fill:var(--blu)">${Math.round(p*100)}%</text>`});
   const pts=rows.map((r,i)=>[i,r.e+r.n>0?r.e/(r.e+r.n):null]).filter(x=>x[1]!=null);
-  if(pts.length>1)s+=`<polyline fill="none" stroke="var(--b)" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round" points="${pts.map(([i,q])=>X(i).toFixed(1)+','+PY(q).toFixed(1)).join(' ')}"/>`;
-  pts.forEach(([i,q])=>{if(rows.length<=8||i%step===0)s+=`<text class="lbl" x="${X(i).toFixed(1)}" y="${(PY(q)-5).toFixed(1)}" text-anchor="middle" style="fill:var(--b)">${Math.round(q*100)}%</text>`});
+  if(pts.length>1)s+=`<polyline fill="none" stroke="var(--blu)" stroke-width="2.4" stroke-dasharray="2 4" stroke-linecap="round" points="${pts.map(([i,q])=>X(i).toFixed(1)+','+PY(q).toFixed(1)).join(' ')}"/>`;
   rows.forEach((r,i)=>{if(i%step===0)s+=`<text x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="middle">${esc(r.p.label)}</text>`});
-  [['e','var(--g)',-6],['n','var(--r)',13]].forEach(([k,c,dy])=>{
+  [['e','var(--g)'],['n','var(--r)']].forEach(([k,c])=>{
     s+=`<polyline fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" points="${rows.map((r,i)=>X(i).toFixed(1)+','+Y(r[k]).toFixed(1)).join(' ')}"/>`;
     rows.forEach((r,i)=>{s+=`<circle cx="${X(i).toFixed(1)}" cy="${Y(r[k]).toFixed(1)}" r="2.6" fill="${c}"/>`;
-      if(rows.length<=8||i%step===0)s+=`<text class="lbl" x="${X(i).toFixed(1)}" y="${(Y(r[k])+dy).toFixed(1)}" text-anchor="middle" style="fill:${c}">${f(r[k])}</text>`})});
+      const o=k==='e'?'n':'e',dy=(r[k]>=r[o])?-7:14;if(rows.length<=8||i%step===0)s+=`<text class="lbl" x="${X(i).toFixed(1)}" y="${(Y(r[k])+dy).toFixed(1)}" text-anchor="middle" style="fill:${c};stroke:var(--tile);stroke-width:3px;paint-order:stroke">${f(r[k])}</text>`})});
   return s+'</svg>';
 }
 const FNOTE={
