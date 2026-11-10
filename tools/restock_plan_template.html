@@ -2518,7 +2518,7 @@ try { parent.postMessage({ type: 'restock-plan', action: 'ready' }, '*'); } catc
     if (e.target === $('stkm')) return close();
     const b = e.target.closest('button[data-k]'); if (!b || !cur || cur.shop == null || busy) return;
     const k = b.getAttribute('data-k'), d = Number(b.getAttribute('data-d'));
-    if (cur[k] + cur.d[k] + d < 0) return;
+    if (d < 0 && cur[k] + cur.d[k] + d < 0) return;
     cur.d[k] += d; msg(''); shown();
   });
   $('stkCancel').addEventListener('click', close);
