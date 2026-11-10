@@ -1687,28 +1687,31 @@
     const fx = (u) => String(u).replace(/"/g, "");
     // download each product photo once, fit it into 300 x 400 and embed it as a real picture (works in Excel and Google Sheets)
     const pics = new Map(), urls = [...new Set(rows.map((r) => (/^https:\/\//i.test(r.image || "") ? r.image : "")).filter(Boolean))];
-    const grab = async (url) => {
-      let blob = null;
-      for (const u of [(() => { try { const x = new URL(url); x.searchParams.set("width", "600"); return x.href; } catch (_) { return url; } })(), url]) {
-        try { const resp = await fetch(u, { mode: "cors" }); if (resp.ok) { blob = await resp.blob(); break; } } catch (_) {}
+    // the browser is not allowed to download Shopify CDN photos directly, so a Supabase function fetches them (12 at a time)
+    const fetchBatch = async (batch) => {
+      let got = {};
+      try { const { data } = await sb.functions.invoke("export-images", { body: { urls: batch } }); got = (data && data.images) || {}; } catch (_) {}
+      for (const url of batch) {
+        const b64 = got[url]; if (!b64) continue;
+        try {
+          const bin = atob(b64), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          const bmp = await createImageBitmap(new Blob([arr])), W = 300, H = 400, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+          const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+          const k = Math.min(W / bmp.width, H / bmp.height), w = bmp.width * k, h = bmp.height * k;
+          g.drawImage(bmp, (W - w) / 2, (H - h) / 2, w, h);
+          const out = await new Promise((res) => cv.toBlob(res, "image/jpeg", 0.85));
+          pics.set(url, { bytes: new Uint8Array(await out.arrayBuffer()), id: 0 });
+        } catch (_) {}
       }
-      if (!blob) return;
-      try {
-        const bmp = await createImageBitmap(blob), W = 300, H = 400, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
-        const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
-        const k = Math.min(W / bmp.width, H / bmp.height), w = bmp.width * k, h = bmp.height * k;
-        g.drawImage(bmp, (W - w) / 2, (H - h) / 2, w, h);
-        const out = await new Promise((res) => cv.toBlob(res, "image/jpeg", 0.85));
-        pics.set(url, { bytes: new Uint8Array(await out.arrayBuffer()), id: 0 });
-      } catch (_) {}
     };
-    let qi = 0; await Promise.all(Array.from({ length: 6 }, async () => { while (qi < urls.length) await grab(urls[qi++]); }));
+    const batches = []; for (let i = 0; i < urls.length; i += 12) batches.push(urls.slice(i, i + 12));
+    let qi = 0; await Promise.all(Array.from({ length: 3 }, async () => { while (qi < batches.length) await fetchBatch(batches[qi++]); }));
     let pn = 0; pics.forEach((p) => { p.id = ++pn; });
     const cell = (ref, v, st) => `<c r="${ref}" t="inlineStr" s="${st}"><is><t>${esc(v)}</t></is></c>`;
     let sd = `<row r="1" ht="24" customHeight="1">${cell("A1", "Image", 1)}${cell("B1", "Size variant", 1)}${cell("C1", "Quantity", 1)}</row>`;
     rows.forEach((r, i) => {
       const n = i + 2, url = /^https:\/\//i.test(r.image || "") ? r.image : "";
-      const img = url && pics.has(url) ? `<c r="A${n}" s="2"/>` : url ? `<c r="A${n}" t="str" s="2"><f>_xlfn.IMAGE("${esc(fx(url))}","",3,400,300)</f><v></v></c>` : `<c r="A${n}" s="2"/>`;
+      const img = pics.has(url) ? `<c r="A${n}" s="2"/>` : cell("A" + n, url ? "(photo not available)" : "", 2);
       sd += `<row r="${n}" ht="300" customHeight="1">${img}${cell("B" + n, r.size, 3)}<c r="C${n}" s="3"><v>${Math.max(0, Math.trunc(Number(r.qty) || 0))}</v></c></row>`;
     });
     const files = {
