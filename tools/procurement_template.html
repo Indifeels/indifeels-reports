@@ -157,7 +157,7 @@ function flowSeries(g,view,unit){
   const x=F[g];
   if(view==='intro')return x.ic;
   if(view==='clear')return unit==='count'?x.su:x.sv;
-  return unit==='count'?x.ku:x.kv;
+  return unit==='count'?x.ks:x.kv;
 }
 function flowPeriods(){
   const by={};F.months.forEach((k,i)=>{(by[fyOf(k)]=by[fyOf(k)]||[]).push(i)});
@@ -182,7 +182,7 @@ function flowChart(rows,u){
 const FNOTE={
   intro:'Products introduced, by their real published date (published_date_old for migrated products).',
   clear:{count:'Units sold, by the real order date.',value:'What the units actually sold for after line discounts, by the real order date.'},
-  shelf:{count:'Units on the shelf today, grouped by the year or month the product was published. Sold % = units those products have sold to date ÷ (sold + still on the shelf).',value:'Stock value on the shelf today at sale price, grouped by the year or month the product was published. Sold % = units those products have sold to date ÷ (sold + still on the shelf).'}};
+  shelf:{count:'Products in stock today (the same 318 / 649 as the tiles, split by the year or month each was published; every year added up equals the tile). Grouped by the year or month the product was published. Sold % = units those products have sold to date ÷ (sold + still on the shelf).',value:'Stock value on the shelf today at sale price, grouped by the year or month the product was published. Sold % = units those products have sold to date ÷ (sold + still on the shelf).'}};
 function renderFlow(){
   const box=$('#flowbox');
   if(!F||!F.months||!F.months.length){box.hidden=true;return}
@@ -210,7 +210,7 @@ function renderFlow(){
   $('#fchart').innerHTML=flowChart(rows,u);
   const share=v==='shelf'?(r=>{const t=r.sold+r.shelf;return t>0?r.sold/t:null}):(r=>{const t=r.e+r.n;return t>0?r.e/t:null});
   const pl=s=>s==null?'<span class="pill p-n">–</span>':v==='shelf'?`<span class="pill p-n">${Math.round(s*100)}%</span>`:`<span class="pill p-${s>=.6?'g':s>=.4?'a':'r'}">${Math.round(s*100)}%</span>`;
-  let h=`<div class="ft h"><span>${st.ffy?'Month':'Year'}</span><span>Eligible${u==='count'&&v!=='intro'?' (units)':u==='count'?' (products)':''}</span><span>Not eligible${u==='count'&&v!=='intro'?' (units)':u==='count'?' (products)':''}</span><span>${v==='shelf'?'Sold %':'Elig %'}</span></div>`;
+  let h=`<div class="ft h"><span>${st.ffy?'Month':'Year'}</span><span>Eligible${u==='count'?' (products)':''}</span><span>Not eligible${u==='count'?' (products)':''}</span><span>${v==='shelf'?'Sold %':'Elig %'}</span></div>`;
   h+=rows.map(r=>`<div class="ft${st.ffy?'':' r'}"${st.ffy?'':` data-f="${r.p.fy}"`}><b>${esc(r.p.label)}${r.p.part?'*':''}</b><span class="e">${f(r.e)}</span><span class="n">${f(r.n)}</span>${pl(share(r))}</div>`).join('');
   {const t={e:rows.reduce((a,r)=>a+r.e,0),n:rows.reduce((a,r)=>a+r.n,0),sold:rows.reduce((a,r)=>a+r.sold,0),shelf:rows.reduce((a,r)=>a+r.shelf,0)};h+=`<div class="ft t"><span>Total</span><span class="e">${f(t.e)}</span><span class="n">${f(t.n)}</span>${pl(share(t))}</div>`}
   $('#ftable').innerHTML=h;
