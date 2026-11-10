@@ -1848,6 +1848,7 @@
       await rpDownloadXlsx(rpExportName(e.code, e.supplier) + ".xlsx", rpExportRows(e.lines), e.code);
       return true;
     },
+    exportshipped: async (d) => rpOk(await sb.rpc("restock_owner_export_shipped", { p_code: rpText(d.code, 60), p_date: null })),
     exportcancel: async (d) => rpOk(await sb.rpc("restock_owner_export_cancel", { p_code: rpText(d.code, 60) })),
     taglist: async () => rpOk(await sb.rpc("restock_owner_tag_list")) || [],
     parklist: async () => rpOk(await sb.from("restock_parked").select("product_id,parked")) || [],

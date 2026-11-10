@@ -1127,6 +1127,7 @@ const Store = {
   exportList: () => call('exportlist'),
   exportAgain: code => call('exportagain', { code }, 90000),
   exportCancel: code => call('exportcancel', { code }),
+  exportShipped: code => call('exportshipped', { code }),
   stockGet: vid => call('stockget', { vid }),
   stockAdjust: (vid, dShop, dBackup) => call('stockadjust', { vid, dShop, dBackup }),
 };
@@ -1205,7 +1206,7 @@ function bxTile(b, lines, o) {
   const recvd = shipped && n > 0 && lines.every(r => r.status === 'received');   // whole box landed: keep the tile, show it as Received
   const head = `<div class="bx-h" data-bxt="${bxEsc(b.box_no)}"><span class="chev">▶</span>
     <span class="bx-title">${/^PDF-/.test(b.box_no) ? '📄 ' : ''}${bxEsc(b.box_no)}${o.who ? ' · ' + bxEsc(o.who) : ''}</span>
-    <span class="bx-pill ${recvd ? 'rc' : shipped ? 'sh' : 'op'}">${recvd ? 'Received' : shipped ? (/^PDF-/.test(b.box_no) ? 'PDF order sent' : 'Shipped') : 'Packing'}</span>
+    <span class="bx-pill ${recvd ? 'rc' : shipped ? 'sh' : 'op'}">${recvd ? 'Received' : shipped ? 'Shipped' : 'Packing'}</span>
     <span class="bx-sum">${n} item${n === 1 ? '' : 's'} added · ${units} unit${units === 1 ? '' : 's'}${uTotal ? ' · <b style="color:#e5484d">' + uTotal + ' over reported</b>' : ''}</span>
     <span class="bx-right">${(o.recv && live) ? '<button class="recvbox" data-recvbox="' + bxEsc(b.box_no) + '" title="Everything in this box arrived">Whole box received</button>' : ''}${shipped && d ? '<span>🚚 Shipped ' + bxFmt(d) + ' · ' + bxAgo(d) + '</span>' : ''}${url ? '<a class="bx-trkl" href="' + bxEsc(url) + '" target="_blank" rel="noopener noreferrer">🔗 Track parcel' + (b.tracking_no ? ' · ' + bxEsc(b.tracking_no) : '') + ' ↗</a>' : (b.tracking_no ? '<span>Tracking ' + bxEsc(b.tracking_no) + '</span>' : (shipped && o.trk ? '<span class="bx-trkl">＋ Add tracking</span>' : ''))}</span></div>`;
   const others = (o.openBoxes || []).filter(x => x !== b.box_no);
@@ -1475,6 +1476,7 @@ function ordHtml(i){
 }
 function lineHtml(o){
   const tip = ' title="' + esc(timeline(o)) + '"';
+  if (o.status === 'saved' && /^PDF-/.test(o.box_no || '')) return `<div class="ln"><span class="badge c-info ob-ord"${tip}>📄 Ordered ${o.qty} · ${esc(o.box_no)}</span><span class="sub">${dShort(o.saved_at)}</span></div>`;
   if (o.status === 'saved') return `<div class="ln"><span class="badge c-info ob-ord"${tip}>Ordered ${o.qty}</span><span class="sub">${dShort(o.saved_at)}</span><button class="x" data-cancel="${esc(o.id)}" title="Cancel this order line (only until the supplier boxes it)">×</button></div>`;
   if (o.status === 'added') return `<div class="ln"><span class="badge c-amber ob-pack"${tip}>📦 Packed ${eff(o)}${o.box_no ? ' · ' + esc(o.box_no) : ''}${o.claimed && o.supplier ? ' · ' + esc(o.supplier) : ''}</span>${o.wrong_pick ? '<span class="wp" title="Picked by a supplier this product is not tagged to">⚠ wrong pick</span>' : ''}<button class="x" data-cancel="${esc(o.id)}" title="Remove this line (the supplier loses it)">×</button></div>${lowFlag(o)}`;
   const d = shipDay(o), days = daysBetween(d, Date.now());
@@ -1494,8 +1496,8 @@ function liveHtml(live){
   let h = '';
   if (sv.length === 1) h += lineHtml(sv[0]);
   else if (sv.length > 1) {      // several order lines for one variant: one tile with the total
-    const q = sv.reduce((a, o) => a + o.qty, 0), last = newest(sv);
-    h += `<div class="ln"><span class="badge c-info ob-ord" title="${esc(sv.map(timeline).join(' | '))}">Ordered ${q}</span><button class="x" data-cancel="${esc(last.id)}" title="Cancel the latest order line (${last.qty})">×</button></div>`;
+    const q = sv.reduce((a, o) => a + o.qty, 0), cn = sv.filter(o => !/^PDF-/.test(o.box_no || '')), last = cn.length ? newest(cn) : null;
+    h += `<div class="ln"><span class="badge c-info ob-ord" title="${esc(sv.map(timeline).join(' | '))}">Ordered ${q}</span>${last ? `<button class="x" data-cancel="${esc(last.id)}" title="Cancel the latest order line (${last.qty})">×</button>` : ''}</div>`;
   }
   if (ad.length === 1) h += lineHtml(ad[0]);
   else if (ad.length > 1) {
@@ -2429,20 +2431,22 @@ $('svExport').addEventListener('click', async () => {
 });
 /* PDF orders: each exported file has a code (PDF-IN1-01) and its items are a shipped box with that code. Here: files still waiting to be received. */
 function pdfSec(who, pre) {
-  const open = new Set([...orders.values()].filter(r => r.status === 'shipped' && r.box_no).map(r => r.box_no));
-  const list = pdfEx.filter(e => e.status === 'sent' && open.has(e.code) && (!who || String(e.supplier).toLowerCase() === String(who).toLowerCase()));
-  const tile = e => { const c = pdfArm === 'c:' + e.code;
-    return `<section class="bx pdfx"><div class="bx-h"><span class="bx-title">📄 ${esc(e.code)} · ${esc(e.supplier)}</span><span class="bx-pill sh">PDF order sent</span>
+  const open = new Set([...orders.values()].filter(r => r.status === 'saved' && /^PDF-/.test(r.box_no || '')).map(r => r.box_no));
+  const list = pdfEx.filter(e => e.status === 'sent' && !e.shipped_at && open.has(e.code) && (!who || String(e.supplier).toLowerCase() === String(who).toLowerCase()));
+  const tile = e => { const c = pdfArm === 'c:' + e.code, sh = pdfArm === 's:' + e.code;
+    return `<section class="bx pdfx"><div class="bx-h"><span class="bx-title">📄 ${esc(e.code)} · ${esc(e.supplier)}</span><span class="bx-pill op">Ordered</span>
       <span class="bx-sum">${e.n} item${e.n === 1 ? '' : 's'} · ${e.units} unit${e.units === 1 ? '' : 's'} · exported ${bxFmt(new Date(e.created_at))}</span>
-      <span class="bx-right"><button data-pdfdl="${esc(e.code)}">Download again</button><button class="danger${c ? ' arm' : ''}" data-pdfcan="${esc(e.code)}">${c ? 'Tap again: put back on order list' : 'Exported by mistake?'}</button></span></div></section>`; };
-  return bxSec(pre + '-pdf', '📄 PDF orders', list.length ? bxPlural(list.length, 'file') + ' waiting to be received' : 'none waiting',
-    '<p class="sub" style="margin:0 0 10px">Exporting an order file moves its items off the Order list into a box with the file code. Receive it from Stock Take → Barcodes → Boxes and PDF orders; anything not received goes back to the Order list.</p>' + (list.length ? list.map(tile).join('') : '<div class="empty">No exported files waiting to be received.</div>'), {cls: 'pack', open: list.length > 0});
+      <span class="bx-right"><button data-pdfdl="${esc(e.code)}">Download again</button><button class="${sh ? 'arm' : ''}" data-pdfship="${esc(e.code)}">${sh ? 'Tap again: confirm shipped' : 'Mark shipped'}</button><button class="danger${c ? ' arm' : ''}" data-pdfcan="${esc(e.code)}">${c ? 'Tap again: put back on order list' : 'Exported by mistake?'}</button></span></div></section>`; };
+  return bxSec(pre + '-pdf', '📄 PDF orders', list.length ? bxPlural(list.length, 'file') + ' ordered, not shipped yet' : 'none waiting',
+    '<p class="sub" style="margin:0 0 10px">Exporting an order file moves its items off the Order list; they count as Ordered. When the supplier ships it, press Mark shipped, then receive it from Stock Take → Barcodes → Boxes and PDF orders. Anything not received goes back to the Order list.</p>' + (list.length ? list.map(tile).join('') : '<div class="empty">No exported files waiting to be shipped.</div>'), {cls: 'pack', open: list.length > 0});
 }
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-pdfdl],[data-pdfcan]'); if (!b) return;
-  const dl = b.getAttribute('data-pdfdl'), cn = b.getAttribute('data-pdfcan'), redraw = () => { renderBoxes(); renderSv(); };
+  const b = e.target.closest('[data-pdfdl],[data-pdfcan],[data-pdfship]'); if (!b) return;
+  const dl = b.getAttribute('data-pdfdl'), cn = b.getAttribute('data-pdfcan'), sp = b.getAttribute('data-pdfship'), redraw = () => { renderBoxes(); renderSv(); };
   try {
     if (dl) { b.disabled = true; await Store.exportAgain(dl); notify(dl + ' downloaded again', true); b.disabled = false; return; }
+    if (sp) { if (pdfArm !== 's:' + sp) { pdfArm = 's:' + sp; redraw(); return; }
+      pdfArm = ''; await Store.exportShipped(sp); notify(sp + ' marked shipped. Receive it from Stock Take → Barcodes.', true); await refresh(); redraw(); return; }
     if (pdfArm !== 'c:' + cn) { pdfArm = 'c:' + cn; redraw(); return; }
     pdfArm = ''; const n = await Store.exportCancel(cn); notify(cn + ' cancelled: ' + n + ' line(s) are back on the order list.', true); await refresh(); redraw();
   } catch (err) { pdfArm = ''; notify(err.message); try { await refresh(); } catch (x) {} redraw(); }
