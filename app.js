@@ -1761,7 +1761,7 @@
   const rpExportRows = (lines) => {
     const m = new Map();
     (Array.isArray(lines) ? lines : []).slice(0, 3000).forEach((l) => {
-      const k = String(l.product || l.image || l.id || "");
+      const k = String(l.pid || l.product || l.image || l.id || "");   // product id first: two different products can share a name
       if (!m.has(k)) m.set(k, { image: String(l.image || ""), pid: String(l.pid || ""), lines: [] });
       const g = m.get(k); if (!g.image && l.image) g.image = String(l.image);
       g.lines.push({ size: String(l.size || ""), qty: Number(l.qty) || 0 });
