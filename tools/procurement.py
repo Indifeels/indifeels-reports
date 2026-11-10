@@ -83,9 +83,11 @@ ORDERS = """{ orders{ edges{ node{ id cancelledAt processedAt lineItems{ edges{ 
 # every product that was ever on the site (active + archived; drafts never launched), with the real published date and stock/price
 FLOW_PRODUCTS = """{ products{ edges{ node{ id status createdAt
   metafield(namespace:"custom", key:"published_date_old"){ value }
+  disc: metafield(namespace:"custom", key:"discountinued"){ value }
   variants{ edges{ node{ id inventoryQuantity price } } } } } } }"""
 
-# Introduced vs cleared. Eligibility = the Restock Planner's units-sold-per-day rule (days since published / units sold < 50 days).
+# Introduced vs cleared. Eligibility = the Restock Planner's "D.U new" rule: days on market / units sold < 50, where the clock
+# stops at the last sale once the product is sold out or discontinued (instead of running to today).
 FLOW_TEST_DAYS = 30      # published in the last 30 days = still in testing: left out of the graphs and totals
 FLOW_MAX_DTS = 50        # same as MAX_PRODUCT_DTS in tools/restock_plan_template.html
 
@@ -256,7 +258,8 @@ def flow_aggregate(prod_lines, order_lines, today=None):
     sale value after line discounts. Still on shelf = today's stock units and value (at sale price) grouped by the month the
     product was published, plus units those products have sold to date (for sell-through). Shopify does not store the
     original buy quantity, so there is deliberately NO historical stock-level or "value introduced" series.
-    Group (today's status, applied to the whole history): g='e' eligible, 'n' not eligible (no sales, or 50+ days per unit),
+    Group (today's status, applied to the whole history): g='e' eligible, 'n' not eligible (no sales, or 50+ days per unit;
+    days on market stop at the last sale when the product is sold out or discontinued, same as D.U new in the Restock Planner),
     't' testing (published under 30 days ago: shown on a tile only), 'x' migrated with no published date (never guessed).
     Parked / discontinued do not matter here."""
     today = today or dt.datetime.now(rp.MEL).date()
@@ -275,7 +278,8 @@ def flow_aggregate(prod_lines, order_lines, today=None):
         else:
             published = rp.melbourne_day(l["createdAt"])
         products[l["id"]] = {"id": rp.num(l["id"]), "published": published, "stock": 0, "value": 0.0, "prices": [],
-                             "sold": 0, "monthly": {}}
+                             "sold": 0, "monthly": {}, "last": "",
+                             "disc": ((l.get("disc") or {}).get("value") or "").strip().lower() in ("yes", "true", "1")}
     for l in prod_lines:
         P = products.get(l.get("__parentId"))
         if P and "/ProductVariant/" in l.get("id", ""):
@@ -303,6 +307,8 @@ def flow_aggregate(prod_lines, order_lines, today=None):
             unmapped_rev += rev
             continue
         P["sold"] += q
+        if day > P["last"]:
+            P["last"] = day
         cur = P["monthly"].setdefault(day[:7], [0, 0.0])
         cur[0] += q
         cur[1] += rev
@@ -320,7 +326,12 @@ def flow_aggregate(prod_lines, order_lines, today=None):
             g = "x"
         else:
             days = max(0, (today - dt.date.fromisoformat(P["published"])).days)
-            g = "t" if days < FLOW_TEST_DAYS else ("e" if P["sold"] > 0 and days / P["sold"] < FLOW_MAX_DTS else "n")
+            # D.U new: clock stops at the last sale once sold out or discontinued; at least 1 day (same as the planner)
+            end = today
+            if (P["disc"] or P["stock"] <= 0) and P["last"]:
+                end = min(today, dt.date.fromisoformat(P["last"]))
+            days_n = max(1, (end - dt.date.fromisoformat(P["published"])).days)
+            g = "t" if days < FLOW_TEST_DAYS else ("e" if P["sold"] > 0 and days_n / P["sold"] < FLOW_MAX_DTS else "n")
         s = snap[g]
         s["products"] += 1
         s["stocked"] += 1 if P["stock"] > 0 else 0

@@ -212,7 +212,7 @@ function renderFlow(){
   {const t={e:rows.reduce((a,r)=>a+r.e,0),n:rows.reduce((a,r)=>a+r.n,0),sold:rows.reduce((a,r)=>a+r.sold,0),shelf:rows.reduce((a,r)=>a+r.shelf,0)};h+=`<div class="ft t"><span>Total</span><span class="e">${f(t.e)}</span><span class="n">${f(t.n)}</span>${pl(share(t))}</div>`}
   $('#ftable').innerHTML=h;
   $('#fnote').innerHTML=esc(v==='intro'?FNOTE.intro:FNOTE[v][u])+' '+(st.ffy?'Financial year '+esc(st.ffy)+' runs July to June; tap All years to go back.':'Tap a year to see its months.')+(rows.some(r=>r.p.part)?' * part year.':'')+
-    '<br>Eligible = the Restock Planner rule (days since published ÷ units sold under '+F.maxDts+'); no sales = not eligible. Each product keeps today’s status across its whole history. Elig % is green at 60%+, amber 40–59%, red under 40%.<br>Shopify does not keep your original buy quantities, so there is no history of past stock levels here: only what was introduced, what sold, and what is on the shelf now.'+
+    '<br>Eligible = the Restock Planner’s D.U new rule: days on market ÷ units sold under '+F.maxDts+'; the clock stops at the last sale once a product is sold out or discontinued; no sales = not eligible. Each product keeps today’s status across its whole history. Elig % is green at 60%+, amber 40–59%, red under 40%.<br>Shopify does not keep your original buy quantities, so there is no history of past stock levels here: only what was introduced, what sold, and what is on the shelf now.'+
     (F.unmapped&&F.unmapped.units?'<br>Left out: '+fmt(F.unmapped.units)+' units ('+money(F.unmapped.value)+') sold on custom items or products no longer in the store.':'');
 }
 $('#fview').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.fview=b.dataset.v;save();renderFlow()}});
