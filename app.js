@@ -1681,31 +1681,59 @@
       catch (err) { reply({ type: kind + "-result", req: d.req, ok: false, error: String(err?.message || err || "Failed").slice(0, 200) }); }
     });
   }
-  // Minimal .xlsx writer (stored zip, no library): Image (=IMAGE formula, 300 x 400 px), Size, Quantity
-  const xlsxBytes = (rows) => {
+  // Minimal .xlsx writer (stored zip, no library): Image (real embedded photo, 300 x 400 px), Size, Quantity
+  const xlsxBytes = async (rows) => {
     const enc = new TextEncoder(), esc = (v) => String(v == null ? "" : v).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "");
     const fx = (u) => String(u).replace(/"/g, "");
+    // download each product photo once, fit it into 300 x 400 and embed it as a real picture (works in Excel and Google Sheets)
+    const pics = new Map(), urls = [...new Set(rows.map((r) => (/^https:\/\//i.test(r.image || "") ? r.image : "")).filter(Boolean))];
+    const grab = async (url) => {
+      let blob = null;
+      for (const u of [(() => { try { const x = new URL(url); x.searchParams.set("width", "600"); return x.href; } catch (_) { return url; } })(), url]) {
+        try { const resp = await fetch(u, { mode: "cors" }); if (resp.ok) { blob = await resp.blob(); break; } } catch (_) {}
+      }
+      if (!blob) return;
+      try {
+        const bmp = await createImageBitmap(blob), W = 300, H = 400, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+        const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+        const k = Math.min(W / bmp.width, H / bmp.height), w = bmp.width * k, h = bmp.height * k;
+        g.drawImage(bmp, (W - w) / 2, (H - h) / 2, w, h);
+        const out = await new Promise((res) => cv.toBlob(res, "image/jpeg", 0.85));
+        pics.set(url, { bytes: new Uint8Array(await out.arrayBuffer()), id: 0 });
+      } catch (_) {}
+    };
+    let qi = 0; await Promise.all(Array.from({ length: 6 }, async () => { while (qi < urls.length) await grab(urls[qi++]); }));
+    let pn = 0; pics.forEach((p) => { p.id = ++pn; });
     const cell = (ref, v, st) => `<c r="${ref}" t="inlineStr" s="${st}"><is><t>${esc(v)}</t></is></c>`;
     let sd = `<row r="1" ht="24" customHeight="1">${cell("A1", "Image", 1)}${cell("B1", "Size variant", 1)}${cell("C1", "Quantity", 1)}</row>`;
     rows.forEach((r, i) => {
       const n = i + 2, url = /^https:\/\//i.test(r.image || "") ? r.image : "";
-      const img = url ? `<c r="A${n}" t="str" s="2"><f>_xlfn.IMAGE("${esc(fx(url))}","",3,400,300)</f><v></v></c>` : `<c r="A${n}" s="2"/>`;
+      const img = url && pics.has(url) ? `<c r="A${n}" s="2"/>` : url ? `<c r="A${n}" t="str" s="2"><f>_xlfn.IMAGE("${esc(fx(url))}","",3,400,300)</f><v></v></c>` : `<c r="A${n}" s="2"/>`;
       sd += `<row r="${n}" ht="300" customHeight="1">${img}${cell("B" + n, r.size, 3)}<c r="C${n}" s="3"><v>${Math.max(0, Math.trunc(Number(r.qty) || 0))}</v></c></row>`;
     });
     const files = {
-      "[Content_Types].xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+      "[Content_Types].xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
       "_rels/.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
       "xl/workbook.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Order list" sheetId="1" r:id="rId1"/></sheets><calcPr fullCalcOnLoad="1"/></workbook>',
       "xl/_rels/workbook.xml.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
       "xl/styles.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="12"/><name val="Calibri"/></font><font><sz val="16"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
-      "xl/worksheets/sheet1.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="43" customWidth="1"/><col min="2" max="2" width="22" customWidth="1"/><col min="3" max="3" width="12" customWidth="1"/></cols><sheetData>' + sd + "</sheetData></worksheet>",
+      "xl/worksheets/sheet1.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="43" customWidth="1"/><col min="2" max="2" width="22" customWidth="1"/><col min="3" max="3" width="12" customWidth="1"/></cols><sheetData>' + sd + "</sheetData>" + (pics.size ? '<drawing r:id="rId1"/>' : "") + "</worksheet>",
     };
+    if (pics.size) {
+      let an = "", k = 0;
+      rows.forEach((r, i) => { const p = pics.get(/^https:\/\//i.test(r.image || "") ? r.image : ""); if (!p) return; k++;
+        an += `<xdr:oneCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>28575</xdr:colOff><xdr:row>${i + 1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:ext cx="2857500" cy="3810000"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${k + 1}" name="Picture ${k}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="rId${p.id}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="2857500" cy="3810000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`; });
+      files["xl/worksheets/_rels/sheet1.xml.rels"] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>';
+      files["xl/drawings/drawing1.xml"] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' + an + "</xdr:wsDr>";
+      files["xl/drawings/_rels/drawing1.xml.rels"] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + [...pics.values()].map((p) => `<Relationship Id="rId${p.id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${p.id}.jpg"/>`).join("") + "</Relationships>";
+      pics.forEach((p) => { files["xl/media/image" + p.id + ".jpg"] = p.bytes; });
+    }
     const T = new Uint32Array(256); for (let i = 0; i < 256; i++) { let c = i; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; T[i] = c >>> 0; }
     const crc = (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
     const parts = [], cen = []; let off = 0;
     const u16 = (n) => [n & 255, (n >>> 8) & 255], u32 = (n) => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255];
     for (const [name, text] of Object.entries(files)) {
-      const nb = enc.encode(name), db = enc.encode(text), c = crc(db);
+      const nb = enc.encode(name), db = typeof text === "string" ? enc.encode(text) : text, c = crc(db);
       const lh = Uint8Array.from([0x50, 0x4b, 3, 4, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0, ...u32(c), ...u32(db.length), ...u32(db.length), ...u16(nb.length), 0, 0]);
       parts.push(lh, nb, db);
       cen.push(Uint8Array.from([0x50, 0x4b, 1, 2, 20, 0, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0, ...u32(c), ...u32(db.length), ...u32(db.length), ...u16(nb.length), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...u32(off)]), nb);
@@ -1775,7 +1803,7 @@
       const rows = (Array.isArray(d.rows) ? d.rows : []).slice(0, 3000).map((r) => ({ image: String(r.image || ""), size: String(r.size || ""), qty: Number(r.qty) || 0 }));
       if (!rows.length) throw new Error("Nothing to export");
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(xlsxBytes(rows));
+      a.href = URL.createObjectURL(await xlsxBytes(rows));
       a.download = String(d.filename || "order-list.xlsx").replace(/[^\w.-]/g, "_");
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
