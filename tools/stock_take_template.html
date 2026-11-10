@@ -260,7 +260,7 @@ select,input[type=text],input[type=date],input[type=time],.ssb{background:var(--
       <div class="flows" id="wzFlows">
         <button type="button" data-f="new"><b>New products</b><small>Recently added, one label per piece uploaded</small></button>
         <button type="button" data-f="upd"><b>Latest changes</b><small>Pick a date and time: new products and stock you added since</small></button>
-        <button type="button" data-f="box"><b>Boxes</b><small>Packed or shipped supplier boxes</small></button>
+        <button type="button" data-f="box"><b>Boxes and PDF orders</b><small>Supplier boxes and the order files you sent</small></button>
         <button type="button" data-f="col"><b>Collection / product</b><small>Pick a collection or scan a product</small></button>
       </div>
       <div id="wzWait" hidden style="margin-top:10px"><button type="button" id="wzGoPrint" style="width:100%;text-align:left;padding:12px 14px"><b id="wzWaitT"></b><small style="display:block;color:var(--muted)">Already in the label list. Tap to go to printing.</small></button></div>
@@ -1893,7 +1893,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       const all = boxes(), sups = [...new Set(all.map(x => x.sup).filter(Boolean))].sort(), sel = $('bxSup').value;
       $('bxSup').innerHTML = '<option value="">All suppliers</option>' + sups.map(x => `<option${x === sel ? ' selected' : ''}>${E(x)}</option>`).join('');
       const b = sel ? all.filter(x => x.sup === sel) : all;
-      $('bxTiles').innerHTML = b.length ? b.map(x => `<button type="button" data-b="${E(x.box)}" class="${x.box === box ? 'in' : ''}">${E(x.box)}${x.sup ? ' · ' + E(x.sup) : ''}<small>${x.shipped ? 'Shipped' + (x.date ? ' ' + new Date(x.date).toLocaleDateString() : '') : 'Packed (not shipped)'} · ${x.units} pcs</small></button>`).join('') : '<div class="empty">No packed or shipped boxes waiting.</div>';
+      $('bxTiles').innerHTML = b.length ? b.map(x => `<button type="button" data-b="${E(x.box)}" class="${x.box === box ? 'in' : ''}">${E(x.box)}${x.sup ? ' · ' + E(x.sup) : ''}<small>${x.shipped ? (/^PDF-/.test(x.box) ? 'PDF order sent' : 'Shipped') + (x.date ? ' ' + new Date(x.date).toLocaleDateString() : '') : 'Packed (not shipped)'} · ${x.units} pcs</small></button>`).join('') : '<div class="empty">No packed or shipped boxes waiting.</div>';
     }
     function drawLines() {
       $('bxDetail').hidden = !box; if (!box) return;

@@ -1682,7 +1682,7 @@
     });
   }
   // Minimal .xlsx writer (stored zip, no library): Image (real embedded photo, 300 x 400 px), Size, Quantity
-  const xlsxBytes = async (rows) => {
+  const xlsxBytes = async (rows, sheetName) => {
     const enc = new TextEncoder(), esc = (v) => String(v == null ? "" : v).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "");
     const fx = (u) => String(u).replace(/"/g, "");
     // download each product photo once, fit it into 300 x 400 and embed it as a real picture (works in Excel and Google Sheets)
@@ -1714,7 +1714,7 @@
     const files = {
       "[Content_Types].xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
       "_rels/.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
-      "xl/workbook.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Order list" sheetId="1" r:id="rId1"/></sheets><calcPr fullCalcOnLoad="1"/></workbook>',
+      "xl/workbook.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' + esc(String(sheetName || "Order list").replace(/[\\\/?*\[\]:]/g, "-").slice(0, 31)) + '" sheetId="1" r:id="rId1"/></sheets><calcPr fullCalcOnLoad="1"/></workbook>',
       "xl/_rels/workbook.xml.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
       "xl/styles.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="12"/><name val="Calibri"/></font><font><sz val="16"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
       "xl/worksheets/sheet1.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="43" customWidth="1"/><col min="2" max="2" width="22" customWidth="1"/><col min="3" max="3" width="12" customWidth="1"/></cols><sheetData>' + sd + "</sheetData>" + (pics.size ? '<drawing r:id="rId1"/>' : "") + "</worksheet>",
@@ -1743,6 +1743,16 @@
     const end = Uint8Array.from([0x50, 0x4b, 5, 6, 0, 0, 0, 0, ...u16(n), ...u16(n), ...u32(cl), ...u32(off), 0, 0]);
     return new Blob([...parts, ...cen, end], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   };
+  // download an order file; every file made from an export code is named after it, e.g. Order-PDF-IN1-01-Indian-Needle.xlsx
+  const rpDownloadXlsx = async (name, rows, sheet) => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(await xlsxBytes(rows, sheet));
+    a.download = String(name).replace(/[^\w.-]/g, "_");
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  };
+  const rpExportRows = (lines) => (Array.isArray(lines) ? lines : []).slice(0, 3000).map((l) => ({ image: String(l.image || ""), size: String(l.size || ""), qty: Number(l.qty) || 0 }));
+  const rpExportName = (code, sup) => "Order-" + code + "-" + String(sup || "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const rpOk = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
   async function rpStockCall(body, fallback) {
     const { data, error } = await sb.functions.invoke("restock-stock", { body });
@@ -1809,6 +1819,19 @@
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       return true;
     },
+    exportcreate: async (d) => {
+      const r = rpOk(await sb.rpc("restock_owner_export_create", { p_supplier: rpText(d.supplier, 100), p_ids: (Array.isArray(d.ids) ? d.ids : []).slice(0, 1000).map((x) => rpText(x, 140)) }));
+      await rpDownloadXlsx(rpExportName(r.code, r.supplier) + ".xlsx", rpExportRows(r.lines), r.code);
+      return { code: r.code, n: (r.lines || []).length, units: r.units, skipped: r.skipped };
+    },
+    exportlist: async () => rpOk(await sb.rpc("restock_owner_export_list")) || [],
+    exportagain: async (d) => {
+      const e = (rpOk(await sb.rpc("restock_owner_export_list")) || []).find((x) => x.code === d.code);
+      if (!e) throw new Error("File not found");
+      await rpDownloadXlsx(rpExportName(e.code, e.supplier) + ".xlsx", rpExportRows(e.lines), e.code);
+      return true;
+    },
+    exportcancel: async (d) => rpOk(await sb.rpc("restock_owner_export_cancel", { p_code: rpText(d.code, 60) })),
     taglist: async () => rpOk(await sb.rpc("restock_owner_tag_list")) || [],
     parklist: async () => rpOk(await sb.from("restock_parked").select("product_id,parked")) || [],
     hidelist: async () => rpOk(await sb.from("restock_hidden_sizes").select("vkey")) || [],
