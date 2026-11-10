@@ -81,10 +81,10 @@
   "reason": ""
  },
  "procurement": {
-  "at": "2026-11-10T21:42+11:00",
-  "code_sha": "7b44641e6478e6fbd05748752ab75340d00487dc",
+  "at": "2026-11-10T21:51+11:00",
+  "code_sha": "bf5c59bd1c902859d150630449b4cdb991eafe8a",
   "data_through": null,
-  "last_ok": "2026-11-10T21:42+11:00",
+  "last_ok": "2026-11-10T21:51+11:00",
   "manifest_version": "2026-10-19.stock-take.1",
   "ok": true,
   "reason": ""
