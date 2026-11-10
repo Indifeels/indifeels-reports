@@ -249,12 +249,13 @@ def fy_label(month):
 
 
 def flow_aggregate(prod_lines, order_lines, today=None):
-    """Products introduced vs cleared per month, eligible vs not eligible.
+    """Products introduced vs cleared per month, eligible vs not eligible. Real data only.
 
-    Introduced = month of the real published date (published_date_old for products migrated from WooCommerce, else the
-    created date). Units introduced = stock now + units ever sold (the original buy quantity is not stored), valued at the
-    product's average variant sale price. Cleared = real sale date (processedAt) of each order line: units, and the actual
-    sale value after line discounts. List-priced cleared value is kept too so the stock-on-hand line ends on today's stock.
+    Introduced = products by the month of their real published date (published_date_old for products migrated from
+    WooCommerce, else the created date). Cleared = real sale date (processedAt) of each order line: units, and the actual
+    sale value after line discounts. Still on shelf = today's stock units and value (at sale price) grouped by the month the
+    product was published, plus units those products have sold to date (for sell-through). Shopify does not store the
+    original buy quantity, so there is deliberately NO historical stock-level or "value introduced" series.
     Group (today's status, applied to the whole history): g='e' eligible, 'n' not eligible (no sales, or 50+ days per unit),
     't' testing (published under 30 days ago: shown on a tile only), 'x' migrated with no published date (never guessed).
     Parked / discontinued do not matter here."""
@@ -310,7 +311,9 @@ def flow_aggregate(prod_lines, order_lines, today=None):
 
     months = {}
     snap = {g: {"products": 0, "stocked": 0, "units": 0, "value": 0.0} for g in "entx"}
-    slot = lambda m: months.setdefault(m, {g: [0, 0, 0.0, 0, 0.0, 0.0] for g in "en"})   # intro products, intro units, intro value, sold units, sold value, sold at list
+    slot = lambda m: months.setdefault(m, {g: [0, 0, 0.0, 0, 0.0] for g in "en"})   # intro products, sold units (by sale month), sold value (by sale month), shelf units, shelf value
+    cohort = lambda m: cohorts.setdefault(m, {g: [0, 0] for g in "en"})            # products published that month: units sold to date, products still stocked
+    cohorts = {}
     for P in products.values():
         avg = sum(P["prices"]) / len(P["prices"]) if P["prices"] else 0.0
         if not P["published"]:
@@ -326,13 +329,15 @@ def flow_aggregate(prod_lines, order_lines, today=None):
         if g in "en":
             a = slot(P["published"][:7])[g]
             a[0] += 1
-            a[1] += P["stock"] + P["sold"]
-            a[2] += (P["stock"] + P["sold"]) * avg
+            a[3] += P["stock"]
+            a[4] += P["value"]
+            c = cohort(P["published"][:7])[g]
+            c[0] += P["sold"]
+            c[1] += 1 if P["stock"] > 0 else 0
             for m, (u, rev) in P["monthly"].items():
                 b = slot(m)[g]
-                b[3] += u
-                b[4] += rev
-                b[5] += u * avg
+                b[1] += u
+                b[2] += rev
     if not months:
         return None
     last = max(max(months), today.strftime("%Y-%m"))
@@ -346,7 +351,9 @@ def flow_aggregate(prod_lines, order_lines, today=None):
     out = {"asOf": today.isoformat(), "months": keys, "testDays": FLOW_TEST_DAYS, "maxDts": FLOW_MAX_DTS,
            "drafts": drafts, "unmapped": {"units": unmapped_units, "value": round(unmapped_rev)}}
     for g in "en":
-        out[g] = {n: [round(months.get(k, {}).get(g, [0] * 6)[i]) for k in keys] for i, n in enumerate(("ic", "iu", "iv", "su", "sv", "sl"))}
+        out[g] = {n: [round(months.get(k, {}).get(g, [0] * 5)[i]) for k in keys] for i, n in enumerate(("ic", "su", "sv", "ku", "kv"))}
+        out[g]["pu"] = [round(cohorts.get(k, {}).get(g, [0, 0])[0]) for k in keys]       # units sold to date by products published that month
+        out[g]["ks"] = [round(cohorts.get(k, {}).get(g, [0, 0])[1]) for k in keys]       # of those products, how many still have stock
     out["snap"] = {g: {k: (round(v) if k == "value" else v) for k, v in s.items()} for g, s in snap.items()}
     return out
 

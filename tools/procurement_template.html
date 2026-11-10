@@ -49,7 +49,7 @@ select{font:inherit;font-size:13px;color:var(--fg);background:var(--tile2);borde
 <div class="top"><div><h1>Procurement</h1><div class="sub" id="src"></div></div><button class="btn" id="theme" type="button">Light</button></div>
 <div class="box" id="flowbox" hidden><p class="ttl"><span>Introduced vs cleared</span><em id="flowsub"></em></p>
 <div class="tiles" id="flowtiles"></div>
-<div class="ctl" style="margin-top:10px"><span class="seg" id="fview"><button data-v="intro">Introduced</button><button data-v="clear">Cleared</button><button data-v="hand">On hand</button></span><span class="seg" id="funit"><button data-u="count">Count</button><button data-u="value">Value</button></span></div>
+<div class="ctl" style="margin-top:10px"><span class="seg" id="fview"><button data-v="intro">Introduced</button><button data-v="clear">Cleared</button><button data-v="shelf">On shelf today</button></span><span class="seg" id="funit"><button data-u="count">Count</button><button data-u="value">Value</button></span></div>
 <div class="chips" id="fychips"></div><div id="fchart"></div>
 <div class="legend"><span><i class="ln" style="background:var(--g)"></i>Eligible</span><span><i class="ln" style="background:var(--r)"></i>Not eligible</span></div>
 <div id="ftable" style="margin-top:8px"></div><div class="note" id="fnote"></div></div>
@@ -155,16 +155,16 @@ const mlab=k=>MON[+k.slice(5,7)-1]+' '+k.slice(2,4);
 const money=n=>{const a=Math.abs(n),s=n<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(2)+'M':a>=1e4?s+'$'+Math.round(a/1e3)+'k':a>=1e3?s+'$'+(a/1e3).toFixed(1)+'k':s+'$'+Math.round(a)};
 function flowSeries(g,view,unit){
   const x=F[g];
-  if(view==='intro')return unit==='count'?x.ic:x.iv;
+  if(view==='intro')return x.ic;
   if(view==='clear')return unit==='count'?x.su:x.sv;
-  const a=unit==='count'?x.iu:x.iv,b=unit==='count'?x.su:x.sl;let run=0;return a.map((v,i)=>run+=v-b[i]);
+  return unit==='count'?x.ku:x.kv;
 }
 function flowPeriods(){
   const by={};F.months.forEach((k,i)=>{(by[fyOf(k)]=by[fyOf(k)]||[]).push(i)});
   if(st.ffy&&by[st.ffy])return by[st.ffy].map(i=>({label:mlab(F.months[i]),idx:[i]}));
   return Object.keys(by).sort().map(f=>({label:f,fy:f,idx:by[f],part:by[f].length<12}));
 }
-const flowAgg=(arr,idx,view)=>view==='hand'?arr[idx[idx.length-1]]:idx.reduce((a,i)=>a+arr[i],0);
+const flowAgg=(arr,idx)=>idx.reduce((a,i)=>a+arr[i],0);
 function flowChart(rows,u){
   const W=360,H=176,L=46,R=24,T=16,B=22,f=u==='value'?money:fmt;
   const vals=rows.flatMap(r=>[r.e,r.n]),mx=Math.max(1,...vals),mn=Math.min(0,...vals),span=(mx-mn)||1;
@@ -180,14 +180,16 @@ function flowChart(rows,u){
   return s+'</svg>';
 }
 const FNOTE={
-  intro:{count:'Products introduced, by their real published date (published_date_old for migrated products).',value:'Units ever stocked (stock now + units sold) at sale price, by published month. The original buy quantity is not stored, so this is the stock you carried at the start.'},
+  intro:'Products introduced, by their real published date (published_date_old for migrated products).',
   clear:{count:'Units sold, by the real order date.',value:'What the units actually sold for after line discounts, by the real order date.'},
-  hand:{count:'Units on hand, running total (introduced minus sold). Ends on today’s stock.',value:'Stock value at sale price, running total (introduced minus sold). Ends on today’s stock value.'}};
+  shelf:{count:'Units on the shelf today, grouped by the year or month the product was published. Sold % = units those products have sold to date ÷ (sold + still on the shelf).',value:'Stock value on the shelf today at sale price, grouped by the year or month the product was published. Sold % = units those products have sold to date ÷ (sold + still on the shelf).'}};
 function renderFlow(){
   const box=$('#flowbox');
   if(!F||!F.months||!F.months.length){box.hidden=true;return}
   box.hidden=false;
-  const S=F.snap,v=st.fview,u=st.funit,f=u==='value'?money:fmt;
+  if(!['intro','clear','shelf'].includes(st.fview))st.fview='intro';
+  const S=F.snap,v=st.fview,u=v==='intro'?'count':st.funit,f=u==='value'?money:fmt;
+  $('#funit').style.display=v==='intro'?'none':'';
   $('#flowsub').textContent='as of '+F.asOf+' · eligible = under '+F.maxDts+' days to sell 1 unit';
   const tiles=[[money(S.e.value),'eligible stock · '+fmt(S.e.units)+' units, '+fmt(S.e.stocked)+' products','g'],
     [money(S.n.value),'not eligible stock · '+fmt(S.n.units)+' units, '+fmt(S.n.stocked)+' products','r'],
@@ -200,16 +202,17 @@ function renderFlow(){
   if(st.ffy&&!fys.includes(st.ffy))st.ffy=null;
   $('#fychips').innerHTML=[['','All years'],...fys.map(x=>[x,x])].map(([k,l])=>`<button data-f="${k}" class="${(st.ffy||'')===k?'on':''}">${l}</button>`).join('');
   const P=flowPeriods(),E=flowSeries('e',v,u),N=flowSeries('n',v,u);
-  const rows=P.map(p=>({p,e:flowAgg(E,p.idx,v),n:flowAgg(N,p.idx,v)}));
+  const PU=F.e.pu.map((x,i)=>x+F.n.pu[i]),KU=F.e.ku.map((x,i)=>x+F.n.ku[i]);
+  const rows=P.map(p=>({p,e:flowAgg(E,p.idx),n:flowAgg(N,p.idx),sold:flowAgg(PU,p.idx),shelf:flowAgg(KU,p.idx)}));
   $('#fchart').innerHTML=flowChart(rows,u);
-  const share=r=>{const t=r.e+r.n;return t>0?r.e/t:null};
-  const pl=s=>s==null?'<span class="pill p-n">–</span>':`<span class="pill p-${s>=.6?'g':s>=.4?'a':'r'}">${Math.round(s*100)}%</span>`;
-  let h=`<div class="ft h"><span>${st.ffy?'Month':'Year'}</span><span>Eligible</span><span>Not eligible</span><span>Elig %</span></div>`;
+  const share=v==='shelf'?(r=>{const t=r.sold+r.shelf;return t>0?r.sold/t:null}):(r=>{const t=r.e+r.n;return t>0?r.e/t:null});
+  const pl=s=>s==null?'<span class="pill p-n">–</span>':v==='shelf'?`<span class="pill p-n">${Math.round(s*100)}%</span>`:`<span class="pill p-${s>=.6?'g':s>=.4?'a':'r'}">${Math.round(s*100)}%</span>`;
+  let h=`<div class="ft h"><span>${st.ffy?'Month':'Year'}</span><span>Eligible</span><span>Not eligible</span><span>${v==='shelf'?'Sold %':'Elig %'}</span></div>`;
   h+=rows.map(r=>`<div class="ft${st.ffy?'':' r'}"${st.ffy?'':` data-f="${r.p.fy}"`}><b>${esc(r.p.label)}${r.p.part?'*':''}</b><span class="e">${f(r.e)}</span><span class="n">${f(r.n)}</span>${pl(share(r))}</div>`).join('');
-  if(v!=='hand'){const t={e:rows.reduce((a,r)=>a+r.e,0),n:rows.reduce((a,r)=>a+r.n,0)};h+=`<div class="ft t"><span>Total</span><span class="e">${f(t.e)}</span><span class="n">${f(t.n)}</span>${pl(share(t))}</div>`}
+  {const t={e:rows.reduce((a,r)=>a+r.e,0),n:rows.reduce((a,r)=>a+r.n,0),sold:rows.reduce((a,r)=>a+r.sold,0),shelf:rows.reduce((a,r)=>a+r.shelf,0)};h+=`<div class="ft t"><span>Total</span><span class="e">${f(t.e)}</span><span class="n">${f(t.n)}</span>${pl(share(t))}</div>`}
   $('#ftable').innerHTML=h;
-  $('#fnote').innerHTML=esc(FNOTE[v][u])+' '+(st.ffy?'Financial year '+esc(st.ffy)+' runs July to June; tap All years to go back.':'Tap a year to see its months.')+(rows.some(r=>r.p.part)?' * part year.':'')+
-    '<br>Eligible = the Restock Planner rule (days since published ÷ units sold under '+F.maxDts+'); no sales = not eligible. Each product keeps today’s status across its whole history. Elig % is green at 60%+, amber 40–59%, red under 40%.'+
+  $('#fnote').innerHTML=esc(v==='intro'?FNOTE.intro:FNOTE[v][u])+' '+(st.ffy?'Financial year '+esc(st.ffy)+' runs July to June; tap All years to go back.':'Tap a year to see its months.')+(rows.some(r=>r.p.part)?' * part year.':'')+
+    '<br>Eligible = the Restock Planner rule (days since published ÷ units sold under '+F.maxDts+'); no sales = not eligible. Each product keeps today’s status across its whole history. Elig % is green at 60%+, amber 40–59%, red under 40%.<br>Shopify does not keep your original buy quantities, so there is no history of past stock levels here: only what was introduced, what sold, and what is on the shelf now.'+
     (F.unmapped&&F.unmapped.units?'<br>Left out: '+fmt(F.unmapped.units)+' units ('+money(F.unmapped.value)+') sold on custom items or products no longer in the store.':'');
 }
 $('#fview').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.fview=b.dataset.v;save();renderFlow()}});
