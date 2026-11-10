@@ -49,6 +49,7 @@ select{font:inherit;font-size:13px;color:var(--fg);background:var(--tile2);borde
 <div class="top"><div><h1>Procurement</h1><div class="sub" id="src"></div></div><button class="btn" id="theme" type="button">Light</button></div>
 <div class="box" id="flowbox" hidden><p class="ttl"><span>Introduced vs cleared</span><em id="flowsub"></em></p>
 <div class="tiles" id="flowtiles"></div>
+<div id="supbox" hidden></div>
 <div class="ctl" style="margin-top:10px"><span class="seg" id="fview"><button data-v="intro">Introduced</button><button data-v="clear">Cleared</button><button data-v="shelf">On shelf today</button></span><span class="seg" id="funit"><button data-u="count">Count</button><button data-u="value">Value</button></span><span class="seg" id="fcum"><button data-c="0">By year</button><button data-c="1">Cumulative</button></span></div>
 <div class="chips" id="fychips"></div><div id="fchart"></div>
 <div class="legend"><span><i class="ln" style="background:var(--g)"></i>Eligible</span><span><i class="ln" style="background:var(--r)"></i>Not eligible</span></div>
@@ -197,6 +198,7 @@ function renderFlow(){
     [fmt(S.t.products),'IN TESTING (published in the last '+F.testDays+' days), not counted above: '+fmt(S.t.stocked)+' in stock, '+money(S.t.value)+' stock value.','b']];
   if(S.x.products)tiles.push([fmt(S.x.products),'NO PUBLISH DATE, not counted above: '+fmt(S.x.stocked)+' in stock, '+fmt(S.x.units)+' units.','a']);
   const G=['e','n','t','x'],TP=G.reduce((a,g)=>a+S[g].products,0),TS=G.reduce((a,g)=>a+S[g].stocked,0);
+  renderSup();
   $('#flowtiles').innerHTML=tiles.map(t=>`<div class="tile"><b style="color:var(--${t[2]})">${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join('')+
     `<div class="note" style="grid-column:1/-1">All ${fmt(TP)} products (active and archived, drafts left out) = ${fmt(S.e.products)} eligible + ${fmt(S.n.products)} not eligible + ${fmt(S.t.products)} in testing`+(S.x.products?` + ${fmt(S.x.products)} no date`:'')+`. ${fmt(TS)} of them have stock on the shelf; ${fmt(TP-TS)} are sold out. The big dollar and product numbers above count only products that still have stock.</div>`;
   document.querySelectorAll('#fview button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
@@ -220,6 +222,20 @@ function renderFlow(){
     '<br>Eligible = the Restock Planner’s D.U new rule: days on market ÷ units sold under '+F.maxDts+'; the clock stops at the last sale once a product is sold out or discontinued; no sales = not eligible. Each product keeps today’s status across its whole history. Elig % is green at 60%+, amber 40–59%, red under 40%.<br>Shopify does not keep your original buy quantities, so there is no history of past stock levels here: only what was introduced, what sold, and what is on the shelf now.'+
     (F.unmapped&&F.unmapped.units?'<br>Left out: '+fmt(F.unmapped.units)+' units ('+money(F.unmapped.value)+') sold on custom items or products no longer in the store.':'');
 }
+function renderSup(){
+  const box=$('#supbox'),X=F&&F.sup;
+  if(!X||!X.rows.length){box.hidden=true;return}
+  box.hidden=false;
+  const A=X.cov.active,O=X.cov.other,tot=A.has+A.missing,key=st.ssort||'dts';
+  const rows=X.rows.filter(r=>r.dts!=null).sort((a,b)=>key==='dts'?a.dts-b.dts:key==='slow'?b.dts-a.dts:b[key]-a[key]);
+  const sorts=[['dts','Fastest selling'],['slow','Slowest'],['sold','Most units'],['upp','Per product'],['upv','Per variant']],g='grid-template-columns:1.6fr .8fr .8fr .8fr .8fr .8fr';
+  box.innerHTML=`<div class="note" style="margin:12px 0 6px"><b>Suppliers.</b> ${fmt(A.has)} of ${fmt(tot)} active products have a supplier set; ${fmt(A.missing)} do not (${fmt(A.missingStock)} of those have stock). Archived: ${fmt(O.has)} with, ${fmt(O.missing)} without.</div>
+  <div class="ctl"><span class="seg" id="ssort">${sorts.map(([k,l])=>`<button data-k="${k}" class="${k===key?'on':''}">${l}</button>`).join('')}</span></div>
+  <div class="ft h" style="${g}"><span>Supplier</span><span>Products</span><span>Units sold</span><span>Days / unit</span><span>Units / product</span><span>Units / variant</span></div>`+
+  rows.map((r,i)=>`<div class="ft" style="${g}"><b>${i+1}. ${esc(r.name)}</b><span>${fmt(r.products)}</span><span>${fmt(r.sold)}</span><span>${r.dts}</span><span>${r.upp}</span><span>${r.upv}</span></div>`).join('')+
+  `<div class="note">Ranked by Days / unit: total days on market of the supplier's products ÷ total units sold (lower sells faster; same clock as the Restock Planner). Units / product and Units / variant = units sold to date ÷ products or variants. Products in testing or with no publish date are left out. Suppliers with no sales are not listed.</div>`;
+}
+$('#supbox').addEventListener('click',e=>{const b=e.target.closest('#ssort button');if(b){st.ssort=b.dataset.k;save();renderSup()}});
 $('#fview').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.fview=b.dataset.v;save();renderFlow()}});
 $('#fcum').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.fcum=b.dataset.c==='1';save();renderFlow()}});
 $('#funit').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.funit=b.dataset.u;save();renderFlow()}});

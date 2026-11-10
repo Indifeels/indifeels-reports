@@ -84,6 +84,7 @@ ORDERS = """{ orders{ edges{ node{ id cancelledAt processedAt lineItems{ edges{ 
 FLOW_PRODUCTS = """{ products{ edges{ node{ id status createdAt
   metafield(namespace:"custom", key:"published_date_old"){ value }
   disc: metafield(namespace:"custom", key:"discountinued"){ value }
+  sup: metafield(namespace:"custom", key:"supplier_name"){ value }
   variants{ edges{ node{ id inventoryQuantity price } } } } } } }"""
 
 # Introduced vs cleared. Eligibility = the Restock Planner's "D.U new" rule: days on market / units sold < 50, where the clock
@@ -278,12 +279,14 @@ def flow_aggregate(prod_lines, order_lines, today=None):
         else:
             published = rp.melbourne_day(l["createdAt"])
         products[l["id"]] = {"id": rp.num(l["id"]), "published": published, "stock": 0, "value": 0.0, "prices": [],
-                             "sold": 0, "monthly": {}, "last": "",
+                             "sold": 0, "monthly": {}, "last": "", "nvar": 0, "active": status == "ACTIVE",
+                             "sup": ((l.get("sup") or {}).get("value") or "").strip().strip('[]"').strip(),
                              "disc": ((l.get("disc") or {}).get("value") or "").strip().lower() in ("yes", "true", "1")}
     for l in prod_lines:
         P = products.get(l.get("__parentId"))
         if P and "/ProductVariant/" in l.get("id", ""):
             q, price = max(0, int(l.get("inventoryQuantity") or 0)), float(l.get("price") or 0)
+            P["nvar"] += 1
             P["stock"] += q
             P["value"] += q * price
             if price > 0:
@@ -320,6 +323,8 @@ def flow_aggregate(prod_lines, order_lines, today=None):
     slot = lambda m: months.setdefault(m, {g: [0, 0, 0.0, 0, 0.0] for g in "en"})   # intro products, sold units (by sale month), sold value (by sale month), shelf units, shelf value
     cohort = lambda m: cohorts.setdefault(m, {g: [0, 0] for g in "en"})            # products published that month: units sold to date, products still stocked
     cohorts = {}
+    sup = {}
+    supcov = {k: {"has": 0, "missing": 0, "hasStock": 0, "missingStock": 0} for k in ("active", "other")}
     for P in products.values():
         avg = sum(P["prices"]) / len(P["prices"]) if P["prices"] else 0.0
         if not P["published"]:
@@ -332,6 +337,20 @@ def flow_aggregate(prod_lines, order_lines, today=None):
                 end = min(today, dt.date.fromisoformat(P["last"]))
             days_n = max(1, (end - dt.date.fromisoformat(P["published"])).days)
             g = "t" if days < FLOW_TEST_DAYS else ("e" if P["sold"] > 0 and days_n / P["sold"] < FLOW_MAX_DTS else "n")
+        if P["sup"] and g in "en":
+            u = sup.setdefault(P["sup"], {"products": 0, "variants": 0, "sold": 0, "days": 0, "elig": 0, "stockUnits": 0, "stockValue": 0.0, "saleValue": 0.0})
+            u["products"] += 1
+            u["variants"] += P["nvar"]
+            u["sold"] += P["sold"]
+            u["days"] += days_n
+            u["elig"] += 1 if g == "e" else 0
+            u["stockUnits"] += P["stock"]
+            u["stockValue"] += P["value"]
+            u["saleValue"] += sum(v[1] for v in P["monthly"].values())
+        cov = supcov["active" if P["active"] else "other"]
+        cov["has" if P["sup"] else "missing"] += 1
+        if P["stock"] > 0:
+            cov["hasStock" if P["sup"] else "missingStock"] += 1
         s = snap[g]
         s["products"] += 1
         s["stocked"] += 1 if P["stock"] > 0 else 0
@@ -365,6 +384,14 @@ def flow_aggregate(prod_lines, order_lines, today=None):
         out[g] = {n: [round(months.get(k, {}).get(g, [0] * 5)[i]) for k in keys] for i, n in enumerate(("ic", "su", "sv", "ku", "kv"))}
         out[g]["pu"] = [round(cohorts.get(k, {}).get(g, [0, 0])[0]) for k in keys]       # units sold to date by products published that month
         out[g]["ks"] = [round(cohorts.get(k, {}).get(g, [0, 0])[1]) for k in keys]       # of those products, how many still have stock
+    rows = []
+    for name, u in sup.items():
+        rows.append({"name": name, "products": u["products"], "variants": u["variants"], "sold": u["sold"],
+                     "dts": round(u["days"] / u["sold"], 1) if u["sold"] else None,
+                     "upp": round(u["sold"] / u["products"], 2), "upv": round(u["sold"] / u["variants"], 2) if u["variants"] else 0,
+                     "elig": round(100 * u["elig"] / u["products"]), "stockUnits": u["stockUnits"],
+                     "stockValue": round(u["stockValue"]), "saleValue": round(u["saleValue"])})
+    out["sup"] = {"cov": supcov, "rows": rows}
     out["snap"] = {g: {k: (round(v) if k == "value" else v) for k, v in s.items()} for g, s in snap.items()}
     return out
 
@@ -400,6 +427,10 @@ def build():
         flow = flow_aggregate(rp.bulk(FLOW_PRODUCTS, "flow products"), order_lines)
     except Exception as exc:
         print("introduced-vs-cleared view skipped:", str(exc)[:300])
+    if flow and flow.get("sup"):   # counts for the owner to read in the run log
+        print("SUPPLIER COVERAGE", json.dumps(flow["sup"]["cov"]))
+        for x in sorted(flow["sup"]["rows"], key=lambda x: (x["dts"] is None, x["dts"] or 0)):
+            print("SUPPLIER", json.dumps(x))
     page, meta = build_page(cols, info, demand, dt.datetime.now(rp.SYD), flow)
     key = os.environ["STOCK_KEY"]
     pv.write_encrypted(key, f"{RID}.bin", page.encode())
