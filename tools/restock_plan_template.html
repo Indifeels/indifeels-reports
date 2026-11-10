@@ -2284,8 +2284,9 @@ function liveStock(o){
 let lastSig = '';
 async function refresh(){
   try {
-    const [rows, disc, bx, dreq, pks, hz, tgs, pex] = await Promise.all([Store.list(), Store.discList().catch(() => null), Store.boxes().catch(() => null), Store.discReq().catch(() => null), Store.parkList().catch(() => null), Store.hideList().catch(() => null), Store.tagList().catch(() => null), Store.exportList().catch(() => null)]);
-    if (Array.isArray(pex)) pdfEx = pex;
+    const [rows, disc, bx, dreq, pks, hz, tgs] = await Promise.all([Store.list(), Store.discList().catch(() => null), Store.boxes().catch(() => null), Store.discReq().catch(() => null), Store.parkList().catch(() => null), Store.hideList().catch(() => null), Store.tagList().catch(() => null)]);
+    /* PDF orders load on their own: they must never hold up the planner (an older cached app would never answer this call) */
+    try { Store.exportList().then(r => { if (Array.isArray(r) && JSON.stringify(r.map(x => [x.code, x.status])) !== JSON.stringify(pdfEx.map(x => [x.code, x.status]))) { pdfEx = r; renderBoxes(); renderSv(); } }).catch(() => {}); } catch (e) {}
     if (Array.isArray(tgs)) { const gen = Date.parse(data.generatedAt) || 0; tgs.forEach(t => { if (Date.parse(t.tagged_at) > gen) { const pr = data.products.find(p => String(p.id) === String(t.product_id)); if (pr) pr.supplier = t.supplier || ''; } }); }   // supplier picked after this build was made wins until the next build
     if (Array.isArray(hz)) { hiddenOk = true; hiddenSizes = new Set(hz.map(d => String(d.vkey))); }
     if (dreq) discReqs = dreq;
