@@ -138,16 +138,16 @@ function chg(a,b,badUp){
   return'<b class="'+(Math.abs(p)<0.5?"":good?"pos":"neg")+'">'+(up?"▲ ":"▼ ")+Math.abs(p).toFixed(0)+'%</b> · '+(up?"+":"-")+money(Math.abs(a-b)).replace("-","");
 }
 function eligBlock(r){
-  var cur=split(r.from,r.to);
-  if(!cur)return"";
-  var pr=prevRange(r),pv_=pr?split(pr.from,pr.to):null,ytd=split(FIRST,TODAY);
-  var word=sel.mode==="day"?"yesterday":sel.mode==="week"?"last week":"last month";
-  function row(name,col,v,sh,pvv,badUp){
-    return'<div class="elr"><i style="background:'+col+'"></i><span class="n">'+name+'<small>'+(sh*100).toFixed(0)+'%</small></span><b>'+money(v)+'</b>'
-      +'<span class="d">'+(pvv==null?"":chg(v,pvv,badUp)+" vs "+word)+'</span></div>';
+  var cur=split(r.from,r.to),st=CFG.stock||{};
+  if(!cur||st.e==null)return"";
+  var ytd=split(FIRST,TODAY),cur_=r.to===TODAY,
+    w=sel.mode==="day"?(cur_?"today":"that day"):sel.mode==="week"?(cur_?"this week":"that week"):(cur_?"this month":"that month");
+  function row(name,col,stock,sold){
+    return'<div class="elr"><i style="background:'+col+'"></i><span class="n">'+name+' stock</span><b>'+money(stock)+'</b>'
+      +'<span class="d">Sold '+w+': <b>'+money(sold)+'</b></span></div>';
   }
-  var h='<div class="el">'+row("Eligible","#12b886",cur.e,cur.sh,pv_?pv_.e:null,false)+row("Not eligible","#f08c4a",cur.n,1-cur.sh,pv_?pv_.n:null,true);
-  if(ytd)h+='<div class="elt">Since '+pd(FIRST)+': <b>'+(ytd.sh*100).toFixed(0)+'%</b> eligible</div>';
+  var h='<div class="el">'+row("Not eligible","#f08c4a",st.n,cur.n)+row("Eligible","#12b886",st.e,cur.e);
+  if(ytd)h+='<div class="elt">Sold since '+pd(FIRST)+': not eligible <b>'+money(ytd.n)+'</b> · eligible <b>'+money(ytd.e)+'</b></div>';
   return h+'</div>';
 }
 function draw(){

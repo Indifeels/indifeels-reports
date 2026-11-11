@@ -83,12 +83,14 @@ def eligibility(prod_lines, order_lines, today):
             pub = meta[:10] if len(meta) >= 10 and meta[4] == "-" else ""
         else:
             pub = rp.melbourne_day(l["createdAt"])
-        products[l["id"]] = {"id": rp.num(l["id"]), "pub": pub, "stock": 0, "sold": 0, "last": "",
+        products[l["id"]] = {"id": rp.num(l["id"]), "pub": pub, "stock": 0, "value": 0.0, "sold": 0, "last": "",
                              "disc": ((l.get("disc") or {}).get("value") or "").strip().lower() in ("yes", "true", "1")}
     for l in prod_lines:
         P = products.get(l.get("__parentId"))
         if P and "/ProductVariant/" in l.get("id", ""):
-            P["stock"] += max(0, int(l.get("inventoryQuantity") or 0))
+            q = max(0, int(l.get("inventoryQuantity") or 0))
+            P["stock"] += q
+            P["value"] += q * float(l.get("price") or 0)
     cancelled = {l["id"] for l in order_lines if "/Order/" in l.get("id", "") and l.get("cancelledAt")}
     placed = {l["id"]: rp.melbourne_day(l["processedAt"]) for l in order_lines if "/Order/" in l.get("id", "") and l.get("processedAt")}
     by_pid = {P["id"]: P for P in products.values()}
@@ -117,13 +119,17 @@ def eligibility(prod_lines, order_lines, today):
                 end = min(today, dt.date.fromisoformat(P["last"]))
             days_n = max(1, (end - pub).days)
             P["elig"] = (today - pub).days < pr.FLOW_TEST_DAYS or (P["sold"] > 0 and days_n / P["sold"] < pr.FLOW_MAX_DTS)
+    stock = {"e": 0.0, "n": 0.0}
+    for P in products.values():
+        if P["pub"]:                      # no published date = not counted (same as Procurement)
+            stock["e" if P["elig"] else "n"] += P["value"]
     out = {}
     for day, P, rev in sales:
         o = out.setdefault(day, {"e": 0.0, "t": 0.0})
         o["t"] += rev
         if P and P["elig"]:
             o["e"] += rev
-    return out
+    return {"days": out, "stock": {k: round(v) for k, v in stock.items()}}
 
 
 def windsor(connector, acct, start, end):
@@ -199,7 +205,7 @@ def daily(orders, google, meta, start, today, share=FALLBACK_ADS_SHARE, elig=Non
         for r in rows:
             if r.get("date") in days:
                 days[r["date"]][key] += float(r.get("spend") or 0)
-    for day, v in (elig or {}).items():
+    for day, v in ((elig or {}).get("days") or {}).items():
         if day in days:
             days[day]["e"], days[day]["t"] = round(v["e"], 2), round(v["t"], 2)
     out = list(days.values())
@@ -211,10 +217,10 @@ def daily(orders, google, meta, start, today, share=FALLBACK_ADS_SHARE, elig=Non
     return out
 
 
-def build_page(rows, now, share=FALLBACK_ADS_SHARE):
+def build_page(rows, now, share=FALLBACK_ADS_SHARE, stock=None):
     h = open(TEMPLATE, encoding="utf-8").read()
     updated = now.strftime("%-d %b %Y, %-I:%M %p").replace("AM", "am").replace("PM", "pm")
-    h = (h.replace("__DATA__", json.dumps({"rows": rows, "cfg": dict(CONFIG, ads_share=round(share, 4))}, separators=(",", ":")))
+    h = (h.replace("__DATA__", json.dumps({"rows": rows, "cfg": dict(CONFIG, ads_share=round(share, 4), stock=stock or {})}, separators=(",", ":")))
           .replace("__TODAY__", now.date().isoformat()).replace("__UPDATED__", updated))
     assert "__" not in h.replace("__proto__", ""), "unfilled template placeholder"
     t = now.date()
@@ -239,7 +245,7 @@ def build():
                  windsor("facebook", META_ACCT, start, end), start, now.date(), share, elig)
     if not any(sum(r[k][0] + r[k][1] for k in "GFO") for r in rows):
         raise RuntimeError("no sales returned")
-    page, meta = build_page(rows, now, share)
+    page, meta = build_page(rows, now, share, elig["stock"])
     key = os.environ["PROFIT_FLOW_KEY"]
     pv.write_encrypted(key, f"{RID}.bin", page.encode())
     pv.write_encrypted(key, f"{RID}.meta.bin", json.dumps(meta).encode())
@@ -259,7 +265,7 @@ if __name__ == "__main__":
         start = now.date().replace(day=1).isoformat()
         share = f.get("ads_share", FALLBACK_ADS_SHARE)
         rows = daily(f["orders"], f["google"], f["meta"], start, now.date(), share, f.get("elig"))
-        page, meta = build_page(rows, now, share)
+        page, meta = build_page(rows, now, share, (f.get("elig") or {}).get("stock"))
         open(os.path.join(out, "profit-flow.html"), "w", encoding="utf-8").write(page)
         json.dump(rows, open(os.path.join(out, "rows.json"), "w"))
         print(len(rows), meta)
