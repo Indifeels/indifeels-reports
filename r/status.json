@@ -54,11 +54,11 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-11-11T06:00+11:00",
-  "code_sha": "af60c811b99a84995aaf0bed685e94c76df318de",
+  "at": "2026-11-11T14:01+11:00",
+  "code_sha": "265e44e99c8edf4af98c3a72da90d6bd053cf572",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-11-11T06:00+11:00",
-  "manifest_version": "2026-10-19.stock-take.1",
+  "last_ok": "2026-11-11T14:01+11:00",
+  "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
  },
