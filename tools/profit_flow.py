@@ -35,7 +35,8 @@ CONFIG = {
         {"name": "SEO", "amount": 250},
         {"name": "SEMrush", "amount": 192},
         {"name": "Global Search Filter", "amount": 70},
-        {"name": "Shopify plan", "amount": None},
+        {"name": "Davy", "amount": 200},
+        {"name": "Shopify plan", "amount": 56},
     ],
 }
 
