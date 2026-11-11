@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 RID = "profit-flow"
+START = "2026-04-18"  # Shopify migration date; same start as the Cash Report
 TZ = ZoneInfo("Australia/Melbourne")
 TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profit_flow_template.html")
 GOOGLE_ACCT = os.environ.get("WINDSOR_GOOGLE_ADS_ACCOUNT", "788-887-6041")
@@ -163,7 +164,7 @@ def build_page(rows, now, share=FALLBACK_ADS_SHARE):
 def build():
     import product_visibility as pv
     now = dt.datetime.now(TZ)
-    start = now.date().replace(day=1).isoformat()
+    start = START
     end = now.date().isoformat()
     share = ads_share(end)
     rows = daily(fetch_orders(start), windsor("google_ads", GOOGLE_ACCT, start, end),

@@ -41,27 +41,43 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
 .sum{margin-top:12px}
 .pill{border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:.85rem;color:var(--muted)}
 .pill b{display:block;font-size:1.05rem;color:var(--fg);font-variant-numeric:tabular-nums}
+
+.pick{display:grid;grid-template-columns:110px 1fr;gap:8px;margin:0}.pick select{font:inherit;font-weight:700;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:11px 12px;min-width:0;width:100%}
+.ch2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:2px 4px 8px}.col{display:flex;flex-direction:column;align-items:stretch}.col .ct{text-align:center;font-weight:800;font-family:var(--display);margin-bottom:6px}.stk{display:flex;flex-direction:column-reverse;height:340px;border-radius:12px;overflow:hidden;background:var(--bg)}
+.seg{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#101214;font-size:.7rem;line-height:1.2;overflow:hidden;min-height:2px;padding:0 3px}.seg b{font-size:.74rem;font-variant-numeric:tabular-nums}.seg.keep{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.28) 0 6px,transparent 6px 12px)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;border:1px solid var(--line);border-radius:999px;padding:3px 10px;margin:2px 4px 0}.chip i{width:10px;height:10px;border-radius:3px}#leg{text-align:center;margin-bottom:4px}.tt{text-align:center;font-size:.8rem;color:var(--muted);margin-top:6px}.tt b{color:var(--fg)}
 </style></head><body>
 <div class="wrap">
   <header><h1>Profit Flow</h1><p class="sub">Indifeels Australia · AUD · Melbourne time · as at __UPDATED__</p></header>
-  <section class="tiles" id="tiles" aria-label="Choose period"></section>
-  <section class="box"><h2 class="ptitle" id="ptitle"></h2><div id="hero"></div><div class="bar" id="bar"></div><div id="leg"></div></section>
-  <section class="box"><h2 class="ptitle">Is each channel worth it?</h2><div id="vb"></div><div id="cards"></div></section>
+  <section class="tiles" id="tiles" aria-label="Quick periods"></section>
+  <div class="pick"><select id="pm" aria-label="Period type"><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option></select><select id="pv" aria-label="Choose period"></select></div>
+  <section class="box"><h2 class="ptitle" id="ptitle"></h2><div id="hero"></div><div class="ch2" id="ch2"></div><div id="leg"></div></section>
+  <section class="box"><h2 class="ptitle">Is each channel worth it?</h2><div id="cards"></div></section>
   <section class="box"><h2 class="ptitle">The maths</h2><div id="wf"></div><p class="note" id="note"></p></section>
 </div>
 <script id="data" type="application/json">__DATA__</script>
 <script>
 (function(){
-var D=JSON.parse(document.getElementById("data").textContent),ROWS=D.rows,CFG=D.cfg,TODAY="__TODAY__";
-var GST=1/11;
+var D=JSON.parse(document.getElementById("data").textContent),ROWS=D.rows,CFG=D.cfg,TODAY="__TODAY__",GST=1/11;
+var DN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],MN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],MF=["January","February","March","April","May","June","July","August","September","October","November","December"];
 function dim(s){var a=s.split("-");return new Date(+a[0],+a[1],0).getDate()}
 function money(n){var r=Math.round(n);return(r<0?"-":"")+"$"+Math.abs(r).toLocaleString("en-AU")}
 function addDays(s,n){var d=new Date(s+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
-function monday(s){var d=new Date(s+"T00:00:00Z");return addDays(s,-((d.getUTCDay()+6)%7))}
-var PERIODS=[{id:"today",label:"Today",from:TODAY},{id:"week",label:"This week",from:monday(TODAY)},{id:"month",label:"This month",from:TODAY.slice(0,8)+"01"}];
+function dow(s){return new Date(s+"T00:00:00Z").getUTCDay()}
+function monday(s){return addDays(s,-((dow(s)+6)%7))}
+function pd(s){var a=s.split("-");return(+a[2])+" "+MN[+a[1]-1]}
+var FIRST=ROWS.length?ROWS[0].d:TODAY;
+var LIST={day:[],week:[],month:[]};
+(function(){
+  for(var d=TODAY;d>=FIRST;d=addDays(d,-1))LIST.day.push({from:d,to:d,label:DN[dow(d)]+" "+pd(d)+(d===TODAY?" (today)":"")});
+  for(var m=monday(TODAY);addDays(m,6)>=FIRST;m=addDays(m,-7)){var e=addDays(m,6);if(e>TODAY)e=TODAY;LIST.week.push({from:m<FIRST?FIRST:m,to:e,label:pd(m)+" – "+pd(addDays(m,6))+(m===monday(TODAY)?" (now)":"")})}
+  var y=+TODAY.slice(0,4),mo=+TODAY.slice(5,7);
+  while(true){var f=y+"-"+(mo<10?"0":"")+mo+"-01",l=y+"-"+(mo<10?"0":"")+mo+"-"+dim(f);if(l<FIRST)break;
+    LIST.month.push({from:f<FIRST?FIRST:f,to:l>TODAY?TODAY:l,label:MF[mo-1]+" "+y+(f===TODAY.slice(0,8)+"01"?" (now)":"")});mo--;if(mo<1){mo=12;y--}}
+})();
 var CH=[["G","Google"],["F","Facebook"],["O","Organic & other"]];
-function calc(from){
-  var rs=ROWS.filter(function(r){return r.d>=from&&r.d<=TODAY});
+function calc(from,to){
+  var rs=ROWS.filter(function(r){return r.d>=from&&r.d<=to});
   var c={days:rs.length,ch:{},g:0,m:0};
   CH.forEach(function(x){c.ch[x[0]]={card:0,cash:0}});
   var fl=CFG.fixed_monthly.filter(function(f){return f.amount!=null}),fixed=fl.map(function(f){return{name:f.name,v:0}});
@@ -71,49 +87,55 @@ function calc(from){
   CH.forEach(function(x){var h=c.ch[x[0]];h.sales=h.card+h.cash;h.gst=h.card*GST;h.prod=h.sales*CFG.product_cost_pct;
     h.ad=x[0]==="G"?c.g:x[0]==="F"?c.m:0;h.profit=h.sales-h.gst-h.prod-h.ad;
     c.sales+=h.sales;c.gst+=h.gst;c.prod+=h.prod});
-  c.card=CH.reduce(function(a,x){return a+c.ch[x[0]].card},0);c.cash=c.sales-c.card;
   c.fixed=fixed;c.fx=fixed.reduce(function(a,b){return a+b.v},0);
-  c.pbf=c.sales-c.gst-c.prod-c.g-c.m;c.net=c.pbf-c.fx;c.costs=c.gst+c.prod+c.g+c.m+c.fx;
+  c.net=c.sales-c.gst-c.prod-c.g-c.m-c.fx;
   return c;
 }
-var cur="today",tilesEl=document.getElementById("tiles");
-try{var s=localStorage.getItem("pf-period");if(s&&PERIODS.some(function(p){return p.id===s}))cur=s}catch(e){}
+var QUICK=[{id:"day",label:"Today",from:TODAY,to:TODAY},{id:"week",label:"This week",from:monday(TODAY)<FIRST?FIRST:monday(TODAY),to:TODAY},{id:"month",label:"This month",from:TODAY.slice(0,8)+"01",to:TODAY}];
+var pm=document.getElementById("pm"),pv=document.getElementById("pv"),sel={mode:"day",i:0};
+try{var sv=JSON.parse(localStorage.getItem("pf-sel")||"null");if(sv&&LIST[sv.mode]&&LIST[sv.mode][sv.i])sel=sv}catch(e){}
+function fillValues(){pv.innerHTML=LIST[sel.mode].map(function(x,i){return'<option value="'+i+'">'+x.label+'</option>'}).join("");pv.value=sel.i;pm.value=sel.mode}
+function range(){return LIST[sel.mode][sel.i]}
+function save(){try{localStorage.setItem("pf-sel",JSON.stringify(sel))}catch(e){}}
+pm.onchange=function(){sel={mode:pm.value,i:0};fillValues();save();renderAll()};
+pv.onchange=function(){sel.i=+pv.value;save();renderAll()};
+var tilesEl=document.getElementById("tiles");
 function renderTiles(){
-  tilesEl.innerHTML="";
-  PERIODS.forEach(function(p){
-    var c=calc(p.from),b=document.createElement("button");b.type="button";b.className="tile";b.setAttribute("aria-pressed",p.id===cur);
-    b.innerHTML='<span class="k">'+p.label+'</span><span class="v">'+money(c.sales)+'</span><span class="s">Net <b class="'+(c.net>=0?"pos":"neg")+'">'+money(c.net)+'</b></span>';
-    b.onclick=function(){cur=p.id;try{localStorage.setItem("pf-period",cur)}catch(e){}renderTiles();draw()};
-    tilesEl.appendChild(b)});
+  var r=range();tilesEl.innerHTML="";
+  QUICK.forEach(function(q){
+    var c=calc(q.from,q.to),b=document.createElement("button");b.type="button";b.className="tile";
+    b.setAttribute("aria-pressed",sel.mode===q.id&&sel.i===0);
+    b.innerHTML='<span class="k">'+q.label+'</span><span class="v">'+money(c.sales)+'</span><span class="s">Net <b class="'+(c.net>=0?"pos":"neg")+'">'+money(c.net)+'</b></span>';
+    b.onclick=function(){sel={mode:q.id,i:0};fillValues();save();renderAll()};tilesEl.appendChild(b)});
 }
-var COL={G:"#ffb703",F:"#4c6ef5",O:"#12b886",gst:"#9b8cc9",prod:"#f08c4a",ads:"#ffb703",fixed:"#ff6b6b",net:"#2fbf71",loss:"#e5484d"};
+var COL={G:"#ffb703",F:"#4c6ef5",O:"#12b886",gst:"#9b8cc9",prod:"#f08c4a",ads:"#ffb703",meta:"#6f86ff",fixed:"#ff6b6b",net:"#2fbf71",loss:"#e5484d"};
 function roas(a,b){return b>0?"$"+(a/b).toFixed(2).replace(/\.00$/,"")+" back per $1":"no ad spend"}
+function pcs(v,S){return(v/S*100).toFixed(0)+"%"}
 function draw(){
-  var p=PERIODS.filter(function(x){return x.id===cur})[0],c=calc(p.from),loss=c.net<0,S=Math.max(c.sales,1);
-  document.getElementById("ptitle").textContent=p.label+(c.days>1?" · "+c.days+" days":"");
-  var keep=c.net/S*100;
-  document.getElementById("hero").innerHTML='<div class="hero"><span>Sold</span><b>'+money(c.sales)+'</b><span>You keep</span><b class="'+(loss?"neg":"pos")+'">'+money(c.net)+'</b></div><p class="sub2">Out of every $100 sold, you keep <b class="'+(loss?"neg":"pos")+'">$'+keep.toFixed(0)+'</b>.</p>';
-  var parts=[["Product cost",c.prod,COL.prod],["GST",c.gst,COL.gst],["Ads",c.g+c.m,COL.ads],["Fixed costs",c.fx,COL.fixed],[loss?"Loss":"You keep",Math.abs(c.net),loss?COL.loss:COL.net]];
-  var tot=parts.reduce(function(a,x){return a+x[1]},0)||1;
-  document.getElementById("bar").innerHTML=parts.map(function(x){return'<i style="width:'+(x[1]/tot*100)+'%;background:'+x[2]+'"></i>'}).join("");
-  document.getElementById("leg").innerHTML=parts.map(function(x){return'<div class="lg"><i style="background:'+x[2]+'"></i><span>'+x[0]+'</span><b>'+money(x[1])+'</b><em>$'+(x[1]/S*100).toFixed(0)+'</em></div>'}).join("");
-  function card(name,h,color,ads){
-    var good=h.profit>=0;
+  var r=range(),c=calc(r.from,r.to),loss=c.net<0,S=Math.max(c.sales,1);
+  document.getElementById("ptitle").textContent=r.label+(c.days>1?" · "+c.days+" days":"");
+  document.getElementById("hero").innerHTML='<div class="hero"><span>Sold</span><b>'+money(c.sales)+'</b><span>You keep</span><b class="'+(loss?"neg":"pos")+'">'+money(c.net)+'</b></div><p class="sub2">Out of every $100 sold, you keep <b class="'+(loss?"neg":"pos")+'">$'+(c.net/S*100).toFixed(0)+'</b>.</p>';
+  var spend=[["Product cost",c.prod,COL.prod],["GST",c.gst,COL.gst],["Google Ads",c.g,COL.ads],["Facebook Ads",c.m,COL.meta],["Fixed costs",c.fx,COL.fixed]];
+  if(!loss)spend.push(["You keep",c.net,COL.net,"keep"]);
+  var ret=[["Google",c.ch.G.sales,COL.G],["Facebook",c.ch.F.sales,COL.F],["Organic & other",c.ch.O.sales,COL.O]];
+  var total=Math.max(spend.reduce(function(a,x){return a+x[1]},0),c.sales,1);
+  function stack(arr){return'<div class="stk">'+arr.map(function(x){var h=x[1]/total*340,t=h>=36?'<span>'+x[0]+'</span><b>'+money(x[1])+' · '+pcs(x[1],S)+'</b>':h>=17?'<b>'+x[0]+' '+pcs(x[1],S)+'</b>':'';
+    return'<div class="seg'+(x[3]?" "+x[3]:"")+'" style="height:'+h+'px;background-color:'+x[2]+'">'+t+'</div>'}).join("")+'</div>'}
+  document.getElementById("ch2").innerHTML='<div class="col"><div class="ct">Spend</div>'+stack(spend)+'<div class="tt">Costs <b>'+money(c.costs=c.sales-c.net)+'</b></div></div><div class="col"><div class="ct">Return</div>'+stack(ret)+'<div class="tt">Sales <b>'+money(c.sales)+'</b></div></div>';
+  document.getElementById("leg").innerHTML=spend.concat(ret).filter(function(x){return x[1]/total*340<17&&x[1]>0}).map(function(x){return'<span class="chip"><i style="background:'+x[2]+'"></i>'+x[0]+' '+money(x[1])+' · '+pcs(x[1],S)+'</span>'}).join("");
+  function card(name,h,color,ads){var good=h.profit>=0;
     return'<div class="cd" style="border-left:6px solid '+color+'"><div class="cn">'+name+'</div>'+
       (ads?'<div class="row"><span>Spent on ads</span><b>'+money(h.ad)+'</b></div>':'')+
       '<div class="row"><span>Sales it brought</span><b>'+money(h.sales)+'</b></div>'+
       (ads?'<div class="row"><span>Return</span><b>'+roas(h.sales,h.ad)+'</b></div>':'')+
       '<div class="row"><span>'+(ads?'Left after product, GST and ads':'Left after product and GST')+'</span><b class="'+(good?"pos":"neg")+'">'+money(h.profit)+'</b></div></div>'}
-  var mx=Math.max(c.g,c.m,c.ch.G.sales,c.ch.F.sales,1),BH=170;
-  function vbar(v,color,lab){var h=Math.max(v/mx*BH,3);return'<div class="vc"><div class="vt"><b>'+money(v)+'</b><u>'+(v/S*100).toFixed(0)+'%</u></div><div class="vbr" style="height:'+h+'px;background:'+color+'"></div><div class="vl2">'+lab+'</div></div>'}
-  function grp(name,sp,rt){return'<div class="vg"><div class="vbs">'+vbar(sp,COL.loss,"Spent")+vbar(rt,COL.net,"Sales back")+'</div><div class="vn">'+name+'</div></div>'}
-  document.getElementById("vb").innerHTML='<div class="vgs">'+grp("Google Ads",c.g,c.ch.G.sales)+grp("Meta Ads",c.m,c.ch.F.sales)+'</div><p class="vnote">% = share of total sales ('+money(c.sales)+')</p>';
   document.getElementById("cards").innerHTML=card("Google Ads",c.ch.G,COL.G,true)+card("Meta (Facebook) Ads",c.ch.F,COL.F,true)+card("Everything else (organic, calls, repeat)",c.ch.O,COL.O,false);
   var rows=[["Sales",c.sales,""],["– Product cost",-c.prod,""],["– GST (card sales)",-c.gst,""],["– Google Ads",-c.g,""],["– Meta Ads",-c.m,""]].concat(c.fixed.map(function(f){return["– "+f.name,-f.v,"fx"]}));
-  document.getElementById("wf").innerHTML=rows.map(function(r){return'<div class="fr '+r[2]+'"><span>'+r[0]+'</span><b>'+money(r[1])+'</b></div>'}).join("")+'<div class="fr tot"><span>You keep</span><b class="'+(loss?"neg":"pos")+'">'+money(c.net)+'</b></div>';
+  document.getElementById("wf").innerHTML=rows.map(function(x){return'<div class="fr '+x[2]+'"><span>'+x[0]+'</span><b>'+money(x[1])+'</b></div>'}).join("")+'<div class="fr tot"><span>You keep</span><b class="'+(loss?"neg":"pos")+'">'+money(c.net)+'</b></div>';
   var unset=CFG.fixed_monthly.filter(function(f){return f.amount==null}).map(function(f){return f.name});
-  document.getElementById("note").textContent="Product cost is a flat "+Math.round(CFG.product_cost_pct*100)+"% of sales for now. GST only on card sales. Google sales = Google web orders plus part of Google store visits; Meta = all Facebook orders; everything else is the rest. Fixed costs are monthly amounts spread per day."+(unset.length?" Not set yet: "+unset.join(", ")+".":"");
+  document.getElementById("note").textContent="Percentages are shares of sales. Product cost is a flat "+Math.round(CFG.product_cost_pct*100)+"% of sales for now. GST only on card sales. Google sales = Google web orders plus part of Google store visits; Facebook = all Facebook orders; the rest is organic and other. Fixed costs are today's monthly amounts spread per day."+(unset.length?" Not set yet: "+unset.join(", ")+".":"");
 }
-renderTiles();draw();
+function renderAll(){renderTiles();draw()}
+fillValues();renderAll();
 })();
 </script></body></html>
