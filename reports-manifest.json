@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-10-19.stock-take.1",
+  "manifest_version": "2026-11-11.profit-flow.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -427,6 +427,29 @@
       ],
       "supabase_sync": false,
       "schedule_control": "none"
+    },
+    {
+      "id": "profit-flow",
+      "title": "Profit Flow",
+      "workflow": "profit-flow.yml",
+      "refresh_times": [
+        "schedule panel"
+      ],
+      "required_env": [
+        "SHOPIFY_TOKEN",
+        "WINDSOR_API_KEY",
+        "PROFIT_FLOW_KEY"
+      ],
+      "builders": [
+        "tools/profit_flow.py",
+        "tools/profit_flow_template.html"
+      ],
+      "outputs": [
+        "r/profit-flow.bin",
+        "r/profit-flow.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "report_schedules"
     }
   ]
 }

@@ -1,0 +1,119 @@
+name: Profit Flow
+
+# Profit Flow Sankey: sales by channel -> GST, product cost, ad spend, fixed costs -> net profit (Today / week / month).
+# Runs from the Schedule Panel: after every new order, daily 12:00 am and 6:00 am (Melbourne).
+run-name: "${{ github.event.action == 'report-schedule' && format('Schedule {0}', github.event.client_payload.schedule_group) || github.workflow }}"
+
+on:
+  repository_dispatch:
+    types: [report-schedule]
+  workflow_dispatch:
+
+concurrency:
+  # Per-workflow lock: prevents duplicate runs of this workflow from cancelling unrelated report refreshes.
+  group: ${{ github.event.action == 'report-schedule' && !(contains(github.event.client_payload.report_ids, 'profit-flow')) && format('ignored-{0}', github.event.client_payload.schedule_group) || 'indifeels-profit-flow' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: (github.event.action != 'report-schedule' || (contains(github.event.client_payload.report_ids, 'profit-flow')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Schedule Panel dispatch gate
+        id: gate
+        run: |
+          echo "go=1" >> "$GITHUB_OUTPUT"
+
+      - name: Let a new order settle in Shopify
+        if: steps.gate.outputs.go == '1' && github.event.action == 'report-schedule'
+        run: sleep 30
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.go == '1'
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.go == '1'
+        with:
+          python-version: "3.12"
+
+      - name: Install report dependency
+        if: steps.gate.outputs.go == '1'
+        run: pip install cryptography
+
+      - name: Load Profit Flow encryption key
+        if: steps.gate.outputs.go == '1'
+        env:
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import base64, json, os, re, urllib.request
+
+          cfg = open("config.js", encoding="utf-8").read()
+          url = re.search(r'url:\s*"([^"]+)"', cfg).group(1)
+          anon = re.search(r'key:\s*"([^"]+)"', cfg).group(1)
+          req = urllib.request.Request(
+              url + "/rest/v1/rpc/sync_get_report_keys",
+              method="POST",
+              data=json.dumps({
+                  "p_token": os.environ["SYNC_READ_TOKEN"],
+                  "p_report_ids": ["profit-flow"],
+              }).encode(),
+              headers={"apikey": anon, "Content-Type": "application/json"},
+          )
+          rows = json.load(urllib.request.urlopen(req, timeout=60))
+          if not rows or not rows[0].get("key_b64"):
+              raise SystemExit("Profit Flow encryption key is unavailable in Supabase")
+          key = rows[0]["key_b64"].strip()
+          if len(base64.b64decode(key)) != 32:
+              raise SystemExit("Profit Flow encryption key is invalid")
+          print("::add-mask::" + key)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+              env.write("PROFIT_FLOW_KEY=" + key + "\n")
+          print("Profit Flow encryption key loaded")
+          PY
+
+      - name: Validate report contract
+        if: steps.gate.outputs.go == '1'
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+        run: python3 tools/report_preflight.py --phase pre profit-flow
+
+      - name: Build Profit Flow
+        if: steps.gate.outputs.go == '1'
+        env:
+          SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
+          WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
+        run: python3 tools/profit_flow.py
+
+      - name: Verify report files
+        if: steps.gate.outputs.go == '1'
+        run: |
+          test -s r/profit-flow.bin
+          test -s r/profit-flow.meta.bin
+          grep -q '"profit-flow"' r/status.json
+
+      - name: Publish report
+        if: always() && steps.gate.outputs.go == '1'
+        run: |
+          python3 tools/report_preflight.py --phase post profit-flow
+          git config user.name "Indifeels profit flow bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add r/status.json
+          [ -f r/profit-flow.bin ] && git add r/profit-flow.bin || true
+          [ -f r/profit-flow.meta.bin ] && git add r/profit-flow.meta.bin || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh Profit Flow (${{ github.event.client_payload.order || github.event_name }})"
+          for i in 1 2 3; do
+            git pull --rebase -q origin main
+            git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
