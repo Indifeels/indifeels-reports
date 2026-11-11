@@ -427,15 +427,7 @@ def build():
     order_lines = rp.bulk(ORDERS, "orders")
     demand = load_demand()
     cols, info = aggregate(prod_lines, order_lines, demand)
-    flow = None
-    try:   # the introduced-vs-cleared view must never take the rest of the report down
-        flow = flow_aggregate(rp.bulk(FLOW_PRODUCTS, "flow products"), order_lines)
-    except Exception as exc:
-        print("introduced-vs-cleared view skipped:", str(exc)[:300])
-    if flow and flow.get("sup"):   # counts for the owner to read in the run log
-        print("SUPPLIER COVERAGE", json.dumps(flow["sup"]["cov"]))
-        for x in sorted(flow["sup"]["rows"], key=lambda x: (x["dts"] is None, x["dts"] or 0)):
-            print("SUPPLIER", json.dumps(x))
+    flow = None   # Introduced vs cleared now lives in the Profit Flow report
     page, meta = build_page(cols, info, demand, dt.datetime.now(rp.SYD), flow)
     key = os.environ["STOCK_KEY"]
     pv.write_encrypted(key, f"{RID}.bin", page.encode())

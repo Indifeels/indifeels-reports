@@ -442,7 +442,10 @@
       ],
       "builders": [
         "tools/profit_flow.py",
-        "tools/profit_flow_template.html"
+        "tools/profit_flow_template.html",
+        "tools/procurement.py",
+        "tools/restock_plan.py",
+        "tools/product_visibility.py"
       ],
       "outputs": [
         "r/profit-flow.bin",

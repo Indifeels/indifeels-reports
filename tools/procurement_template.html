@@ -47,13 +47,6 @@ select{font:inherit;font-size:13px;color:var(--fg);background:var(--tile2);borde
 @media(max-width:520px){.cl{grid-template-columns:64px 1fr 52px 70px}}
 </style></head><body><div class="wrap">
 <div class="top"><div><h1>Procurement</h1><div class="sub" id="src"></div></div><button class="btn" id="theme" type="button">Light</button></div>
-<div class="box" id="flowbox" hidden><p class="ttl"><span>Introduced vs cleared</span><em id="flowsub"></em></p>
-<div class="tiles" id="flowtiles"></div>
-<div id="supbox" hidden></div>
-<div class="ctl" style="margin-top:10px"><span class="seg" id="fview"><button data-v="intro">Introduced</button><button data-v="clear">Cleared</button><button data-v="shelf">On shelf today</button></span><span class="seg" id="funit"><button data-u="count">Count</button><button data-u="value">Value</button></span><span class="seg" id="fcum"><button data-c="0">By year</button><button data-c="1">Cumulative</button></span></div>
-<div class="chips" id="fychips"></div><div id="fchart"></div>
-<div class="legend"><span><i class="ln" style="background:var(--g)"></i>Eligible</span><span><i class="ln" style="background:var(--r)"></i>Not eligible</span><span><i class="ln" style="background:repeating-linear-gradient(90deg,var(--blu) 0 3px,transparent 3px 6px)"></i>Eligible share, % (right axis)</span></div>
-<div id="ftable" style="margin-top:8px"></div><div class="note" id="fnote"></div></div>
 <div class="box"><div class="ctl"><b style="font-size:12px">Demand</b><span class="seg" id="mode"><button data-m="search">Search</button><button data-m="blend">Blend</button><button data-m="sales">My sales</button></span></div>
 <div class="ctl" style="margin-top:8px"><b style="font-size:12px">Stock target</b><input id="cover" type="range" min="30" max="180" step="15" value="90"><b id="coverv" style="font-size:12px;min-width:64px;text-align:right">90 days</b></div>
 <div class="note" style="margin-top:6px">Search = Semrush monthly searches in Australia. Blend = 60% your sales + 40% search. Collections with no search data use their sales share.</div></div>
@@ -149,101 +142,10 @@ function detail(k){
   h+=`<div class="note">Designs now = designs with stock in that colour. Want = colour demand share × designs needed. ${k.unk?fmt(k.unk)+' units sold have no colour set (left out). ':''}Colour comes from the Colour option, else the colour word in the product title.</div>`;
   return h;
 }
-/* ---- Introduced vs cleared: eligible vs not eligible, Australian financial years (Jul-Jun), drill into months ---- */
-const F=D.flow,MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const fyOf=k=>{const y=+k.slice(0,4),m=+k.slice(5,7);return 'FY'+String((m>=7?y+1:y)%100).padStart(2,'0')};
-const mlab=k=>MON[+k.slice(5,7)-1]+' '+k.slice(2,4);
-const money=n=>{const a=Math.abs(n),s=n<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(2)+'M':a>=1e4?s+'$'+Math.round(a/1e3)+'k':a>=1e3?s+'$'+(a/1e3).toFixed(1)+'k':s+'$'+Math.round(a)};
-function flowSeries(g,view,unit){
-  const x=F[g];
-  if(view==='intro')return x.ic;
-  if(view==='clear')return unit==='count'?x.su:x.sv;
-  return unit==='count'?x.ks:x.kv;
-}
-function flowPeriods(){
-  const by={};F.months.forEach((k,i)=>{(by[fyOf(k)]=by[fyOf(k)]||[]).push(i)});
-  if(st.ffy&&by[st.ffy])return by[st.ffy].map(i=>({label:mlab(F.months[i]),idx:[i]}));
-  return Object.keys(by).sort().map(f=>({label:f,fy:f,idx:by[f],part:by[f].length<12}));
-}
-const flowAgg=(arr,idx)=>idx.reduce((a,i)=>a+arr[i],0);
-function flowChart(rows,u){
-  const W=360,H=176,L=46,R=44,T=16,B=22,f=u==='value'?money:fmt;
-  const vals=rows.flatMap(r=>[r.e,r.n]),mx=Math.max(1,...vals),mn=Math.min(0,...vals),span=(mx-mn)||1;
-  const X=i=>rows.length<2?(L+W-R)/2:L+(W-L-R)*i/(rows.length-1),Y=v=>T+(H-T-B)*(1-(v-mn)/span);
-  let s=`<svg class="fc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Eligible vs not eligible">`;
-  for(let g=0;g<=3;g++){const v=mn+span*g/3,y=Y(v);s+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text x="${L-4}" y="${(y+3).toFixed(1)}" text-anchor="end">${f(Math.round(v))}</text>`}
-  const step=Math.max(1,Math.ceil(rows.length/8)),PY=p=>T+(H-T-B)*(1-p);
-  [0,.5,1].forEach(p=>{s+=`<text x="${W-R+14}" y="${(PY(p)+3).toFixed(1)}" style="fill:var(--blu)">${Math.round(p*100)}%</text>`});
-  const pts=rows.map((r,i)=>[i,r.e+r.n>0?r.e/(r.e+r.n):null]).filter(x=>x[1]!=null);
-  if(pts.length>1)s+=`<polyline fill="none" stroke="var(--blu)" stroke-width="2.4" stroke-dasharray="2 4" stroke-linecap="round" points="${pts.map(([i,q])=>X(i).toFixed(1)+','+PY(q).toFixed(1)).join(' ')}"/>`;
-  rows.forEach((r,i)=>{if(i%step===0)s+=`<text x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="middle">${esc(r.p.label)}</text>`});
-  [['e','var(--g)'],['n','var(--r)']].forEach(([k,c])=>{
-    s+=`<polyline fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" points="${rows.map((r,i)=>X(i).toFixed(1)+','+Y(r[k]).toFixed(1)).join(' ')}"/>`;
-    rows.forEach((r,i)=>{s+=`<circle cx="${X(i).toFixed(1)}" cy="${Y(r[k]).toFixed(1)}" r="2.6" fill="${c}"/>`;
-      const o=k==='e'?'n':'e',dy=(r[k]>=r[o])?-7:14;if(rows.length<=8||i%step===0)s+=`<text class="lbl" x="${X(i).toFixed(1)}" y="${(Y(r[k])+dy).toFixed(1)}" text-anchor="middle" style="fill:${c};stroke:var(--tile);stroke-width:3px;paint-order:stroke">${f(r[k])}</text>`})});
-  return s+'</svg>';
-}
-const FNOTE={
-  intro:'Products introduced, by their real published date (published_date_old for migrated products).',
-  clear:{count:'Units sold, by the real order date.',value:'What the units actually sold for after line discounts, by the real order date.'},
-  shelf:{count:'Products in stock today, grouped by the year or month each was published. By year, all years added up equal the tiles. Sold % = units those products have sold to date ÷ (sold + still on the shelf).',value:'Stock value on the shelf today at sale price, grouped by the year or month the product was published. Sold % = units those products have sold to date ÷ (sold + still on the shelf).'}};
-function renderFlow(){
-  const box=$('#flowbox');
-  if(!F||!F.months||!F.months.length){box.hidden=true;return}
-  box.hidden=false;
-  if(!['intro','clear','shelf'].includes(st.fview))st.fview='intro';
-  const S=F.snap,v=st.fview,u=v==='intro'?'count':st.funit,f=u==='value'?money:fmt;
-  $('#funit').style.display=v==='intro'?'none':'';
-  $('#flowsub').textContent='as of '+F.asOf+' · eligible = under '+F.maxDts+' days to sell 1 unit';
-  const out=g=>S[g].products-S[g].stocked,nw=S.e.new?' Includes '+fmt(S.e.new)+' new products (published in the last '+F.testDays+' days, counted as eligible while they are tested; '+fmt(S.e.newStocked)+' in stock, '+money(S.e.newValue)+').':'';
-  const tiles=[[money(S.e.value),'ELIGIBLE stock on the shelf now: '+fmt(S.e.stocked)+' products in stock ('+fmt(S.e.units)+' units). Another '+fmt(out('e'))+' eligible products are sold out.'+nw,'g'],
-    [money(S.n.value),'NOT ELIGIBLE stock on the shelf now: '+fmt(S.n.stocked)+' products in stock ('+fmt(S.n.units)+' units). Another '+fmt(out('n'))+' not-eligible products are sold out.','r']];
-  if(S.x.products)tiles.push([fmt(S.x.products),'NO PUBLISH DATE, not counted above: '+fmt(S.x.stocked)+' in stock, '+fmt(S.x.units)+' units.','a']);
-  const G=['e','n','x'],TP=G.reduce((a,g)=>a+S[g].products,0),TS=G.reduce((a,g)=>a+S[g].stocked,0);
-  renderSup();
-  $('#flowtiles').innerHTML=tiles.map(t=>`<div class="tile"><b style="color:var(--${t[2]})">${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join('')+
-    `<div class="note" style="grid-column:1/-1">All ${fmt(TP)} products (active and archived, drafts left out) = ${fmt(S.e.products)} eligible + ${fmt(S.n.products)} not eligible`+(S.x.products?` + ${fmt(S.x.products)} no date`:'')+`. ${fmt(TS)} of them have stock on the shelf; ${fmt(TP-TS)} are sold out.</div>`;
-  document.querySelectorAll('#fview button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
-  document.querySelectorAll('#funit button').forEach(b=>b.classList.toggle('on',b.dataset.u===u));
-  const fys=[...new Set(F.months.map(fyOf))].sort();
-  if(st.ffy&&!fys.includes(st.ffy))st.ffy=null;
-  $('#fychips').innerHTML=[['','All years'],...fys.map(x=>[x,x])].map(([k,l])=>`<button data-f="${k}" class="${(st.ffy||'')===k?'on':''}">${l}</button>`).join('');
-  const cum=!!st.fcum,pre=a=>{let t=0;return a.map(x=>t+=x)},cv=a=>cum?pre(a):a,ag=(a,idx)=>cum?a[idx[idx.length-1]]:flowAgg(a,idx);
-  document.querySelectorAll('#fcum button').forEach(b=>b.classList.toggle('on',(b.dataset.c==='1')===cum));
-  const P=flowPeriods(),E=cv(flowSeries('e',v,u)),N=cv(flowSeries('n',v,u));
-  const PU=cv(F.e.pu.map((x,i)=>x+F.n.pu[i])),KU=cv(F.e.ku.map((x,i)=>x+F.n.ku[i]));
-  const rows=P.map(p=>({p,e:ag(E,p.idx),n:ag(N,p.idx),sold:ag(PU,p.idx),shelf:ag(KU,p.idx)}));
-  $('#fchart').innerHTML=flowChart(rows,u);
-  const share=v==='shelf'?(r=>{const t=r.sold+r.shelf;return t>0?r.sold/t:null}):(r=>{const t=r.e+r.n;return t>0?r.e/t:null});
-  const pl=s=>s==null?'<span class="pill p-n">–</span>':v==='shelf'?`<span class="pill p-n">${Math.round(s*100)}%</span>`:`<span class="pill p-${s>=.6?'g':s>=.4?'a':'r'}">${Math.round(s*100)}%</span>`;
-  let h=`<div class="ft h"><span>${st.ffy?'Month':'Year'}</span><span>Eligible${u==='count'?' (products)':''}</span><span>Not eligible${u==='count'?' (products)':''}</span><span>${v==='shelf'?'Sold %':'Elig %'}</span></div>`;
-  h+=rows.map(r=>`<div class="ft${st.ffy?'':' r'}"${st.ffy?'':` data-f="${r.p.fy}"`}><b>${esc(r.p.label)}${r.p.part?'*':''}</b><span class="e">${f(r.e)}</span><span class="n">${f(r.n)}</span>${pl(share(r))}</div>`).join('');
-  {const L=rows[rows.length-1],t=cum?{e:L.e,n:L.n,sold:L.sold,shelf:L.shelf}:{e:rows.reduce((a,r)=>a+r.e,0),n:rows.reduce((a,r)=>a+r.n,0),sold:rows.reduce((a,r)=>a+r.sold,0),shelf:rows.reduce((a,r)=>a+r.shelf,0)};h+=`<div class="ft t"><span>${cum?'So far':'Total'}</span><span class="e">${f(t.e)}</span><span class="n">${f(t.n)}</span>${pl(share(t))}</div>`}
-  $('#ftable').innerHTML=h;
-  $('#fnote').innerHTML=(cum?'<b>Cumulative:</b> each point is the running total from the first month up to that period, so the last point is the all-time total. ':'')+esc(v==='intro'?FNOTE.intro:FNOTE[v][u])+' '+(st.ffy?'Financial year '+esc(st.ffy)+' runs July to June; tap All years to go back.':'Tap a year to see its months.')+(rows.some(r=>r.p.part)?' * part year.':'')+
-    '<br>Eligible = the Restock Planner’s D.U new rule: days on market ÷ units sold under '+F.maxDts+'; the clock stops at the last sale once a product is sold out or discontinued; no sales = not eligible, except products published in the last '+F.testDays+' days, which count as eligible while they are tested. Each product keeps today’s status across its whole history. Elig % is green at 60%+, amber 40–59%, red under 40%.<br>Shopify does not keep your original buy quantities, so there is no history of past stock levels here: only what was introduced, what sold, and what is on the shelf now.'+
-    (F.unmapped&&F.unmapped.units?'<br>Left out: '+fmt(F.unmapped.units)+' units ('+money(F.unmapped.value)+') sold on custom items or products no longer in the store.':'');
-}
-function renderSup(){
-  const box=$('#supbox'),X=F&&F.sup;
-  if(!X||!X.rows.length){box.hidden=true;return}
-  box.hidden=false;
-  const A=X.cov.active,O=X.cov.other,tot=A.has+A.missing,key=st.ssort||'dts';
-  const rows=X.rows.filter(r=>r.dts!=null).sort((a,b)=>a.dts-b.dts),g='grid-template-columns:.5fr 2fr 1.2fr';
-  box.innerHTML=`<div class="note" style="margin:12px 0 6px"><b>Suppliers.</b> ${fmt(A.has)} of ${fmt(tot)} active products have a supplier set; ${fmt(A.missing)} do not (${fmt(A.missingStock)} of those have stock). Archived: ${fmt(O.has)} with, ${fmt(O.missing)} without.</div>
-  <div class="ft h" style="${g}"><span>Rank</span><span>Supplier</span><span>Avg units sold per product</span></div>`+
-  rows.map((r,i)=>`<div class="ft" style="${g}"><b>${i+1}</b><b>${esc(r.name)}</b><span>${r.upp}</span></div>`).join('')+
-  `<div class="note">Rank 1 = fastest selling supplier: total days on market of their products ÷ total units sold (same clock as the Restock Planner). Average = units sold to date ÷ number of their products. Products with no publish date are left out; suppliers with no sales are not listed.</div>`;
-}
-$('#fview').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.fview=b.dataset.v;save();renderFlow()}});
-$('#fcum').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.fcum=b.dataset.c==='1';save();renderFlow()}});
-$('#funit').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.funit=b.dataset.u;save();renderFlow()}});
-$('#fychips').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.ffy=b.dataset.f||null;save();renderFlow()}});
-$('#ftable').addEventListener('click',e=>{const r=e.target.closest('.ft.r');if(r){st.ffy=r.dataset.f;save();renderFlow()}});
 $('#cover').addEventListener('input',e=>{st.cover=+e.target.value;save();render()});
 $('#theme').addEventListener('click',()=>{st.theme=st.theme==='dark'?'light':'dark';save();render()});
 $('#mode').addEventListener('click',e=>{const b=e.target.closest('button');if(b){st.mode=b.dataset.m;save();render()}});
 $('#pick').addEventListener('change',e=>{st.sel=e.target.value;save();render()});
 $('#split').addEventListener('click',e=>{const c=e.target.closest('.card');if(c){st.sel=c.dataset.n;save();render();$('#dname').scrollIntoView({block:'start'})}});
-render();renderFlow();
+render();
 </script></body></html>

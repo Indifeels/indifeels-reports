@@ -217,10 +217,10 @@ def daily(orders, google, meta, start, today, share=FALLBACK_ADS_SHARE, elig=Non
     return out
 
 
-def build_page(rows, now, share=FALLBACK_ADS_SHARE, stock=None):
+def build_page(rows, now, share=FALLBACK_ADS_SHARE, stock=None, flow=None):
     h = open(TEMPLATE, encoding="utf-8").read()
     updated = now.strftime("%-d %b %Y, %-I:%M %p").replace("AM", "am").replace("PM", "pm")
-    h = (h.replace("__DATA__", json.dumps({"rows": rows, "cfg": dict(CONFIG, ads_share=round(share, 4), stock=stock or {})}, separators=(",", ":")))
+    h = (h.replace("__DATA__", json.dumps({"rows": rows, "cfg": dict(CONFIG, ads_share=round(share, 4), stock=stock or {}), "flow": flow}, separators=(",", ":")).replace("</", "<\\/"))
           .replace("__TODAY__", now.date().isoformat()).replace("__UPDATED__", updated))
     assert "__" not in h.replace("__proto__", ""), "unfilled template placeholder"
     t = now.date()
@@ -240,12 +240,18 @@ def build():
     share = ads_share(end)
     import procurement as pr
     import restock_plan as rp
-    elig = eligibility(rp.bulk(pr.FLOW_PRODUCTS, "flow products"), rp.bulk(pr.ORDERS, "orders"), now.date())
+    prod_lines, order_lines = rp.bulk(pr.FLOW_PRODUCTS, "flow products"), rp.bulk(pr.ORDERS, "orders")
+    elig = eligibility(prod_lines, order_lines, now.date())
+    flow = None
+    try:   # the stock-flow section must never take the rest of the report down
+        flow = pr.flow_aggregate(prod_lines, order_lines, now.date())
+    except Exception as exc:
+        print("stock flow skipped:", str(exc)[:300])
     rows = daily(fetch_orders(start), windsor("google_ads", GOOGLE_ACCT, start, end),
                  windsor("facebook", META_ACCT, start, end), start, now.date(), share, elig)
     if not any(sum(r[k][0] + r[k][1] for k in "GFO") for r in rows):
         raise RuntimeError("no sales returned")
-    page, meta = build_page(rows, now, share, elig["stock"])
+    page, meta = build_page(rows, now, share, elig["stock"], flow)
     key = os.environ["PROFIT_FLOW_KEY"]
     pv.write_encrypted(key, f"{RID}.bin", page.encode())
     pv.write_encrypted(key, f"{RID}.meta.bin", json.dumps(meta).encode())
@@ -265,7 +271,7 @@ if __name__ == "__main__":
         start = now.date().replace(day=1).isoformat()
         share = f.get("ads_share", FALLBACK_ADS_SHARE)
         rows = daily(f["orders"], f["google"], f["meta"], start, now.date(), share, f.get("elig"))
-        page, meta = build_page(rows, now, share, (f.get("elig") or {}).get("stock"))
+        page, meta = build_page(rows, now, share, (f.get("elig") or {}).get("stock"), f.get("flow"))
         open(os.path.join(out, "profit-flow.html"), "w", encoding="utf-8").write(page)
         json.dump(rows, open(os.path.join(out, "rows.json"), "w"))
         print(len(rows), meta)

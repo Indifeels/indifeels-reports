@@ -39,7 +39,12 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
 .vbr{width:100%;border-radius:8px 8px 0 0}.vl2{font-size:.72rem;color:var(--muted);margin-top:5px}.vn{text-align:center;font-family:var(--display);font-weight:800;margin-top:6px}.vnote{margin:0 4px 12px;font-size:.76rem;color:var(--muted);text-align:center}
 .el{margin:0 4px 14px;background:var(--bg);border-radius:14px;padding:10px 12px}.elh{font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .elr{display:grid;grid-template-columns:12px 1fr auto;gap:2px 8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.elr:last-of-type{border-bottom:0}.elr i{width:12px;height:12px;border-radius:4px}.elr .n{font-weight:700}.elr .n small{color:var(--muted);font-weight:500;margin-left:4px}.elr b{font-variant-numeric:tabular-nums;font-size:1.05rem;text-align:right}
-.elr .d{grid-column:2/4;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}.elr .d b{font-size:inherit;font-weight:700}.el summary{cursor:pointer;font-size:.8rem;font-weight:700;color:var(--muted);margin-top:8px}.el details .tg{margin:8px 0}.elt{font-size:.74rem;color:var(--muted);margin-top:6px}.elt b{color:var(--fg);font-variant-numeric:tabular-nums}
+.elr .d{grid-column:2/4;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}.elr .d b{font-size:inherit;font-weight:700}.sft{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 4px 10px}.sft .cd{margin:0}.sft .big2{font-family:var(--display);font-weight:800;font-size:clamp(1.3rem,6vw,1.8rem);font-variant-numeric:tabular-nums}.sft .cap{font-size:.78rem;color:var(--muted);margin-top:2px}.sft .cn{margin-bottom:2px;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 4px 8px}.chips button{all:unset;cursor:pointer;flex:none;font-size:.8rem;font-weight:700;color:var(--muted);border:1.5px solid var(--line);border-radius:999px;padding:5px 12px}.chips button.on{color:var(--surface);background:var(--fg);border-color:var(--fg)}
+.ft{display:grid;grid-template-columns:58px 1fr 1fr 54px;gap:8px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line);font-size:.82rem;font-variant-numeric:tabular-nums}.ft.h{color:var(--muted);font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}.ft.r{cursor:pointer}.ft.t{font-weight:800;border-bottom:0}.ft .e{color:var(--green)}.ft .n{color:var(--red)}.ft>*:nth-child(n+2){text-align:right}
+.pl{display:inline-block;font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 8px;background:color-mix(in srgb,var(--fg) 10%,transparent)}.pl.g{color:var(--green)}.pl.a{color:#ffb703}.pl.r{color:var(--red)}
+.fc{width:100%;height:auto;display:block}.fc text{font-size:9px;fill:var(--muted);font-variant-numeric:tabular-nums;font-family:var(--body)}.fc .gl{stroke:var(--line)}
+.el summary{cursor:pointer;font-size:.8rem;font-weight:700;color:var(--muted);margin-top:8px}.el details .tg{margin:8px 0}.elt{font-size:.74rem;color:var(--muted);margin-top:6px}.elt b{color:var(--fg);font-variant-numeric:tabular-nums}
 .note{margin:10px 4px 2px;font-size:.76rem;color:var(--muted)}
 .sum{margin-top:12px}
 .pill{border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:.85rem;color:var(--muted)}
@@ -59,6 +64,10 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
   <section class="box"><h2 class="ptitle" id="ptitle"></h2><div id="hero"></div><div class="ch2" id="ch2"></div><div id="leg"></div></section>
   <section class="box"><h2 class="ptitle">Is each channel worth it?</h2><div class="tg" id="tg"><div class="sg" id="gran"><button data-v="day">Days</button><button data-v="month">Months</button><button data-v="year">Years</button></div><div class="sg" id="ser"><button data-v="s">Spend</button><button data-v="sr">Spend + Return</button></div></div><div id="cards"></div></section>
   <section class="box"><h2 class="ptitle">The maths</h2><div id="wf"></div><p class="note" id="note"></p></section>
+  <section class="box" id="sf" hidden><h2 class="ptitle">Stock flow · introduced vs cleared</h2><div class="sft" id="sftiles"></div>
+    <div class="tg"><div class="sg" id="sfv"><button data-k="view" data-v="intro">Introduced</button><button data-k="view" data-v="clear">Cleared</button><button data-k="view" data-v="shelf">On shelf</button></div><div class="sg" id="sfu"><button data-k="unit" data-v="count">Count</button><button data-k="unit" data-v="value">Value</button></div><div class="sg" id="sfc"><button data-k="cum" data-v="0">By year</button><button data-k="cum" data-v="1">Cumulative</button></div></div>
+    <div class="chips" id="sfchips"></div><div id="sfchart"></div><div class="lgd"><span><i style="background:var(--green)"></i>Eligible</span><span><i style="background:var(--red)"></i>Not eligible</span><span><i style="background:#6f86ff"></i>Eligible share %</span></div>
+    <div id="sftable"></div><p class="note" id="sfnote"></p><div id="sfsup"></div></section>
 </div>
 <script id="data" type="application/json">__DATA__</script>
 <script>
@@ -120,7 +129,7 @@ function split(from,to){
   var t=0,e=0,sl=0;
   ROWS.forEach(function(r){if(r.d>=from&&r.d<=to){t+=r.t||0;e+=r.e||0}});
   var c=calc(from,to);sl=c.sales;
-  if(!(t>0)||!(sl>0))return null;
+  if(!(t>0)||!(sl>0))return{sales:sl,e:0,n:0,sh:0};
   var sh=Math.min(1,e/t);return{sales:sl,e:sl*sh,n:sl*(1-sh),sh:sh};
 }
 function prevRange(r){
@@ -137,17 +146,20 @@ function chg(a,b,badUp){
   var p=(a-b)/b*100,up=p>=0,good=badUp?!up:up;
   return'<b class="'+(Math.abs(p)<0.5?"":good?"pos":"neg")+'">'+(up?"▲ ":"▼ ")+Math.abs(p).toFixed(0)+'%</b> · '+(up?"+":"-")+money(Math.abs(a-b)).replace("-","");
 }
+function allTime(){
+  if(F&&F.months&&F.months.length){var e=0,n=0;F.months.forEach(function(m,i){e+=F.e.sv[i];n+=F.n.sv[i]});return{e:e,n:n,since:MF[+F.months[0].slice(5,7)-1]+" "+F.months[0].slice(0,4)}}
+  var s=split(FIRST,TODAY);return s?{e:s.e,n:s.n,since:pd(FIRST)}:null}
 function eligBlock(r){
   var cur=split(r.from,r.to),st=CFG.stock||{};
   if(!cur||st.e==null)return"";
-  var ytd=split(FIRST,TODAY),cur_=r.to===TODAY,
+  var ytd=allTime(),cur_=r.to===TODAY,
     w=sel.mode==="day"?(cur_?"today":"that day"):sel.mode==="week"?(cur_?"this week":"that week"):(cur_?"this month":"that month");
   function row(name,col,stock,sold){
     return'<div class="elr"><i style="background:'+col+'"></i><span class="n">'+name+' stock</span><b style="color:'+col+'">'+money(stock)+'</b>'
       +'<span class="d">Sold '+w+': <b>'+money(sold)+'</b></span></div>';
   }
   var h='<div class="el">'+row("Not eligible","var(--red)",st.n,cur.n)+row("Eligible","var(--green)",st.e,cur.e);
-  if(ytd)h+='<div class="elt">Sold since '+pd(FIRST)+': not eligible <b>'+money(ytd.n)+'</b> · eligible <b>'+money(ytd.e)+'</b></div>';
+  if(ytd)h+='<div class="elt">Sold since '+ytd.since+': not eligible <b>'+money(ytd.n)+'</b> · eligible <b>'+money(ytd.e)+'</b></div>';
   h+='<details id="eg"'+(EG.open?" open":"")+'><summary>Trend: sold from each</summary><div class="tg"><div class="sg" id="egg">'
     +[["day","Days"],["month","Months"],["year","Years"]].map(function(x){return'<button data-v="'+x[0]+'" aria-pressed="'+(EG.gran===x[0])+'">'+x[1]+'</button>'}).join("")+'</div></div><div id="egc"></div></details>';
   return h+'</div>';
@@ -155,11 +167,16 @@ function eligBlock(r){
 var EG={open:false,gran:"month"};function cv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}function RED(){return cv("--red")||"#e5484d"}function GRN(){return cv("--green")||"#1fa968"}
 function drawEg(){
   var el=document.getElementById("egc");if(!el)return;
-  var kf=EG.gran==="year"?function(d){return d.slice(0,4)}:EG.gran==="month"?function(d){return d.slice(0,7)}:function(d){return d};
-  var rs=EG.gran==="day"?ROWS.slice(-30):ROWS,bs=[],ix={};
-  rs.forEach(function(r){var k=kf(r.d),b=ix[k];if(!b){b=ix[k]={k:k,e:0,n:0};bs.push(b)}
-    var sl=0;CH.forEach(function(x){sl+=r[x[0]][0]+r[x[0]][1]});var sh=r.t>0?Math.min(1,r.e/r.t):0;b.e+=sl*sh;b.n+=sl*(1-sh)});
-  var n=bs.length,E=bs.map(function(b){return b.e}),N=bs.map(function(b){return b.n}),mx=Math.max.apply(null,E.concat(N,[1]));
+  var bs=[],ix={};
+  if(EG.gran==="day"||!F||!F.months){
+    var kf=EG.gran==="year"?function(d){return d.slice(0,4)}:EG.gran==="month"?function(d){return d.slice(0,7)}:function(d){return d};
+    (EG.gran==="day"?ROWS.slice(-30):ROWS).forEach(function(r){var k=kf(r.d),b=ix[k];if(!b){b=ix[k]={k:k,e:0,n:0};bs.push(b)}
+      var sl=0;CH.forEach(function(x){sl+=r[x[0]][0]+r[x[0]][1]});var sh=r.t>0?Math.min(1,r.e/r.t):0;b.e+=sl*sh;b.n+=sl*(1-sh)});
+  }else{
+    F.months.forEach(function(m,i){var k=EG.gran==="year"?m.slice(0,4):m,b=ix[k];if(!b){b=ix[k]={k:k,e:0,n:0};bs.push(b)}b.e+=F.e.sv[i];b.n+=F.n.sv[i]});
+  }
+  var n=bs.length;if(!n){el.innerHTML="";return}
+  var E=bs.map(function(b){return b.e}),N=bs.map(function(b){return b.n}),mx=Math.max.apply(null,E.concat(N,[1]));
   var W=320,H=150,L=6,R=6,T=16,B=22,xs=bs.map(function(b,i){return n===1?W/2:L+i*(W-L-R)/(n-1)});
   function y(v){return T+(1-v/mx)*(H-T-B)}
   var svg='<svg viewBox="0 0 '+W+' '+H+'" class="tl"><line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(0)+'" y2="'+y(0)+'" stroke="var(--line)"/><text x="'+L+'" y="10" class="ax">'+money(mx)+'</text>'+line(N,RED(),xs,y)+line(E,GRN(),xs,y);
@@ -225,7 +242,78 @@ function drawTrends(){
 }
 function syncTg(){[["gran","gran"],["ser","ser"]].forEach(function(p){var g=document.getElementById(p[0]);Array.prototype.forEach.call(g.children,function(b){b.setAttribute("aria-pressed",b.getAttribute("data-v")===TR[p[1]])})})}
 ["gran","ser"].forEach(function(id){document.getElementById(id).addEventListener("click",function(e){var v=e.target.getAttribute&&e.target.getAttribute("data-v");if(!v)return;TR[id]=v;try{localStorage.setItem("pf-tr",JSON.stringify(TR))}catch(x){}syncTg();drawTrends()})});
-function renderAll(){renderTiles();draw();syncTg()}
+var F=D.flow,SF={view:"intro",unit:"count",cum:false,fy:null};
+try{var q0=JSON.parse(localStorage.getItem("pf-sf")||"null");if(q0)SF=Object.assign(SF,q0)}catch(e){}
+function sfSave(){try{localStorage.setItem("pf-sf",JSON.stringify(SF))}catch(e){}}
+function fmt(n){return n==null?"–":Number(n).toLocaleString("en-AU")}
+function esc(t){return String(t==null?"":t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function mk(n){var a=Math.abs(n),s=n<0?"-":"";return a>=1e6?s+"$"+(a/1e6).toFixed(2)+"M":a>=1e4?s+"$"+Math.round(a/1e3)+"k":a>=1e3?s+"$"+(a/1e3).toFixed(1)+"k":s+"$"+Math.round(a)}
+function fyOf(k){var y=+k.slice(0,4),m=+k.slice(5,7);return"FY"+String((m>=7?y+1:y)%100).padStart(2,"0")}
+function mlab(k){return MN[+k.slice(5,7)-1]+" "+k.slice(2,4)}
+function sfSeries(g,v,u){var x=F[g];return v==="intro"?x.ic:v==="clear"?(u==="count"?x.su:x.sv):(u==="count"?x.ks:x.kv)}
+function sfPeriods(){var by={};F.months.forEach(function(k,i){(by[fyOf(k)]=by[fyOf(k)]||[]).push(i)});
+  if(SF.fy&&by[SF.fy])return by[SF.fy].map(function(i){return{label:mlab(F.months[i]),idx:[i]}});
+  return Object.keys(by).sort().map(function(f){return{label:f,fy:f,idx:by[f],part:by[f].length<12}})}
+function sfChart(rows,u){
+  var W=360,H=176,L=46,R=44,T=16,B=22,f=u==="value"?mk:fmt,vals=[];rows.forEach(function(r){vals.push(r.e,r.n)});
+  var mx=Math.max.apply(null,vals.concat([1])),mn=Math.min.apply(null,vals.concat([0])),span=(mx-mn)||1;
+  function X(i){return rows.length<2?(L+W-R)/2:L+(W-L-R)*i/(rows.length-1)}function Y(v){return T+(H-T-B)*(1-(v-mn)/span)}function PY(p){return T+(H-T-B)*(1-p)}
+  var s='<svg class="fc" viewBox="0 0 '+W+' '+H+'">';
+  for(var g=0;g<=3;g++){var v=mn+span*g/3,y=Y(v);s+='<line class="gl" x1="'+L+'" x2="'+(W-R)+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'"/><text x="'+(L-4)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end">'+f(Math.round(v))+'</text>'}
+  var step=Math.max(1,Math.ceil(rows.length/8));
+  [0,.5,1].forEach(function(p){s+='<text x="'+(W-R+14)+'" y="'+(PY(p)+3).toFixed(1)+'" style="fill:#6f86ff">'+Math.round(p*100)+'%</text>'});
+  var pts=[];rows.forEach(function(r,i){if(r.e+r.n>0)pts.push(X(i).toFixed(1)+","+PY(r.e/(r.e+r.n)).toFixed(1))});
+  if(pts.length>1)s+='<polyline fill="none" stroke="#6f86ff" stroke-width="2.4" stroke-dasharray="2 4" stroke-linecap="round" points="'+pts.join(" ")+'"/>';
+  rows.forEach(function(r,i){if(i%step===0)s+='<text x="'+X(i).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle">'+esc(r.p.label)+'</text>'});
+  [["e","var(--green)"],["n","var(--red)"]].forEach(function(kc){var k=kc[0],c=kc[1];
+    s+='<polyline fill="none" stroke="'+c+'" stroke-width="2" stroke-linejoin="round" points="'+rows.map(function(r,i){return X(i).toFixed(1)+","+Y(r[k]).toFixed(1)}).join(" ")+'"/>';
+    rows.forEach(function(r,i){s+='<circle cx="'+X(i).toFixed(1)+'" cy="'+Y(r[k]).toFixed(1)+'" r="2.6" fill="'+c+'"/>';
+      var o=k==="e"?"n":"e",dy=r[k]>=r[o]?-7:14;if(rows.length<=8||i%step===0)s+='<text x="'+X(i).toFixed(1)+'" y="'+(Y(r[k])+dy).toFixed(1)+'" text-anchor="middle" style="fill:'+c+'">'+f(r[k])+'</text>'})});
+  return s+"</svg>";
+}
+var SFN={intro:"Products introduced, by real published date.",clear:{count:"Units sold, by real order date.",value:"What the units sold for after discounts, by real order date."},shelf:{count:"Products in stock today, by the year or month they were published. Sold % = units sold to date ÷ (sold + still on shelf).",value:"Stock value on the shelf today at sale price, by publish year or month."}};
+function renderSf(){
+  var box=document.getElementById("sf");
+  if(!F||!F.months||!F.months.length){box.hidden=true;return}
+  box.hidden=false;
+  if(["intro","clear","shelf"].indexOf(SF.view)<0)SF.view="intro";
+  var S=F.snap,v=SF.view,u=v==="intro"?"count":SF.unit,f=u==="value"?mk:fmt;
+  document.getElementById("sfu").style.display=v==="intro"?"none":"";
+  function out(g){return S[g].products-S[g].stocked}
+  function tile(n,col,g){return'<div class="cd"><div class="cn">'+n+' stock</div><div class="big2" style="color:var(--'+col+')">'+mk(S[g].value)+'</div><div class="cap">'+fmt(S[g].stocked)+' in stock · '+fmt(out(g))+' sold out</div></div>'}
+  document.getElementById("sftiles").innerHTML=tile("Not eligible","red","n")+tile("Eligible","green","e");
+  [["sfv","view",v],["sfu","unit",u],["sfc","cum",SF.cum?"1":"0"]].forEach(function(t){Array.prototype.forEach.call(document.getElementById(t[0]).children,function(b){b.setAttribute("aria-pressed",b.getAttribute("data-v")===t[2])})});
+  var fys=[],seen={};F.months.forEach(function(k){var y=fyOf(k);if(!seen[y]){seen[y]=1;fys.push(y)}});fys.sort();
+  if(SF.fy&&fys.indexOf(SF.fy)<0)SF.fy=null;
+  document.getElementById("sfchips").innerHTML=[["","All years"]].concat(fys.map(function(x){return[x,x]})).map(function(k){return'<button data-f="'+k[0]+'" class="'+((SF.fy||"")===k[0]?"on":"")+'">'+k[1]+'</button>'}).join("");
+  var cum=!!SF.cum;function pre(a){var t=0;return a.map(function(x){return t+=x})}function cv(a){return cum?pre(a):a}
+  function ag(a,idx){return cum?a[idx[idx.length-1]]:idx.reduce(function(s,i){return s+a[i]},0)}
+  var P=sfPeriods(),E=cv(sfSeries("e",v,u)),N=cv(sfSeries("n",v,u));
+  var PU=cv(F.e.pu.map(function(x,i){return x+F.n.pu[i]})),KU=cv(F.e.ku.map(function(x,i){return x+F.n.ku[i]}));
+  var rows=P.map(function(p){return{p:p,e:ag(E,p.idx),n:ag(N,p.idx),sold:ag(PU,p.idx),shelf:ag(KU,p.idx)}});
+  document.getElementById("sfchart").innerHTML=sfChart(rows,u);
+  function share(r){var t=v==="shelf"?r.sold+r.shelf:r.e+r.n;return t>0?(v==="shelf"?r.sold:r.e)/t:null}
+  function pl(x){return x==null?'<span class="pl">–</span>':'<span class="pl '+(v==="shelf"?"":x>=.6?"g":x>=.4?"a":"r")+'">'+Math.round(x*100)+'%</span>'}
+  var h='<div class="ft h"><span>'+(SF.fy?"Month":"Year")+'</span><span>Eligible</span><span>Not elig.</span><span>'+(v==="shelf"?"Sold %":"Elig %")+'</span></div>';
+  h+=rows.map(function(r){return'<div class="ft'+(SF.fy?"":" r")+'"'+(SF.fy?"":' data-f="'+r.p.fy+'"')+'><b>'+esc(r.p.label)+(r.p.part?"*":"")+'</b><span class="e">'+f(r.e)+'</span><span class="n">'+f(r.n)+'</span>'+pl(share(r))+'</div>'}).join("");
+  var Lr=rows[rows.length-1],tt=cum?{e:Lr.e,n:Lr.n,sold:Lr.sold,shelf:Lr.shelf}:rows.reduce(function(a,r){return{e:a.e+r.e,n:a.n+r.n,sold:a.sold+r.sold,shelf:a.shelf+r.shelf}},{e:0,n:0,sold:0,shelf:0});
+  h+='<div class="ft t"><span>'+(cum?"So far":"Total")+'</span><span class="e">'+f(tt.e)+'</span><span class="n">'+f(tt.n)+'</span>'+pl(share(tt))+'</div>';
+  document.getElementById("sftable").innerHTML=h;
+  document.getElementById("sfnote").innerHTML=(cum?"<b>Cumulative:</b> running total from the first month. ":"")+esc(v==="intro"?SFN.intro:SFN[v][u])+" "+(SF.fy?"Tap All years to go back.":"Tap a year to see its months.")+(rows.some(function(r){return r.p.part})?" * part year.":"")+" Eligible = under "+F.maxDts+" days per unit sold (Restock Planner rule); products published in the last "+F.testDays+" days count as eligible. Each product keeps today’s status across all years. Shopify keeps no past stock levels.";
+  renderSup();
+}
+function renderSup(){
+  var box=document.getElementById("sfsup"),X=F&&F.sup;
+  if(!X||!X.rows.length){box.innerHTML="";return}
+  var rows=X.rows.filter(function(r){return r.dts!=null}).sort(function(a,b){return a.dts-b.dts}),A=X.cov.active,g="grid-template-columns:.5fr 2fr 1.2fr";
+  box.innerHTML='<h2 class="ptitle" style="margin-top:14px">Suppliers · fastest selling first</h2><div class="note" style="margin:0 4px 6px">'+fmt(A.has)+" of "+fmt(A.has+A.missing)+" active products have a supplier set; "+fmt(A.missing)+' do not.</div><div class="ft h" style="'+g+'"><span>Rank</span><span>Supplier</span><span>Avg units / product</span></div>'
+    +rows.map(function(r,i){return'<div class="ft" style="'+g+'"><b>'+(i+1)+"</b><b>"+esc(r.name)+"</b><span>"+r.upp+"</span></div>"}).join("")
+    +'<p class="note">Rank 1 = fewest days on market per unit sold. Products with no publish date are left out.</p>';
+}
+["sfv","sfu","sfc"].forEach(function(id){document.getElementById(id).addEventListener("click",function(e){var k=e.target.getAttribute&&e.target.getAttribute("data-k");if(!k)return;var v=e.target.getAttribute("data-v");SF[k]=k==="cum"?v==="1":v;sfSave();renderSf()})});
+document.getElementById("sfchips").addEventListener("click",function(e){var f=e.target.getAttribute&&e.target.getAttribute("data-f");if(f==null)return;SF.fy=f||null;sfSave();renderSf()});
+document.getElementById("sftable").addEventListener("click",function(e){var r=e.target.closest&&e.target.closest(".ft.r");if(r){SF.fy=r.getAttribute("data-f");sfSave();renderSf()}});
+function renderAll(){renderTiles();draw();syncTg();renderSf()}
 fillValues();renderAll();
 })();
 </script></body></html>
