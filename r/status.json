@@ -27,10 +27,10 @@
   "reason": ""
  },
  "facebook-tracked": {
-  "at": "2026-11-11T20:01+11:00",
-  "code_sha": "300e96e5e5e19b58c38243004acf2d4133d781e5",
-  "data_through": "2026-11-11T20:00:30.091941+11:00",
-  "last_ok": "2026-11-11T20:01+11:00",
+  "at": "2026-11-12T06:01+11:00",
+  "code_sha": "237d92207877be428dde75302829e5b7a386dc9e",
+  "data_through": "2026-11-11T23:59:59+11:00",
+  "last_ok": "2026-11-12T06:01+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
