@@ -99,10 +99,10 @@
   "reason": ""
  },
  "profit-flow": {
-  "at": "2026-11-11T18:08+11:00",
-  "code_sha": "1f11980079397741c30c6b1e5596a437cd072e96",
+  "at": "2026-11-11T18:32+11:00",
+  "code_sha": "73f4bc893d8ddfb4ee7376dca739c510bef949c4",
   "data_through": null,
-  "last_ok": "2026-11-11T18:08+11:00",
+  "last_ok": "2026-11-11T18:32+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
