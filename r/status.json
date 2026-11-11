@@ -90,11 +90,11 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-11-11T07:00+11:00",
-  "code_sha": "16aba897ccef0a96e7a52aa1aa48c480b866c273",
+  "at": "2026-11-11T20:00+11:00",
+  "code_sha": "300e96e5e5e19b58c38243004acf2d4133d781e5",
   "data_through": null,
-  "last_ok": "2026-11-11T07:00+11:00",
-  "manifest_version": "2026-10-19.stock-take.1",
+  "last_ok": "2026-11-11T20:00+11:00",
+  "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
  },
