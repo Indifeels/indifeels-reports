@@ -45,6 +45,8 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
 .pick{display:grid;grid-template-columns:110px 1fr;gap:8px;margin:0}.pick select{font:inherit;font-weight:700;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:11px 12px;min-width:0;width:100%}
 .ch2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:2px 4px 8px}.col{display:flex;flex-direction:column;align-items:stretch}.col .ct{text-align:center;font-weight:800;font-family:var(--display);margin-bottom:6px}.stk{display:flex;flex-direction:column-reverse;height:340px;border-radius:12px;overflow:hidden;background:var(--bg)}
 .seg{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#101214;font-size:.7rem;line-height:1.2;overflow:hidden;min-height:2px;padding:0 3px}.seg b{font-size:.74rem;font-variant-numeric:tabular-nums}.seg.keep{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.28) 0 6px,transparent 6px 12px)}
+.tg{display:flex;flex-wrap:wrap;gap:8px;margin:0 4px 12px}.sg{display:flex;border:1.5px solid var(--line);border-radius:999px;overflow:hidden}.sg button{all:unset;cursor:pointer;padding:7px 14px;font-weight:700;font-size:.85rem;color:var(--muted)}.sg button[aria-pressed=true]{background:var(--fg);color:var(--surface)}
+.tr{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}.tl{width:100%;height:auto;display:block}.ax{font-size:10px;fill:var(--muted);font-family:var(--body)}.lgd{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem;color:var(--muted);margin-top:2px}.lgd i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.lgd em{margin-left:auto;font-style:normal}
 .chip{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;border:1px solid var(--line);border-radius:999px;padding:3px 10px;margin:2px 4px 0}.chip i{width:10px;height:10px;border-radius:3px}#leg{text-align:center;margin-bottom:4px}.tt{text-align:center;font-size:.8rem;color:var(--muted);margin-top:6px}.tt b{color:var(--fg)}
 </style></head><body>
 <div class="wrap">
@@ -52,7 +54,7 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
   <section class="tiles" id="tiles" aria-label="Quick periods"></section>
   <div class="pick"><select id="pm" aria-label="Period type"><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option></select><select id="pv" aria-label="Choose period"></select></div>
   <section class="box"><h2 class="ptitle" id="ptitle"></h2><div id="hero"></div><div class="ch2" id="ch2"></div><div id="leg"></div></section>
-  <section class="box"><h2 class="ptitle">Is each channel worth it?</h2><div id="cards"></div></section>
+  <section class="box"><h2 class="ptitle">Is each channel worth it?</h2><div class="tg" id="tg"><div class="sg" id="gran"><button data-v="day">Days</button><button data-v="month">Months</button><button data-v="year">Years</button></div><div class="sg" id="ser"><button data-v="s">Spend</button><button data-v="sr">Spend + Return</button></div></div><div id="cards"></div></section>
   <section class="box"><h2 class="ptitle">The maths</h2><div id="wf"></div><p class="note" id="note"></p></section>
 </div>
 <script id="data" type="application/json">__DATA__</script>
@@ -123,19 +125,52 @@ function draw(){
     return'<div class="seg'+(x[3]?" "+x[3]:"")+'" style="height:'+h+'px;background-color:'+x[2]+'">'+t+'</div>'}).join("")+'</div>'}
   document.getElementById("ch2").innerHTML='<div class="col"><div class="ct">Spend</div>'+stack(spend)+'<div class="tt">Costs <b>'+money(c.costs=c.sales-c.net)+'</b></div></div><div class="col"><div class="ct">Return</div>'+stack(ret)+'<div class="tt">Sales <b>'+money(c.sales)+'</b></div></div>';
   document.getElementById("leg").innerHTML=spend.concat(ret).filter(function(x){return x[1]/total*340<17&&x[1]>0}).map(function(x){return'<span class="chip"><i style="background:'+x[2]+'"></i>'+x[0]+' '+money(x[1])+' · '+pcs(x[1],S)+'</span>'}).join("");
-  function card(name,h,color,ads){var good=h.profit>=0;
+  function card(name,h,color,ads,k){var good=h.profit>=0;
     return'<div class="cd" style="border-left:6px solid '+color+'"><div class="cn">'+name+'</div>'+
       (ads?'<div class="row"><span>Spent on ads</span><b>'+money(h.ad)+'</b></div>':'')+
       '<div class="row"><span>Sales it brought</span><b>'+money(h.sales)+'</b></div>'+
       (ads?'<div class="row"><span>Return</span><b>'+roas(h.sales,h.ad)+'</b></div>':'')+
-      '<div class="row"><span>'+(ads?'Left after product, GST and ads':'Left after product and GST')+'</span><b class="'+(good?"pos":"neg")+'">'+money(h.profit)+'</b></div></div>'}
-  document.getElementById("cards").innerHTML=card("Google Ads",c.ch.G,COL.G,true)+card("Meta (Facebook) Ads",c.ch.F,COL.F,true)+card("Everything else (organic, calls, repeat)",c.ch.O,COL.O,false);
+      '<div class="row"><span>'+(ads?'Left after product, GST and ads':'Left after product and GST')+'</span><b class="'+(good?"pos":"neg")+'">'+money(h.profit)+'</b></div><div class="tr" id="tr-'+k+'"></div></div>'}
+  document.getElementById("cards").innerHTML=card("Google Ads",c.ch.G,COL.G,true,"G")+card("Meta (Facebook) Ads",c.ch.F,COL.F,true,"F")+card("Everything else (organic, calls, repeat)",c.ch.O,COL.O,false,"O");
+  drawTrends();
   var rows=[["Sales",c.sales,""],["– Product cost",-c.prod,""],["– GST (card sales)",-c.gst,""],["– Google Ads",-c.g,""],["– Meta Ads",-c.m,""]].concat(c.fixed.map(function(f){return["– "+f.name,-f.v,"fx"]}));
   document.getElementById("wf").innerHTML=rows.map(function(x){return'<div class="fr '+x[2]+'"><span>'+x[0]+'</span><b>'+money(x[1])+'</b></div>'}).join("")+'<div class="fr tot"><span>You keep</span><b class="'+(loss?"neg":"pos")+'">'+money(c.net)+'</b></div>';
   var unset=CFG.fixed_monthly.filter(function(f){return f.amount==null}).map(function(f){return f.name});
   document.getElementById("note").textContent="Percentages are shares of sales. Product cost is a flat "+Math.round(CFG.product_cost_pct*100)+"% of sales for now. GST only on card sales. Google sales = Google web orders plus part of Google store visits; Facebook = all Facebook orders; the rest is organic and other. Fixed costs are today's monthly amounts spread per day."+(unset.length?" Not set yet: "+unset.join(", ")+".":"");
 }
-function renderAll(){renderTiles();draw()}
+
+var TR={gran:"month",ser:"sr"};
+try{var tv=JSON.parse(localStorage.getItem("pf-tr")||"null");if(tv&&tv.gran&&tv.ser)TR=tv}catch(e){}
+function buckets(){
+  var keyf=TR.gran==="year"?function(d){return d.slice(0,4)}:TR.gran==="month"?function(d){return d.slice(0,7)}:function(d){return d};
+  var rs=TR.gran==="day"?ROWS.slice(-30):ROWS,out=[],idx={};
+  rs.forEach(function(r){var k=keyf(r.d),b=idx[k];if(!b){b=idx[k]={k:k,G:0,F:0,O:0,g:0,m:0};out.push(b)}
+    b.G+=r.G[0]+r.G[1];b.F+=r.F[0]+r.F[1];b.O+=r.O[0]+r.O[1];b.g+=r.g;b.m+=r.m});
+  return out;
+}
+function blabel(k){if(k.length===4)return k;if(k.length===7)return MN[+k.slice(5)-1]+" "+k.slice(2,4);return pd(k)}
+function line(pts,color,xs,y){return pts.length?'<path d="M'+pts.map(function(v,i){return xs[i].toFixed(1)+","+y(v).toFixed(1)}).join("L")+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+pts.map(function(v,i){return'<circle cx="'+xs[i].toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="'+(pts.length>45?0:3)+'" fill="'+color+'"><title>'+money(v)+'</title></circle>'}).join(""):""}
+function drawTrends(){
+  var bs=buckets(),n=bs.length;
+  [["G","g"],["F","m"],["O",null]].forEach(function(t){
+    var el=document.getElementById("tr-"+t[0]);if(!el)return;
+    var ret=bs.map(function(b){return b[t[0]]}),sp=t[1]?bs.map(function(b){return b[t[1]]}):null;
+    var showRet=TR.ser==="sr"||!sp,showSp=!!sp;
+    var all=[].concat(showRet?ret:[],showSp?sp:[]),mx=Math.max.apply(null,all.concat([1]));
+    var W=320,H=150,L=6,R=6,T=16,B=22,xs=bs.map(function(b,i){return n===1?W/2:L+i*(W-L-R)/(n-1)});
+    function y(v){return T+(1-v/mx)*(H-T-B)}
+    var svg='<svg viewBox="0 0 '+W+' '+H+'" class="tl"><line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(0)+'" y2="'+y(0)+'" stroke="var(--line)"/><line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(mx/2)+'" y2="'+y(mx/2)+'" stroke="var(--line)" stroke-dasharray="3 4"/><text x="'+L+'" y="11" class="ax">'+money(mx)+'</text>';
+    svg+=(showRet?line(ret,COL.net,xs,y):"")+(showSp?line(sp,COL.loss,xs,y):"");
+    var li=[0,Math.floor((n-1)/2),n-1].filter(function(v,i,a){return a.indexOf(v)===i});
+    li.forEach(function(i){svg+='<text x="'+xs[i]+'" y="'+(H-6)+'" text-anchor="'+(i===0&&n>1?"start":i===n-1&&n>1?"end":"middle")+'" class="ax">'+blabel(bs[i].k)+'</text>'});
+    svg+='</svg>';
+    var lg='<div class="lgd">'+(showSp?'<span><i style="background:'+COL.loss+'"></i>Spend '+money(sp[n-1])+'</span>':'')+(showRet?'<span><i style="background:'+COL.net+'"></i>Return '+money(ret[n-1])+'</span>':'')+'<em>latest '+(TR.gran==="year"?"year":TR.gran==="month"?"month":"day")+'</em></div>';
+    el.innerHTML=svg+lg;
+  });
+}
+function syncTg(){[["gran","gran"],["ser","ser"]].forEach(function(p){var g=document.getElementById(p[0]);Array.prototype.forEach.call(g.children,function(b){b.setAttribute("aria-pressed",b.getAttribute("data-v")===TR[p[1]])})})}
+["gran","ser"].forEach(function(id){document.getElementById(id).addEventListener("click",function(e){var v=e.target.getAttribute&&e.target.getAttribute("data-v");if(!v)return;TR[id]=v;try{localStorage.setItem("pf-tr",JSON.stringify(TR))}catch(x){}syncTg();drawTrends()})});
+function renderAll(){renderTiles();draw();syncTg()}
 fillValues();renderAll();
 })();
 </script></body></html>
