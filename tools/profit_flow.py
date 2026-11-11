@@ -271,9 +271,11 @@ def daily(orders, google, meta, start, today, share=FALLBACK_ADS_SHARE, elig=Non
 def build_page(rows, now, share=FALLBACK_ADS_SHARE, stock=None, flow=None, hist=None, plist=None):
     h = open(TEMPLATE, encoding="utf-8").read()
     updated = now.strftime("%-d %b %Y, %-I:%M %p").replace("AM", "am").replace("PM", "pm")
-    h = (h.replace("__DATA__", json.dumps({"rows": rows, "cfg": dict(CONFIG, ads_share=round(share, 4), stock=stock or {}), "flow": flow, "hist": hist or [], "plist": plist}, separators=(",", ":")).replace("</", "<\\/"))
-          .replace("__TODAY__", now.date().isoformat()).replace("__UPDATED__", updated))
-    assert "__" not in h.replace("__proto__", ""), "unfilled template placeholder"
+    data = json.dumps({"rows": rows, "cfg": dict(CONFIG, ads_share=round(share, 4), stock=stock or {}), "flow": flow, "hist": hist or [],
+                       "plist": plist}, separators=(",", ":")).replace("</", "<\\/")
+    h = h.replace("__TODAY__", now.date().isoformat()).replace("__UPDATED__", updated)
+    assert h.count("__DATA__") == 1
+    h = h.replace("__DATA__", data)
     t = now.date()
     sales = lambda a: round(sum(sum(r[k][0] + r[k][1] for k in "GFO") for r in rows if r["d"] >= a.isoformat()), 0)
     meta = {"updated": updated, "stats": [
