@@ -34,6 +34,9 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
 .lg{display:grid;grid-template-columns:14px 1fr auto 56px;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--line)}.lg i{width:12px;height:12px;border-radius:4px}.lg b{font-variant-numeric:tabular-nums}.lg em{font-style:normal;color:var(--muted);font-size:.85rem;text-align:right}
 .cd{background:var(--bg);border-radius:14px;padding:12px 14px;margin:0 4px 10px}.cn{font-family:var(--display);font-weight:800;font-size:1.05rem;margin-bottom:6px}.cd .row{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:.95rem}.cd .row span{color:var(--muted)}.cd .row b{font-variant-numeric:tabular-nums;text-align:right}
 .fr.tot{border-bottom:0}.fr.tot span,.fr.tot b{font-weight:800;font-size:1.05rem}
+.vgs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:4px 4px 6px}.vg{background:var(--bg);border-radius:14px;padding:10px 6px 8px}.vbs{display:flex;align-items:flex-end;justify-content:center;gap:10px;height:250px}
+.vc{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;width:44%;height:100%}.vt{display:flex;flex-direction:column;align-items:center;margin-bottom:4px;line-height:1.15}.vt b{font-size:.92rem;font-variant-numeric:tabular-nums}.vt u{text-decoration:none;font-size:.74rem;font-weight:700;background:color-mix(in srgb,var(--fg) 10%,transparent);border-radius:8px;padding:1px 7px;margin-top:2px}
+.vbr{width:100%;border-radius:8px 8px 0 0}.vl2{font-size:.72rem;color:var(--muted);margin-top:5px}.vn{text-align:center;font-family:var(--display);font-weight:800;margin-top:6px}.vnote{margin:0 4px 12px;font-size:.76rem;color:var(--muted);text-align:center}
 .note{margin:10px 4px 2px;font-size:.76rem;color:var(--muted)}
 .sum{margin-top:12px}
 .pill{border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:.85rem;color:var(--muted)}
@@ -43,7 +46,7 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
   <header><h1>Profit Flow</h1><p class="sub">Indifeels Australia · AUD · Melbourne time · as at __UPDATED__</p></header>
   <section class="tiles" id="tiles" aria-label="Choose period"></section>
   <section class="box"><h2 class="ptitle" id="ptitle"></h2><div id="hero"></div><div class="bar" id="bar"></div><div id="leg"></div></section>
-  <section class="box"><h2 class="ptitle">Is each channel worth it?</h2><div id="cards"></div></section>
+  <section class="box"><h2 class="ptitle">Is each channel worth it?</h2><div id="vb"></div><div id="cards"></div></section>
   <section class="box"><h2 class="ptitle">The maths</h2><div id="wf"></div><p class="note" id="note"></p></section>
 </div>
 <script id="data" type="application/json">__DATA__</script>
@@ -101,6 +104,10 @@ function draw(){
       '<div class="row"><span>Sales it brought</span><b>'+money(h.sales)+'</b></div>'+
       (ads?'<div class="row"><span>Return</span><b>'+roas(h.sales,h.ad)+'</b></div>':'')+
       '<div class="row"><span>'+(ads?'Left after product, GST and ads':'Left after product and GST')+'</span><b class="'+(good?"pos":"neg")+'">'+money(h.profit)+'</b></div></div>'}
+  var mx=Math.max(c.g,c.m,c.ch.G.sales,c.ch.F.sales,1),BH=170;
+  function vbar(v,color,lab){var h=Math.max(v/mx*BH,3);return'<div class="vc"><div class="vt"><b>'+money(v)+'</b><u>'+(v/S*100).toFixed(0)+'%</u></div><div class="vbr" style="height:'+h+'px;background:'+color+'"></div><div class="vl2">'+lab+'</div></div>'}
+  function grp(name,sp,rt){return'<div class="vg"><div class="vbs">'+vbar(sp,COL.loss,"Spent")+vbar(rt,COL.net,"Sales back")+'</div><div class="vn">'+name+'</div></div>'}
+  document.getElementById("vb").innerHTML='<div class="vgs">'+grp("Google Ads",c.g,c.ch.G.sales)+grp("Meta Ads",c.m,c.ch.F.sales)+'</div><p class="vnote">% = share of total sales ('+money(c.sales)+')</p>';
   document.getElementById("cards").innerHTML=card("Google Ads",c.ch.G,COL.G,true)+card("Meta (Facebook) Ads",c.ch.F,COL.F,true)+card("Everything else (organic, calls, repeat)",c.ch.O,COL.O,false);
   var rows=[["Sales",c.sales,""],["– Product cost",-c.prod,""],["– GST (card sales)",-c.gst,""],["– Google Ads",-c.g,""],["– Meta Ads",-c.m,""]].concat(c.fixed.map(function(f){return["– "+f.name,-f.v,"fx"]}));
   document.getElementById("wf").innerHTML=rows.map(function(r){return'<div class="fr '+r[2]+'"><span>'+r[0]+'</span><b>'+money(r[1])+'</b></div>'}).join("")+'<div class="fr tot"><span>You keep</span><b class="'+(loss?"neg":"pos")+'">'+money(c.net)+'</b></div>';
