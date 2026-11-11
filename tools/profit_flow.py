@@ -27,6 +27,8 @@ META_ACCT = os.environ.get("WINDSOR_FACEBOOK_ACCOUNT", "1634084963432990")
 
 # Edit here. Monthly AUD costs are spread evenly per day of the month. amount None = not set yet (hidden on the chart).
 CONFIG = {
+    # Clearance plan for not-eligible stock (suggested sale prices on the product table)
+    "clearance": {"horizon_months": 12, "max_discount": 0.5, "step": 0.05, "elasticity": 2.0, "rate_days": 90},
     "product_cost_pct": 0.32,      # of total sales; replace with real per-product cost later
     "gst_card_only": True,         # GST (1/11 of a GST-inclusive price) on card sales only; cash has no GST
     "fixed_monthly": [
@@ -93,7 +95,7 @@ def eligibility(prod_lines, order_lines, today):
             pub = rp.melbourne_day(l["createdAt"])
         products[l["id"]] = {"title": l.get("title") or "", "url": l.get("onlineStoreUrl") or "",
                              "img": ((l.get("featuredImage") or {}).get("url") or ""), "cols": [],
-                             "active": (l.get("status") or "").upper() == "ACTIVE", "id": rp.num(l["id"]), "pub": pub, "stock": 0, "value": 0.0, "sold": 0, "last": "",
+                             "active": (l.get("status") or "").upper() == "ACTIVE", "id": rp.num(l["id"]), "pub": pub, "stock": 0, "value": 0.0, "prices": [], "s90": 0, "days_n": 0, "sold": 0, "last": "",
                              "disc": ((l.get("disc") or {}).get("value") or "").strip().lower() in ("yes", "true", "1")}
     for l in prod_lines:
         P = products.get(l.get("__parentId"))
@@ -106,6 +108,8 @@ def eligibility(prod_lines, order_lines, today):
             P["stock"] += q
             P["value"] += q * float(l.get("price") or 0)
             vprice[rp.num(l["id"])] = float(l.get("price") or 0)
+            if float(l.get("price") or 0) > 0:
+                P["prices"].append(float(l["price"]))
     cancelled = {l["id"] for l in order_lines if "/Order/" in l.get("id", "") and l.get("cancelledAt")}
     placed = {l["id"]: rp.melbourne_day(l["processedAt"]) for l in order_lines if "/Order/" in l.get("id", "") and l.get("processedAt")}
     by_pid = {P["id"]: P for P in products.values()}
@@ -122,6 +126,8 @@ def eligibility(prod_lines, order_lines, today):
         if P:
             P["sold"] += q
             P["last"] = max(P["last"], day)
+            if day >= (today - dt.timedelta(days=90)).isoformat():
+                P["s90"] += q
         sales.append((day, P, rev))
     if len(sales) < 50:
         raise RuntimeError("Too few order lines for the eligible split")
@@ -133,6 +139,7 @@ def eligibility(prod_lines, order_lines, today):
             if (P["disc"] or P["stock"] <= 0) and P["last"]:
                 end = min(today, dt.date.fromisoformat(P["last"]))
             days_n = max(1, (end - pub).days)
+            P["days_n"] = days_n
             P["new"] = (today - pub).days < pr.FLOW_TEST_DAYS
             P["du"] = round(days_n / P["sold"], 1) if P["sold"] > 0 else None     # D.U new: days on market / units sold
             P["elig"] = P["new"] or (P["sold"] > 0 and days_n / P["sold"] < pr.FLOW_MAX_DTS)
@@ -155,7 +162,8 @@ def eligibility(prod_lines, order_lines, today):
     trim = lambda u: u.split("?")[0] if u else ""
     plist = {"cols": clist, "rows": [
         [P["title"], P["url"], trim(P["img"]), sorted({cix[c] for c in P["cols"]}), 1 if P["elig"] else 0, 1 if P["new"] else 0,
-         P["stock"], round(P["value"]), P["sold"], P["du"], 1 if P["active"] else 0, 1 if P["pub"] else 0]
+         P["stock"], round(P["value"]), P["sold"], P["du"], 1 if P["active"] else 0, 1 if P["pub"] else 0,
+         round(sum(P["prices"]) / len(P["prices"]), 2) if P["prices"] else 0, P["s90"], P["days_n"]]
         for P in sorted(products.values(), key=lambda P: -P["value"])]}
     return {"days": out, "stock": {k: round(v) for k, v in stock.items()}, "plist": plist,
             "pelig": {P["id"]: P["elig"] for P in products.values() if P["pub"]}, "vprice": vprice}
