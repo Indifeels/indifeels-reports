@@ -28,6 +28,12 @@ svg text{font-family:var(--body);fill:var(--fg);paint-order:stroke;stroke:var(--
 .nm{font-size:12px;font-weight:700}.vl{font-size:12px;font-weight:500;fill:var(--muted)}.big{font-size:14px;font-weight:800}
 .fr{display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px solid var(--line);font-size:.9rem}.fr b{font-variant-numeric:tabular-nums}.posbg b{color:var(--green)}.negbg b{color:var(--red)}
 table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.86rem}table.ct th,table.ct td{padding:8px 4px;border-bottom:1px solid var(--line);text-align:right}table.ct th:first-child{text-align:left;font-weight:700}table.ct thead th{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}table.ct tr.tot th,table.ct tr.tot td{font-weight:800;border-bottom:0}table.ct .pos{color:var(--green)}table.ct .neg{color:var(--red)}
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin:4px 4px 0}.hero span{font-size:.78rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}.hero b{font-family:var(--display);font-size:clamp(1.7rem,8vw,2.4rem);font-variant-numeric:tabular-nums;line-height:1.1}
+.pos{color:var(--green)}.neg{color:var(--red)}.sub2{margin:6px 4px 14px;font-size:1.05rem}
+.bar{display:flex;height:26px;border-radius:13px;overflow:hidden;margin:0 4px 12px}.bar i{display:block;min-width:3px}
+.lg{display:grid;grid-template-columns:14px 1fr auto 56px;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--line)}.lg i{width:12px;height:12px;border-radius:4px}.lg b{font-variant-numeric:tabular-nums}.lg em{font-style:normal;color:var(--muted);font-size:.85rem;text-align:right}
+.cd{background:var(--bg);border-radius:14px;padding:12px 14px;margin:0 4px 10px}.cn{font-family:var(--display);font-weight:800;font-size:1.05rem;margin-bottom:6px}.cd .row{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:.95rem}.cd .row span{color:var(--muted)}.cd .row b{font-variant-numeric:tabular-nums;text-align:right}
+.fr.tot{border-bottom:0}.fr.tot span,.fr.tot b{font-weight:800;font-size:1.05rem}
 .note{margin:10px 4px 2px;font-size:.76rem;color:var(--muted)}
 .sum{margin-top:12px}
 .pill{border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:.85rem;color:var(--muted)}
@@ -36,12 +42,9 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
 <div class="wrap">
   <header><h1>Profit Flow</h1><p class="sub">Indifeels Australia · AUD · Melbourne time · as at __UPDATED__</p></header>
   <section class="tiles" id="tiles" aria-label="Choose period"></section>
-  <section class="box">
-    <h2 class="ptitle" id="ptitle">Where the money goes</h2>
-    <div class="sc"><svg id="sk" role="img" aria-label="Sankey chart of sales to net profit"></svg></div>
-    <div class="sum" id="sum"></div><div id="fxl"></div>
-    <p class="note" id="note"></p>
-  </section>
+  <section class="box"><h2 class="ptitle" id="ptitle"></h2><div id="hero"></div><div class="bar" id="bar"></div><div id="leg"></div></section>
+  <section class="box"><h2 class="ptitle">Is each channel worth it?</h2><div id="cards"></div></section>
+  <section class="box"><h2 class="ptitle">The maths</h2><div id="wf"></div><p class="note" id="note"></p></section>
 </div>
 <script id="data" type="application/json">__DATA__</script>
 <script>
@@ -80,54 +83,30 @@ function renderTiles(){
     b.onclick=function(){cur=p.id;try{localStorage.setItem("pf-period",cur)}catch(e){}renderTiles();draw()};
     tilesEl.appendChild(b)});
 }
-var COL={G:"#ffb703",F:"#4c6ef5",O:"#12b886",gst:"#9b8cc9",prod:"#f08c4a",fixed:"#ff6b6b",net:"#2fbf71",loss:"#e5484d",pbf:"#8ac926"};
-function roas(a,b){return b>0?(a/b).toFixed(1)+"x":"–"}
+var COL={G:"#ffb703",F:"#4c6ef5",O:"#12b886",gst:"#9b8cc9",prod:"#f08c4a",ads:"#ffb703",fixed:"#ff6b6b",net:"#2fbf71",loss:"#e5484d"};
+function roas(a,b){return b>0?"$"+(a/b).toFixed(2).replace(/\.00$/,"")+" back per $1":"no ad spend"}
 function draw(){
-  var p=PERIODS.filter(function(x){return x.id===cur})[0],c=calc(p.from),loss=c.net<0;
-  document.getElementById("ptitle").textContent="Where the money goes · "+p.label+(c.days>1?" ("+c.days+" days)":"");
-  var W=380,H=560,PT=14,PB=14,NW=12,G0=40,G1=12,G2=14,MINH=14,MINAD=32,X0=4,X1=150,X2=268;
-  var pbf=Math.max(c.pbf,0);
-  var L=CH.map(function(x){var h=c.ch[x[0]];return{id:x[0],name:x[1],v:h.sales,color:COL[x[0]],ch:h}});
-  var M=[{id:"gst",name:"GST",v:c.gst,color:COL.gst},{id:"prod",name:"Product cost",v:c.prod,color:COL.prod},
-         {id:"ad",name:"Google Ads",v:c.g,color:COL.G,min:MINAD},{id:"am",name:"Meta Ads",v:c.m,color:COL.F,min:MINAD},
-         {id:"pbf",name:"Profit before fixed costs",v:pbf,color:COL.pbf,min:MINAD}];
-  var R=[{id:"fx",name:"Fixed costs",v:Math.min(c.fx,pbf),color:COL.fixed,min:MINAD},
-         {id:"net",name:loss?"Net loss":"Net profit",v:loss?0:c.net,color:loss?COL.loss:COL.net,min:MINAD}];
-  var sc=Math.min((H-PT-PB-G0*2)/Math.max(c.sales,1),(H-PT-PB-G1*4)/Math.max(c.sales,1));
-  function stack(arr,x,gap,top){var y=top;arr.forEach(function(n){n.x=x;n.h=Math.max(n.v*sc,n.min||MINH);n.y=y;y+=n.h+gap;n.o=0;n.i=0});return y-gap}
-  stack(L,X0,G0,PT+34);stack(M,X1,G1,PT);
-  var yb=M[4].y+M[4].h;stack(R,X2,G2,Math.max(M[4].y-4,PT));
-  var by={};L.concat(M,R).forEach(function(n){by[n.id]=n});
-  var out=[];
-  function link(a,b,v,color){if(v<=0.005)return;var t=Math.max(v*sc,1),y0=a.y+a.o+t/2,y1=b.y+b.i+t/2;a.o+=t;b.i+=t;
-    var x0=a.x+NW,x1=b.x,mx=(x0+x1)/2;
-    out.push('<path d="M'+x0+","+y0+"C"+mx+","+y0+" "+mx+","+y1+" "+x1+","+y1+'" fill="none" stroke="'+color+'" stroke-opacity=".42" stroke-width="'+t+'"/>')}
-  var pos=L.reduce(function(a,n){return a+Math.max(n.ch.profit,0)},0),k=pos>0?pbf/pos:0;
-  ["gst","prod","ad","am","pbf"].forEach(function(t){
-    L.forEach(function(n){var h=n.ch,v=t==="gst"?h.gst:t==="prod"?h.prod:t==="ad"?(n.id==="G"?Math.min(h.ad,h.sales-h.gst-h.prod):0):t==="am"?(n.id==="F"?Math.min(h.ad,h.sales-h.gst-h.prod):0):Math.max(h.profit,0)*k;
-      link(n,by[t],v,n.color)})});
-  link(by.pbf,by.fx,R[0].v,COL.fixed);link(by.pbf,by.net,Math.max(pbf-c.fx,0),COL.net);
-  L.concat(M,R).forEach(function(n){out.push('<rect x="'+n.x+'" y="'+n.y+'" width="'+NW+'" height="'+n.h+'" rx="3" fill="'+n.color+'"/>')});
-  function pc(v){return c.sales>0?" · "+(v/c.sales*100).toFixed(0)+"%":""}
-  L.forEach(function(n){var h=n.ch;
-    out.push('<text x="'+n.x+'" y="'+(n.y-22)+'" class="big">'+n.name+' '+money(n.v)+'</text><text x="'+n.x+'" y="'+(n.y-7)+'" class="vl">'+(h.ad>0?"ROAS "+roas(h.sales,h.ad):"no ad spend")+'</text>')});
-  M.forEach(function(n){var x=n.x+NW+7,ty=n.y+n.h/2;
-    if(n.id==="ad"||n.id==="am"){var sa=n.id==="ad"?c.ch.G.sales:c.ch.F.sales;
-      out.push('<text x="'+x+'" y="'+(ty-2)+'" class="nm">'+n.name+' '+money(n.v)+'</text><text x="'+x+'" y="'+(ty+13)+'" class="vl">back '+money(sa)+' · '+roas(sa,n.v)+'</text>')}
-    else if(n.id==="pbf"){out.push('<text x="'+x+'" y="'+(ty-8)+'" class="nm">Profit before</text><text x="'+x+'" y="'+(ty+5)+'" class="nm">fixed costs</text><text x="'+x+'" y="'+(ty+19)+'" class="vl">'+money(c.pbf)+pc(c.pbf)+'</text>')}
-    else out.push('<text x="'+x+'" y="'+(ty+4)+'" class="nm">'+n.name+' <tspan class="vl">'+money(n.v)+pc(n.v)+'</tspan></text>')});
-  R.forEach(function(n){var x=n.x+NW+6,ty=n.y+n.h/2,v=n.id==="fx"?c.fx:c.net;
-    out.push('<text x="'+x+'" y="'+(ty-2)+'" class="'+(n.id==="net"?"big":"nm")+'"'+(n.id==="net"&&loss?' fill="'+COL.loss+'"':'')+'>'+n.name+'</text><text x="'+x+'" y="'+(ty+13)+'" class="vl">'+money(v)+(c.sales>0?" · "+(v/c.sales*100).toFixed(0)+"%":"")+'</text>')});
-  var sk=document.getElementById("sk");sk.setAttribute("viewBox","0 0 "+W+" "+H);sk.innerHTML=out.join("");
-  // by-channel table
-  var rows=CH.map(function(x){var h=c.ch[x[0]];return'<tr><th>'+x[1]+'</th><td>'+money(h.sales)+'</td><td>'+(h.ad>0?money(h.ad):"–")+'</td><td>'+(h.ad>0?roas(h.sales,h.ad):"–")+'</td><td class="'+(h.profit>=0?"pos":"neg")+'">'+money(h.profit)+'</td></tr>'}).join("");
-  document.getElementById("sum").innerHTML='<table class="ct"><thead><tr><th></th><th>Sales</th><th>Ad spend</th><th>ROAS</th><th>Profit*</th></tr></thead><tbody>'+rows+
-   '<tr class="tot"><th>Total</th><td>'+money(c.sales)+'</td><td>'+money(c.g+c.m)+'</td><td>'+roas(c.sales,c.g+c.m)+'</td><td>'+money(c.pbf)+'</td></tr></tbody></table><p class="note">*After GST, product cost and that channel\'s ad spend, before fixed costs.</p>';
-  document.getElementById("fxl").innerHTML='<div class="ptitle" style="margin-top:14px">Fixed costs · '+money(c.fx)+' · net '+money(c.net)+'</div>'+c.fixed.map(function(f){return'<div class="fr"><span>'+f.name+'</span><b>'+money(f.v)+'</b></div>'}).join("");
+  var p=PERIODS.filter(function(x){return x.id===cur})[0],c=calc(p.from),loss=c.net<0,S=Math.max(c.sales,1);
+  document.getElementById("ptitle").textContent=p.label+(c.days>1?" · "+c.days+" days":"");
+  var keep=c.net/S*100;
+  document.getElementById("hero").innerHTML='<div class="hero"><span>Sold</span><b>'+money(c.sales)+'</b><span>You keep</span><b class="'+(loss?"neg":"pos")+'">'+money(c.net)+'</b></div><p class="sub2">Out of every $100 sold, you keep <b class="'+(loss?"neg":"pos")+'">$'+keep.toFixed(0)+'</b>.</p>';
+  var parts=[["Product cost",c.prod,COL.prod],["GST",c.gst,COL.gst],["Ads",c.g+c.m,COL.ads],["Fixed costs",c.fx,COL.fixed],[loss?"Loss":"You keep",Math.abs(c.net),loss?COL.loss:COL.net]];
+  var tot=parts.reduce(function(a,x){return a+x[1]},0)||1;
+  document.getElementById("bar").innerHTML=parts.map(function(x){return'<i style="width:'+(x[1]/tot*100)+'%;background:'+x[2]+'"></i>'}).join("");
+  document.getElementById("leg").innerHTML=parts.map(function(x){return'<div class="lg"><i style="background:'+x[2]+'"></i><span>'+x[0]+'</span><b>'+money(x[1])+'</b><em>$'+(x[1]/S*100).toFixed(0)+'</em></div>'}).join("");
+  function card(name,h,color,ads){
+    var good=h.profit>=0;
+    return'<div class="cd" style="border-left:6px solid '+color+'"><div class="cn">'+name+'</div>'+
+      (ads?'<div class="row"><span>Spent on ads</span><b>'+money(h.ad)+'</b></div>':'')+
+      '<div class="row"><span>Sales it brought</span><b>'+money(h.sales)+'</b></div>'+
+      (ads?'<div class="row"><span>Return</span><b>'+roas(h.sales,h.ad)+'</b></div>':'')+
+      '<div class="row"><span>'+(ads?'Left after product, GST and ads':'Left after product and GST')+'</span><b class="'+(good?"pos":"neg")+'">'+money(h.profit)+'</b></div></div>'}
+  document.getElementById("cards").innerHTML=card("Google Ads",c.ch.G,COL.G,true)+card("Meta (Facebook) Ads",c.ch.F,COL.F,true)+card("Everything else (organic, calls, repeat)",c.ch.O,COL.O,false);
+  var rows=[["Sales",c.sales,""],["– Product cost",-c.prod,""],["– GST (card sales)",-c.gst,""],["– Google Ads",-c.g,""],["– Meta Ads",-c.m,""]].concat(c.fixed.map(function(f){return["– "+f.name,-f.v,"fx"]}));
+  document.getElementById("wf").innerHTML=rows.map(function(r){return'<div class="fr '+r[2]+'"><span>'+r[0]+'</span><b>'+money(r[1])+'</b></div>'}).join("")+'<div class="fr tot"><span>You keep</span><b class="'+(loss?"neg":"pos")+'">'+money(c.net)+'</b></div>';
   var unset=CFG.fixed_monthly.filter(function(f){return f.amount==null}).map(function(f){return f.name});
-  document.getElementById("note").textContent="Channels follow the Shopify order source: Google = Google Online + "+Math.round(CFG.ads_share*100)+"% of Google Direction store visits; Facebook = every FB source; Organic & other = everything else (Google Calls, Organic, Repeat, Word of Mouth, Marketplace, unlabelled). Product cost = "+Math.round(CFG.product_cost_pct*100)+"% of sales (temporary). GST = 1/11 of card sales; cash has none."+(unset.length?" Not set yet: "+unset.join(", ")+".":"");
+  document.getElementById("note").textContent="Product cost is a flat "+Math.round(CFG.product_cost_pct*100)+"% of sales for now. GST only on card sales. Google sales = Google web orders plus part of Google store visits; Meta = all Facebook orders; everything else is the rest. Fixed costs are monthly amounts spread per day."+(unset.length?" Not set yet: "+unset.join(", ")+".":"");
 }
-
 renderTiles();draw();
 })();
 </script></body></html>
