@@ -49,7 +49,7 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
 .tgx{display:inline-block;font-size:.68rem;font-weight:800;border-radius:999px;padding:1px 7px;margin-right:4px;background:color-mix(in srgb,var(--fg) 10%,transparent)}.tgx.e{color:var(--green)}.tgx.n{color:var(--red)}.tgx.w{color:#ffb703}
 .ptot{margin:0 4px 4px;font-size:.82rem;color:var(--muted)}.ptot b{color:var(--fg)}.more{all:unset;cursor:pointer;display:block;text-align:center;margin:10px auto 0;padding:9px 20px;border:1.5px solid var(--line);border-radius:999px;font-weight:700;font-size:.85rem}
 .cp{margin:0 4px 12px;background:var(--bg);border-radius:14px;padding:10px 12px}.cp .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}.cp .k{font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}.cp .b{font-family:var(--display);font-weight:800;font-size:1.25rem;font-variant-numeric:tabular-nums}.cp .ctl{display:flex;gap:8px;margin-bottom:8px}.cp select{font:inherit;font-size:.82rem;font-weight:600;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:7px 8px;flex:1;min-width:0}
-.cp .cap2{font-size:.74rem;color:var(--muted)}.sl{margin-top:4px}.slr{display:flex;align-items:center;gap:8px;margin:6px 0 2px}.slr input{flex:1;min-width:0;accent-color:#ffb703}.slv{font-weight:800;font-size:.8rem;color:var(--fg);min-width:78px;text-align:right;font-variant-numeric:tabular-nums}
+.cp .cap2{font-size:.74rem;color:var(--muted)}.sl{margin-top:4px}.slr{display:flex;align-items:center;gap:8px;margin:6px 0 2px}.slr input{flex:1;min-width:0;accent-color:#ffb703}.slv{font-weight:800;font-size:.9rem;color:var(--fg);white-space:nowrap}.pin{width:3.6em;font:inherit;font-weight:800;color:var(--fg);background:transparent;border:1.5px solid var(--line);border-radius:8px;padding:4px 6px;text-align:right}
 .ap{all:unset;cursor:pointer;display:inline-block;margin-top:6px;padding:7px 14px;border-radius:999px;border:1.5px solid var(--line);font-weight:800;font-size:.8rem;color:var(--fg)}.ap:disabled{opacity:.55;cursor:default}.ap.go{background:#ffb703;color:#101214;border-color:#ffb703}
 .sp{color:#ffb703;font-weight:800}.sp s{color:var(--muted);font-weight:500}
 .el summary{cursor:pointer;font-size:.8rem;font-weight:700;color:var(--muted);margin-top:8px}.el details .tg{margin:8px 0}.elt{font-size:.74rem;color:var(--muted);margin-top:6px}.elt b{color:var(--fg);font-variant-numeric:tabular-nums}
@@ -387,36 +387,44 @@ function renderCp(){
   h.onchange=ch;m.onchange=ch})();
 /* ---- per-product sale price: slider + approve (pushes to Shopify through the hub) ---- */
 var PX={},PD={},PW={},REQ=0,PEND={};
-function origOf(r){return r[15]>0?r[15]:r[12]}
-function curPct(r){var o=PD[r[16]];if(o)return o.pct;return r[15]>r[12]?Math.round((1-r[12]/r[15])*100/5)*5:0}
-function selPct(r){var k=r[16];if(PX[k]!=null)return PX[k];if(PD[k]||r[15]>r[12])return curPct(r);return Math.round(plan(r).d*100)}
-function npOf(r,pc){return Math.max(1,Math.round(origOf(r)*(1-pc/100)))}
+function origOf(r){return Math.round(r[15]>0?r[15]:r[12])}
+function loOf(r){return Math.ceil(origOf(r)*0.5)}
+function stops(r){var o=origOf(r),lo=loOf(r),a=[],p=Math.ceil(lo/5)*5;if(lo<p&&lo<o)a.push(lo);for(;p<o;p+=5)a.push(p);a.push(o);return a}
+function nearest5(r,v){var o=origOf(r);v=Math.round(v/5)*5;return Math.max(loOf(r),Math.min(o,v))}
+function livePrice(r){var o=PD[r[16]];return o?o.np:Math.round(r[12])}
+function selPrice(r){var k=r[16];if(PX[k]!=null)return PX[k];if(PD[k]||r[15]>r[12])return livePrice(r);var pl=plan(r);return pl.d>0?nearest5(r,pl.np):origOf(r)}
+function pctOf(r,p){var o=origOf(r);return Math.round((1-p/o)*100)}
 function priceBlock(r){
   if(!r[12])return"";
   if(r[4]||r[6]<=0)return'Price <b>$'+Math.round(r[12])+'</b>';
-  var k=r[16],pc=selPct(r),cur=curPct(r),live=PD[k]?PD[k].np:(r[15]>r[12]?Math.round(r[12]):0),pl=plan(r),w=PW[k],msg="";
+  var k=r[16],o=origOf(r),sp=selPrice(r),live=livePrice(r),pl=plan(r),w=PW[k],msg="",st=stops(r);
   var sug=pl.d>0?'Suggested <span class="sp">-'+Math.round(pl.d*100)+'% = $'+pl.np+'</span>'+(pl.none?" · no sales in "+CP.rate_days+" days":(pl.ok?"":" · won’t fully clear")):'Selling fast enough: no discount needed';
-  var btn=w==="busy"?'<button class="ap" disabled>Updating…</button>':w==="confirm"?'<button class="ap go" data-k="'+k+'">Tap again: set $'+npOf(r,pc)+'</button>':pc===cur?(cur>0?'<button class="ap" disabled>Live ✓</button>':'<button class="ap" disabled>Approve</button>'):'<button class="ap" data-k="'+k+'">'+(pc===0?"Revert to $"+Math.round(origOf(r)):"Approve")+'</button>';
+  var idx=0,bd=1e9;for(var i=0;i<st.length;i++){var dd=Math.abs(st[i]-sp);if(dd<bd){bd=dd;idx=i}}
+  var btn=w==="busy"?'<button class="ap" disabled>Updating…</button>':w==="confirm"?'<button class="ap go" data-k="'+k+'">Tap again: set $'+sp+'</button>':sp===live?(live<o?'<button class="ap" disabled>Live ✓</button>':'<button class="ap" disabled>Approve</button>'):sp>=o?'<button class="ap" data-k="'+k+'">Revert to $'+o+'</button>':'<button class="ap" data-k="'+k+'">Approve</button>';
   if(w&&w.err)msg='<div class="m" style="color:var(--red)">'+esc(w.err)+'</div>';
-  return'<div class="sl"><div class="m">'+sug+'</div><div class="slr"><input type="range" min="0" max="50" step="5" value="'+pc+'" data-k="'+k+'"><span class="slv" data-v="'+k+'">'+pc+'% · $'+npOf(r,pc)+'</span></div>'
-    +'<div class="m">Now <b>$'+Math.round(live||r[12])+'</b>'+(origOf(r)>(live||r[12])?' <s>$'+Math.round(origOf(r))+'</s>':"")+'</div>'+btn+msg+'</div>'
+  return'<div class="sl"><div class="m">'+sug+'</div><div class="slr"><input type="range" min="0" max="'+(st.length-1)+'" step="1" value="'+idx+'" data-k="'+k+'"><span class="slv">$<input type="text" inputmode="numeric" class="pin" value="'+sp+'" data-k="'+k+'" aria-label="Sale price"></span></div>'
+    +'<div class="m" data-v="'+k+'">'+(sp<o?"-"+pctOf(r,sp)+"% off $"+o:"Original price")+' · Now <b>$'+live+'</b>'+(o>live?' <s>$'+o+'</s>':"")+'</div>'+btn+msg+'</div>'
 }
 function rowOf(k){for(var i=0;i<PL.rows.length;i++)if(String(PL.rows[i][16])===String(k))return PL.rows[i]}
 window.addEventListener("message",function(e){var d=e.data||{};if(d.type!=="profit-flow-price-result"||!PEND[d.req])return;
   var p=PEND[d.req];delete PEND[d.req];clearTimeout(p.t);var r=rowOf(p.k);
-  if(d.ok){PD[p.k]={pct:p.pct,np:npOf(r,p.pct)};if(p.pct===0)delete PX[p.k];PW[p.k]=null}else PW[p.k]={err:d.error||"Couldn’t change the price"};
+  if(d.ok){PD[p.k]={np:p.revert?origOf(r):p.price};delete PX[p.k];PW[p.k]=null}else PW[p.k]={err:d.error||"Couldn’t change the price"};
   renderPl()});
-function sendPrice(k,pc){
-  var id=++REQ;PW[k]="busy";PEND[id]={k:k,pct:pc,t:setTimeout(function(){if(PEND[id]){delete PEND[id];PW[k]={err:"No answer. Open this report inside the Indifeels app to change prices."};renderPl()}},20000)};
-  try{parent.postMessage({type:"profit-flow",action:"price",req:id,items:[{pid:String(k),pct:pc}]},"*")}catch(x){}
+function sendPrice(k,pr,rv){
+  var id=++REQ;PW[k]="busy";PEND[id]={k:k,price:pr,revert:rv,t:setTimeout(function(){if(PEND[id]){delete PEND[id];PW[k]={err:"No answer. Open this report inside the Indifeels app to change prices."};renderPl()}},20000)};
+  try{parent.postMessage({type:"profit-flow",action:"price",req:id,items:[rv?{pid:String(k),revert:true}:{pid:String(k),price:pr}]},"*")}catch(x){}
   renderPl()}
-document.getElementById("plist").addEventListener("input",function(e){var k=e.target.getAttribute&&e.target.getAttribute("data-k");if(!k||e.target.type!=="range")return;
-  var r=rowOf(k);PX[k]=+e.target.value;PW[k]=null;var v=document.querySelector('.slv[data-v="'+k+'"]');if(v)v.textContent=PX[k]+"% · $"+npOf(r,PX[k])});
-document.getElementById("plist").addEventListener("change",function(e){if(e.target.type==="range")renderPl()});
+document.getElementById("plist").addEventListener("input",function(e){var t=e.target,k=t.getAttribute&&t.getAttribute("data-k");if(!k||t.type!=="range")return;
+  var r=rowOf(k),st=stops(r);PX[k]=st[+t.value];PW[k]=null;var row=t.closest(".slr"),pin=row&&row.querySelector(".pin");if(pin)pin.value=PX[k];
+  var m=document.querySelector('[data-v="'+k+'"]'),o=origOf(r);if(m)m.innerHTML=(PX[k]<o?"-"+pctOf(r,PX[k])+"% off $"+o:"Original price")+' · Now <b>$'+livePrice(r)+'</b>'});
+document.getElementById("plist").addEventListener("change",function(e){var t=e.target,k=t.getAttribute&&t.getAttribute("data-k");if(!k)return;
+  if(t.type==="range"){renderPl();return}
+  if(t.classList&&t.classList.contains("pin")){var r=rowOf(k),v=parseInt(String(t.value).replace(/[^0-9]/g,""),10);
+    if(!isFinite(v)){PX[k]=null;delete PX[k]}else PX[k]=Math.max(loOf(r),Math.min(origOf(r),v));PW[k]=null;renderPl()}});
 document.getElementById("plist").addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("button.ap");if(!b||b.disabled)return;
-  var k=b.getAttribute("data-k"),r=rowOf(k),pc=selPct(r);
-  if(pc===0){sendPrice(k,0);return}
-  if(PW[k]==="confirm"){sendPrice(k,pc);return}
+  var k=b.getAttribute("data-k"),r=rowOf(k),sp=selPrice(r),o=origOf(r);
+  if(sp>=o){sendPrice(k,o,true);return}
+  if(PW[k]==="confirm"){sendPrice(k,sp,false);return}
   PW[k]="confirm";renderPl();setTimeout(function(){if(PW[k]==="confirm"){PW[k]=null;renderPl()}},6000)});
 function renderAll(){renderTiles();draw();syncTg();renderSf();renderCp();renderPl()}
 fillValues();renderAll();

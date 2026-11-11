@@ -1537,7 +1537,7 @@
     }
   });
 
-  // ---------- Profit Flow: owner approves a sale % per product -> Shopify sale price (edge function product-price) ----------
+  // ---------- Profit Flow: owner approves a sale price per product -> Shopify sale price (edge function product-price) ----------
   window.addEventListener("message", async (event) => {
     const fr = $("#rep-frame");
     if (!fr || event.source !== fr.contentWindow) return;
@@ -1545,7 +1545,7 @@
     if (d.type !== "profit-flow" || d.action !== "price") return;
     const reply = (o) => { try { fr.contentWindow?.postMessage(Object.assign({ type: "profit-flow-price-result", req: d.req }, o), "*"); } catch (_) {} };
     try {
-      const items = (Array.isArray(d.items) ? d.items : []).slice(0, 40).map((i) => ({ pid: String(i.pid || ""), pct: Number(i.pct) }));
+      const items = (Array.isArray(d.items) ? d.items : []).slice(0, 40).map((i) => (i.revert ? { pid: String(i.pid || ""), revert: true } : { pid: String(i.pid || ""), price: Number(i.price) }));
       const { data, error } = await sb.functions.invoke("product-price", { body: { action: "apply", items } });
       if (error || !data) {
         let msg = data?.error || error?.message || "Couldn't change the price.";
