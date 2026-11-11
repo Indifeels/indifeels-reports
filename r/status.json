@@ -99,13 +99,13 @@
   "reason": ""
  },
  "profit-flow": {
-  "at": "2026-11-11T15:14+11:00",
-  "code_sha": "594c7340c381b649240a4f81fd72f4c8cb0894e9",
+  "at": "2026-11-11T15:15+11:00",
+  "code_sha": "ec11a04c0f1a871b456d0659297248467c74b0ed",
   "data_through": null,
-  "last_ok": "2026-11-11T14:44+11:00",
+  "last_ok": "2026-11-11T15:15+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
-  "ok": false,
-  "reason": "Profit flow build failed: AssertionError"
+  "ok": true,
+  "reason": ""
  },
  "restock-plan": {
   "at": "2026-11-11T13:54+11:00",
