@@ -45,11 +45,11 @@
   "reason": ""
  },
  "google-scorecard": {
-  "at": "2026-11-11T05:57+11:00",
-  "code_sha": "dfd9288bba023851f13f2dfc035912d594dbdfd5",
+  "at": "2026-11-12T06:03+11:00",
+  "code_sha": "43418a5100819b32bf949485a7ff745be67a2710",
   "data_through": null,
-  "last_ok": "2026-11-11T05:57+11:00",
-  "manifest_version": "2026-10-19.stock-take.1",
+  "last_ok": "2026-11-12T06:03+11:00",
+  "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
  },
