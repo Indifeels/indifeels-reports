@@ -28,7 +28,7 @@ META_ACCT = os.environ.get("WINDSOR_FACEBOOK_ACCOUNT", "1634084963432990")
 # Edit here. Monthly AUD costs are spread evenly per day of the month. amount None = not set yet (hidden on the chart).
 CONFIG = {
     # Clearance plan for not-eligible stock (suggested sale prices on the product table)
-    "clearance": {"horizon_months": 12, "max_discount": 0.5, "step": 0.05, "elasticity": 2.0, "rate_days": 90},
+    "clearance": {"horizon_months": 12, "max_discount": 0.25, "step": 0.05, "elasticity": 2.0, "rate_days": 90},
     "product_cost_pct": 0.32,      # of total sales; replace with real per-product cost later
     "gst_card_only": True,         # GST (1/11 of a GST-inclusive price) on card sales only; cash has no GST
     "fixed_monthly": [
@@ -70,6 +70,7 @@ def product_query():
     """Procurement's all-products query plus what the product table needs: title, page URL, picture, collections."""
     import procurement as pr
     q = pr.FLOW_PRODUCTS
+    q = q.replace("variants{ edges{ node{ id inventoryQuantity price } } }", "variants{ edges{ node{ id inventoryQuantity price compareAtPrice } } }")
     return q.replace("{ products{ edges{ node{ id status createdAt",
                      "{ products{ edges{ node{ id status createdAt title onlineStoreUrl featuredImage{ url } collections{ edges{ node{ id title } } }", 1)
 
@@ -95,7 +96,7 @@ def eligibility(prod_lines, order_lines, today):
             pub = rp.melbourne_day(l["createdAt"])
         products[l["id"]] = {"title": l.get("title") or "", "url": l.get("onlineStoreUrl") or "",
                              "img": ((l.get("featuredImage") or {}).get("url") or ""), "cols": [],
-                             "active": (l.get("status") or "").upper() == "ACTIVE", "id": rp.num(l["id"]), "pub": pub, "stock": 0, "value": 0.0, "prices": [], "s90": 0, "days_n": 0, "sold": 0, "last": "",
+                             "active": (l.get("status") or "").upper() == "ACTIVE", "id": rp.num(l["id"]), "pub": pub, "stock": 0, "value": 0.0, "prices": [], "cmps": [], "s90": 0, "days_n": 0, "sold": 0, "last": "",
                              "disc": ((l.get("disc") or {}).get("value") or "").strip().lower() in ("yes", "true", "1")}
     for l in prod_lines:
         P = products.get(l.get("__parentId"))
@@ -110,6 +111,7 @@ def eligibility(prod_lines, order_lines, today):
             vprice[rp.num(l["id"])] = float(l.get("price") or 0)
             if float(l.get("price") or 0) > 0:
                 P["prices"].append(float(l["price"]))
+                P["cmps"].append(float(l.get("compareAtPrice") or 0))
     cancelled = {l["id"] for l in order_lines if "/Order/" in l.get("id", "") and l.get("cancelledAt")}
     placed = {l["id"]: rp.melbourne_day(l["processedAt"]) for l in order_lines if "/Order/" in l.get("id", "") and l.get("processedAt")}
     by_pid = {P["id"]: P for P in products.values()}
@@ -163,7 +165,10 @@ def eligibility(prod_lines, order_lines, today):
     plist = {"cols": clist, "rows": [
         [P["title"], P["url"], trim(P["img"]), sorted({cix[c] for c in P["cols"]}), 1 if P["elig"] else 0, 1 if P["new"] else 0,
          P["stock"], round(P["value"]), P["sold"], P["du"], 1 if P["active"] else 0, 1 if P["pub"] else 0,
-         round(sum(P["prices"]) / len(P["prices"]), 2) if P["prices"] else 0, P["s90"], P["days_n"]]
+         round(sum(P["prices"]) / len(P["prices"]), 2) if P["prices"] else 0, P["s90"], P["days_n"],
+         # on sale now = compare-at above price: original (compare-at) average, else 0
+         round(sum(c for c, p in zip(P["cmps"], P["prices"]) if c > p) / max(1, sum(1 for c, p in zip(P["cmps"], P["prices"]) if c > p)), 2)
+         if any(c > p for c, p in zip(P["cmps"], P["prices"])) else 0, P["id"]]
         for P in sorted(products.values(), key=lambda P: -P["value"])]}
     return {"days": out, "stock": {k: round(v) for k, v in stock.items()}, "plist": plist,
             "pelig": {P["id"]: P["elig"] for P in products.values() if P["pub"]}, "vprice": vprice}
