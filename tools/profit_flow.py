@@ -73,7 +73,7 @@ def eligibility(prod_lines, order_lines, today):
     Lines with no matching product (custom / POS / deleted) count as not eligible."""
     import procurement as pr
     import restock_plan as rp
-    products = {}
+    products, vprice = {}, {}
     for l in prod_lines:
         if "/Product/" not in l.get("id", "") or "__parentId" in l or (l.get("status") or "").upper() == "DRAFT":
             continue
@@ -91,6 +91,7 @@ def eligibility(prod_lines, order_lines, today):
             q = max(0, int(l.get("inventoryQuantity") or 0))
             P["stock"] += q
             P["value"] += q * float(l.get("price") or 0)
+            vprice[rp.num(l["id"])] = float(l.get("price") or 0)
     cancelled = {l["id"] for l in order_lines if "/Order/" in l.get("id", "") and l.get("cancelledAt")}
     placed = {l["id"]: rp.melbourne_day(l["processedAt"]) for l in order_lines if "/Order/" in l.get("id", "") and l.get("processedAt")}
     by_pid = {P["id"]: P for P in products.values()}
@@ -129,7 +130,30 @@ def eligibility(prod_lines, order_lines, today):
         o["t"] += rev
         if P and P["elig"]:
             o["e"] += rev
-    return {"days": out, "stock": {k: round(v) for k, v in stock.items()}}
+    return {"days": out, "stock": {k: round(v) for k, v in stock.items()},
+            "pelig": {P["id"]: P["elig"] for P in products.values() if P["pub"]}, "vprice": vprice}
+
+
+def stock_history(elig):
+    """Stock value at the end of each month from the daily inventory snapshots (Supabase public.inventory_snapshots, kept
+    since 10 Nov 2026). Value = quantity x the variant's current price; eligible/not eligible = today's product status.
+    Returns [{"d": date, "e": value, "n": value}] or [] when the history is unavailable (never blocks the report)."""
+    try:
+        tok = os.environ["SYNC_READ_TOKEN"]
+        import restock_plan as rp
+        rows = rp.sb_rpc("sync_stock_month_ends", {"p_token": tok})
+    except Exception as exc:
+        print("stock history skipped:", str(exc)[:200])
+        return []
+    by = {}
+    for r in rows:
+        pid, vid = int(r["product_id"]), int(r["variant_id"])
+        if pid not in elig["pelig"]:
+            continue
+        g = "e" if elig["pelig"][pid] else "n"
+        d = by.setdefault(r["snap_date"], {"d": r["snap_date"], "e": 0.0, "n": 0.0})
+        d[g] += max(0, int(r["qty"])) * elig["vprice"].get(vid, 0.0)
+    return [{"d": k, "e": round(v["e"]), "n": round(v["n"])} for k, v in sorted(by.items())]
 
 
 def windsor(connector, acct, start, end):
@@ -217,10 +241,10 @@ def daily(orders, google, meta, start, today, share=FALLBACK_ADS_SHARE, elig=Non
     return out
 
 
-def build_page(rows, now, share=FALLBACK_ADS_SHARE, stock=None, flow=None):
+def build_page(rows, now, share=FALLBACK_ADS_SHARE, stock=None, flow=None, hist=None):
     h = open(TEMPLATE, encoding="utf-8").read()
     updated = now.strftime("%-d %b %Y, %-I:%M %p").replace("AM", "am").replace("PM", "pm")
-    h = (h.replace("__DATA__", json.dumps({"rows": rows, "cfg": dict(CONFIG, ads_share=round(share, 4), stock=stock or {}), "flow": flow}, separators=(",", ":")).replace("</", "<\\/"))
+    h = (h.replace("__DATA__", json.dumps({"rows": rows, "cfg": dict(CONFIG, ads_share=round(share, 4), stock=stock or {}), "flow": flow, "hist": hist or []}, separators=(",", ":")).replace("</", "<\\/"))
           .replace("__TODAY__", now.date().isoformat()).replace("__UPDATED__", updated))
     assert "__" not in h.replace("__proto__", ""), "unfilled template placeholder"
     t = now.date()
@@ -251,7 +275,7 @@ def build():
                  windsor("facebook", META_ACCT, start, end), start, now.date(), share, elig)
     if not any(sum(r[k][0] + r[k][1] for k in "GFO") for r in rows):
         raise RuntimeError("no sales returned")
-    page, meta = build_page(rows, now, share, elig["stock"], flow)
+    page, meta = build_page(rows, now, share, elig["stock"], flow, stock_history(elig))
     key = os.environ["PROFIT_FLOW_KEY"]
     pv.write_encrypted(key, f"{RID}.bin", page.encode())
     pv.write_encrypted(key, f"{RID}.meta.bin", json.dumps(meta).encode())
@@ -271,7 +295,7 @@ if __name__ == "__main__":
         start = now.date().replace(day=1).isoformat()
         share = f.get("ads_share", FALLBACK_ADS_SHARE)
         rows = daily(f["orders"], f["google"], f["meta"], start, now.date(), share, f.get("elig"))
-        page, meta = build_page(rows, now, share, (f.get("elig") or {}).get("stock"), f.get("flow"))
+        page, meta = build_page(rows, now, share, (f.get("elig") or {}).get("stock"), f.get("flow"), f.get("hist"))
         open(os.path.join(out, "profit-flow.html"), "w", encoding="utf-8").write(page)
         json.dump(rows, open(os.path.join(out, "rows.json"), "w"))
         print(len(rows), meta)

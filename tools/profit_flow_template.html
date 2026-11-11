@@ -41,7 +41,7 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
 .elr{display:grid;grid-template-columns:12px 1fr auto;gap:2px 8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.elr:last-of-type{border-bottom:0}.elr i{width:12px;height:12px;border-radius:4px}.elr .n{font-weight:700}.elr .n small{color:var(--muted);font-weight:500;margin-left:4px}.elr b{font-variant-numeric:tabular-nums;font-size:1.05rem;text-align:right}
 .elr .d{grid-column:2/4;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}.elr .d b{font-size:inherit;font-weight:700}.elr .d b.hl{font-size:1.02rem;font-weight:800}.sft{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 4px 10px}.sft .cd{margin:0}.sft .big2{font-family:var(--display);font-weight:800;font-size:clamp(1.3rem,6vw,1.8rem);font-variant-numeric:tabular-nums}.sft .cap{font-size:.78rem;color:var(--muted);margin-top:2px}.sft .cn{margin-bottom:2px;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .chips{display:flex;gap:6px;overflow-x:auto;padding:2px 4px 8px}.chips button{all:unset;cursor:pointer;flex:none;font-size:.8rem;font-weight:700;color:var(--muted);border:1.5px solid var(--line);border-radius:999px;padding:5px 12px}.chips button.on{color:var(--surface);background:var(--fg);border-color:var(--fg)}
-.ft{display:grid;grid-template-columns:58px 1fr 1fr 54px;gap:8px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line);font-size:.82rem;font-variant-numeric:tabular-nums}.ft.h{color:var(--muted);font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}.ft.r{cursor:pointer}.ft.t{font-weight:800;border-bottom:0}.ft .e{color:var(--green)}.ft .n{color:var(--red)}.ft>*:nth-child(n+2){text-align:right}
+.ft{display:grid;grid-template-columns:54px 1fr 1fr 50px;gap:8px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line);font-size:.82rem;font-variant-numeric:tabular-nums}.ft.h{color:var(--muted);font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}.ft.r{cursor:pointer}.ft.t{font-weight:800;border-bottom:0}.ft small{font-size:.74em;opacity:.8}.ft .e{color:var(--green)}.ft .n{color:var(--red)}.ft>*:nth-child(n+2){text-align:right}
 .pl{display:inline-block;font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 8px;background:color-mix(in srgb,var(--fg) 10%,transparent)}.pl.g{color:var(--green)}.pl.a{color:#ffb703}.pl.r{color:var(--red)}
 .fc{width:100%;height:auto;display:block}.fc text{font-size:8.5px;fill:var(--muted);font-variant-numeric:tabular-nums;font-family:var(--body)}.fc .gl{stroke:var(--line)}
 .el summary{cursor:pointer;font-size:.8rem;font-weight:700;color:var(--muted);margin-top:8px}.el details .tg{margin:8px 0}.elt{font-size:.74rem;color:var(--muted);margin-top:6px}.elt b{color:var(--fg);font-variant-numeric:tabular-nums}
@@ -62,7 +62,7 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
   <section class="tiles" id="tiles" aria-label="Quick periods"></section>
   <div class="pick"><select id="pm" aria-label="Period type"><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option></select><select id="pv" aria-label="Choose period"></select></div>
   <section class="box"><h2 class="ptitle" id="ptitle"></h2><div id="hero"></div><div class="ch2" id="ch2"></div><div id="leg"></div></section>
-  <section class="box" id="sf" hidden><h2 class="ptitle">Stock · introduced vs cleared vs on hand</h2><div class="sft" id="sftiles"></div>
+  <section class="box" id="sf" hidden><h2 class="ptitle">Stock · introduced vs cleared vs on hand</h2><div class="sft" id="sftiles"></div><div id="sfhist"></div>
     <div class="tg"><div class="sg" id="sfv"><button data-k="view" data-v="intro">Introduced</button><button data-k="view" data-v="clear">Cleared</button><button data-k="view" data-v="shelf">On hand</button></div><div class="sg" id="sfu"><button data-k="unit" data-v="count">Count</button><button data-k="unit" data-v="value">Value</button></div><div class="sg" id="sfc"><button data-k="cum" data-v="0">By year</button><button data-k="cum" data-v="1">Cumulative</button></div></div>
     <div class="chips" id="sfchips"></div><div id="sfchart"></div><div class="lgd"><span><i style="background:var(--green)"></i>Eligible</span><span><i style="background:var(--red)"></i>Not eligible</span><span><i style="background:#6f86ff"></i>Eligible share %</span></div>
     <div id="sftable"></div><p class="note" id="sfnote"></p><div id="sfsup"></div></section>
@@ -267,7 +267,7 @@ function sfChart(rows,u){
   [["e","var(--green)"],["n","var(--red)"]].forEach(function(kc){var k=kc[0],c=kc[1];
     s+='<polyline fill="none" stroke="'+c+'" stroke-width="2" stroke-linejoin="round" points="'+rows.map(function(r,i){return X(i).toFixed(1)+","+Y(r[k]).toFixed(1)}).join(" ")+'"/>';
     rows.forEach(function(r,i){s+='<circle cx="'+X(i).toFixed(1)+'" cy="'+Y(r[k]).toFixed(1)+'" r="2.6" fill="'+c+'"/>';
-      var o=k==="e"?"n":"e",dy=(r[k]>=r[o]?-7:14)+(i%2?(r[k]>=r[o]?-9:9):0);s+='<text x="'+X(i).toFixed(1)+'" y="'+(Y(r[k])+dy).toFixed(1)+'" text-anchor="middle" style="fill:'+c+'">'+f(r[k])+'</text>'})});
+      var o=k==="e"?"n":"e",dy=(r[k]>=r[o]?-7:14)+(i%2?(r[k]>=r[o]?-9:9):0);s+='<text x="'+X(i).toFixed(1)+'" y="'+(Y(r[k])+dy).toFixed(1)+'" text-anchor="middle" style="fill:'+c+'">'+f(r[k])+(r.e+r.n>0?' ('+Math.round(r[k]/(r.e+r.n)*100)+'%)':'')+'</text>'})});
   return s+"</svg>";
 }
 var SFN={intro:"Products introduced, by real published date.",clear:{count:"Units sold, by real order date.",value:"What the units sold for after discounts, by real order date."},shelf:{count:"Products in stock today, by the year or month they were published. Sold % = units sold to date ÷ (sold + still on shelf).",value:"Stock value on the shelf today at sale price, by publish year or month."}};
@@ -281,6 +281,12 @@ function renderSf(){
   function out(g){return S[g].products-S[g].stocked}
   function tile(n,col,g){return'<div class="cd"><div class="cn">'+n+' stock</div><div class="big2" style="color:var(--'+col+')">'+mk(S[g].value)+'</div><div class="cap">'+fmt(S[g].stocked)+' in stock · '+fmt(out(g))+' sold out</div></div>'}
   document.getElementById("sftiles").innerHTML=tile("Not eligible","red","n")+tile("Eligible","green","e");
+  var H=D.hist||[],he=document.getElementById("sfhist");
+  if(H.length){
+    var hr=H.map(function(x,i){var last=i===H.length-1;return{p:{label:MN[+x.d.slice(5,7)-1]+" "+x.d.slice(2,4)+(last&&x.d!==H[i].d.slice(0,8)+"31"?" *":"")},e:x.e,n:x.n}});
+    he.innerHTML='<h2 class="ptitle" style="margin:6px 4px">Stock at end of each month</h2>'+(hr.length>1?sfChart(hr,"value"):"")+'<p class="note">Stock value at month end (latest month * = today so far). Tracking started '+pd(H[0].d)+' '+H[0].d.slice(0,4)+'; earlier history is not kept by Shopify, so this builds up month by month. Uses today’s prices and eligibility.</p>'
+      +(hr.length===1?'<div class="ft"><b>'+hr[0].p.label+'</b><span class="e">'+mk(hr[0].e)+'</span><span class="n">'+mk(hr[0].n)+'</span><span></span></div>':"");
+  }else he.innerHTML="";
   [["sfv","view",v],["sfu","unit",u],["sfc","cum",SF.cum?"1":"0"]].forEach(function(t){Array.prototype.forEach.call(document.getElementById(t[0]).children,function(b){b.setAttribute("aria-pressed",b.getAttribute("data-v")===t[2])})});
   var fys=[],seen={};F.months.forEach(function(k){var y=fyOf(k);if(!seen[y]){seen[y]=1;fys.push(y)}});fys.sort();
   if(SF.fy&&fys.indexOf(SF.fy)<0)SF.fy=null;
@@ -292,11 +298,12 @@ function renderSf(){
   var rows=P.map(function(p){return{p:p,e:ag(E,p.idx),n:ag(N,p.idx),sold:ag(PU,p.idx),shelf:ag(KU,p.idx)}});
   document.getElementById("sfchart").innerHTML=sfChart(rows,u);
   function share(r){var t=v==="shelf"?r.sold+r.shelf:r.e+r.n;return t>0?(v==="shelf"?r.sold:r.e)/t:null}
+  function bp(x,r){return r.e+r.n>0?' <small>('+Math.round(x/(r.e+r.n)*100)+'%)</small>':''}
   function pl(x){return x==null?'<span class="pl">–</span>':'<span class="pl '+(v==="shelf"?"":x>=.6?"g":x>=.4?"a":"r")+'">'+Math.round(x*100)+'%</span>'}
   var h='<div class="ft h"><span>'+(SF.fy?"Month":"Year")+'</span><span>Eligible</span><span>Not elig.</span><span>'+(v==="shelf"?"Sold %":"Elig %")+'</span></div>';
-  h+=rows.map(function(r){return'<div class="ft'+(SF.fy?"":" r")+'"'+(SF.fy?"":' data-f="'+r.p.fy+'"')+'><b>'+esc(r.p.label)+(r.p.part?"*":"")+'</b><span class="e">'+f(r.e)+'</span><span class="n">'+f(r.n)+'</span>'+pl(share(r))+'</div>'}).join("");
+  h+=rows.map(function(r){return'<div class="ft'+(SF.fy?"":" r")+'"'+(SF.fy?"":' data-f="'+r.p.fy+'"')+'><b>'+esc(r.p.label)+(r.p.part?"*":"")+'</b><span class="e">'+f(r.e)+bp(r.e,r)+'</span><span class="n">'+f(r.n)+bp(r.n,r)+'</span>'+pl(share(r))+'</div>'}).join("");
   var Lr=rows[rows.length-1],tt=cum?{e:Lr.e,n:Lr.n,sold:Lr.sold,shelf:Lr.shelf}:rows.reduce(function(a,r){return{e:a.e+r.e,n:a.n+r.n,sold:a.sold+r.sold,shelf:a.shelf+r.shelf}},{e:0,n:0,sold:0,shelf:0});
-  h+='<div class="ft t"><span>'+(cum?"So far":"Total")+'</span><span class="e">'+f(tt.e)+'</span><span class="n">'+f(tt.n)+'</span>'+pl(share(tt))+'</div>';
+  h+='<div class="ft t"><span>'+(cum?"So far":"Total")+'</span><span class="e">'+f(tt.e)+bp(tt.e,tt)+'</span><span class="n">'+f(tt.n)+bp(tt.n,tt)+'</span>'+pl(share(tt))+'</div>';
   document.getElementById("sftable").innerHTML=h;
   document.getElementById("sfnote").innerHTML=(cum?"<b>Cumulative:</b> running total from the first month. ":"")+esc(v==="intro"?SFN.intro:SFN[v][u])+" "+(SF.fy?"Tap All years to go back.":"Tap a year to see its months.")+(rows.some(function(r){return r.p.part})?" * part year.":"")+" Eligible = under "+F.maxDts+" days per unit sold (Restock Planner rule); products published in the last "+F.testDays+" days count as eligible. Each product keeps today’s status across all years. Shopify keeps no past stock levels.";
   renderSup();

@@ -90,6 +90,7 @@ jobs:
         env:
           SHOPIFY_TOKEN: ${{ secrets.SHOPIFY_TOKEN }}
           WINDSOR_API_KEY: ${{ secrets.WINDSOR_API_KEY }}
+          SYNC_READ_TOKEN: ${{ secrets.SYNC_READ_TOKEN }}
           SHOPIFY_SHOP: bvdxj3-r8.myshopify.com
         run: python3 tools/profit_flow.py
 
