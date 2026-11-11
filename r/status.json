@@ -54,13 +54,13 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-11-11T14:01+11:00",
-  "code_sha": "265e44e99c8edf4af98c3a72da90d6bd053cf572",
+  "at": "2026-11-11T20:00+11:00",
+  "code_sha": "300e96e5e5e19b58c38243004acf2d4133d781e5",
   "data_through": "2026-10-05T23:59:59+11:00",
   "last_ok": "2026-11-11T14:01+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
-  "ok": true,
-  "reason": ""
+  "ok": false,
+  "reason": "Google tracked refresh failed; check GitHub Actions"
  },
  "monthly": {
   "at": "2026-11-11T14:08+11:00",
