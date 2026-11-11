@@ -64,6 +64,68 @@ def fetch_orders(start):
         after = d["pageInfo"]["endCursor"]
 
 
+def eligibility(prod_lines, order_lines, today):
+    """Per day: sales value of ELIGIBLE products (e) and of all order lines (t), Melbourne days.
+
+    Same rule as the Procurement report's Introduced vs cleared (tools/procurement.py flow_aggregate): a product is eligible
+    when days on market / units sold < 50 (clock stops at the last sale once sold out or discontinued), or it was published
+    in the last 30 days (still being tested). No sales = not eligible. Each product keeps today's status across all history.
+    Lines with no matching product (custom / POS / deleted) count as not eligible."""
+    import procurement as pr
+    import restock_plan as rp
+    products = {}
+    for l in prod_lines:
+        if "/Product/" not in l.get("id", "") or "__parentId" in l or (l.get("status") or "").upper() == "DRAFT":
+            continue
+        created = dt.datetime.fromisoformat(l["createdAt"].replace("Z", "+00:00"))
+        meta = ((l.get("metafield") or {}).get("value") or "")
+        if created < rp.MIGRATION_CUTOFF:
+            pub = meta[:10] if len(meta) >= 10 and meta[4] == "-" else ""
+        else:
+            pub = rp.melbourne_day(l["createdAt"])
+        products[l["id"]] = {"id": rp.num(l["id"]), "pub": pub, "stock": 0, "sold": 0, "last": "",
+                             "disc": ((l.get("disc") or {}).get("value") or "").strip().lower() in ("yes", "true", "1")}
+    for l in prod_lines:
+        P = products.get(l.get("__parentId"))
+        if P and "/ProductVariant/" in l.get("id", ""):
+            P["stock"] += max(0, int(l.get("inventoryQuantity") or 0))
+    cancelled = {l["id"] for l in order_lines if "/Order/" in l.get("id", "") and l.get("cancelledAt")}
+    placed = {l["id"]: rp.melbourne_day(l["processedAt"]) for l in order_lines if "/Order/" in l.get("id", "") and l.get("processedAt")}
+    by_pid = {P["id"]: P for P in products.values()}
+    sales = []
+    for l in order_lines:
+        if "/LineItem/" not in l.get("id", "") or l.get("__parentId") in cancelled:
+            continue
+        day = placed.get(l.get("__parentId"), "")
+        P = by_pid.get(rp.num((l.get("product") or {}).get("id")))
+        q = int(l.get("quantity") or 0)
+        rev = float((((l.get("discountedTotalSet") or {}).get("shopMoney")) or {}).get("amount") or 0)
+        if not day:
+            continue
+        if P:
+            P["sold"] += q
+            P["last"] = max(P["last"], day)
+        sales.append((day, P, rev))
+    if len(sales) < 50:
+        raise RuntimeError("Too few order lines for the eligible split")
+    for P in products.values():
+        P["elig"] = False
+        if P["pub"]:
+            pub = dt.date.fromisoformat(P["pub"])
+            end = today
+            if (P["disc"] or P["stock"] <= 0) and P["last"]:
+                end = min(today, dt.date.fromisoformat(P["last"]))
+            days_n = max(1, (end - pub).days)
+            P["elig"] = (today - pub).days < pr.FLOW_TEST_DAYS or (P["sold"] > 0 and days_n / P["sold"] < pr.FLOW_MAX_DTS)
+    out = {}
+    for day, P, rev in sales:
+        o = out.setdefault(day, {"e": 0.0, "t": 0.0})
+        o["t"] += rev
+        if P and P["elig"]:
+            o["e"] += rev
+    return out
+
+
 def windsor(connector, acct, start, end):
     p = urllib.parse.urlencode({"api_key": os.environ["WINDSOR_API_KEY"], "date_from": start, "date_to": end,
                                 "fields": "date,spend", "select_accounts": acct})
@@ -112,11 +174,11 @@ def channel_split(src, share):
     return {"O": 1.0}
 
 
-def daily(orders, google, meta, start, today, share=FALLBACK_ADS_SHARE):
+def daily(orders, google, meta, start, today, share=FALLBACK_ADS_SHARE, elig=None):
     days = {}
     d = dt.date.fromisoformat(start)
     while d <= today:
-        days[d.isoformat()] = {"d": d.isoformat(), "G": [0.0, 0.0], "F": [0.0, 0.0], "O": [0.0, 0.0], "g": 0.0, "m": 0.0}
+        days[d.isoformat()] = {"d": d.isoformat(), "G": [0.0, 0.0], "F": [0.0, 0.0], "O": [0.0, 0.0], "g": 0.0, "m": 0.0, "e": 0.0, "t": 0.0}
         d += dt.timedelta(days=1)
     for o in orders:
         if o.get("cancelledAt"):
@@ -137,6 +199,9 @@ def daily(orders, google, meta, start, today, share=FALLBACK_ADS_SHARE):
         for r in rows:
             if r.get("date") in days:
                 days[r["date"]][key] += float(r.get("spend") or 0)
+    for day, v in (elig or {}).items():
+        if day in days:
+            days[day]["e"], days[day]["t"] = round(v["e"], 2), round(v["t"], 2)
     out = list(days.values())
     for r in out:
         for k in ("g", "m"):
@@ -167,8 +232,11 @@ def build():
     start = START
     end = now.date().isoformat()
     share = ads_share(end)
+    import procurement as pr
+    import restock_plan as rp
+    elig = eligibility(rp.bulk(pr.FLOW_PRODUCTS, "flow products"), rp.bulk(pr.ORDERS, "orders"), now.date())
     rows = daily(fetch_orders(start), windsor("google_ads", GOOGLE_ACCT, start, end),
-                 windsor("facebook", META_ACCT, start, end), start, now.date(), share)
+                 windsor("facebook", META_ACCT, start, end), start, now.date(), share, elig)
     if not any(sum(r[k][0] + r[k][1] for k in "GFO") for r in rows):
         raise RuntimeError("no sales returned")
     page, meta = build_page(rows, now, share)
@@ -190,7 +258,7 @@ if __name__ == "__main__":
             now = dt.datetime.fromisoformat(sys.argv[sys.argv.index("--now") + 1]).astimezone(TZ)
         start = now.date().replace(day=1).isoformat()
         share = f.get("ads_share", FALLBACK_ADS_SHARE)
-        rows = daily(f["orders"], f["google"], f["meta"], start, now.date(), share)
+        rows = daily(f["orders"], f["google"], f["meta"], start, now.date(), share, f.get("elig"))
         page, meta = build_page(rows, now, share)
         open(os.path.join(out, "profit-flow.html"), "w", encoding="utf-8").write(page)
         json.dump(rows, open(os.path.join(out, "rows.json"), "w"))

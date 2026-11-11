@@ -37,6 +37,9 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
 .vgs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:4px 4px 6px}.vg{background:var(--bg);border-radius:14px;padding:10px 6px 8px}.vbs{display:flex;align-items:flex-end;justify-content:center;gap:10px;height:250px}
 .vc{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;width:44%;height:100%}.vt{display:flex;flex-direction:column;align-items:center;margin-bottom:4px;line-height:1.15}.vt b{font-size:.92rem;font-variant-numeric:tabular-nums}.vt u{text-decoration:none;font-size:.74rem;font-weight:700;background:color-mix(in srgb,var(--fg) 10%,transparent);border-radius:8px;padding:1px 7px;margin-top:2px}
 .vbr{width:100%;border-radius:8px 8px 0 0}.vl2{font-size:.72rem;color:var(--muted);margin-top:5px}.vn{text-align:center;font-family:var(--display);font-weight:800;margin-top:6px}.vnote{margin:0 4px 12px;font-size:.76rem;color:var(--muted);text-align:center}
+.el{margin:0 4px 14px;background:var(--bg);border-radius:14px;padding:10px 12px}.elh{font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.elr{display:grid;grid-template-columns:12px 1fr auto;gap:2px 8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.elr:last-of-type{border-bottom:0}.elr i{width:12px;height:12px;border-radius:4px}.elr .n{font-weight:700}.elr .n small{color:var(--muted);font-weight:500;margin-left:4px}.elr b{font-variant-numeric:tabular-nums;font-size:1.05rem;text-align:right}
+.elr .d{grid-column:2/4;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}.elr .d b{font-size:inherit;font-weight:700}.elt{font-size:.74rem;color:var(--muted);margin-top:6px}.elt b{color:var(--fg);font-variant-numeric:tabular-nums}
 .note{margin:10px 4px 2px;font-size:.76rem;color:var(--muted)}
 .sum{margin-top:12px}
 .pill{border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:.85rem;color:var(--muted)}
@@ -113,10 +116,44 @@ function renderTiles(){
 var COL={G:"#ffb703",F:"#4c6ef5",O:"#12b886",gst:"#9b8cc9",prod:"#f08c4a",ads:"#ffb703",meta:"#6f86ff",fixed:"#ff6b6b",net:"#2fbf71",loss:"#e5484d"};
 function roas(a,b){return b>0?"$"+(a/b).toFixed(2).replace(/\.00$/,"")+" back per $1":"no ad spend"}
 function pcs(v,S){return(v/S*100).toFixed(0)+"%"}
+function split(from,to){
+  var t=0,e=0,sl=0;
+  ROWS.forEach(function(r){if(r.d>=from&&r.d<=to){t+=r.t||0;e+=r.e||0}});
+  var c=calc(from,to);sl=c.sales;
+  if(!(t>0)||!(sl>0))return null;
+  var sh=Math.min(1,e/t);return{sales:sl,e:sl*sh,n:sl*(1-sh),sh:sh};
+}
+function prevRange(r){
+  var f,t;
+  if(sel.mode==="day"){f=t=addDays(r.from,-1)}
+  else if(sel.mode==="week"){f=addDays(r.from,-7);t=addDays(r.to,-7)}
+  else{var a=r.from.split("-"),y=+a[0],m=+a[1]-1;if(m<1){m=12;y--}
+    var ps=y+"-"+(m<10?"0":"")+m+"-01",n=Math.round((new Date(r.to+"T00:00:00Z")-new Date(r.from+"T00:00:00Z"))/864e5)+1;
+    f=ps;t=addDays(ps,Math.min(n,dim(ps))-1)}
+  return t<FIRST?null:{from:f<FIRST?FIRST:f,to:t};
+}
+function chg(a,b,badUp){
+  if(!(b>0))return'';
+  var p=(a-b)/b*100,up=p>=0,good=badUp?!up:up;
+  return'<b class="'+(Math.abs(p)<0.5?"":good?"pos":"neg")+'">'+(up?"▲ ":"▼ ")+Math.abs(p).toFixed(0)+'%</b> · '+(up?"+":"-")+money(Math.abs(a-b)).replace("-","");
+}
+function eligBlock(r){
+  var cur=split(r.from,r.to);
+  if(!cur)return"";
+  var pr=prevRange(r),pv_=pr?split(pr.from,pr.to):null,ytd=split(FIRST,TODAY);
+  var word=sel.mode==="day"?"yesterday":sel.mode==="week"?"last week":"last month";
+  function row(name,col,v,sh,pvv,badUp){
+    return'<div class="elr"><i style="background:'+col+'"></i><span class="n">'+name+'<small>'+(sh*100).toFixed(0)+'%</small></span><b>'+money(v)+'</b>'
+      +'<span class="d">'+(pvv==null?"":chg(v,pvv,badUp)+" vs "+word)+'</span></div>';
+  }
+  var h='<div class="el">'+row("Eligible","#12b886",cur.e,cur.sh,pv_?pv_.e:null,false)+row("Not eligible","#f08c4a",cur.n,1-cur.sh,pv_?pv_.n:null,true);
+  if(ytd)h+='<div class="elt">Since '+pd(FIRST)+': <b>'+(ytd.sh*100).toFixed(0)+'%</b> eligible</div>';
+  return h+'</div>';
+}
 function draw(){
   var r=range(),c=calc(r.from,r.to),loss=c.net<0,S=Math.max(c.sales,1);
   document.getElementById("ptitle").textContent=r.label+(c.days>1?" · "+c.days+" days":"");
-  document.getElementById("hero").innerHTML='<div class="hero"><span>Sold</span><b>'+money(c.sales)+'</b><span>You keep</span><b class="'+(loss?"neg":"pos")+'">'+money(c.net)+'</b></div><p class="sub2">Out of every $100 sold, you keep <b class="'+(loss?"neg":"pos")+'">$'+(c.net/S*100).toFixed(0)+'</b>.</p>';
+  document.getElementById("hero").innerHTML='<div class="hero"><span>Sold</span><b>'+money(c.sales)+'</b><span>You keep</span><b class="'+(loss?"neg":"pos")+'">'+money(c.net)+'</b></div><p class="sub2">Out of every $100 sold, you keep <b class="'+(loss?"neg":"pos")+'">$'+(c.net/S*100).toFixed(0)+'</b>.</p>'+eligBlock(r);
   var spend=[["Product cost",c.prod,COL.prod],["GST",c.gst,COL.gst],["Google Ads",c.g,COL.ads],["Facebook Ads",c.m,COL.meta],["Fixed costs",c.fx,COL.fixed]];
   if(!loss)spend.push(["You keep",c.net,COL.net,"keep"]);
   var ret=[["Google",c.ch.G.sales,COL.G],["Facebook",c.ch.F.sales,COL.F],["Organic & other",c.ch.O.sales,COL.O]];
