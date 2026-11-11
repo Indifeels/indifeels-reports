@@ -117,13 +117,13 @@
   "reason": ""
  },
  "seo-report": {
-  "at": "2026-11-09T05:57+11:00",
-  "code_sha": "5861055c3fdfc4595bf35ff6bd26d22badfa4f2a",
+  "at": "2026-11-12T06:00+11:00",
+  "code_sha": "237d92207877be428dde75302829e5b7a386dc9e",
   "data_through": null,
   "last_ok": "2026-10-25T23:11+11:00",
-  "manifest_version": "2026-10-19.stock-take.1",
+  "manifest_version": "2026-11-11.profit-flow.1",
   "ok": false,
-  "reason": "encryption key unavailable (key read from Supabase denied)"
+  "reason": "Semrush Position Tracking reported 100 API units (unbudgeted); stopped per cost rule, no data published"
  },
  "stock": {
   "at": "2026-11-11T20:01+11:00",
