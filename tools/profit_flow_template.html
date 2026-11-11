@@ -1,0 +1,138 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style><title>Profit Flow</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Figtree:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#f5f2ff;--surface:#fff;--fg:#1a1640;--muted:#655f8f;--line:#e2dcfa;--green:#1fa968;--red:#e5484d;
+--glow1:rgba(255,77,141,.2);--glow2:rgba(76,110,245,.2);--glow3:rgba(18,184,134,.18);
+--display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;--body:"Figtree",ui-sans-serif,system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#111214;--surface:#1c1d20;--fg:#f5f5f6;--muted:#bec0c5;--line:#3c3d40;--green:#3ddc84;--red:#ff7b7f;color-scheme:dark}}
+:root[data-theme=dark]{--bg:#111214;--surface:#1c1d20;--fg:#f5f5f6;--muted:#bec0c5;--line:#3c3d40;--green:#3ddc84;--red:#ff7b7f;color-scheme:dark}
+*{box-sizing:border-box}
+body{background-color:var(--bg);background-image:radial-gradient(60rem 38rem at 8% -8%,var(--glow1),transparent 62%),radial-gradient(52rem 38rem at 100% 6%,var(--glow2),transparent 62%),radial-gradient(56rem 40rem at 45% 108%,var(--glow3),transparent 62%);background-attachment:fixed;color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.4;padding:28px 16px 48px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(2.2rem,7vw,3.4rem);line-height:1;letter-spacing:-.02em;background:linear-gradient(90deg,#ff4d8d,#ff9d5c 45%,#ffd23f);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{margin:6px 0 0;color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{all:unset;box-sizing:border-box;cursor:pointer;border-radius:22px;padding:14px 16px;color:#f5f5f6;display:flex;flex-direction:column;gap:3px;min-width:0;background:linear-gradient(145deg,#424347,#2a2b2e 40%,#161719);box-shadow:14px 16px 20px -8px rgba(0,0,0,.75),5px 6px 8px -4px rgba(0,0,0,.5),inset 10px 10px 18px -12px rgba(255,255,255,.16),inset -12px -12px 20px -12px rgba(0,0,0,.6);outline:2px solid transparent;transition:transform .12s}
+.tile:active{transform:scale(.98)}
+.tile:focus-visible{outline-color:#35d0e6}
+.tile[aria-pressed=true]{outline:2px solid #ffb347;box-shadow:0 0 0 4px rgba(255,179,71,.18),14px 16px 20px -8px rgba(0,0,0,.75)}
+.tile .k{font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#bec0c5}
+.tile .v{font-family:var(--display);font-weight:800;font-size:clamp(1.15rem,4.6vw,1.8rem);line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tile .s{font-size:.78rem;color:#bec0c5;font-variant-numeric:tabular-nums}
+.tile .s b{font-weight:700}.pos{color:#3ddc84}.neg{color:#ff7b7f}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:14px;min-width:0}
+.ptitle{margin:2px 4px 10px;font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sc{overflow-x:auto;-webkit-overflow-scrolling:touch}
+svg{display:block;min-width:900px;width:100%;height:auto}
+svg text{font-family:var(--body);fill:var(--fg)}
+.nm{font-size:12px;font-weight:700}.vl{font-size:12px;font-weight:500;fill:var(--muted)}.big{font-size:14px;font-weight:800}
+.note{margin:10px 4px 2px;font-size:.76rem;color:var(--muted)}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}
+.pill{border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:.85rem;color:var(--muted)}
+.pill b{display:block;font-size:1.05rem;color:var(--fg);font-variant-numeric:tabular-nums}
+</style></head><body>
+<div class="wrap">
+  <header><h1>Profit Flow</h1><p class="sub">Indifeels Australia · AUD · Melbourne time · as at __UPDATED__</p></header>
+  <section class="tiles" id="tiles" aria-label="Choose period"></section>
+  <section class="box">
+    <h2 class="ptitle" id="ptitle">Where the money goes</h2>
+    <div class="sc"><svg id="sk" role="img" aria-label="Sankey chart of sales to net profit"></svg></div>
+    <div class="sum" id="sum"></div>
+    <p class="note" id="note"></p>
+  </section>
+</div>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(function(){
+var D=JSON.parse(document.getElementById("data").textContent),ROWS=D.rows,CFG=D.cfg,TODAY="__TODAY__";
+var GST=1/11;
+function dim(s){var a=s.split("-");return new Date(+a[0],+a[1],0).getDate()}
+function money(n){var r=Math.round(n);return(r<0?"-":"")+"$"+Math.abs(r).toLocaleString("en-AU")}
+function addDays(s,n){var d=new Date(s+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+function monday(s){var d=new Date(s+"T00:00:00Z");return addDays(s,-((d.getUTCDay()+6)%7))}
+var PERIODS=[{id:"today",label:"Today",from:TODAY},{id:"week",label:"This week",from:monday(TODAY)},{id:"month",label:"This month",from:TODAY.slice(0,8)+"01"}];
+function calc(from){
+  var rs=ROWS.filter(function(r){return r.d>=from&&r.d<=TODAY});
+  var card=0,cash=0,g=0,m=0,fixed=CFG.fixed_monthly.filter(function(f){return f.amount!=null}).map(function(f){return{name:f.name,v:0}});
+  rs.forEach(function(r){card+=r.card;cash+=r.cash;g+=r.g;m+=r.m;
+    CFG.fixed_monthly.filter(function(f){return f.amount!=null}).forEach(function(f,i){fixed[i].v+=f.amount/dim(r.d)})});
+  var sales=card+cash,gst=CFG.gst_card_only?card*GST:sales*GST,prod=sales*CFG.product_cost_pct,contrib=sales-gst-prod;
+  var fx=fixed.reduce(function(a,b){return a+b.v},0),costs=g+m+fx,net=contrib-costs;
+  return{card:card,cash:cash,sales:sales,gst:gst,prod:prod,contrib:contrib,g:g,m:m,fixed:fixed,fx:fx,costs:costs,net:net,days:rs.length};
+}
+var cur="today",tilesEl=document.getElementById("tiles");
+try{var s=localStorage.getItem("pf-period");if(s&&PERIODS.some(function(p){return p.id===s}))cur=s}catch(e){}
+function renderTiles(){
+  tilesEl.innerHTML="";
+  PERIODS.forEach(function(p){
+    var c=calc(p.from),b=document.createElement("button");b.type="button";b.className="tile";b.setAttribute("aria-pressed",p.id===cur);
+    b.innerHTML='<span class="k">'+p.label+'</span><span class="v">'+money(c.sales)+'</span><span class="s">Net <b class="'+(c.net>=0?"pos":"neg")+'">'+money(c.net)+'</b></span>';
+    b.onclick=function(){cur=p.id;try{localStorage.setItem("pf-period",cur)}catch(e){}renderTiles();draw()};
+    tilesEl.appendChild(b)});
+}
+var COL={sales:"#4c9be8",card:"#4c9be8",cash:"#12b886",gst:"#9b8cc9",prod:"#f08c4a",contrib:"#8ac926",google:"#ffb703",meta:"#4c6ef5",fixed:"#ff6b6b",net:"#2fbf71",loss:"#e5484d"};
+function draw(){
+  var p=PERIODS.filter(function(x){return x.id===cur})[0],c=calc(p.from);
+  document.getElementById("ptitle").textContent="Where the money goes · "+p.label+(c.days>1?" ("+c.days+" days)":"");
+  var nodes=[],links=[];
+  function N(id,col,name,v,color){var n={id:id,col:col,name:name,v:Math.max(v,0),color:color};nodes.push(n);return n}
+  function L(a,b,v,color){if(v>0.005)links.push({a:a,b:b,v:v,color:color})}
+  var loss=c.net<0;
+  N("card",0,"Card sales",c.card,COL.card);N("cash",0,"Cash sales",c.cash,COL.cash);
+  N("sales",1,"Total sales",c.sales,COL.sales);
+  N("gst",2,"GST"+(CFG.gst_card_only?" (card only)":""),c.gst,COL.gst);
+  N("prod",2,"Product cost",c.prod,COL.prod);
+  N("contrib",2,"After GST & product",c.contrib,COL.contrib);
+  N("g",3,"Google Ads",c.g,COL.google);N("m",3,"Meta Ads",c.m,COL.meta);
+  c.fixed.forEach(function(f,i){N("f"+i,3,f.name,f.v,COL.fixed)});
+  if(loss)N("short",2,"Shortfall",-c.net,COL.loss);
+  else N("net",3,"Net profit",c.net,COL.net);
+  L("card","sales",c.card,COL.card);L("cash","sales",c.cash,COL.cash);
+  L("sales","gst",c.gst,COL.gst);L("sales","prod",c.prod,COL.prod);L("sales","contrib",c.contrib,COL.contrib);
+  var pool=c.contrib,order=[["g",c.g,COL.google],["m",c.m,COL.meta]].concat(c.fixed.map(function(f,i){return["f"+i,f.v,COL.fixed]}));
+  pool=c.contrib;
+  order.forEach(function(o){var take=loss?Math.min(o[1],Math.max(pool,0)):o[1];L("contrib",o[0],take,o[2]);pool-=take;
+    if(loss&&o[1]-take>0.005)L("short",o[0],o[1]-take,COL.loss)});
+  if(!loss)L("contrib","net",c.net,COL.net);
+  // layout
+  var W=900,H=480,PADT=34,PADB=44,NW=14,GAP=10,MINH=11,LABEL=[130,0,0,0];
+  var colX=[150,340,520,700];
+  var cols=[0,1,2,3].map(function(i){return nodes.filter(function(n){return n.col===i})});
+  var sc=Infinity;
+  cols.forEach(function(cn){var tot=cn.reduce(function(a,n){return a+n.v},0);if(tot>0)sc=Math.min(sc,(H-PADT-PADB-GAP*(cn.length-1))/tot)});
+  if(!isFinite(sc))sc=1;
+  nodes.forEach(function(n){n.h=Math.max(n.v*sc,MINH)});
+  cols.forEach(function(cn,i){
+    var tot=cn.reduce(function(a,n){return a+n.h},0)+GAP*(cn.length-1),y=PADT+(H-PADT-PADB-tot)/2;
+    cn.forEach(function(n){n.x=colX[i];n.y=y;y+=n.h+GAP});
+  });
+  var byId={};nodes.forEach(function(n){byId[n.id]=n;n.o=0;n.i=0});
+  var out=[];
+  links.forEach(function(l){var a=byId[l.a],b=byId[l.b],t=Math.max(l.v*sc,1);
+    var y0=a.y+a.o+t/2,y1=b.y+b.i+t/2;a.o+=t;b.i+=t;var x0=a.x+NW,x1=b.x,mx=(x0+x1)/2;
+    out.push('<path d="M'+x0+","+y0+"C"+mx+","+y0+" "+mx+","+y1+" "+x1+","+y1+'" fill="none" stroke="'+l.color+'" stroke-opacity=".45" stroke-width="'+t+'"/>')});
+  nodes.forEach(function(n){
+    out.push('<rect x="'+n.x+'" y="'+n.y+'" width="'+NW+'" height="'+n.h+'" rx="3" fill="'+n.color+'"/>');
+    var right=n.col===3||n.col===2&&n.id!=="contrib"&&false,left=n.col===0;
+    var tx=left?n.x-8:n.x+NW+8,anch=left?"end":"start";
+    if(n.col===2&&n.id==="contrib"){tx=n.x+NW/2;anch="middle"}
+    if(n.col===3){tx=n.x+NW+8}
+    var ty=n.y+n.h/2,big=n.id==="sales"||n.id==="contrib"||n.id==="net"||n.id==="short";
+    var pct=c.sales>0&&n.id!=="card"&&n.id!=="cash"&&n.id!=="sales"?" · "+(n.v/c.sales*100).toFixed(0)+"%":"";
+    if(n.id==="sales"){out.push('<text x="'+(n.x+NW/2)+'" y="'+(n.y-24)+'" text-anchor="middle" class="big">'+n.name+'</text><text x="'+(n.x+NW/2)+'" y="'+(n.y-9)+'" text-anchor="middle" class="vl">'+money(n.v)+'</text>')}
+    else if(n.id==="contrib"){out.push('<text x="'+tx+'" y="'+(n.y+n.h+18)+'" text-anchor="middle" class="nm">'+n.name+'</text><text x="'+tx+'" y="'+(n.y+n.h+33)+'" text-anchor="middle" class="vl">'+money(n.v)+pct+'</text>')}
+    else if(n.h<28)out.push('<text x="'+tx+'" y="'+(ty+4)+'" text-anchor="'+anch+'" class="nm">'+n.name+' <tspan class="vl">'+money(n.v)+pct+'</tspan></text>');
+    else out.push('<text x="'+tx+'" y="'+(ty-1)+'" text-anchor="'+anch+'" class="'+(big?"big":"nm")+'">'+n.name+'</text><text x="'+tx+'" y="'+(ty+13)+'" text-anchor="'+anch+'" class="vl">'+money(n.v)+pct+'</text>');
+  });
+  var sk=document.getElementById("sk");sk.setAttribute("viewBox","0 0 "+W+" "+H);sk.innerHTML=out.join("");
+  document.getElementById("sum").innerHTML=
+    pill("Total sales",money(c.sales))+pill("Ad spend",money(c.g+c.m))+pill("Fixed costs",money(c.fx))+
+    pill(c.net>=0?"Net profit":"Net loss",money(c.net)+(c.sales>0?" · "+(c.net/c.sales*100).toFixed(0)+"%":""))+
+    pill("Overall ROAS",c.g+c.m>0?(c.sales/(c.g+c.m)).toFixed(1)+"x":"–");
+  var unset=CFG.fixed_monthly.filter(function(f){return f.amount==null}).map(function(f){return f.name});
+  document.getElementById("note").textContent="Product cost = "+Math.round(CFG.product_cost_pct*100)+"% of sales (temporary). GST = 1/11 of card sales; cash has none. Fixed costs are monthly amounts spread per day."+(unset.length?" Not set yet: "+unset.join(", ")+".":"");
+}
+function pill(k,v){return'<div class="pill">'+k+'<b>'+v+'</b></div>'}
+renderTiles();draw();
+})();
+</script></body></html>
