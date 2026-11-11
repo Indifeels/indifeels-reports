@@ -64,6 +64,14 @@ def fetch_orders(start):
         after = d["pageInfo"]["endCursor"]
 
 
+def product_query():
+    """Procurement's all-products query plus what the product table needs: title, page URL, picture, collections."""
+    import procurement as pr
+    q = pr.FLOW_PRODUCTS
+    return q.replace("{ products{ edges{ node{ id status createdAt",
+                     "{ products{ edges{ node{ id status createdAt title onlineStoreUrl featuredImage{ url } collections{ edges{ node{ id title } } }", 1)
+
+
 def eligibility(prod_lines, order_lines, today):
     """Per day: sales value of ELIGIBLE products (e) and of all order lines (t), Melbourne days.
 
@@ -83,8 +91,14 @@ def eligibility(prod_lines, order_lines, today):
             pub = meta[:10] if len(meta) >= 10 and meta[4] == "-" else ""
         else:
             pub = rp.melbourne_day(l["createdAt"])
-        products[l["id"]] = {"id": rp.num(l["id"]), "pub": pub, "stock": 0, "value": 0.0, "sold": 0, "last": "",
+        products[l["id"]] = {"title": l.get("title") or "", "url": l.get("onlineStoreUrl") or "",
+                             "img": ((l.get("featuredImage") or {}).get("url") or ""), "cols": [],
+                             "active": (l.get("status") or "").upper() == "ACTIVE", "id": rp.num(l["id"]), "pub": pub, "stock": 0, "value": 0.0, "sold": 0, "last": "",
                              "disc": ((l.get("disc") or {}).get("value") or "").strip().lower() in ("yes", "true", "1")}
+    for l in prod_lines:
+        P = products.get(l.get("__parentId"))
+        if P and "/Collection/" in l.get("id", "") and l.get("title"):
+            P["cols"].append(l["title"])
     for l in prod_lines:
         P = products.get(l.get("__parentId"))
         if P and "/ProductVariant/" in l.get("id", ""):
@@ -112,14 +126,16 @@ def eligibility(prod_lines, order_lines, today):
     if len(sales) < 50:
         raise RuntimeError("Too few order lines for the eligible split")
     for P in products.values():
-        P["elig"] = False
+        P["elig"], P["new"], P["du"] = False, False, None
         if P["pub"]:
             pub = dt.date.fromisoformat(P["pub"])
             end = today
             if (P["disc"] or P["stock"] <= 0) and P["last"]:
                 end = min(today, dt.date.fromisoformat(P["last"]))
             days_n = max(1, (end - pub).days)
-            P["elig"] = (today - pub).days < pr.FLOW_TEST_DAYS or (P["sold"] > 0 and days_n / P["sold"] < pr.FLOW_MAX_DTS)
+            P["new"] = (today - pub).days < pr.FLOW_TEST_DAYS
+            P["du"] = round(days_n / P["sold"], 1) if P["sold"] > 0 else None     # D.U new: days on market / units sold
+            P["elig"] = P["new"] or (P["sold"] > 0 and days_n / P["sold"] < pr.FLOW_MAX_DTS)
     stock = {"e": 0.0, "n": 0.0}
     for P in products.values():
         if P["pub"]:                      # no published date = not counted (same as Procurement)
@@ -130,7 +146,18 @@ def eligibility(prod_lines, order_lines, today):
         o["t"] += rev
         if P and P["elig"]:
             o["e"] += rev
-    return {"days": out, "stock": {k: round(v) for k, v in stock.items()},
+    names = {}
+    for P in products.values():
+        for c in P["cols"]:
+            names[c] = names.get(c, 0) + 1
+    clist = [c for c, n in sorted(names.items(), key=lambda x: (-x[1], x[0]))]
+    cix = {c: i for i, c in enumerate(clist)}
+    trim = lambda u: u.split("?")[0] if u else ""
+    plist = {"cols": clist, "rows": [
+        [P["title"], P["url"], trim(P["img"]), sorted({cix[c] for c in P["cols"]}), 1 if P["elig"] else 0, 1 if P["new"] else 0,
+         P["stock"], round(P["value"]), P["sold"], P["du"], 1 if P["active"] else 0, 1 if P["pub"] else 0]
+        for P in sorted(products.values(), key=lambda P: -P["value"])]}
+    return {"days": out, "stock": {k: round(v) for k, v in stock.items()}, "plist": plist,
             "pelig": {P["id"]: P["elig"] for P in products.values() if P["pub"]}, "vprice": vprice}
 
 
@@ -241,10 +268,10 @@ def daily(orders, google, meta, start, today, share=FALLBACK_ADS_SHARE, elig=Non
     return out
 
 
-def build_page(rows, now, share=FALLBACK_ADS_SHARE, stock=None, flow=None, hist=None):
+def build_page(rows, now, share=FALLBACK_ADS_SHARE, stock=None, flow=None, hist=None, plist=None):
     h = open(TEMPLATE, encoding="utf-8").read()
     updated = now.strftime("%-d %b %Y, %-I:%M %p").replace("AM", "am").replace("PM", "pm")
-    h = (h.replace("__DATA__", json.dumps({"rows": rows, "cfg": dict(CONFIG, ads_share=round(share, 4), stock=stock or {}), "flow": flow, "hist": hist or []}, separators=(",", ":")).replace("</", "<\\/"))
+    h = (h.replace("__DATA__", json.dumps({"rows": rows, "cfg": dict(CONFIG, ads_share=round(share, 4), stock=stock or {}), "flow": flow, "hist": hist or [], "plist": plist}, separators=(",", ":")).replace("</", "<\\/"))
           .replace("__TODAY__", now.date().isoformat()).replace("__UPDATED__", updated))
     assert "__" not in h.replace("__proto__", ""), "unfilled template placeholder"
     t = now.date()
@@ -264,7 +291,7 @@ def build():
     share = ads_share(end)
     import procurement as pr
     import restock_plan as rp
-    prod_lines, order_lines = rp.bulk(pr.FLOW_PRODUCTS, "flow products"), rp.bulk(pr.ORDERS, "orders")
+    prod_lines, order_lines = rp.bulk(product_query(), "flow products"), rp.bulk(pr.ORDERS, "orders")
     elig = eligibility(prod_lines, order_lines, now.date())
     flow = None
     try:   # the stock-flow section must never take the rest of the report down
@@ -275,7 +302,7 @@ def build():
                  windsor("facebook", META_ACCT, start, end), start, now.date(), share, elig)
     if not any(sum(r[k][0] + r[k][1] for k in "GFO") for r in rows):
         raise RuntimeError("no sales returned")
-    page, meta = build_page(rows, now, share, elig["stock"], flow, stock_history(elig))
+    page, meta = build_page(rows, now, share, elig["stock"], flow, stock_history(elig), elig["plist"])
     key = os.environ["PROFIT_FLOW_KEY"]
     pv.write_encrypted(key, f"{RID}.bin", page.encode())
     pv.write_encrypted(key, f"{RID}.meta.bin", json.dumps(meta).encode())
@@ -295,7 +322,7 @@ if __name__ == "__main__":
         start = now.date().replace(day=1).isoformat()
         share = f.get("ads_share", FALLBACK_ADS_SHARE)
         rows = daily(f["orders"], f["google"], f["meta"], start, now.date(), share, f.get("elig"))
-        page, meta = build_page(rows, now, share, (f.get("elig") or {}).get("stock"), f.get("flow"), f.get("hist"))
+        page, meta = build_page(rows, now, share, (f.get("elig") or {}).get("stock"), f.get("flow"), f.get("hist"), (f.get("elig") or {}).get("plist"))
         open(os.path.join(out, "profit-flow.html"), "w", encoding="utf-8").write(page)
         json.dump(rows, open(os.path.join(out, "rows.json"), "w"))
         print(len(rows), meta)

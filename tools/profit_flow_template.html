@@ -44,6 +44,10 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
 .ft{display:grid;grid-template-columns:54px 1fr 1fr 50px;gap:8px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line);font-size:.82rem;font-variant-numeric:tabular-nums}.ft.h{color:var(--muted);font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}.ft.r{cursor:pointer}.ft.t{font-weight:800;border-bottom:0}.ft small{font-size:.74em;opacity:.8}.ft .e{color:var(--green)}.ft .n{color:var(--red)}.ft>*:nth-child(n+2){text-align:right}
 .pl{display:inline-block;font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 8px;background:color-mix(in srgb,var(--fg) 10%,transparent)}.pl.g{color:var(--green)}.pl.a{color:#ffb703}.pl.r{color:var(--red)}
 .fc{width:100%;height:auto;display:block}.fc text{font-size:8.5px;fill:var(--muted);font-variant-numeric:tabular-nums;font-family:var(--body)}.fc .gl{stroke:var(--line)}
+.pt{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 4px 8px}.pt select,.pt input{font:inherit;font-size:.85rem;font-weight:600;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:9px 10px;min-width:0;width:100%}.pt input{grid-column:1/-1}
+.pr{display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--line)}.pr img,.pr .ph{width:56px;height:70px;border-radius:9px;object-fit:cover;background:var(--bg);display:block}.pr a{color:var(--fg);font-weight:700;font-size:.86rem;line-height:1.25;text-decoration:none;display:block}.pr .m{font-size:.76rem;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}.pr .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:800;font-size:.95rem}.pr .v small{display:block;font-weight:600;font-size:.74rem;color:var(--muted)}
+.tgx{display:inline-block;font-size:.68rem;font-weight:800;border-radius:999px;padding:1px 7px;margin-right:4px;background:color-mix(in srgb,var(--fg) 10%,transparent)}.tgx.e{color:var(--green)}.tgx.n{color:var(--red)}.tgx.w{color:#ffb703}
+.ptot{margin:0 4px 4px;font-size:.82rem;color:var(--muted)}.ptot b{color:var(--fg)}.more{all:unset;cursor:pointer;display:block;text-align:center;margin:10px auto 0;padding:9px 20px;border:1.5px solid var(--line);border-radius:999px;font-weight:700;font-size:.85rem}
 .el summary{cursor:pointer;font-size:.8rem;font-weight:700;color:var(--muted);margin-top:8px}.el details .tg{margin:8px 0}.elt{font-size:.74rem;color:var(--muted);margin-top:6px}.elt b{color:var(--fg);font-variant-numeric:tabular-nums}
 .note{margin:10px 4px 2px;font-size:.76rem;color:var(--muted)}
 .sum{margin-top:12px}
@@ -65,7 +69,7 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
   <section class="box" id="sf" hidden><h2 class="ptitle">Stock · introduced vs cleared vs on hand</h2><div class="sft" id="sftiles"></div><div id="sfhist"></div>
     <div class="tg"><div class="sg" id="sfv"><button data-k="view" data-v="intro">Introduced</button><button data-k="view" data-v="clear">Cleared</button><button data-k="view" data-v="shelf">On hand</button></div><div class="sg" id="sfu"><button data-k="unit" data-v="count">Count</button><button data-k="unit" data-v="value">Value</button></div><div class="sg" id="sfc"><button data-k="cum" data-v="0">By year</button><button data-k="cum" data-v="1">Cumulative</button></div></div>
     <div class="chips" id="sfchips"></div><div id="sfchart"></div><div class="lgd"><span><i style="background:var(--green)"></i>Eligible</span><span><i style="background:var(--red)"></i>Not eligible</span><span><i style="background:#6f86ff"></i>Eligible share %</span></div>
-    <div id="sftable"></div><p class="note" id="sfnote"></p><div id="sfsup"></div></section>
+    <div id="sftable"></div><p class="note" id="sfnote"></p><h2 class="ptitle" style="margin-top:14px">Products</h2><div class="pt"><select id="pc"></select><select id="pe"><option value="">Eligible + not</option><option value="1">Eligible</option><option value="0">Not eligible</option></select><select id="ps"><option value="">In stock + sold out</option><option value="1">In stock</option><option value="0">Sold out</option></select><select id="po"><option value="v">Sort: stock value</option><option value="u">Sort: units in stock</option><option value="df">Sort: D.U fastest</option><option value="ds">Sort: D.U slowest</option><option value="s">Sort: units sold</option></select><input id="pq" type="search" placeholder="Search product name"></div><div class="ptot" id="ptot"></div><div id="plist"></div><button class="more" id="pmore" hidden>Show more</button><div id="sfsup"></div></section>
   <section class="box"><h2 class="ptitle">Is each channel worth it?</h2><div class="tg" id="tg"><div class="sg" id="gran"><button data-v="day">Days</button><button data-v="month">Months</button><button data-v="year">Years</button></div><div class="sg" id="ser"><button data-v="s">Spend</button><button data-v="sr">Spend + Return</button></div></div><div id="cards"></div></section>
   <section class="box"><h2 class="ptitle">The maths</h2><div id="wf"></div><p class="note" id="note"></p></section>
 </div>
@@ -319,7 +323,35 @@ function renderSup(){
 ["sfv","sfu","sfc"].forEach(function(id){document.getElementById(id).addEventListener("click",function(e){var k=e.target.getAttribute&&e.target.getAttribute("data-k");if(!k)return;var v=e.target.getAttribute("data-v");SF[k]=k==="cum"?v==="1":v;sfSave();renderSf()})});
 document.getElementById("sfchips").addEventListener("click",function(e){var f=e.target.getAttribute&&e.target.getAttribute("data-f");if(f==null)return;SF.fy=f||null;sfSave();renderSf()});
 document.getElementById("sftable").addEventListener("click",function(e){var r=e.target.closest&&e.target.closest(".ft.r");if(r){SF.fy=r.getAttribute("data-f");sfSave();renderSf()}});
-function renderAll(){renderTiles();draw();syncTg();renderSf()}
+var PL=D.plist,PS={c:"",e:"",s:"",o:"v",q:"",n:40};
+function imgOf(u){return u?u+"?width=120":""}
+function renderPl(){
+  var box=document.getElementById("plist");
+  if(!PL||!PL.rows){box.innerHTML="";return}
+  var rs=PL.rows.filter(function(r){
+    if(!r[11])return false;
+    if(PS.c!==""&&r[3].indexOf(+PS.c)<0)return false;
+    if(PS.e!==""&&r[4]!==+PS.e)return false;
+    if(PS.s!==""&&(r[6]>0?1:0)!==+PS.s)return false;
+    if(PS.q&&r[0].toLowerCase().indexOf(PS.q)<0)return false;
+    return true});
+  var o=PS.o;rs.sort(function(a,b){return o==="u"?b[6]-a[6]:o==="s"?b[8]-a[8]:o==="df"?(a[9]==null)-(b[9]==null)||a[9]-b[9]:o==="ds"?(a[9]==null)-(b[9]==null)||b[9]-a[9]:b[7]-a[7]});
+  var tv=0,tu=0,ni=0;rs.forEach(function(r){tv+=r[7];tu+=r[6];if(r[6]>0)ni++});
+  document.getElementById("ptot").innerHTML="<b>"+fmt(rs.length)+"</b> products · <b>"+fmt(ni)+"</b> in stock · <b>"+fmt(tu)+"</b> units · value <b>"+money(tv)+"</b>";
+  box.innerHTML=rs.slice(0,PS.n).map(function(r){
+    var im=imgOf(r[2]),nm=esc(r[0]||"(no name)"),a=r[1]?'<a href="'+esc(r[1])+'" target="_blank" rel="noopener">'+nm+'</a>':'<a>'+nm+'</a>';
+    var tag=(r[4]?'<span class="tgx e">Eligible</span>':'<span class="tgx n">Not eligible</span>')+(r[5]?'<span class="tgx w">New</span>':"")+(r[6]>0?"":'<span class="tgx">Sold out</span>')+(r[10]?"":'<span class="tgx">Archived</span>');
+    return'<div class="pr">'+(im?'<img src="'+esc(im)+'" loading="lazy" alt="">':'<div class="ph"></div>')+'<div>'+a+'<div class="m">'+tag+'</div><div class="m">D.U '+(r[9]==null?"–":r[9]+" days")+" · sold "+fmt(r[8])+'</div></div><div class="v" style="color:var(--'+(r[4]?"green":"red")+')">'+(r[6]>0?money(r[7]):"–")+'<small>'+(r[6]>0?fmt(r[6])+" in stock":"sold out")+'</small></div></div>'}).join("");
+  document.getElementById("pmore").hidden=rs.length<=PS.n;
+}
+(function(){
+  if(!PL||!PL.cols)return;
+  var sel=document.getElementById("pc");sel.innerHTML='<option value="">All collections</option>'+PL.cols.map(function(c,i){return'<option value="'+i+'">'+esc(c)+'</option>'}).join("");
+  [["pc","c"],["pe","e"],["ps","s"],["po","o"]].forEach(function(t){document.getElementById(t[0]).onchange=function(){PS[t[1]]=this.value;PS.n=40;renderPl()}});
+  document.getElementById("pq").oninput=function(){PS.q=this.value.trim().toLowerCase();PS.n=40;renderPl()};
+  document.getElementById("pmore").onclick=function(){PS.n+=40;renderPl()};
+})();
+function renderAll(){renderTiles();draw();syncTg();renderSf();renderPl()}
 fillValues();renderAll();
 })();
 </script></body></html>
