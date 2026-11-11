@@ -18,10 +18,10 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-11-11T14:08+11:00",
-  "code_sha": "265e44e99c8edf4af98c3a72da90d6bd053cf572",
-  "data_through": "2026-11-11T14:00:26.849121+11:00",
-  "last_ok": "2026-11-11T14:08+11:00",
+  "at": "2026-11-11T21:38+11:00",
+  "code_sha": "ff26f57933b6bd5e05b9cd59dadfac73fd6a4e6d",
+  "data_through": "2026-11-11T21:30:22.132748+11:00",
+  "last_ok": "2026-11-11T21:38+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
@@ -63,10 +63,10 @@
   "reason": "Google tracked refresh failed; check GitHub Actions"
  },
  "monthly": {
-  "at": "2026-11-11T14:08+11:00",
-  "code_sha": "265e44e99c8edf4af98c3a72da90d6bd053cf572",
-  "data_through": "2026-11-11T14:00:26.849121+11:00",
-  "last_ok": "2026-11-11T14:08+11:00",
+  "at": "2026-11-11T21:38+11:00",
+  "code_sha": "ff26f57933b6bd5e05b9cd59dadfac73fd6a4e6d",
+  "data_through": "2026-11-11T21:30:22.132748+11:00",
+  "last_ok": "2026-11-11T21:38+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
