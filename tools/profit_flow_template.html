@@ -22,13 +22,14 @@ h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(2.2rem,7v
 .tile .s b{font-weight:700}.pos{color:#3ddc84}.neg{color:#ff7b7f}
 .box{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:14px;min-width:0}
 .ptitle{margin:2px 4px 10px;font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.sc{overflow-x:auto;-webkit-overflow-scrolling:touch}
-svg{display:block;width:100%;max-width:520px;margin:0 auto;height:auto}
-svg text{font-family:var(--body);fill:var(--fg)}
+.sc{}
+svg{display:block;width:100%;max-width:560px;margin:0 auto;height:auto}
+svg text{font-family:var(--body);fill:var(--fg);paint-order:stroke;stroke:var(--surface);stroke-width:3.5px;stroke-linejoin:round}
 .nm{font-size:12px;font-weight:700}.vl{font-size:12px;font-weight:500;fill:var(--muted)}.big{font-size:14px;font-weight:800}
 .fr{display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px solid var(--line);font-size:.9rem}.fr b{font-variant-numeric:tabular-nums}.posbg b{color:var(--green)}.negbg b{color:var(--red)}
+table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.86rem}table.ct th,table.ct td{padding:8px 4px;border-bottom:1px solid var(--line);text-align:right}table.ct th:first-child{text-align:left;font-weight:700}table.ct thead th{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}table.ct tr.tot th,table.ct tr.tot td{font-weight:800;border-bottom:0}table.ct .pos{color:var(--green)}table.ct .neg{color:var(--red)}
 .note{margin:10px 4px 2px;font-size:.76rem;color:var(--muted)}
-.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px}
+.sum{margin-top:12px}
 .pill{border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:.85rem;color:var(--muted)}
 .pill b{display:block;font-size:1.05rem;color:var(--fg);font-variant-numeric:tabular-nums}
 </style></head><body>
@@ -52,14 +53,22 @@ function money(n){var r=Math.round(n);return(r<0?"-":"")+"$"+Math.abs(r).toLocal
 function addDays(s,n){var d=new Date(s+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
 function monday(s){var d=new Date(s+"T00:00:00Z");return addDays(s,-((d.getUTCDay()+6)%7))}
 var PERIODS=[{id:"today",label:"Today",from:TODAY},{id:"week",label:"This week",from:monday(TODAY)},{id:"month",label:"This month",from:TODAY.slice(0,8)+"01"}];
+var CH=[["G","Google"],["F","Facebook"],["O","Organic & other"]];
 function calc(from){
   var rs=ROWS.filter(function(r){return r.d>=from&&r.d<=TODAY});
-  var card=0,cash=0,g=0,m=0,fixed=CFG.fixed_monthly.filter(function(f){return f.amount!=null}).map(function(f){return{name:f.name,v:0}});
-  rs.forEach(function(r){card+=r.card;cash+=r.cash;g+=r.g;m+=r.m;
-    CFG.fixed_monthly.filter(function(f){return f.amount!=null}).forEach(function(f,i){fixed[i].v+=f.amount/dim(r.d)})});
-  var sales=card+cash,gst=CFG.gst_card_only?card*GST:sales*GST,prod=sales*CFG.product_cost_pct,contrib=sales-gst-prod;
-  var fx=fixed.reduce(function(a,b){return a+b.v},0),costs=g+m+fx,net=contrib-costs;
-  return{card:card,cash:cash,sales:sales,gst:gst,prod:prod,contrib:contrib,g:g,m:m,fixed:fixed,fx:fx,costs:costs,net:net,days:rs.length};
+  var c={days:rs.length,ch:{},g:0,m:0};
+  CH.forEach(function(x){c.ch[x[0]]={card:0,cash:0}});
+  var fl=CFG.fixed_monthly.filter(function(f){return f.amount!=null}),fixed=fl.map(function(f){return{name:f.name,v:0}});
+  rs.forEach(function(r){c.g+=r.g;c.m+=r.m;CH.forEach(function(x){c.ch[x[0]].card+=r[x[0]][0];c.ch[x[0]].cash+=r[x[0]][1]});
+    fl.forEach(function(f,i){fixed[i].v+=f.amount/dim(r.d)})});
+  c.sales=0;c.gst=0;c.prod=0;
+  CH.forEach(function(x){var h=c.ch[x[0]];h.sales=h.card+h.cash;h.gst=h.card*GST;h.prod=h.sales*CFG.product_cost_pct;
+    h.ad=x[0]==="G"?c.g:x[0]==="F"?c.m:0;h.profit=h.sales-h.gst-h.prod-h.ad;
+    c.sales+=h.sales;c.gst+=h.gst;c.prod+=h.prod});
+  c.card=CH.reduce(function(a,x){return a+c.ch[x[0]].card},0);c.cash=c.sales-c.card;
+  c.fixed=fixed;c.fx=fixed.reduce(function(a,b){return a+b.v},0);
+  c.pbf=c.sales-c.gst-c.prod-c.g-c.m;c.net=c.pbf-c.fx;c.costs=c.gst+c.prod+c.g+c.m+c.fx;
+  return c;
 }
 var cur="today",tilesEl=document.getElementById("tiles");
 try{var s=localStorage.getItem("pf-period");if(s&&PERIODS.some(function(p){return p.id===s}))cur=s}catch(e){}
@@ -71,58 +80,54 @@ function renderTiles(){
     b.onclick=function(){cur=p.id;try{localStorage.setItem("pf-period",cur)}catch(e){}renderTiles();draw()};
     tilesEl.appendChild(b)});
 }
-var COL={sales:"#4c9be8",card:"#4c9be8",cash:"#12b886",gst:"#9b8cc9",prod:"#f08c4a",contrib:"#8ac926",google:"#ffb703",meta:"#4c6ef5",fixed:"#ff6b6b",net:"#2fbf71",loss:"#e5484d"};
+var COL={G:"#ffb703",F:"#4c6ef5",O:"#12b886",gst:"#9b8cc9",prod:"#f08c4a",fixed:"#ff6b6b",net:"#2fbf71",loss:"#e5484d",pbf:"#8ac926"};
+function roas(a,b){return b>0?(a/b).toFixed(1)+"x":"–"}
 function draw(){
   var p=PERIODS.filter(function(x){return x.id===cur})[0],c=calc(p.from),loss=c.net<0;
   document.getElementById("ptitle").textContent="Where the money goes · "+p.label+(c.days>1?" ("+c.days+" days)":"");
-  var W=360,H=500,PT=46,PB=10,GAP=9,NW=12,LX=6,RX=176,MINH=12;
-  var left=[{id:"s",name:"Sales",v:c.sales,color:COL.sales}];
-  if(loss)left.push({id:"sh",name:"Shortfall",v:-c.net,color:COL.loss});
-  var right=[
-    {id:"gst",name:"GST",v:c.gst,color:COL.gst},
-    {id:"prod",name:"Product cost",v:c.prod,color:COL.prod},
-    {id:"g",name:"Google Ads",v:c.g,color:COL.google},
-    {id:"m",name:"Meta Ads",v:c.m,color:COL.meta},
-    {id:"fx",name:"Fixed costs",v:c.fx,color:COL.fixed}];
-  if(!loss)right.push({id:"net",name:"Net profit",v:c.net,color:COL.net});
-  var tot=right.reduce(function(a,n){return a+n.v},0)||1;
-  var sc=(H-PT-PB-GAP*(right.length-1))/tot;
-  function stack(arr,x){var y=PT;arr.forEach(function(n){n.x=x;n.h=Math.max(n.v*sc,MINH);n.y=y;y+=n.h+GAP;n.o=0});return y-GAP}
-  var yl=stack(left,LX);stack(right,RX);
-  // centre the left column against the right one
-  var rh=right[right.length-1].y+right[right.length-1].h-PT,lh=yl-PT,off=(rh-lh)/2;
-  left.forEach(function(n){n.y+=Math.max(off,0)});
-  var out=[],src=left[0],sh=left[1];
+  var W=380,H=560,PT=14,PB=14,NW=12,G0=40,G1=12,G2=14,MINH=14,MINAD=32,X0=4,X1=150,X2=268;
+  var pbf=Math.max(c.pbf,0);
+  var L=CH.map(function(x){var h=c.ch[x[0]];return{id:x[0],name:x[1],v:h.sales,color:COL[x[0]],ch:h}});
+  var M=[{id:"gst",name:"GST",v:c.gst,color:COL.gst},{id:"prod",name:"Product cost",v:c.prod,color:COL.prod},
+         {id:"ad",name:"Google Ads",v:c.g,color:COL.G,min:MINAD},{id:"am",name:"Meta Ads",v:c.m,color:COL.F,min:MINAD},
+         {id:"pbf",name:"Profit before fixed costs",v:pbf,color:COL.pbf,min:MINAD}];
+  var R=[{id:"fx",name:"Fixed costs",v:Math.min(c.fx,pbf),color:COL.fixed,min:MINAD},
+         {id:"net",name:loss?"Net loss":"Net profit",v:loss?0:c.net,color:loss?COL.loss:COL.net,min:MINAD}];
+  var sc=Math.min((H-PT-PB-G0*2)/Math.max(c.sales,1),(H-PT-PB-G1*4)/Math.max(c.sales,1));
+  function stack(arr,x,gap,top){var y=top;arr.forEach(function(n){n.x=x;n.h=Math.max(n.v*sc,n.min||MINH);n.y=y;y+=n.h+gap;n.o=0;n.i=0});return y-gap}
+  stack(L,X0,G0,PT+34);stack(M,X1,G1,PT);
+  var yb=M[4].y+M[4].h;stack(R,X2,G2,Math.max(M[4].y-4,PT));
+  var by={};L.concat(M,R).forEach(function(n){by[n.id]=n});
+  var out=[];
   function link(a,b,v,color){if(v<=0.005)return;var t=Math.max(v*sc,1),y0=a.y+a.o+t/2,y1=b.y+b.i+t/2;a.o+=t;b.i+=t;
     var x0=a.x+NW,x1=b.x,mx=(x0+x1)/2;
-    out.push('<path d="M'+x0+","+y0+"C"+mx+","+y0+" "+mx+","+y1+" "+x1+","+y1+'" fill="none" stroke="'+color+'" stroke-opacity=".5" stroke-width="'+t+'"/>')}
-  right.forEach(function(n){n.i=0});
-  var pool=c.sales;
-  right.forEach(function(n){
-    var take=n.v;
-    if(loss&&n.id!=="gst"&&n.id!=="prod"){var fromSales=Math.min(take,Math.max(pool,0));link(src,n,fromSales,n.color);pool-=fromSales;if(take-fromSales>0.005)link(sh,n,take-fromSales,COL.loss)}
-    else{link(src,n,take,n.color);pool-=take}});
-  left.concat(right).forEach(function(n){out.push('<rect x="'+n.x+'" y="'+n.y+'" width="'+NW+'" height="'+n.h+'" rx="3" fill="'+n.color+'"/>')});
+    out.push('<path d="M'+x0+","+y0+"C"+mx+","+y0+" "+mx+","+y1+" "+x1+","+y1+'" fill="none" stroke="'+color+'" stroke-opacity=".42" stroke-width="'+t+'"/>')}
+  var pos=L.reduce(function(a,n){return a+Math.max(n.ch.profit,0)},0),k=pos>0?pbf/pos:0;
+  ["gst","prod","ad","am","pbf"].forEach(function(t){
+    L.forEach(function(n){var h=n.ch,v=t==="gst"?h.gst:t==="prod"?h.prod:t==="ad"?(n.id==="G"?Math.min(h.ad,h.sales-h.gst-h.prod):0):t==="am"?(n.id==="F"?Math.min(h.ad,h.sales-h.gst-h.prod):0):Math.max(h.profit,0)*k;
+      link(n,by[t],v,n.color)})});
+  link(by.pbf,by.fx,R[0].v,COL.fixed);link(by.pbf,by.net,Math.max(pbf-c.fx,0),COL.net);
+  L.concat(M,R).forEach(function(n){out.push('<rect x="'+n.x+'" y="'+n.y+'" width="'+NW+'" height="'+n.h+'" rx="3" fill="'+n.color+'"/>')});
   function pc(v){return c.sales>0?" · "+(v/c.sales*100).toFixed(0)+"%":""}
-  // left labels sit inside the gap above the node
-  left.forEach(function(n){
-    var x=n.x;
-    if(n.id==="s")out.push('<text x="'+x+'" y="'+(n.y-30)+'" class="big">Sales '+money(n.v)+'</text><text x="'+x+'" y="'+(n.y-14)+'" class="vl">Card '+money(c.card)+' · Cash '+money(c.cash)+'</text>');
-    else out.push('<text x="'+x+'" y="'+(n.y+n.h+16)+'" class="big" fill="'+COL.loss+'">Shortfall '+money(n.v)+'</text>');
-  });
-  right.forEach(function(n){
-    var ty=n.y+n.h/2,x=n.x+NW+8,big=n.id==="net";
-    if(n.h<30)out.push('<text x="'+x+'" y="'+(ty+4)+'" class="nm">'+n.name+' <tspan class="vl">'+money(n.v)+pc(n.v)+'</tspan></text>');
-    else out.push('<text x="'+x+'" y="'+(ty-2)+'" class="'+(big?"big":"nm")+'">'+n.name+'</text><text x="'+x+'" y="'+(ty+13)+'" class="vl">'+money(n.v)+pc(n.v)+'</text>');
-  });
+  L.forEach(function(n){var h=n.ch;
+    out.push('<text x="'+n.x+'" y="'+(n.y-22)+'" class="big">'+n.name+' '+money(n.v)+'</text><text x="'+n.x+'" y="'+(n.y-7)+'" class="vl">'+(h.ad>0?"ROAS "+roas(h.sales,h.ad):"no ad spend")+'</text>')});
+  M.forEach(function(n){var x=n.x+NW+7,ty=n.y+n.h/2;
+    if(n.id==="ad"||n.id==="am"){var sa=n.id==="ad"?c.ch.G.sales:c.ch.F.sales;
+      out.push('<text x="'+x+'" y="'+(ty-2)+'" class="nm">'+n.name+' '+money(n.v)+'</text><text x="'+x+'" y="'+(ty+13)+'" class="vl">back '+money(sa)+' · '+roas(sa,n.v)+'</text>')}
+    else if(n.id==="pbf"){out.push('<text x="'+x+'" y="'+(ty-8)+'" class="nm">Profit before</text><text x="'+x+'" y="'+(ty+5)+'" class="nm">fixed costs</text><text x="'+x+'" y="'+(ty+19)+'" class="vl">'+money(c.pbf)+pc(c.pbf)+'</text>')}
+    else out.push('<text x="'+x+'" y="'+(ty+4)+'" class="nm">'+n.name+' <tspan class="vl">'+money(n.v)+pc(n.v)+'</tspan></text>')});
+  R.forEach(function(n){var x=n.x+NW+6,ty=n.y+n.h/2,v=n.id==="fx"?c.fx:c.net;
+    out.push('<text x="'+x+'" y="'+(ty-2)+'" class="'+(n.id==="net"?"big":"nm")+'"'+(n.id==="net"&&loss?' fill="'+COL.loss+'"':'')+'>'+n.name+'</text><text x="'+x+'" y="'+(ty+13)+'" class="vl">'+money(v)+(c.sales>0?" · "+(v/c.sales*100).toFixed(0)+"%":"")+'</text>')});
   var sk=document.getElementById("sk");sk.setAttribute("viewBox","0 0 "+W+" "+H);sk.innerHTML=out.join("");
-  var netLine='<div class="pill '+(loss?"negbg":"posbg")+'">'+(loss?"Net loss":"Net profit")+'<b>'+money(c.net)+(c.sales>0?" · "+(c.net/c.sales*100).toFixed(0)+"%":"")+'</b></div>';
-  document.getElementById("sum").innerHTML=pill("Total sales",money(c.sales))+pill("Ad spend",money(c.g+c.m))+netLine+pill("Overall ROAS",c.g+c.m>0?(c.sales/(c.g+c.m)).toFixed(1)+"x":"–");
-  document.getElementById("fxl").innerHTML='<div class="ptitle" style="margin-top:14px">Fixed costs</div>'+c.fixed.map(function(f){return'<div class="fr"><span>'+f.name+'</span><b>'+money(f.v)+'</b></div>'}).join("");
+  // by-channel table
+  var rows=CH.map(function(x){var h=c.ch[x[0]];return'<tr><th>'+x[1]+'</th><td>'+money(h.sales)+'</td><td>'+(h.ad>0?money(h.ad):"–")+'</td><td>'+(h.ad>0?roas(h.sales,h.ad):"–")+'</td><td class="'+(h.profit>=0?"pos":"neg")+'">'+money(h.profit)+'</td></tr>'}).join("");
+  document.getElementById("sum").innerHTML='<table class="ct"><thead><tr><th></th><th>Sales</th><th>Ad spend</th><th>ROAS</th><th>Profit*</th></tr></thead><tbody>'+rows+
+   '<tr class="tot"><th>Total</th><td>'+money(c.sales)+'</td><td>'+money(c.g+c.m)+'</td><td>'+roas(c.sales,c.g+c.m)+'</td><td>'+money(c.pbf)+'</td></tr></tbody></table><p class="note">*After GST, product cost and that channel\'s ad spend, before fixed costs.</p>';
+  document.getElementById("fxl").innerHTML='<div class="ptitle" style="margin-top:14px">Fixed costs · '+money(c.fx)+' · net '+money(c.net)+'</div>'+c.fixed.map(function(f){return'<div class="fr"><span>'+f.name+'</span><b>'+money(f.v)+'</b></div>'}).join("");
   var unset=CFG.fixed_monthly.filter(function(f){return f.amount==null}).map(function(f){return f.name});
-  document.getElementById("note").textContent="Product cost = "+Math.round(CFG.product_cost_pct*100)+"% of sales (temporary). GST = 1/11 of card sales; cash has none. Fixed costs are monthly amounts spread per day."+(unset.length?" Not set yet: "+unset.join(", ")+".":"");
+  document.getElementById("note").textContent="Channels follow the Shopify order source: Google = Google Online + "+Math.round(CFG.ads_share*100)+"% of Google Direction store visits; Facebook = every FB source; Organic & other = everything else (Google Calls, Organic, Repeat, Word of Mouth, Marketplace, unlabelled). Product cost = "+Math.round(CFG.product_cost_pct*100)+"% of sales (temporary). GST = 1/11 of card sales; cash has none."+(unset.length?" Not set yet: "+unset.join(", ")+".":"");
 }
-function pill(k,v){return'<div class="pill">'+k+'<b>'+v+'</b></div>'}
+
 renderTiles();draw();
 })();
 </script></body></html>

@@ -44,7 +44,7 @@ QUERY = """
 query PF($after:String,$q:String!){
   orders(first:100,after:$after,query:$q,sortKey:PROCESSED_AT){
     pageInfo{hasNextPage endCursor}
-    nodes{ name processedAt cancelledAt
+    nodes{ name processedAt cancelledAt src:metafield(namespace:"custom",key:"order_source"){value}
       transactions(first:20){gateway kind status amountSet{shopMoney{amount}}} }
   }
 }
@@ -74,11 +74,48 @@ def windsor(connector, acct, start, end):
     return rows
 
 
-def daily(orders, google, meta, start, today):
+FALLBACK_ADS_SHARE = 232 / 384  # same fallback as order_source.py
+
+
+def ads_share(end):
+    """Google Ads share of 'Google Direction' store visits (30-day Ads directions vs GMB directions)."""
+    try:
+        s = (dt.date.fromisoformat(end) - dt.timedelta(days=30)).isoformat()
+        e = (dt.date.fromisoformat(end) - dt.timedelta(days=1)).isoformat()
+        def w(conn, fields, acct):
+            p = urllib.parse.urlencode({"api_key": os.environ["WINDSOR_API_KEY"], "date_from": s, "date_to": e,
+                                        "fields": ",".join(fields), "select_accounts": acct})
+            with urllib.request.urlopen(f"https://connectors.windsor.ai/{conn}?{p}", timeout=240) as r:
+                x = json.load(r)
+            return x.get("data", x) if isinstance(x, dict) else x
+        ads = sum(float(r.get("all_conversions_by_conversion_date") or 0)
+                  for r in w("google_ads", ["date", "conversion_action_name", "all_conversions_by_conversion_date"], GOOGLE_ACCT)
+                  if "direction" in str(r.get("conversion_action_name") or "").lower())
+        gmb = sum(float(r.get("direction_requests") or 0)
+                  for r in w("google_my_business", ["date", "direction_requests"],
+                             os.environ.get("WINDSOR_GMB_ACCOUNT", "locations/17025975436640363354")))
+        return ads / (ads + gmb) if ads + gmb > 0 else FALLBACK_ADS_SHARE
+    except Exception:
+        return FALLBACK_ADS_SHARE
+
+
+def channel_split(src, share):
+    """order_source -> {channel: fraction}. G = Google Ads, F = Facebook, O = organic & everything else."""
+    s = (src or "").strip().lower()
+    if s.startswith("fb ") or s.startswith("fb/"):
+        return {"F": 1.0}
+    if s.startswith("google online") or s.startswith("google ads"):
+        return {"G": 1.0}
+    if s.startswith("google direction"):
+        return {"G": share, "O": 1 - share}
+    return {"O": 1.0}
+
+
+def daily(orders, google, meta, start, today, share=FALLBACK_ADS_SHARE):
     days = {}
     d = dt.date.fromisoformat(start)
     while d <= today:
-        days[d.isoformat()] = {"d": d.isoformat(), "card": 0.0, "cash": 0.0, "g": 0.0, "m": 0.0}
+        days[d.isoformat()] = {"d": d.isoformat(), "G": [0.0, 0.0], "F": [0.0, 0.0], "O": [0.0, 0.0], "g": 0.0, "m": 0.0}
         d += dt.timedelta(days=1)
     for o in orders:
         if o.get("cancelledAt"):
@@ -91,27 +128,31 @@ def daily(orders, google, meta, start, today):
                 continue
             v = float(t["amountSet"]["shopMoney"]["amount"])
             sign = 1 if t.get("kind") in ("SALE", "CAPTURE") else -1 if t.get("kind") == "REFUND" else 0
-            key = "cash" if str(t.get("gateway", "")).lower() == "cash" else "card"
-            days[day][key] += sign * v
+            i = 1 if str(t.get("gateway", "")).lower() == "cash" else 0
+            src = ((o.get("src") or {}).get("value")) if isinstance(o.get("src"), dict) else o.get("src")
+            for ch, frac in channel_split(src, share).items():
+                days[day][ch][i] += sign * v * frac
     for rows, key in ((google, "g"), (meta, "m")):
         for r in rows:
             if r.get("date") in days:
                 days[r["date"]][key] += float(r.get("spend") or 0)
     out = list(days.values())
     for r in out:
-        for k in ("card", "cash", "g", "m"):
+        for k in ("g", "m"):
             r[k] = round(r[k], 2)
+        for k in ("G", "F", "O"):
+            r[k] = [round(r[k][0], 2), round(r[k][1], 2)]
     return out
 
 
-def build_page(rows, now):
+def build_page(rows, now, share=FALLBACK_ADS_SHARE):
     h = open(TEMPLATE, encoding="utf-8").read()
     updated = now.strftime("%-d %b %Y, %-I:%M %p").replace("AM", "am").replace("PM", "pm")
-    h = (h.replace("__DATA__", json.dumps({"rows": rows, "cfg": CONFIG}, separators=(",", ":")))
+    h = (h.replace("__DATA__", json.dumps({"rows": rows, "cfg": dict(CONFIG, ads_share=round(share, 4))}, separators=(",", ":")))
           .replace("__TODAY__", now.date().isoformat()).replace("__UPDATED__", updated))
     assert "__" not in h.replace("__proto__", ""), "unfilled template placeholder"
     t = now.date()
-    sales = lambda a: round(sum(r["card"] + r["cash"] for r in rows if r["d"] >= a.isoformat()), 0)
+    sales = lambda a: round(sum(sum(r[k][0] + r[k][1] for k in "GFO") for r in rows if r["d"] >= a.isoformat()), 0)
     meta = {"updated": updated, "stats": [
         [f"${sales(t):,.0f}", "sales today"],
         [f"${sales(t - dt.timedelta(days=t.weekday())):,.0f}", "sales this week"],
@@ -124,11 +165,12 @@ def build():
     now = dt.datetime.now(TZ)
     start = now.date().replace(day=1).isoformat()
     end = now.date().isoformat()
+    share = ads_share(end)
     rows = daily(fetch_orders(start), windsor("google_ads", GOOGLE_ACCT, start, end),
-                 windsor("facebook", META_ACCT, start, end), start, now.date())
-    if not any(r["card"] + r["cash"] for r in rows):
+                 windsor("facebook", META_ACCT, start, end), start, now.date(), share)
+    if not any(sum(r[k][0] + r[k][1] for k in "GFO") for r in rows):
         raise RuntimeError("no sales returned")
-    page, meta = build_page(rows, now)
+    page, meta = build_page(rows, now, share)
     key = os.environ["PROFIT_FLOW_KEY"]
     pv.write_encrypted(key, f"{RID}.bin", page.encode())
     pv.write_encrypted(key, f"{RID}.meta.bin", json.dumps(meta).encode())
@@ -146,8 +188,9 @@ if __name__ == "__main__":
         if "--now" in sys.argv:
             now = dt.datetime.fromisoformat(sys.argv[sys.argv.index("--now") + 1]).astimezone(TZ)
         start = now.date().replace(day=1).isoformat()
-        rows = daily(f["orders"], f["google"], f["meta"], start, now.date())
-        page, meta = build_page(rows, now)
+        share = f.get("ads_share", FALLBACK_ADS_SHARE)
+        rows = daily(f["orders"], f["google"], f["meta"], start, now.date(), share)
+        page, meta = build_page(rows, now, share)
         open(os.path.join(out, "profit-flow.html"), "w", encoding="utf-8").write(page)
         json.dump(rows, open(os.path.join(out, "rows.json"), "w"))
         print(len(rows), meta)
