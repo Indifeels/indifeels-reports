@@ -126,10 +126,10 @@
   "reason": "encryption key unavailable (key read from Supabase denied)"
  },
  "stock": {
-  "at": "2026-11-11T15:01+11:00",
-  "code_sha": "d4d192c52d9dba70b2ae6dd78e75393883bf99bf",
+  "at": "2026-11-11T17:28+11:00",
+  "code_sha": "39e045be4c605f961ac4d71125a545c7352f9115",
   "data_through": null,
-  "last_ok": "2026-11-11T15:01+11:00",
+  "last_ok": "2026-11-11T17:28+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
