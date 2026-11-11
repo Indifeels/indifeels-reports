@@ -1,9 +1,9 @@
 {
  "cash-report": {
-  "at": "2026-11-12T00:00+11:00",
-  "code_sha": "3e00f3283a11af6288a31e4dfa73295624431937",
+  "at": "2026-11-12T09:34+11:00",
+  "code_sha": "3d25a1af03ac7f1f06c7857aef266304667001c1",
   "data_through": null,
-  "last_ok": "2026-11-12T00:00+11:00",
+  "last_ok": "2026-11-12T09:34+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
