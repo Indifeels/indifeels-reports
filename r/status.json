@@ -54,10 +54,10 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-11-12T06:01+11:00",
-  "code_sha": "237d92207877be428dde75302829e5b7a386dc9e",
+  "at": "2026-11-12T14:00+11:00",
+  "code_sha": "c0a0d89efefa4a5967dd823fdc6e42b3fc98cbb1",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-11-12T06:01+11:00",
+  "last_ok": "2026-11-12T14:00+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
