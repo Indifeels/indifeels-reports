@@ -18,10 +18,10 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-11-13T06:08+11:00",
-  "code_sha": "e5fd8522719c7bf7a4cf1c55ac4d2dd9bf22d5a9",
-  "data_through": "2026-11-12T23:59:59+11:00",
-  "last_ok": "2026-11-13T06:08+11:00",
+  "at": "2026-11-13T14:07+11:00",
+  "code_sha": "be858e318883c3944a9bcb14c8ff5412c54fc43c",
+  "data_through": "2026-11-13T14:00:26.483225+11:00",
+  "last_ok": "2026-11-13T14:07+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
@@ -63,10 +63,10 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-11-13T06:08+11:00",
-  "code_sha": "e5fd8522719c7bf7a4cf1c55ac4d2dd9bf22d5a9",
-  "data_through": "2026-11-12T23:59:59+11:00",
-  "last_ok": "2026-11-13T06:08+11:00",
+  "at": "2026-11-13T14:07+11:00",
+  "code_sha": "be858e318883c3944a9bcb14c8ff5412c54fc43c",
+  "data_through": "2026-11-13T14:00:26.483225+11:00",
+  "last_ok": "2026-11-13T14:07+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
