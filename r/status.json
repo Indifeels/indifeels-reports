@@ -126,10 +126,10 @@
   "reason": "Semrush Position Tracking reported 100 API units (unbudgeted); stopped per cost rule, no data published"
  },
  "stock": {
-  "at": "2026-11-13T15:01+11:00",
-  "code_sha": "51c32263f568bf8679fb0e7e0236456e1e4b407b",
+  "at": "2026-11-13T15:25+11:00",
+  "code_sha": "7302966ea9b1348ed780dc7c9a377a6ecc60912b",
   "data_through": null,
-  "last_ok": "2026-11-13T15:01+11:00",
+  "last_ok": "2026-11-13T15:25+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
