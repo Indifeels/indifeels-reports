@@ -72,10 +72,10 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-11-13T20:01+11:00",
-  "code_sha": "329ba123a6b3ae46eae958b1df228b1428fc29f1",
+  "at": "2026-11-14T06:03+11:00",
+  "code_sha": "13df05cea797e15787b891144872eb3da6d127f2",
   "data_through": null,
-  "last_ok": "2026-11-13T20:01+11:00",
+  "last_ok": "2026-11-14T06:03+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
