@@ -54,13 +54,13 @@
   "reason": "encryption key could not be loaded (key lookup was denied)"
  },
  "google-tracked": {
-  "at": "2026-11-14T14:00+11:00",
-  "code_sha": "5e7d912917cf1df8efcdb56e6f9aa9379153ab95",
+  "at": "2026-11-14T20:01+11:00",
+  "code_sha": "2678aa718ce7f179c72e4547842ac6c493eef677",
   "data_through": "2026-10-05T23:59:59+11:00",
   "last_ok": "2026-11-14T14:00+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
-  "ok": true,
-  "reason": ""
+  "ok": false,
+  "reason": "Google tracked refresh failed; check GitHub Actions"
  },
  "monthly": {
   "at": "2026-11-14T14:06+11:00",
