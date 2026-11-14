@@ -9,10 +9,10 @@
   "reason": ""
  },
  "color-game": {
-  "at": "2026-11-14T11:25+11:00",
-  "code_sha": "323a7f3bb99ee53845afb1bb9393ebe16d2ac5d7",
+  "at": "2026-11-15T10:16+11:00",
+  "code_sha": "5262a38e5ff66a9876eb9db8cb16901729f4bc69",
   "data_through": null,
-  "last_ok": "2026-11-14T11:25+11:00",
+  "last_ok": "2026-11-15T10:16+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
