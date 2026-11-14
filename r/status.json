@@ -90,10 +90,10 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-11-14T20:01+11:00",
-  "code_sha": "2678aa718ce7f179c72e4547842ac6c493eef677",
+  "at": "2026-11-15T07:00+11:00",
+  "code_sha": "44841c5c7318eb0e2dd1f616f92c7ba8f8d6c6e5",
   "data_through": null,
-  "last_ok": "2026-11-14T20:01+11:00",
+  "last_ok": "2026-11-15T07:00+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
