@@ -45,13 +45,13 @@
   "reason": ""
  },
  "google-scorecard": {
-  "at": "2026-11-14T06:00+11:00",
-  "code_sha": "13df05cea797e15787b891144872eb3da6d127f2",
+  "at": "2026-11-15T06:06+11:00",
+  "code_sha": "b103bb38df14065e5438b345de2f04dbf79e1474",
   "data_through": null,
-  "last_ok": "2026-11-12T06:03+11:00",
+  "last_ok": "2026-11-15T06:06+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
-  "ok": false,
-  "reason": "encryption key could not be loaded (key lookup was denied)"
+  "ok": true,
+  "reason": ""
  },
  "google-tracked": {
   "at": "2026-11-15T06:01+11:00",
