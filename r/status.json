@@ -108,10 +108,10 @@
   "reason": ""
  },
  "restock-plan": {
-  "at": "2026-11-14T16:22+11:00",
-  "code_sha": "2a5b5d24209612f538d20d157418a7993919817d",
+  "at": "2026-11-14T17:05+11:00",
+  "code_sha": "9a8a666fa8329efb1d608575774b9d76ed650a26",
   "data_through": null,
-  "last_ok": "2026-11-14T16:22+11:00",
+  "last_ok": "2026-11-14T17:05+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
