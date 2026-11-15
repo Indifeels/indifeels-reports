@@ -309,7 +309,7 @@ facts = dict(
     reviews_text=f"{rm['n'] + rs['n']} reviews, both stores", new_total=str(reviews_28),
     new_text=f"Melbourne {rm['new28']} · Sydney {rs['new28']} (28 days)",
     indya_mel=indya["mel"], indya_syd=indya["syd"],
-    kw_note=f"Semrush tracks {pt['tracked']} keywords: {pt['top3']} in the top 3 ({pt['top3_d']:+d}) and {pt['top10']} in the top 10 ({pt['top10_d']:+d}); visibility {pt['vis']:.1f}%.",
+    kw_note=(f"Semrush tracks {pt['tracked']} keywords: {pt['top3']} in the top 3 and {pt['top10']} in the top 10; visibility {pt['vis']:.1f}%. Position Tracking figures are from {pt['asof']} (not re-run to save Semrush units)." if pt.get("asof") else f"Semrush tracks {pt['tracked']} keywords: {pt['top3']} in the top 3 ({pt['top3_d']:+d}) and {pt['top10']} in the top 10 ({pt['top10_d']:+d}); visibility {pt['vis']:.1f}%."),
     local_kw=local_kw, total_kw=total_kw, aio_kw=aio_kw,
     live_n=str(len(live)), live_text=f"{fmt(live_urls)} URLs, no errors" if all(s[2] == 0 for s in live) else f"{fmt(live_urls)} URLs, errors found",
     old_n=str(len(sitemaps) - len(live)), ai_orders=str(meta.get("ai_orders", 0)),
