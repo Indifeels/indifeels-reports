@@ -45,10 +45,10 @@
   "reason": ""
  },
  "google-scorecard": {
-  "at": "2026-11-16T05:56+11:00",
-  "code_sha": "ed4b53b5c047e9a46dc95779abb8a1aa8f30b3a4",
+  "at": "2026-11-17T05:57+11:00",
+  "code_sha": "6f0ce7d3ad83542b8421f329044b37c99e5fd235",
   "data_through": null,
-  "last_ok": "2026-11-16T05:56+11:00",
+  "last_ok": "2026-11-17T05:57+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
