@@ -18,10 +18,10 @@
   "reason": ""
  },
  "command-centre": {
-  "at": "2026-11-17T10:38+11:00",
-  "code_sha": "bc9c388bb68e995b0cc0054d02af8f68dfb52644",
+  "at": "2026-11-17T10:41+11:00",
+  "code_sha": "6c577fdcccf6ec80aa866c1f6868ec2cb1b834f3",
   "data_through": null,
-  "last_ok": "2026-11-17T10:38+11:00",
+  "last_ok": "2026-11-17T10:41+11:00",
   "manifest_version": "2026-11-17.command-centre.1",
   "ok": true,
   "reason": ""

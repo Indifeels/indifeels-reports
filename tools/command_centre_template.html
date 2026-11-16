@@ -440,11 +440,13 @@ function draw(){
   updateNav();
 }
 let fwdStack=[], navKind=null;
+let cur=''; try{cur=decodeURIComponent((location.hash||'').slice(1));}catch(e){}
+function nav(h){ cur=h; try{ if(window.top===window) history.replaceState(null,'','#'+h); }catch(e){} route(); }
 function backTarget(){ if(!curId||curId==='home') return null; if(curId==='map') return 'home'; return trail.length>1?trail[trail.length-2]:'home'; }
 function updateNav(){ document.getElementById('back').disabled=!backTarget(); document.getElementById('fwd').disabled=!fwdStack.length; }
 function route(){
   if(navKind==='keep') navKind=null; else fwdStack=[];
-  const h=decodeURIComponent(location.hash.slice(1));
+  const h=cur;
   const id=(h==='map'||N[h])?h:'home';
   if(N[id]){
     bump(id);
@@ -455,9 +457,11 @@ function route(){
   } else { trail=[]; prevId=null; }
   curId=id; draw(); window.scrollTo(0,0);
 }
-window.addEventListener('hashchange',route);
-document.getElementById('back').addEventListener('click',()=>{const t=backTarget(); if(!t) return; fwdStack.push(curId); navKind='keep'; location.hash=t;});
-document.getElementById('fwd').addEventListener('click',()=>{const t=fwdStack.pop(); if(!t) return; navKind='keep'; location.hash=t;});
+window.addEventListener('hashchange',()=>{try{cur=decodeURIComponent(location.hash.slice(1));}catch(e){} route();});
+/* Inside the hub the page runs in a srcdoc frame, where '#x' links would load the hub itself. Route in the page instead. */
+document.addEventListener('click',e=>{const a=e.target.closest('a[href^="#"]'); if(!a) return; e.preventDefault(); nav(a.getAttribute('href').slice(1));});
+document.getElementById('back').addEventListener('click',()=>{const t=backTarget(); if(!t) return; fwdStack.push(curId); navKind='keep'; nav(t);});
+document.getElementById('fwd').addEventListener('click',()=>{const t=fwdStack.pop(); if(!t) return; navKind='keep'; nav(t);});
 app.addEventListener('click',e=>{
   if(e.target.closest('[data-fqreset]')){visits={}; saveVisits(); draw(); return;}
   const op=e.target.closest('[data-open]'); if(op){try{parent.postMessage({type:'cc-open',id:op.dataset.open},'*')}catch(_){} return;}
