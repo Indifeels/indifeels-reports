@@ -126,10 +126,10 @@
   "reason": "Semrush campaigns call reported 100 API units beyond the one allowed snapshots call; stopped without publishing partial data"
  },
  "stock": {
-  "at": "2026-11-16T18:59+11:00",
-  "code_sha": "362e378a11195df4773b34faad823a5f96aabbf8",
+  "at": "2026-11-16T20:01+11:00",
+  "code_sha": "9bdd35a318d079db5c65f762dde76bda35fc5a15",
   "data_through": null,
-  "last_ok": "2026-11-16T18:59+11:00",
+  "last_ok": "2026-11-16T20:01+11:00",
   "manifest_version": "2026-11-11.profit-flow.1",
   "ok": true,
   "reason": ""
