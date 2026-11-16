@@ -1537,6 +1537,14 @@
     }
   });
 
+  // ---------- Master Dashboard: "Open this report" buttons open the matching hub report ----------
+  window.addEventListener("message", (event) => {
+    const fr = $("#rep-frame");
+    if (!fr || event.source !== fr.contentWindow || location.hash !== "#command-centre") return;
+    const d = event.data || {};
+    if (d.type === "cc-open" && typeof d.id === "string" && /^[a-z0-9-]{1,40}$/.test(d.id)) openReport(d.id);
+  });
+
   // ---------- Profit Flow: owner approves a sale price per product -> Shopify sale price (edge function product-price) ----------
   window.addEventListener("message", async (event) => {
     const fr = $("#rep-frame");

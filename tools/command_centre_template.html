@@ -1,0 +1,476 @@
+<title>Indifeels Command Centre</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: sticky top bar, then one screen per node (home tiles, sub-tiles, detail), plus a separate Connections map screen */
+:root{
+  --bg:#22252a; --panel:#1b1e22; --tile:#262a2f; --tile2:#2f343a; --line:#3a4047;
+  --ink:#eceff2; --mute:#9ba4ae; --accent:#2bb5a5;
+  --g:#3dbb8a; --y:#d9a23b; --o:#e8803a; --r:#e5534b; --info:#5a9be0;
+  --shadow:inset 0 -3px 0 rgba(0,0,0,.65),inset 1px 0 0 rgba(255,255,255,.05),0 2px 3px rgba(0,0,0,.6),0 12px 22px rgba(0,0,0,.5),0 26px 40px rgba(0,0,0,.35);
+  --tile-grad:linear-gradient(145deg,#1d1f23 0%,#0c0d0f 50%,#050506 100%); --tile-hi:rgba(255,255,255,.13);
+  --display:"Space Grotesk",system-ui,sans-serif; --body:Inter,system-ui,sans-serif;
+  color-scheme:dark;
+}
+:root[data-theme="dark"]{ color-scheme:dark }
+:root[data-theme="light"]{
+  --bg:#eceff2; --panel:#ffffff; --tile:#ffffff; --tile2:#f1f3f5; --line:#d5dade;
+  --ink:#1d2227; --mute:#5f6b76; --accent:#0f8f82;
+  --g:#1f9d6e; --y:#b57f14; --o:#d4691f; --r:#d23f37; --info:#2f73c0;
+  --shadow:0 4px 14px rgba(20,30,40,.08);
+  --tile-grad:linear-gradient(335deg,#ffffff 0%,#eef1f3 100%); --tile-hi:rgba(255,255,255,0);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--body);padding-block:0 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer}
+.wrap{max-width:1080px;margin:0 auto}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;flex-wrap:wrap;
+  gap:10px 14px;align-items:center;justify-content:space-between;padding:12px 0}
+.tabs{display:flex;gap:6px}
+.tabs a,.btn{padding:6px 12px;border-radius:8px;background:transparent;border:1px solid var(--line);color:var(--mute)}
+.tabs a.on{background:var(--tile2);color:var(--ink);border-color:var(--tile2)}
+.btn{background:var(--tile)}
+.right{display:flex;gap:8px;align-items:center}
+.draft{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--y);border:1px solid var(--y);border-radius:999px;padding:2px 8px}
+.crumbs{display:flex;flex-wrap:wrap;gap:6px;color:var(--mute);font-size:13px;min-width:0}
+.crumbs a:hover{color:var(--ink)} .crumbs b{color:var(--ink);font-weight:500}
+h1{font:600 clamp(26px,5vw,38px)/1.1 var(--display);margin:18px 0 4px;text-wrap:balance}
+.sub{color:var(--mute);margin:0 0 18px}
+.h2{font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:28px 0 10px}
+.grid{display:grid;gap:12px}
+.grid.cats{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))}
+.grid.subs{grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr))}
+@media(min-width:760px){.grid.cats{grid-template-columns:repeat(3,1fr)}}
+.tile{position:relative;display:block;background:var(--tile-grad);border:1px solid transparent;border-radius:14px;padding:16px;
+  box-shadow:inset 0 1px 0 var(--tile-hi),var(--shadow);transition:transform .15s,border-color .15s;min-width:0}
+.left{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn:disabled{opacity:.35;cursor:default}
+.freq{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 16px}
+.fq{display:inline-flex;gap:10px;align-items:center;padding:9px 14px;border-radius:10px;background:var(--tile-grad);font-weight:500;
+  box-shadow:inset 0 1px 0 var(--tile-hi),inset 0 -2px 0 rgba(0,0,0,.6),0 3px 5px rgba(0,0,0,.4),0 10px 16px rgba(0,0,0,.3);transition:transform .15s}
+.fq:hover{transform:translateY(-2px)}
+.fq:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.fq b{color:var(--rc,var(--mute));font:700 14px var(--display);font-variant-numeric:tabular-nums}
+.lnk{background:none;border:0;color:var(--mute);text-decoration:underline;font-size:11px;letter-spacing:0;text-transform:none;margin-left:8px;padding:0}
+a.tile:hover{transform:translateY(-4px);box-shadow:inset 0 1px 0 var(--tile-hi),inset 0 -3px 0 rgba(0,0,0,.65),0 4px 6px rgba(0,0,0,.55),0 22px 36px rgba(0,0,0,.55)}
+.tile.overall{display:flex;gap:20px;align-items:center;margin-bottom:12px}
+.tile.overall .big{font:700 clamp(20px,3vw,26px)/1.15 var(--display)}
+.sevs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.sevb{padding:5px 14px;border-radius:999px;border:1px solid currentColor;background:transparent;font-weight:500;transition:background .15s}
+.sevb:hover{background:color-mix(in srgb,currentColor 12%,transparent)}
+.sevb.on{background:color-mix(in srgb,currentColor 22%,transparent)}
+.sevb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sevb.red{color:var(--r)} .sevb.yel{color:var(--y)} .sevb.grn{color:var(--g)} .sevb.clr{color:var(--mute);border-color:var(--line)}
+a.tile:focus-visible,.btn:focus-visible,.tabs a:focus-visible,[data-sel]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tile .go{position:absolute;right:14px;top:12px;color:var(--mute);font-size:20px;line-height:1}
+.tile.cat{display:flex;flex-direction:column;gap:14px;min-height:230px}
+.tile.cat .top{display:flex;gap:12px;justify-content:space-between;align-items:flex-start}
+.tile.cat .nm{font:700 clamp(22px,3.4vw,28px)/1.1 var(--display);text-wrap:balance}
+.tile.cat .top>div{min-width:0}
+.alerts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:500}
+.alerts li{display:flex;gap:8px;align-items:baseline}
+.alerts li::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:currentColor;transform:translateY(-1px)}
+.alerts .red{color:var(--r)} .alerts .yel{color:var(--y)} .alerts .grn{color:var(--g)} .alerts .none{color:var(--mute);font-weight:400}
+.alerts .more{color:var(--mute);font-weight:400;font-size:12px} .alerts .more::before{display:none}
+.tile.cat .go{top:auto;bottom:12px}
+.tile.sub{display:flex;gap:14px;align-items:center}
+.tile.sub .nm{font:600 15px/1.25 var(--display);padding-right:14px}
+.tile.plan{background:transparent;box-shadow:none;border-style:dashed;border-color:var(--line)}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center}
+.mute{color:var(--mute)} .small{font-size:12px}
+.prev{color:var(--mute);font-size:12px;line-height:1.4;margin-top:auto}
+.chip{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--tile2);color:var(--mute);white-space:nowrap}
+.chip.live{color:var(--g);background:color-mix(in srgb,var(--g) 14%,transparent)}
+.chip.part{color:var(--y);background:color-mix(in srgb,var(--y) 14%,transparent)}
+.chip.shared{color:var(--info);background:color-mix(in srgb,var(--info) 14%,transparent)}
+.ring{position:relative;width:var(--s);height:var(--s);flex:none}
+.ring svg{display:block;transform:rotate(-90deg)}
+.ring .num{position:absolute;inset:0;display:grid;place-items:center;font:700 calc(var(--s)*.32)/1 var(--display);font-variant-numeric:tabular-nums}
+.ring.none .num{color:var(--mute);font-weight:500}
+.g{--rc:var(--g)} .y{--rc:var(--y)} .o{--rc:var(--o)} .r{--rc:var(--r)}
+.hero{display:flex;gap:18px;align-items:center;margin:10px 0 4px}
+.filters{display:flex;gap:6px;margin:18px 0 12px}
+.filters button{padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--mute)}
+.filters button.on{background:var(--tile2);color:var(--ink)}
+.cols{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.card{background:var(--tile);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.card h3{margin:0 0 8px;font:600 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.rel{display:flex;gap:8px;padding:8px 0;border-top:1px solid var(--line);align-items:baseline}
+.rel:first-of-type{border-top:0}
+.rel .ar{color:var(--accent);flex:none}
+.rel a{text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.rel a:hover{text-decoration-color:var(--accent)}
+details.card summary{cursor:pointer;font-weight:500}
+.feeds{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px}
+.feeds .card{padding:12px 14px}
+.feeds b{display:block;font-weight:600;margin-bottom:2px}
+.note{color:var(--mute);font-size:12px;margin-top:22px}
+.mapbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px}
+.mapbox svg{display:block;width:100%;height:auto}
+.mapbox text{fill:var(--ink);font-family:var(--body)}
+.mapbox .nmt{font-size:13px;font-weight:600}
+.mapbox .sct{font-size:11px;fill:var(--mute)}
+.mapbox .nd rect{fill:var(--tile);stroke:var(--line);stroke-width:1}
+.mapbox .nd.sel rect{stroke:var(--accent);stroke-width:2}
+.mapbox .nd{cursor:pointer}
+.mapbox .edge{fill:none;stroke:var(--mute);stroke-opacity:.35}
+.mapbox .edge.out{stroke:var(--accent);stroke-opacity:1}
+.mapbox .edge.in{stroke:var(--o);stroke-opacity:1}
+.mapbox .cnt{fill:var(--bg);stroke:var(--line)}
+.mapbox .cntt{font-size:10px;font-weight:600;text-anchor:middle}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 2px;color:var(--mute);font-size:12px}
+.legend i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+@media(prefers-reduced-motion:reduce){.tile{transition:none}}
+</style>
+
+<div class="wrap">
+  <div class="bar">
+    <div class="left"><button class="btn" id="back" type="button" aria-label="Back one level">‹ Back</button><button class="btn" id="fwd" type="button" aria-label="Forward">Forward ›</button>
+    <nav class="tabs" aria-label="Views"><a id="tab-home" href="#home">Tiles</a><a id="tab-map" href="#map">Connections</a></nav></div>
+    <div class="right"><span class="draft">Draft · sample scores</span><button class="btn" id="theme" type="button" aria-label="Switch light or dark theme">Theme</button></div>
+  </div>
+  <div id="app"></div>
+</div>
+
+<script>
+/* ---------- data ---------- */
+const CATS=[['sales','Sales & Profit'],['inventory','Inventory'],['products','Products & Pricing'],['customers','Customers'],
+ ['marketing','Digital Marketing'],['seo','SEO'],['web','Website Health'],['local','Local & Stores'],['ops','Operations & AI']];
+const N={}; const order=[];
+CATS.forEach(([id,name])=>{N[id]={id,name,cat:true,parents:[],src:[],st:'cat',desc:''};order.push(id)});
+function n(id,name,st,score,parents,src,rep,desc){N[id]={id,name,st,score,parents,src:src||[],rep:rep||'',desc:desc||''};order.push(id)}
+const SH='Shopify',WI='Windsor.ai',SX='Semrush (scheduled email export)',SU='Supabase',MN='Manual upload';
+
+/* Sales & Profit */
+n('profit-flow','Profit Flow','live',78,['sales'],[SH,WI],'Reports hub › Sales Analysis › Profit Flow','Sold, spend and what you keep per $100, by day, week or month.');
+n('cash-report','Cash Report','live',85,['sales'],[SH],'Reports hub › Sales Analysis › Cash Report','Cash-paid orders since 18 Apr, refreshed after every order.');
+n('order-attribution','Order Attribution','live',62,['sales','marketing'],[SH],'Reports hub › Marketing Analysis › Google Scorecard','Orders tagged Google, Facebook or Organic from the order source field.');
+n('channels','Channels (18)','plan',null,['sales','marketing'],[SH,WI],'','Sales and spend across all 18 channels.');
+n('cash-flow','Cash Flow','plan',null,['sales'],[SH,MN],'','Money in and out by week.');
+n('margin-poas','Margin & POAS','plan',null,['sales','marketing','products'],[SH,WI],'','Profit on ad spend per product and per channel.');
+n('expenses','Expenses & GST','plan',null,['sales'],[MN],'','Fixed costs and GST from an uploaded expenses list.');
+n('seasonality','Sales Seasonality','plan',null,['sales','customers','marketing'],[SH],'','Which products sell in which months and festivals.');
+/* Inventory */
+n('restock','Restock Planner','live',71,['inventory'],[SH,SU],'Reports hub › Stock Management › Restock Planner','Order list, packing, shipped, order boxes and PDF orders.');
+n('supplier-portal','Supplier Portal','live',80,['inventory','ops'],[SU],'Reports hub › Supplier Portal','Suppliers add to boxes and ship.');
+n('stock-take','Stock Take','live',74,['inventory'],[SH,SU],'Reports hub › Stock Management › Stock Take','Counts, add or remove, bulk transfer, history.');
+n('barcodes','Barcodes & Labels','live',76,['inventory'],[SH],'Reports hub › Stock Management › Stock Take › Barcodes','Print labels and receive boxes.');
+n('procurement','Procurement','live',58,['inventory','products'],[SH,SX,'Search Console'],'Reports hub › Stock Management › Procurement','Demand by category versus options in stock.');
+n('stock-health','Stock Health','live',66,['inventory','sales'],[SH],'Reports hub › Stock Management › Restock Planner','Stock health % against a target of 90.');
+n('dead-stock','Dead & Excess Stock','part',45,['inventory','products'],[SH],'Reports hub › Sales Analysis › Profit Flow','Not-eligible stock value and clear-out candidates.');
+n('size-colour','Size & Colour Gaps','part',52,['inventory','products'],[SH,SX],'Reports hub › Stock Management › Procurement','Sizes and colours sold versus in stock.');
+n('supplier-score','Supplier Scorecard','plan',null,['inventory','ops'],[SU],'','Lead time and fill rate per supplier.');
+/* Products & Pricing */
+n('pricing','Pricing Strategy','plan',null,['products','marketing'],[SH,MN],'','Prices, floors and competitor position.');
+n('sale-planner','Sale & Seasonal Calendar','plan',null,['products','marketing'],[SH],'','Big sale and festival timing.');
+n('velocity','Product Velocity (A/B/C/D)','plan',null,['products','inventory'],[SH],'','Fast and slow sellers by days to sell one unit.');
+n('eligibility','Stock Eligibility','part',70,['products','inventory','sales'],[SH],'Reports hub › Sales Analysis › Profit Flow','Eligible versus not-eligible stock value.');
+n('catalog','Catalogue Quality','part',40,['products','web'],[SH],'Reports hub › Stock Management › Colour Tagging Game','Missing colours, photos and product data.');
+n('competitor-prices','Competitor Prices','plan',null,['products','seo'],[SX],'','What similar stores charge.');
+/* Customers */
+n('demographics','Demographics','plan',null,['customers','marketing'],[SH],'','Who buys: suburb, age and gender where known.');
+n('ltv','LTV & Cohorts','plan',null,['customers'],[SH],'','Lifetime value and cohorts.');
+n('repeat','Repeat Customers','plan',null,['customers','local'],[SH],'','Who comes back, and when.');
+n('suburbs','Suburbs & Reach','plan',null,['customers','local','marketing'],[SH,WI],'','Where buyers live compared with where ads run.');
+/* Digital Marketing */
+n('google-ads','Google Ads','part',null,['marketing'],[WI],'','Campaign settings, signals and results.');
+n('facebook-ads','Facebook & Instagram Ads','part',null,['marketing'],[WI],'','Tracked and non-tracked campaigns.');
+n('ga4','GA4 Traffic & Conversions','plan',null,['marketing','web','seo'],[WI],'','Sessions, funnel and conversion by source.');
+n('email','Email (Klaviyo)','plan',null,['marketing','customers'],['Klaviyo'],'','Flows, campaigns and win-back lists.');
+n('social','Social Posting','plan',null,['marketing'],['Instagram','Facebook','TikTok'],'','Auto-post reels, pick high-CTR ones.');
+/* Google Ads parameters */
+n('ga-scorecard','Google Scorecard','live',63,['google-ads'],[WI,SH,'GA4'],'Reports hub › Marketing Analysis › Google Scorecard','KPI tiles out of 100, campaign to ad breakdown.');
+n('ga-test','Campaign Tests','live',55,['google-ads'],[WI],'Reports hub › Marketing Analysis › Google Ads Test','Wedding Search test and its signals.');
+n('ga-structure','Campaign Structure','plan',null,['google-ads'],[WI],'','Types, ad groups, naming.');
+n('ga-budget','Budget & Bidding','plan',null,['google-ads'],[WI],'','Daily budgets, bid strategy, targets.');
+n('keywords','Keywords & Search Terms','part',50,['google-ads','seo'],[WI,SX,'Search Console'],'Reports hub › SEO Report','Terms bought versus terms already ranking.');
+n('ga-negatives','Negative Keywords','plan',null,['google-ads'],[WI],'','Wasted clicks to block.');
+n('ga-quality','Quality Score & Ad Strength','plan',null,['google-ads'],[WI],'','Relevance, expected CTR, landing page.');
+n('ga-assets','Ad Copy & Assets','plan',null,['google-ads'],[WI],'','Headlines, images, extensions.');
+n('ga-audiences','Audiences','plan',null,['google-ads','customers'],[WI,SH],'','Lists and signals.');
+n('ga-geo','Location & Schedule','plan',null,['google-ads'],[WI],'','Where and when ads run.');
+n('ga-impression','Impression Share','plan',null,['google-ads'],[WI],'','Share lost to budget or rank.');
+n('ga-conversion','Conversion Tracking','plan',null,['google-ads','web'],[WI,'GA4'],'','Tags, values, duplicates.');
+n('ga-landing','Landing Pages','plan',null,['google-ads','web'],['GA4','PageSpeed'],'','Page speed and match to ad.');
+n('ga-feed','Merchant Centre Feed','plan',null,['google-ads','web'],['Merchant Centre'],'','Product feed errors and disapprovals.');
+n('ga-stock','Stock-aware Ads','plan',null,['google-ads','inventory'],[SH,WI],'','Stop advertising what is out of stock.');
+n('ga-leaks','Money Leaks','plan',null,['google-ads'],[WI],'','Spend with no return.');
+n('ga-history','Past Performance','plan',null,['google-ads'],[WI],'','Past campaigns and keywords reviewed.');
+/* Facebook parameters */
+n('fb-tracked','Tracked Campaigns','live',66,['facebook-ads'],[WI,SH],'Reports hub › Marketing Analysis › Facebook Tracked','ROAS and real sales per campaign.');
+n('fb-nontracked','Non-tracked Daily Analysis','live',60,['facebook-ads'],[WI],'Reports hub › Marketing Analysis › Facebook Non-tracked','Spend and cost per message.');
+n('fb-nightly','Nightly Spend Report','live',72,['facebook-ads'],[WI],'Scheduled task, 10 pm','Non-tracked spend and cost per message.');
+n('fb-creative','Creative Performance','plan',null,['facebook-ads'],[WI],'','Which images and reels work.');
+n('fb-audiences','Audiences','plan',null,['facebook-ads','customers'],[WI,SH],'','Lookalikes, interests, exclusions.');
+n('fb-budget','Budget & Pacing','plan',null,['facebook-ads'],[WI],'','Daily spend against plan.');
+n('fb-fatigue','Frequency & Fatigue','plan',null,['facebook-ads'],[WI],'','Ads shown too often.');
+n('fb-pixel','Pixel & CAPI Tracking','plan',null,['facebook-ads','web'],[WI],'','Events firing and matching.');
+n('fb-stock','Stock-aware Ads','plan',null,['facebook-ads','inventory'],[SH,WI],'','Stop promoting what is out of stock.');
+/* SEO */
+n('seo-report','SEO Rankings','live',61,['seo'],[SX,'Search Console','GA4'],'Reports hub › SEO Report','Rankings, traffic and Business Profile, refreshed daily.');
+n('backlinks','Backlinks','plan',null,['seo'],[SX],'','Links won and lost.');
+n('competitor-gap','Competitor Gap','plan',null,['seo','products'],[SX],'','Why competitors rank and how to outrank.');
+n('gsc','Search Console','plan',null,['seo','web'],['Search Console'],'','Real queries, clicks and positions.');
+n('tech-audit','Technical Audit','plan',null,['seo','web'],[SX],'','Crawl errors from the Semrush site audit.');
+n('content-pages','Collection & Product Pages','plan',null,['seo','products'],['Search Console',SH],'','Titles, descriptions, copy.');
+n('ai-visibility','AI Search Visibility','plan',null,['seo'],[SX],'','Mentions in AI answers.');
+/* Website Health */
+n('cwv','Core Web Vitals','plan',null,['web'],['PageSpeed'],'','LCP, INP, CLS on key pages.');
+n('uptime','Uptime & Speed','plan',null,['web'],['Monitor'],'','Is the site up and fast.');
+n('funnel','Checkout Funnel','plan',null,['web','sales'],['GA4',SH],'','Where buyers drop off.');
+n('tracking','Tracking Health','plan',null,['web'],['GA4','Tag checks'],'','Tags and pixels firing.');
+n('structured','Structured Data','plan',null,['web','seo'],['Search Console'],'','Product and review markup.');
+n('mobile','Mobile Experience','plan',null,['web'],['PageSpeed'],'','Tap targets, layout, speed on phones.');
+/* Local & Stores */
+n('gbp','Google Business Profile','part',57,['local','seo'],['Windsor.ai (GBP)'],'Reports hub › SEO Report','Melbourne and Sydney profiles, views, calls, directions.');
+n('calls','Calls & Directions','plan',null,['local','marketing'],['Call tracking'],'','Calls by number and origin.');
+n('reviews','Reviews','plan',null,['local','seo'],['Windsor.ai (GBP)'],'','Rating and new reviews.');
+n('walkins','Walk-ins & Store Sales','plan',null,['local','sales'],[SH],'','MEL and SYD stores.');
+n('bookings','Visit Bookings','live',68,['local','ops'],[SU],'Aisha booking system','Appointment bookings through Aisha.');
+/* Operations & AI */
+n('aisha','Aisha Bot','live',82,['ops','customers'],[SU,'Chatwoot'],'Chatwoot','Customer service on chat, Facebook and Instagram.');
+n('board','Project Board','live',75,['ops'],[SU],'Reports hub › Admin Panel › Project Board','Tasks from talking to Claude.');
+n('shipping','Shipping','plan',null,['ops','sales'],['Shippit'],'','Fulfilment time and cost.');
+n('returns','Returns & QA','plan',null,['ops','products'],[SH],'','Return rate and reasons.');
+n('alerts','Alerts & Job Health','plan',null,['ops'],[SU],'','Scheduled jobs and failures in one place.');
+
+/* Sample alerts per built tile: [severity, text]. Replace with real signals once reports feed them. */
+const ALERTS={
+'profit-flow':['grn','Profit margin holding steady'],'cash-report':['grn','Cash report up to date'],'order-attribution':['yel','Orders need source confirmed'],
+'restock':['yel','Variants below reorder level'],'supplier-portal':['grn','Suppliers shipping on time'],'stock-take':['yel','Stock take overdue on some collections'],
+'barcodes':['grn','Labels printed for latest box'],'procurement':['yel','Saree demand outruns stock'],'stock-health':['yel','Stock health under 90% target'],
+'dead-stock':['red','Dead stock tying up cash'],'size-colour':['yel','Missing sizes in top categories'],'eligibility':['yel','Eligible stock below plan'],
+'catalog':['red','Products missing colour tags'],'ga-scorecard':['yel','Google conversions need checking'],'ga-test':['yel','Wedding test has no sales yet'],
+'keywords':['yel','Paid terms already ranking free'],'fb-tracked':['yel','Tracked ROAS below target'],'fb-nontracked':['yel','Cost per message rising'],
+'seo-report':['yel','Rankings flat this week'],'gbp':['yel','Profile calls dipping'],'bookings':['grn','Bookings flowing'],'aisha':['grn','Aisha answering normally'],'board':['grn','Board up to date']
+};
+
+const HUB={'profit-flow':'profit-flow','cash-report':'cash-report','order-attribution':'order-attribution','restock':'restock-plan','supplier-portal':'restock-supplier','stock-take':'stock-take','barcodes':'stock-take','procurement':'procurement','stock-health':'restock-plan','dead-stock':'profit-flow','size-colour':'procurement','eligibility':'profit-flow','catalog':'color-game','ga-scorecard':'google-scorecard','ga-test':'google-ads-test','keywords':'seo-report','fb-tracked':'facebook-tracked','fb-nontracked':'daily','seo-report':'seo-report','gbp':'seo-report','board':'project-board'};
+/* Cross links: from, to, why */
+const L=[
+['seo-report','keywords','Terms already ranking can skip paid or bid lower'],
+['gsc','keywords','Real queries and positions'],
+['keywords','procurement','Search demand sizes what to stock'],
+['pricing','google-ads','Sale prices and offers to promote'],
+['pricing','facebook-ads','Sale prices and offers to promote'],
+['sale-planner','google-ads','Seasonal and big-sale timing'],
+['sale-planner','facebook-ads','Seasonal and big-sale timing'],
+['demographics','ga-audiences','Who buys: suburb, age, gender'],
+['demographics','fb-audiences','Who buys: suburb, age, gender'],
+['suburbs','ga-geo','Where to target'],
+['seasonality','google-ads','Which months and products sell'],
+['seasonality','facebook-ads','Which months and products sell'],
+['seasonality','restock','Festival peaks set restock timing'],
+['stock-health','ga-stock','Out-of-stock products stop being advertised'],
+['stock-health','fb-stock','Out-of-stock products stop being promoted'],
+['dead-stock','pricing','Clearance candidates'],
+['velocity','restock','Fast sellers restocked first'],
+['supplier-score','restock','Lead time and fill rate'],
+['cwv','ga-landing','Slow pages lower Quality Score'],
+['tracking','ga-conversion','Broken tags hide conversions'],
+['tracking','fb-pixel','Broken pixel hides sales'],
+['tech-audit','seo-report','Crawl issues hurt rankings'],
+['ga4','seo-report','Organic landing-page conversions'],
+['catalog','content-pages','Better product data lifts organic pages'],
+['gbp','calls','Profile views become calls'],
+['calls','order-attribution','Calls tied back to a channel'],
+['ga-scorecard','profit-flow','Google spend and returns'],
+['fb-tracked','profit-flow','Meta spend and returns'],
+['order-attribution','ga-scorecard','Which orders came from Google'],
+['margin-poas','pricing','Floor price per product'],
+['margin-poas','ga-budget','Break-even bids and budgets'],
+['returns','margin-poas','Return cost eats margin'],
+['aisha','catalog','Questions show missing product info'],
+['repeat','email','Win-back lists']
+].filter(l=>N[l[0]]&&N[l[1]]);
+
+/* ---------- helpers ---------- */
+const kids={}; order.forEach(id=>N[id].parents.forEach(p=>(kids[p]=kids[p]||[]).push(id)));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function leaves(id){ if(!kids[id]) return [id]; const s=new Set(); kids[id].forEach(k=>leaves(k).forEach(x=>s.add(x))); return [...s]; }
+function sub(id,s=new Set()){ s.add(id); (kids[id]||[]).forEach(k=>sub(k,s)); return s; }
+function root(id){ while(N[id].parents.length) id=N[id].parents[0]; return id; }
+function score(id){ if(!kids[id]) return N[id].score; const v=leaves(id).map(l=>N[l].score).filter(x=>x!=null); return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):null; }
+function counts(id){ const ls=leaves(id); const b=ls.filter(l=>N[l].st!=='plan').length; return {built:b,plan:ls.length-b}; }
+const band=s=>s==null?'':s>=80?'g':s>=60?'y':s>=40?'o':'r';
+function ring(s,size,sw){
+  const r=(size-sw)/2,c=2*Math.PI*r;
+  if(s==null) return `<div class="ring none" style="--s:${size}px"><svg width="${size}" height="${size}" aria-hidden="true"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--line)" stroke-width="${sw}" stroke-dasharray="3 5"/></svg><span class="num">–</span></div>`;
+  return `<div class="ring ${band(s)}" style="--s:${size}px"><svg width="${size}" height="${size}" aria-hidden="true"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--tile2)" stroke-width="${sw}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--rc)" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c*s/100} ${c}"/></svg><span class="num" aria-label="Score ${s} out of 100">${s}</span></div>`;
+}
+const stChip=st=>st==='live'?'<span class="chip live">Live</span>':st==='part'?'<span class="chip part">Partial</span>':'<span class="chip">Planned</span>';
+const nl=id=>`<a href="#${id}">${esc(N[id].name)}</a>`;
+function linksFor(id){ const S=sub(id); return {out:L.filter(l=>S.has(l[0])&&!S.has(l[1])), inn:L.filter(l=>S.has(l[1])&&!S.has(l[0]))}; }
+function sortKids(ids){ const w={live:0,part:1,plan:2}; return ids.slice().sort((a,b)=>{const sa=kids[a]?'part':N[a].st, sb=kids[b]?'part':N[b].st; return w[sa]-w[sb]||order.indexOf(a)-order.indexOf(b)}); }
+
+/* ---------- views ---------- */
+let flt='all', trail=[], prevId=null, curId=null, mapSel='marketing';
+const app=document.getElementById('app');
+
+function overallView(){
+  const cs=CATS.map(c=>score(c[0])).filter(x=>x!=null), o=cs.length?Math.round(cs.reduce((a,b)=>a+b,0)/cs.length):null;
+  const cnt={red:0,yel:0,grn:0}; Object.values(ALERTS).forEach(a=>cnt[a[0]]++);
+  const lo=CATS.map(c=>[c[0],score(c[0])]).filter(x=>x[1]!=null).sort((a,b)=>a[1]-b[1])[0];
+  return `<div class="tile overall">${ring(o,112,11)}<div style="min-width:0"><div class="big">Overall business score</div>
+   <div class="mute small">Average of ${cs.length} scored areas${lo?`. Weakest: ${nl(lo[0])} (${lo[1]})`:''}</div>
+   <div class="sevs" role="group" aria-label="Filter alerts">${[['red','urgent'],['yel','watch'],['grn','healthy']].map(([k,t])=>`<button type="button" class="sevb ${k} ${sevFilter===k?'on':''}" data-sev="${k}" aria-pressed="${sevFilter===k}">${cnt[k]} ${t}</button>`).join('')}${sevFilter?'<button type="button" class="sevb clr" data-sev="">Show all</button>':''}</div></div></div>`;
+}
+const FQ_KEY='cc-visits';
+function loadVisits(){ try{return JSON.parse(localStorage.getItem(FQ_KEY))||{}}catch(e){return {}} }
+function saveVisits(){ try{localStorage.setItem(FQ_KEY,JSON.stringify(visits))}catch(e){} }
+let visits=loadVisits();
+function bump(id){ if(N[id].cat) return; const v=visits[id]||{c:0,t:0}; v.c++; v.t=Date.now(); visits[id]=v; saveVisits(); }
+function freqView(){
+  const used=Object.entries(visits).filter(([id])=>N[id]&&!N[id].cat).sort((a,b)=>b[1].c-a[1].c||b[1].t-a[1].t).slice(0,6).map(x=>x[0]);
+  const sample=!used.length, ids=sample?['restock','profit-flow','ga-scorecard','stock-take','seo-report','fb-tracked']:used;
+  const head=sample?'Frequently used · suggested until you open a few':'Frequently used <button type="button" class="lnk" data-fqreset="1">Reset</button>';
+  const btns=ids.map(id=>{const s=score(id); return `<a class="fq ${band(s)}" href="#${id}">${esc(N[id].name)}${s==null?'':` <b>${s}</b>`}</a>`;}).join('');
+  return `<div class="h2" style="margin-top:6px">${head}</div><div class="freq">${btns}</div>`;
+}
+let sevFilter=null;
+function sevPanel(){
+  if(!sevFilter) return '';
+  const lab={red:'Urgent',yel:'Watch',grn:'Healthy'}[sevFilter], col={red:'r',yel:'y',grn:'g'}[sevFilter];
+  const ids=order.filter(id=>ALERTS[id]&&ALERTS[id][0]===sevFilter);
+  const rows=ids.map(id=>`<div class="rel"><span style="color:var(--${col})">●</span><span>${nl(id)} <span class="mute">· ${esc(ALERTS[id][1])} · ${nl(root(id))}</span></span></div>`).join('');
+  return `<div class="card" style="margin-bottom:12px"><h3>${lab} · ${ids.length} to check</h3>${rows}</div>`;
+}
+function homeView(){
+  const tiles=CATS.map(([id,name])=>{
+    const c=counts(id);
+    const sev={red:0,yel:1,grn:2};
+    const al=leaves(id).filter(l=>ALERTS[l]&&(!sevFilter||ALERTS[l][0]===sevFilter)).map(l=>ALERTS[l]).sort((a,b)=>sev[a[0]]-sev[b[0]]);
+    if(sevFilter&&!al.length) return '';
+    const li=al.slice(0,3).map(a=>`<li class="${a[0]}">${esc(a[1])}</li>`).join('')||'<li class="none">Nothing tracked yet</li>';
+    const more=al.length>3?`<li class="more">+${al.length-3} more inside</li>`:'';
+    return `<a class="tile cat" href="#${id}"><span class="go" aria-hidden="true">›</span>
+      <div class="top"><div><div class="nm">${esc(name)}</div><div class="meta"><span class="chip live">${c.built} built</span><span class="chip">${c.plan} planned</span></div></div>${ring(score(id),88,9)}</div>
+      <ul class="alerts">${li}${more}</ul></a>`;}).join('');
+  const feeds=[['Shopify','Live. Orders, stock, customers.'],['Windsor.ai','Live. Google Ads, Meta, GA4, Search Console, Business Profile.'],
+    ['Semrush','No API. Scheduled report emails land in Gmail, get parsed and saved.'],['Supabase','Live. Boards, suppliers, saved snapshots.']]
+    .map(f=>`<div class="card"><b>${f[0]}</b><span class="mute small">${f[1]}</span></div>`).join('');
+  return `<h1>Indifeels Command Centre</h1><p class="sub">Nine areas, each scored out of 100. Open a tile to go inside.</p>
+   ${overallView()}${freqView()}${sevPanel()}<div class="grid cats">${tiles}</div>
+   <div class="h2">Where the data comes from</div><div class="feeds">${feeds}</div>
+   <p class="note">Scores and alerts are sample text until each report feeds its own. Dashed tiles are planned structure only. A tile can sit under several areas; it counts toward each area's score.</p>`;
+}
+
+function subTile(id,parent){
+  const nd=N[id], has=!!kids[id], st=has?'part':nd.st, sc=score(id);
+  const others=nd.parents.filter(p=>p!==parent).map(p=>N[root(p)].name).filter((v,i,a)=>a.indexOf(v)===i&&v!==N[root(parent)].name);
+  const sh=others.length?`<span class="chip shared" title="Also under: ${esc(others.join(', '))}">Also in ${esc(others[0])}${others.length>1?' +'+(others.length-1):''}</span>`:'';
+  const cnt=has?`<span class="chip">${kids[id].length} items</span>`:'';
+  return `<a class="tile sub ${st==='plan'?'plan':''}" href="#${id}"><span class="go" aria-hidden="true">›</span>${ring(sc,56,6)}
+    <div style="min-width:0"><div class="nm">${esc(nd.name)}</div><div class="meta">${stChip(st)}${cnt}${sh}</div></div></a>`;
+}
+
+function connSection(id){
+  const {out,inn}=linksFor(id); if(!out.length&&!inn.length) return '';
+  const row=(l,dir)=>`<div class="rel"><span class="ar">${dir==='out'?'→':'←'}</span><span>${dir==='out'?'Feeds':'Fed by'} ${nl(dir==='out'?l[1]:l[0])} <span class="mute">· ${esc(l[2])}</span>${dir==='out'?'':` <span class="mute small">(from ${nl(l[0])})</span>`}</span></div>`;
+  const rows=out.map(l=>`<div class="rel"><span class="ar">→</span><span>${nl(l[0])} feeds ${nl(l[1])} <span class="mute">· ${esc(l[2])}</span></span></div>`).join('')
+    +inn.map(l=>`<div class="rel"><span class="ar" style="color:var(--o)">←</span><span>${nl(l[1])} fed by ${nl(l[0])} <span class="mute">· ${esc(l[2])}</span></span></div>`).join('');
+  return `<div class="h2">Connections</div><details class="card" ${kids[id]?'':'open'}><summary>${out.length} outgoing · ${inn.length} incoming</summary><div style="margin-top:8px">${rows}</div></details>`;
+}
+
+function nodeView(id){
+  const nd=N[id], has=!!kids[id], sc=score(id), c=counts(id);
+  const crumbs=['<a href="#home">Home</a>',...trail.map((t,i)=>i===trail.length-1?`<b>${esc(N[t].name)}</b>`:nl(t))].join(' <span>›</span> ');
+  let h=`<div class="crumbs">${crumbs}</div>
+   <div class="hero">${ring(sc,96,10)}<div style="min-width:0"><h1 style="margin:0">${esc(nd.name)}</h1>
+   <div class="meta">${has||nd.cat?'':stChip(nd.st)}<span class="chip live">${c.built} built</span><span class="chip">${c.plan} planned</span></div></div></div>`;
+  if(nd.desc) h+=`<p class="sub" style="margin-top:12px">${esc(nd.desc)}</p>`;
+  if(has){
+    const f=k=>{ if(flt==='all') return true; const built=kids[k]?counts(k).built>0:N[k].st!=='plan'; return flt==='live'?built:!built; };
+    const list=sortKids(kids[id]).filter(f);
+    h+=`<div class="filters" role="group" aria-label="Filter tiles">${[['all','All'],['live','Built'],['plan','Planned']].map(([v,t])=>`<button type="button" data-flt="${v}" class="${flt===v?'on':''}">${t}</button>`).join('')}</div>
+        <div class="grid subs">${list.map(k=>subTile(k,id)).join('')||'<p class="mute">Nothing here yet.</p>'}</div>`;
+  } else {
+    const ps=nd.parents.map(nl).join(' ');
+    h+=`<div class="cols" style="margin-top:14px">
+     <div class="card"><h3>Report</h3>${nd.rep?`<div>${esc(nd.rep)}</div>${HUB[id]?`<p style="margin:10px 0 0"><button type="button" class="btn" data-open="${HUB[id]}">Open this report</button></p>`:`<div class="mute small" style="margin-top:4px">Not linked to a hub report yet.</div>`}`:'<div class="mute">Not built yet. Planned for future.</div>'}</div>
+     <div class="card"><h3>Data sources</h3><div class="pills">${nd.src.map(s=>`<span class="chip">${esc(s)}</span>`).join('')||'<span class="mute">To decide</span>'}</div></div>
+     <div class="card"><h3>Lives under</h3><div class="pills">${nd.parents.map(p=>`<a class="chip shared" href="#${p}">${esc(N[p].name)}</a>`).join('')}</div></div></div>`;
+  }
+  h+=connSection(id);
+  return h;
+}
+
+function mapView(){
+  const narrow=matchMedia('(max-width:640px)').matches;
+  const W=narrow?400:820, H=narrow?720:540, cx=W/2, cy=H/2, rx=narrow?138:318, ry=narrow?290:205, hw=narrow?58:76, hh=narrow?25:27;
+  const outer=CATS.map(c=>c[0]).filter(x=>x!=='marketing'); const P={marketing:{x:cx,y:cy}};
+  outer.forEach((id,i)=>{const a=(-90+i*45)*Math.PI/180; P[id]={x:cx+rx*Math.cos(a),y:cy+ry*Math.sin(a)}});
+  const agg={}; L.forEach(l=>{const a=root(l[0]),b=root(l[1]); if(a===b) return; const k=a+'>'+b; agg[k]=(agg[k]||0)+1;});
+  const edge=(p,q)=>{const dx=q.x-p.x,dy=q.y-p.y,s=Math.min((hw+5)/Math.abs(dx||1e-9),(hh+5)/Math.abs(dy||1e-9),1);return{x:p.x+dx*s,y:p.y+dy*s}};
+  let paths='',labels='';
+  Object.entries(agg).sort((a,b)=>{const hi=k=>k.split('>').includes(mapSel)?1:0;return hi(a[0])-hi(b[0])}).forEach(([k,v])=>{
+    const [a,b]=k.split('>'), p=P[a], q=P[b], s=edge(p,q), e=edge(q,p);
+    const dx=e.x-s.x, dy=e.y-s.y, len=Math.hypot(dx,dy)||1, mx=(s.x+e.x)/2, my=(s.y+e.y)/2;
+    const c={x:mx-dy/len*len*0.14, y:my+dx/len*len*0.14};
+    const cls=a===mapSel?'out':b===mapSel?'in':'';
+    paths+=`<path class="edge ${cls}" d="M${s.x.toFixed(1)} ${s.y.toFixed(1)} Q${c.x.toFixed(1)} ${c.y.toFixed(1)} ${e.x.toFixed(1)} ${e.y.toFixed(1)}" stroke-width="${(1+v*0.9).toFixed(1)}" marker-end="url(#ah${cls||'n'})"/>`;
+    if(cls){const lx=.25*s.x+.5*c.x+.25*e.x, ly=.25*s.y+.5*c.y+.25*e.y; labels+=`<circle class="cnt" cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="9"/><text class="cntt" x="${lx.toFixed(1)}" y="${(ly+3.5).toFixed(1)}">${v}</text>`;}
+  });
+  const nodes=CATS.map(([id,name])=>{const p=P[id],s=score(id); const nm=name.length>(narrow?15:20)&&narrow?name.replace(' & ',' & ').slice(0,15)+'…':name;
+    return `<g class="nd ${id===mapSel?'sel':''}" data-sel="${id}" tabindex="0" role="button" aria-label="${esc(name)}"><rect x="${p.x-hw}" y="${p.y-hh}" width="${hw*2}" height="${hh*2}" rx="10"/>
+     <text class="nmt" x="${p.x-hw+10}" y="${p.y-2}">${esc(narrow&&name.length>14?name.split(' ').slice(0,2).join(' '):name)}</text>
+     <text class="sct" x="${p.x-hw+10}" y="${p.y+14}">${s==null?'no score yet':s+' / 100'}</text></g>`;}).join('');
+  const mk=(id,col)=>`<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:${col}"/></marker>`;
+  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Arrows between the nine areas"><defs>${mk('ahn','var(--mute)')}${mk('ahout','var(--accent)')}${mk('ahin','var(--o)')}</defs>${paths}${labels}${nodes}</svg>`;
+  const {out,inn}=linksFor(mapSel), nm=N[mapSel].name;
+  const rows=(arr,dir)=>arr.map(l=>`<div class="rel"><span class="ar" style="color:${dir==='out'?'var(--accent)':'var(--o)'}">${dir==='out'?'→':'←'}</span><span>${nl(l[0])} → ${nl(l[1])} <span class="mute">· ${esc(l[2])}</span></span></div>`).join('')||'<div class="mute">None yet.</div>';
+  return `<h1>Connections</h1><p class="sub">Tap an area to see what feeds it and what it feeds. Numbers are how many links run along an arrow.</p>
+   <div class="mapbox">${svg}</div>
+   <div class="legend"><span><i style="background:var(--accent)"></i>${esc(nm)} feeds</span><span><i style="background:var(--o)"></i>feeds ${esc(nm)}</span><span><i style="background:var(--mute);opacity:.5"></i>other links</span></div>
+   <div class="cols"><div class="card"><h3>${esc(nm)} feeds</h3>${rows(out,'out')}</div><div class="card"><h3>Feeds ${esc(nm)}</h3>${rows(inn,'in')}</div></div>
+   <p style="margin-top:14px"><a class="btn" href="#${mapSel}">Open ${esc(nm)} tiles</a></p>`;
+}
+
+/* ---------- routing ---------- */
+function draw(){
+  const isMap=curId==='map';
+  document.getElementById('tab-map').classList.toggle('on',isMap);
+  document.getElementById('tab-home').classList.toggle('on',!isMap);
+  app.innerHTML=isMap?mapView():(N[curId]?nodeView(curId):homeView());
+  updateNav();
+}
+let fwdStack=[], navKind=null;
+function backTarget(){ if(!curId||curId==='home') return null; if(curId==='map') return 'home'; return trail.length>1?trail[trail.length-2]:'home'; }
+function updateNav(){ document.getElementById('back').disabled=!backTarget(); document.getElementById('fwd').disabled=!fwdStack.length; }
+function route(){
+  if(navKind==='keep') navKind=null; else fwdStack=[];
+  const h=decodeURIComponent(location.hash.slice(1));
+  const id=(h==='map'||N[h])?h:'home';
+  if(N[id]){
+    bump(id);
+    let t;
+    if(prevId&&N[id].parents.includes(prevId)&&trail[trail.length-1]===prevId) t=[...trail,id];
+    else{ t=[id]; let c=id; while(N[c].parents.length){c=N[c].parents[0]; t.unshift(c);} }
+    trail=t; prevId=id; flt='all';
+  } else { trail=[]; prevId=null; }
+  curId=id; draw(); window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',route);
+document.getElementById('back').addEventListener('click',()=>{const t=backTarget(); if(!t) return; fwdStack.push(curId); navKind='keep'; location.hash=t;});
+document.getElementById('fwd').addEventListener('click',()=>{const t=fwdStack.pop(); if(!t) return; navKind='keep'; location.hash=t;});
+app.addEventListener('click',e=>{
+  if(e.target.closest('[data-fqreset]')){visits={}; saveVisits(); draw(); return;}
+  const op=e.target.closest('[data-open]'); if(op){try{parent.postMessage({type:'cc-open',id:op.dataset.open},'*')}catch(_){} return;}
+  const sv=e.target.closest('[data-sev]'); if(sv){const k=sv.dataset.sev||null; sevFilter=(k===sevFilter)?null:k; draw(); return;}
+  const f=e.target.closest('[data-flt]'); if(f){flt=f.dataset.flt; draw(); return;}
+  const s=e.target.closest('[data-sel]'); if(s){mapSel=s.dataset.sel; draw();}
+});
+app.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){const s=e.target.closest('[data-sel]'); if(s){e.preventDefault(); mapSel=s.dataset.sel; draw();}}});
+matchMedia('(max-width:640px)').addEventListener('change',()=>{if(curId==='map')draw();});
+try{const t=localStorage.getItem('cc-theme'); if(t) document.documentElement.dataset.theme=t;}catch(e){}
+document.getElementById('theme').addEventListener('click',()=>{
+  const nx=document.documentElement.dataset.theme==='light'?'dark':'light';
+  document.documentElement.dataset.theme=nx; try{localStorage.setItem('cc-theme',nx)}catch(e){}
+});
+route();
+</script>

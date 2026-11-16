@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-11-11.profit-flow.1",
+  "manifest_version": "2026-11-17.command-centre.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -453,6 +453,28 @@
       ],
       "supabase_sync": false,
       "schedule_control": "report_schedules"
+    },
+    {
+      "id": "command-centre",
+      "title": "Master Dashboard",
+      "workflow": "claude-scheduled-task",
+      "refresh_times": [
+        "on request"
+      ],
+      "required_env": [
+        "COMMAND_CENTRE_KEY"
+      ],
+      "builders": [
+        "tools/command_centre.py",
+        "tools/command_centre_template.html",
+        "tools/command_centre_REFRESH.md"
+      ],
+      "outputs": [
+        "r/command-centre.bin",
+        "r/command-centre.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "none"
     }
   ]
 }
