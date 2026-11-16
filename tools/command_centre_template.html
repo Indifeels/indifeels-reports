@@ -93,7 +93,8 @@ a.tile:focus-visible,.btn:focus-visible,.tabs a:focus-visible,[data-sel]:focus-v
 .ring.none .num{color:var(--mute);font-weight:500}
 .g{--rc:var(--g)} .y{--rc:var(--y)} .o{--rc:var(--o)} .r{--rc:var(--r)}
 .hero{display:flex;gap:18px;align-items:center;margin:10px 0 4px}
-.filters{display:flex;gap:6px;margin:18px 0 12px}
+.filters{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:18px 0 12px}
+.vsep{width:1px;align-self:stretch;background:var(--line);margin:0 4px}
 .filters button{padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--mute)}
 .filters button.on{background:var(--tile2);color:var(--ink)}
 .cols{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
@@ -130,8 +131,7 @@ details.card summary{cursor:pointer;font-weight:500}
 
 <div class="wrap">
   <div class="bar">
-    <div class="left"><button class="btn" id="back" type="button" aria-label="Back one level">‹ Back</button><button class="btn" id="fwd" type="button" aria-label="Forward">Forward ›</button>
-    <nav class="tabs" aria-label="Views"><a id="tab-home" href="#home">Tiles</a><a id="tab-map" href="#map">Connections</a></nav></div>
+    <div class="left"><nav class="tabs" aria-label="Views"><a id="tab-home" href="#home">Tiles</a><a id="tab-map" href="#map">Connections</a></nav></div>
     <div class="right"><span class="draft">Draft · sample scores</span><button class="btn" id="theme" type="button" aria-label="Switch light or dark theme">Theme</button></div>
   </div>
   <div id="app"></div>
@@ -387,11 +387,11 @@ function nodeView(id){
   if(has){
     const f=k=>{ if(flt==='all') return true; const built=kids[k]?counts(k).built>0:N[k].st!=='plan'; return flt==='live'?built:!built; };
     const list=sortKids(kids[id]).filter(f);
-    h+=`<div class="filters" role="group" aria-label="Filter tiles">${[['all','All'],['live','Built'],['plan','Planned']].map(([v,t])=>`<button type="button" data-flt="${v}" class="${flt===v?'on':''}">${t}</button>`).join('')}</div>
+    h+=`<div class="filters" role="group" aria-label="Navigate and filter tiles">${navBtns()}<span class="vsep"></span>${[['all','All'],['live','Built'],['plan','Planned']].map(([v,t])=>`<button type="button" data-flt="${v}" class="${flt===v?'on':''}">${t}</button>`).join('')}</div>
         <div class="grid subs">${list.map(k=>subTile(k,id)).join('')||'<p class="mute">Nothing here yet.</p>'}</div>`;
   } else {
     const ps=nd.parents.map(nl).join(' ');
-    h+=`<div class="cols" style="margin-top:14px">
+    h+=`<div class="filters" style="margin-top:18px">${navBtns()}</div><div class="cols">
      <div class="card"><h3>Report</h3>${nd.rep?`<div>${esc(nd.rep)}</div>${HUB[id]?`<p style="margin:10px 0 0"><button type="button" class="btn" data-open="${HUB[id]}">Open this report</button></p>`:`<div class="mute small" style="margin-top:4px">Not linked to a hub report yet.</div>`}`:'<div class="mute">Not built yet. Planned for future.</div>'}</div>
      <div class="card"><h3>Data sources</h3><div class="pills">${nd.src.map(s=>`<span class="chip">${esc(s)}</span>`).join('')||'<span class="mute">To decide</span>'}</div></div>
      <div class="card"><h3>Lives under</h3><div class="pills">${nd.parents.map(p=>`<a class="chip shared" href="#${p}">${esc(N[p].name)}</a>`).join('')}</div></div></div>`;
@@ -425,6 +425,7 @@ function mapView(){
   const {out,inn}=linksFor(mapSel), nm=N[mapSel].name;
   const rows=(arr,dir)=>arr.map(l=>`<div class="rel"><span class="ar" style="color:${dir==='out'?'var(--accent)':'var(--o)'}">${dir==='out'?'→':'←'}</span><span>${nl(l[0])} → ${nl(l[1])} <span class="mute">· ${esc(l[2])}</span></span></div>`).join('')||'<div class="mute">None yet.</div>';
   return `<h1>Connections</h1><p class="sub">Tap an area to see what feeds it and what it feeds. Numbers are how many links run along an arrow.</p>
+   <div class="filters" style="margin:0 0 12px">${navBtns()}</div>
    <div class="mapbox">${svg}</div>
    <div class="legend"><span><i style="background:var(--accent)"></i>${esc(nm)} feeds</span><span><i style="background:var(--o)"></i>feeds ${esc(nm)}</span><span><i style="background:var(--mute);opacity:.5"></i>other links</span></div>
    <div class="cols"><div class="card"><h3>${esc(nm)} feeds</h3>${rows(out,'out')}</div><div class="card"><h3>Feeds ${esc(nm)}</h3>${rows(inn,'in')}</div></div>
@@ -443,7 +444,8 @@ let fwdStack=[], navKind=null;
 let cur=''; try{cur=decodeURIComponent((location.hash||'').slice(1));}catch(e){}
 function nav(h){ cur=h; try{ if(window.top===window) history.replaceState(null,'','#'+h); }catch(e){} route(); }
 function backTarget(){ if(!curId||curId==='home') return null; if(curId==='map') return 'home'; return trail.length>1?trail[trail.length-2]:'home'; }
-function updateNav(){ document.getElementById('back').disabled=!backTarget(); document.getElementById('fwd').disabled=!fwdStack.length; }
+function updateNav(){}
+function navBtns(){ return `<button type="button" class="btn" data-nav="back" aria-label="Back one level" ${backTarget()?'':'disabled'}>‹ Back</button><button type="button" class="btn" data-nav="fwd" aria-label="Forward" ${fwdStack.length?'':'disabled'}>Forward ›</button>`; }
 function route(){
   if(navKind==='keep') navKind=null; else fwdStack=[];
   const h=cur;
@@ -460,11 +462,10 @@ function route(){
 window.addEventListener('hashchange',()=>{try{cur=decodeURIComponent(location.hash.slice(1));}catch(e){} route();});
 /* Inside the hub the page runs in a srcdoc frame, where '#x' links would load the hub itself. Route in the page instead. */
 document.addEventListener('click',e=>{const a=e.target.closest('a[href^="#"]'); if(!a) return; e.preventDefault(); nav(a.getAttribute('href').slice(1));});
-document.getElementById('back').addEventListener('click',()=>{const t=backTarget(); if(!t) return; fwdStack.push(curId); navKind='keep'; nav(t);});
-document.getElementById('fwd').addEventListener('click',()=>{const t=fwdStack.pop(); if(!t) return; navKind='keep'; nav(t);});
 app.addEventListener('click',e=>{
   if(e.target.closest('[data-fqreset]')){visits={}; saveVisits(); draw(); return;}
   const op=e.target.closest('[data-open]'); if(op){try{parent.postMessage({type:'cc-open',id:op.dataset.open},'*')}catch(_){} return;}
+  const nb=e.target.closest('[data-nav]'); if(nb){ if(nb.dataset.nav==='back'){const t=backTarget(); if(t){fwdStack.push(curId); navKind='keep'; nav(t);}} else {const t=fwdStack.pop(); if(t){navKind='keep'; nav(t);}} return; }
   const sv=e.target.closest('[data-sev]'); if(sv){const k=sv.dataset.sev||null; sevFilter=(k===sevFilter)?null:k; draw(); return;}
   const f=e.target.closest('[data-flt]'); if(f){flt=f.dataset.flt; draw(); return;}
   const s=e.target.closest('[data-sel]'); if(s){mapSel=s.dataset.sel; draw();}
