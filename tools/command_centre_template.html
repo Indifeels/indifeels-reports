@@ -525,7 +525,7 @@ function missionBanner(){
   const x=xpTotal(), L=lvl(x), nm=nextM(), done=misArr().filter(m=>Q.d[m.id]).length;
   const path=misArr().map(m=>`<button type="button" class="pn ${Q.d[m.id]?'done':(nm&&nm.id===m.id?'now':'')}" data-m="${m.id}" aria-label="Mission ${m.no}: ${esc(m.title)}${Q.d[m.id]?' (done)':''}" title="${esc(m.title)}">${Q.d[m.id]?'✓':m.no}</button>`).join('');
   const now=nm?`<div class="nowm"><div style="min-width:0"><div class="mute small">NEXT MISSION · ${nm.no} of ${misArr().length} · ${nl(nm.area)}</div><div class="t">${esc(nm.title)}</div><div class="mute small">${nm.qs.filter(q=>!isHandled(q)).length} questions · <span class="xp">+${nm.xp+nm.qs.length*10} XP</span></div></div><button type="button" class="go-btn" data-m="${nm.id}">Start mission ›</button></div>`
-    :`<div class="nowm"><div class="t pop">All missions cleared. Level up complete.</div></div>`;
+    :`<div class="nowm"><div style="min-width:0"><div class="t pop">🏆 All ${misArr().length} missions complete</div><div class="mute small">${misArr().reduce((n,m)=>n+m.qs.filter(isAns).length,0)} answered · ${misArr().reduce((n,m)=>n+m.qs.filter(q=>Q.p[q.id]).length,0)} parked for later. Tell Claude "next round" for the next set of missions.</div></div></div>`;
   return `<div class="tile quest"><div class="qtop"><div class="lvl" aria-label="Level ${L.n}"><div>${L.n}<small>LEVEL</small></div></div>
    <div style="flex:1;min-width:180px"><div class="big" style="font:700 clamp(18px,3vw,24px)/1.15 var(--display)">${L.name} · <span class="xp">${x} XP</span></div>
    <div class="xpbar" role="progressbar" aria-valuenow="${L.into}" aria-valuemin="0" aria-valuemax="100"><i style="width:${L.into}%"></i></div>
