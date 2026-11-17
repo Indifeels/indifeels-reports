@@ -28,7 +28,8 @@ META_ACCT = os.environ.get("WINDSOR_FACEBOOK_ACCOUNT", "1634084963432990")
 # Edit here. Monthly AUD costs are spread evenly per day of the month. amount None = not set yet (hidden on the chart).
 CONFIG = {
     # Clearance plan for not-eligible stock (suggested sale prices on the product table)
-    "clearance": {"horizon_months": 12, "max_discount": 0.25, "step": 0.05, "elasticity": 2.0, "rate_days": 90},
+    "clearance": {"horizon_months": 12, "max_discount": 0.25, "step": 0.05, "elasticity": 2.0, "rate_days": 90,
+                  "tiers": {"protect_days": 90, "slow_du": 100, "vslow_du": 200, "slow_disc": 0.15, "vslow_disc": 0.25}},
     "product_cost_pct": 0.32,      # of total sales; replace with real per-product cost later
     "gst_card_only": True,         # GST (1/11 of a GST-inclusive price) on card sales only; cash has no GST
     "fixed_monthly": [

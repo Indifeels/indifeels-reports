@@ -361,26 +361,30 @@ function plan(r){
   /* Smallest discount step that should sell the product out within the horizon, assuming units sold grow by (1/(1-d))^elasticity.
      Products already selling fast enough get 0%. Capped at the max discount. No sales in the last rate_days = max discount, flagged. */
   var stock=r[6],price=r[12],days=r[14]||1,win=Math.min(CP.rate_days,days),rate=win>0?r[13]/win:0,H=CP.horizon_months*30.4;
-  var need=stock/H,d=0,none=rate<=0;
-  if(none)d=CP.max_discount;
-  else if(rate>=need)d=0;
-  else{d=1-Math.pow(need/rate,-1/CP.elasticity);d=Math.min(CP.max_discount,Math.ceil(d/CP.step-1e-9)*CP.step)}
+  var none=rate<=0,TI=CP.tiers||{protect_days:90,slow_du:100,vslow_du:200,slow_disc:0.15,vslow_disc:0.25},du=r[9],sold=r[8],d=0,tier="push";
+  /* Tiers by days per unit sold (D.U): new under protect_days = protected; never sold or D.U >= vslow = biggest discount; >= slow = smaller; below that just needs a push (no discount, social posts). Capped at the max discount. */
+  if(days<TI.protect_days){d=0;tier="new"}
+  else if(!sold){d=TI.vslow_disc;tier="never"}
+  else if(du!=null&&du>=TI.vslow_du){d=TI.vslow_disc;tier="vslow"}
+  else if(du!=null&&du>=TI.slow_du){d=TI.slow_disc;tier="slow"}
+  d=Math.min(CP.max_discount,d);
   var mult=Math.pow(1/(1-d),CP.elasticity),units=none?0:Math.min(stock,rate*mult*H),base=none?0:Math.min(stock,rate*H);
-  return{d:d,price:price,np:Math.round(price*(1-d)),cash:units*price*(1-d),units:units,base:base*price,ok:units>=stock-1e-6,none:none,stock:stock}
+  return{d:d,tier:tier,price:price,np:Math.round(price*(1-d)),cash:units*price*(1-d),units:units,base:base*price,ok:units>=stock-1e-6,none:none,stock:stock}
 }
 function trail12(){var n=F&&F.n&&F.n.sv?F.n.sv:[],t=0;for(var i=Math.max(0,n.length-12);i<n.length;i++)t+=n[i];return t}
 function renderCp(){
   var b=document.getElementById("cpb");if(!PL||!PL.rows)return;
-  var v=0,cash=0,base=0,needV=0,needN=0,nos=0,nosV=0,dsum=0;
+  var v=0,cash=0,base=0,needV=0,needN=0,nos=0,nosV=0,dsum=0,pushN=0,pushV=0,newN=0;
   PL.rows.forEach(function(r){if(!r[11]||r[4]||r[6]<=0||!r[12])return;
-    var p=plan(r);v+=r[7];cash+=p.cash;base+=p.base;if(p.d>0){needV+=r[7];needN++;dsum+=p.d*r[7]}if(p.none){nos++;nosV+=r[7]}});
+    var p=plan(r);v+=r[7];cash+=p.cash;base+=p.base;if(p.d>0){needV+=r[7];needN++;dsum+=p.d*r[7]}if(p.tier==="push"){pushN++;pushV+=r[7]}if(p.tier==="new")newN++;if(p.none){nos++;nosV+=r[7]}});
   var recent=0,tot=0,from=addDays(TODAY,-30);
   ROWS.forEach(function(x){if(x.d>=from&&x.t>0){var sl=0;CH.forEach(function(c){sl+=x[c[0]][0]+x[c[0]][1]});tot+=sl;recent+=sl*(1-Math.min(1,x.e/x.t))}});
   b.innerHTML='<div><div class="k">Not eligible stock</div><div class="b" style="color:var(--red)">'+money(v)+'</div></div>'
    +'<div><div class="k">Sold last 12 months</div><div class="b">'+money(trail12())+'</div></div>'
    +'<div><div class="k">Needs a discount</div><div class="b">'+money(needV)+'</div><div class="cap2">'+fmt(needN)+' products · avg '+(needV?(dsum/needV*100).toFixed(0):0)+'% off</div></div>'
+   +'<div><div class="k">Needs a push (no discount)</div><div class="b">'+money(pushV)+'</div><div class="cap2">'+fmt(pushN)+' products · social posts · '+fmt(newN)+' new protected</div></div>'
    +'<div><div class="k">No sales in '+CP.rate_days+' days</div><div class="b">'+money(nosV)+'</div><div class="cap2">'+fmt(nos)+' products</div></div>';
-  document.getElementById("cpn").innerHTML="At today’s pace about <b>"+money(base)+"</b> of this stock sells in "+CP.horizon_months+" months with no discount; with the suggested discounts about <b style=\"color:var(--green)\">"+money(cash)+"</b>. Only products that would not sell out in time get a discount (max "+Math.round(CP.max_discount*100)+"%); the rest stay at full price. Assumes 1% off lifts sales ~"+CP.elasticity+"% (a guess, check after month 1)."+(tot>0?" Not eligible was <b>"+(recent/tot*100).toFixed(0)+"%</b> of sales in the last 30 days; keep it low to protect better-margin new stock.":"")
+  document.getElementById("cpn").innerHTML="At today’s pace about <b>"+money(base)+"</b> of this stock sells in "+CP.horizon_months+" months with no discount; with the suggested discounts about <b style=\"color:var(--green)\">"+money(cash)+"</b>. Discounts follow how slowly each product sells (slow 15%, very slow and never sold 25%, capped at "+Math.round(CP.max_discount*100)+"%); products that only need a push stay at full price and go on the social list; products under 90 days are protected. Assumes 1% off lifts sales ~"+CP.elasticity+"% (a guess, check after month 1)."+(tot>0?" Not eligible was <b>"+(recent/tot*100).toFixed(0)+"%</b> of sales in the last 30 days; keep it low to protect better-margin new stock.":"")
 }
 (function(){var h=document.getElementById("cph"),m=document.getElementById("cpm");h.value=String(CP.horizon_months);m.value=String(CP.max_discount);
   function ch(){CP.horizon_months=+h.value;CP.max_discount=+m.value;try{localStorage.setItem("pf-cp2",JSON.stringify({h:CP.horizon_months,m:CP.max_discount}))}catch(e){}PX={};renderCp();renderPl()}
@@ -398,7 +402,8 @@ function priceBlock(r){
   if(!r[12])return"";
   if(r[4]||r[6]<=0)return'Price <b>$'+Math.round(r[12])+'</b>';
   var k=r[16],o=origOf(r),sp=selPrice(r),live=livePrice(r),pl=plan(r),w=PW[k],msg="",st=stops(r);
-  var sug=pl.d>0?'Suggested <span class="sp">-'+Math.round(pl.d*100)+'% = $'+pl.np+'</span>'+(pl.none?" · no sales in "+CP.rate_days+" days":(pl.ok?"":" · won’t fully clear")):'Selling fast enough: no discount needed';
+  var TL={"new":"New: protected from discount",push:"Needs a push: no discount, add to social posts",slow:"Slow seller",vslow:"Very slow seller",never:"Never sold"}[pl.tier];
+  var sug=pl.d>0?'Suggested <span class="sp">-'+Math.round(pl.d*100)+'% = $'+pl.np+'</span> · '+TL:TL;
   var idx=0,bd=1e9;for(var i=0;i<st.length;i++){var dd=Math.abs(st[i]-sp);if(dd<bd){bd=dd;idx=i}}
   var btn=w==="busy"?'<button class="ap" disabled>Updating…</button>':w==="confirm"?'<button class="ap go" data-k="'+k+'">Tap again: set $'+sp+'</button>':sp===live?(live<o?'<button class="ap" disabled>Live ✓</button>':'<button class="ap" disabled>Approve</button>'):sp>=o?'<button class="ap" data-k="'+k+'">Revert to $'+o+'</button>':'<button class="ap" data-k="'+k+'">Approve</button>';
   if(w&&w.err)msg='<div class="m" style="color:var(--red)">'+esc(w.err)+'</div>';
