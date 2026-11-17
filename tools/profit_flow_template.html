@@ -74,7 +74,7 @@ table.ct{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;f
   <section class="box" id="sf" hidden><h2 class="ptitle">Stock · introduced vs cleared vs on hand</h2><div class="sft" id="sftiles"></div><div id="sfhist"></div>
     <div class="tg"><div class="sg" id="sfv"><button data-k="view" data-v="intro">Introduced</button><button data-k="view" data-v="clear">Cleared</button><button data-k="view" data-v="shelf">On hand</button></div><div class="sg" id="sfu"><button data-k="unit" data-v="count">Count</button><button data-k="unit" data-v="value">Value</button></div><div class="sg" id="sfc"><button data-k="cum" data-v="0">By year</button><button data-k="cum" data-v="1">Cumulative</button></div></div>
     <div class="chips" id="sfchips"></div><div id="sfchart"></div><div class="lgd"><span><i style="background:var(--green)"></i>Eligible</span><span><i style="background:var(--red)"></i>Not eligible</span><span><i style="background:#6f86ff"></i>Eligible share %</span></div>
-    <div id="sftable"></div><p class="note" id="sfnote"></p><h2 class="ptitle" style="margin-top:14px">Clearance plan · not eligible stock</h2><div class="cp"><div class="ctl"><select id="cph"><option value="6">Clear in 6 months</option><option value="9">Clear in 9 months</option><option value="12">Clear in 12 months</option><option value="18">Clear in 18 months</option></select><select id="cpm"><option value="0.15">Max 15% off</option><option value="0.2">Max 20% off</option><option value="0.25">Max 25% off</option><option value="0.3">Max 30% off</option><option value="0.4">Max 40% off</option><option value="0.5">Max 50% off</option></select></div><div class="row2" id="cpb"></div><p class="note" id="cpn"></p></div><h2 class="ptitle" style="margin-top:14px">Products</h2><div class="pt"><select id="pc"></select><select id="pe"><option value="">Eligible + not</option><option value="1">Eligible</option><option value="0">Not eligible</option></select><select id="ps"><option value="">In stock + sold out</option><option value="1">In stock</option><option value="0">Sold out</option></select><select id="po"><option value="v">Sort: stock value</option><option value="u">Sort: units in stock</option><option value="df">Sort: D.U fastest</option><option value="ds">Sort: D.U slowest</option><option value="s">Sort: units sold</option></select><input id="pq" type="search" placeholder="Search product name"></div><div class="ptot" id="ptot"></div><div id="plist"></div><button class="more" id="pmore" hidden>Show more</button><div id="sfsup"></div></section>
+    <div id="sftable"></div><p class="note" id="sfnote"></p><h2 class="ptitle" style="margin-top:14px">Clearance plan · not eligible stock</h2><div class="cp"><div class="ctl"><select id="cph"><option value="6">Clear in 6 months</option><option value="9">Clear in 9 months</option><option value="12">Clear in 12 months</option><option value="18">Clear in 18 months</option></select><select id="cpm"><option value="0.15">Max 15% off</option><option value="0.2">Max 20% off</option><option value="0.25">Max 25% off</option><option value="0.3">Max 30% off</option><option value="0.4">Max 40% off</option><option value="0.5">Max 50% off</option></select></div><div class="row2" id="cpb"></div><p class="note" id="cpn"></p></div><h2 class="ptitle" style="margin-top:14px">Products</h2><div class="chips" id="ptier"></div><div class="pt"><select id="pc"></select><select id="pe"><option value="">Eligible + not</option><option value="1">Eligible</option><option value="0">Not eligible</option></select><select id="ps"><option value="">In stock + sold out</option><option value="1">In stock</option><option value="0">Sold out</option></select><select id="po"><option value="v">Sort: stock value</option><option value="u">Sort: units in stock</option><option value="df">Sort: D.U fastest</option><option value="ds">Sort: D.U slowest</option><option value="s">Sort: units sold</option></select><input id="pq" type="search" placeholder="Search product name"></div><div class="ptot" id="ptot"></div><div id="plist"></div><button class="more" id="pmore" hidden>Show more</button><div id="sfsup"></div></section>
   <section class="box"><h2 class="ptitle">Is each channel worth it?</h2><div class="tg" id="tg"><div class="sg" id="gran"><button data-v="day">Days</button><button data-v="month">Months</button><button data-v="year">Years</button></div><div class="sg" id="ser"><button data-v="s">Spend</button><button data-v="sr">Spend + Return</button></div></div><div id="cards"></div></section>
   <section class="box"><h2 class="ptitle">The maths</h2><div id="wf"></div><p class="note" id="note"></p></section>
 </div>
@@ -348,8 +348,20 @@ function renderSup(){
 ["sfv","sfu","sfc"].forEach(function(id){document.getElementById(id).addEventListener("click",function(e){var k=e.target.getAttribute&&e.target.getAttribute("data-k");if(!k)return;var v=e.target.getAttribute("data-v");SF[k]=k==="cum"?v==="1":v;sfSave();renderSf()})});
 document.getElementById("sfchips").addEventListener("click",function(e){var f=e.target.getAttribute&&e.target.getAttribute("data-f");if(f==null)return;SF.fy=f||null;sfSave();renderSf()});
 document.getElementById("sftable").addEventListener("click",function(e){var r=e.target.closest&&e.target.closest(".ft.r");if(r){SF.fy=r.getAttribute("data-f");sfSave();renderSf()}});
-var PL=D.plist,PS={c:"",e:"",s:"",o:"v",q:"",n:40};
+var PL=D.plist,PS={c:"",e:"",s:"",o:"v",q:"",n:40,t:""};
 function imgOf(u){return u?u+"?width=120":""}
+var PT=[{k:"new",n:"New · protected",g:"n"},{k:"push",n:"Needs a push",g:"n"},{k:"slow",n:"Slow",g:"n"},{k:"vslow",n:"Very slow / never sold",g:"n"},{k:"e1",n:"D.U 0–20",g:"e"},{k:"e2",n:"D.U 20–50",g:"e"}];
+function tierOf(r){
+  if(!r[4]){var t=plan(r).tier;return t==="never"?"vslow":t}
+  if(r[8]>0&&r[9]!=null)return r[9]<20?"e1":r[9]<50?"e2":null;
+  return null}
+function renderTierChips(){
+  var el=document.getElementById("ptier");if(!el||!PL||!PL.rows)return;
+  var A={};PT.forEach(function(t){A[t.k]={v:0,n:0}});
+  PL.rows.forEach(function(r){if(!r[11]||r[6]<=0)return;var k=tierOf(r);if(k){A[k].v+=r[7];A[k].n++}});
+  var dot={new:"var(--muted)",push:"#d9a441",slow:"#e8803a",vslow:"var(--red)",e1:"var(--green)",e2:"#8fbf5a"};
+  el.innerHTML='<button data-t="" class="'+(PS.t===""?"on":"")+'">All</button>'+PT.map(function(t){
+    return'<button data-t="'+t.k+'" class="'+(PS.t===t.k?"on":"")+'"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:'+dot[t.k]+'"></i>'+(t.g==="e"?"Eligible ":"")+t.n+' · '+money(A[t.k].v)+'</button>'}).join("")}
 function renderPl(){
   var box=document.getElementById("plist");
   if(!PL||!PL.rows){box.innerHTML="";return}
@@ -357,9 +369,11 @@ function renderPl(){
     if(!r[11])return false;
     if(PS.c!==""&&r[3].indexOf(+PS.c)<0)return false;
     if(PS.e!==""&&r[4]!==+PS.e)return false;
+    if(PS.t!==""&&tierOf(r)!==PS.t)return false;
     if(PS.s!==""&&(r[6]>0?1:0)!==+PS.s)return false;
     if(PS.q&&r[0].toLowerCase().indexOf(PS.q)<0)return false;
     return true});
+  renderTierChips();
   var o=PS.o;rs.sort(function(a,b){return o==="u"?b[6]-a[6]:o==="s"?b[8]-a[8]:o==="df"?(a[9]==null)-(b[9]==null)||a[9]-b[9]:o==="ds"?(a[9]==null)-(b[9]==null)||b[9]-a[9]:b[7]-a[7]});
   var tv=0,tu=0,ni=0;rs.forEach(function(r){tv+=r[7];tu+=r[6];if(r[6]>0)ni++});
   document.getElementById("ptot").innerHTML="<b>"+fmt(rs.length)+"</b> products · <b>"+fmt(ni)+"</b> in stock · <b>"+fmt(tu)+"</b> units · value <b>"+money(tv)+"</b>";
@@ -372,7 +386,8 @@ function renderPl(){
 (function(){
   if(!PL||!PL.cols)return;
   var sel=document.getElementById("pc");sel.innerHTML='<option value="">All collections</option>'+PL.cols.map(function(c,i){return'<option value="'+i+'">'+esc(c)+'</option>'}).join("");
-  [["pc","c"],["pe","e"],["ps","s"],["po","o"]].forEach(function(t){document.getElementById(t[0]).onchange=function(){PS[t[1]]=this.value;PS.n=40;renderPl()}});
+  [["pc","c"],["pe","e"],["ps","s"],["po","o"]].forEach(function(t){document.getElementById(t[0]).onchange=function(){PS[t[1]]=this.value;if(t[1]==="e")PS.t="";PS.n=40;renderPl()}});
+  document.getElementById("ptier").addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("button");if(!b)return;var k=b.getAttribute("data-t");PS.t=k;if(k){var g=k.charAt(0)==="e"&&k.length===2?"1":"0";PS.e=g;document.getElementById("pe").value=g}PS.n=40;renderPl()});
   document.getElementById("pq").oninput=function(){PS.q=this.value.trim().toLowerCase();PS.n=40;renderPl()};
   document.getElementById("pmore").onclick=function(){PS.n+=40;renderPl()};
 })();
