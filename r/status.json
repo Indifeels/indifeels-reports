@@ -81,11 +81,11 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-11-17T14:01+11:00",
-  "code_sha": "f90ab80c28e4196cc7749be487bc49731cabfd07",
+  "at": "2026-11-17T20:00+11:00",
+  "code_sha": "e047228f12f684bf8f91646fa2bac1d2703d9263",
   "data_through": null,
-  "last_ok": "2026-11-17T14:01+11:00",
-  "manifest_version": "2026-11-17.command-centre.1",
+  "last_ok": "2026-11-17T20:00+11:00",
+  "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
  },
