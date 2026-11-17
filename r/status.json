@@ -27,11 +27,11 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-11-17T06:07+11:00",
-  "code_sha": "d2076cc8c2f9dc25c03c1a15760b7b2fe661590f",
-  "data_through": "2026-11-16T23:59:59+11:00",
-  "last_ok": "2026-11-17T06:07+11:00",
-  "manifest_version": "2026-11-11.profit-flow.1",
+  "at": "2026-11-17T14:08+11:00",
+  "code_sha": "f90ab80c28e4196cc7749be487bc49731cabfd07",
+  "data_through": "2026-11-17T14:00:15.696786+11:00",
+  "last_ok": "2026-11-17T14:08+11:00",
+  "manifest_version": "2026-11-17.command-centre.1",
   "ok": true,
   "reason": ""
  },
@@ -72,11 +72,11 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-11-17T06:07+11:00",
-  "code_sha": "d2076cc8c2f9dc25c03c1a15760b7b2fe661590f",
-  "data_through": "2026-11-16T23:59:59+11:00",
-  "last_ok": "2026-11-17T06:07+11:00",
-  "manifest_version": "2026-11-11.profit-flow.1",
+  "at": "2026-11-17T14:08+11:00",
+  "code_sha": "f90ab80c28e4196cc7749be487bc49731cabfd07",
+  "data_through": "2026-11-17T14:00:15.696786+11:00",
+  "last_ok": "2026-11-17T14:08+11:00",
+  "manifest_version": "2026-11-17.command-centre.1",
   "ok": true,
   "reason": ""
  },
