@@ -168,6 +168,12 @@ textarea.out{width:100%;min-height:140px;padding:10px;border-radius:10px;border:
 .pbar.y i{background:linear-gradient(90deg,var(--y),#e8b84a)}
 .prow{display:grid;grid-template-columns:18px 1fr 52px;gap:6px 10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
 .prow:first-of-type{border-top:0}
+.decn{display:inline-block;min-width:18px;margin-left:6px;padding:0 6px;border-radius:99px;background:var(--r);color:#fff;font:700 11px/18px var(--display);text-align:center}
+.dcard{margin-bottom:12px}.dcard .dh{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.dcard .dt{font:700 16px/1.3 var(--display);margin:4px 0}.dcard .dd{margin:6px 0;font-size:14px}.dcard .dd b{color:var(--mute);font-weight:600}
+.dact{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.dact button{min-height:44px;padding:0 20px;border-radius:12px;border:1px solid var(--line);background:var(--tile2);color:var(--fg);font:700 14px var(--display);cursor:pointer}
+.dact button.ok{background:var(--g);color:#06140a;border-color:transparent}.dact button[disabled]{opacity:.5;cursor:default}
+.chip.rlow{color:var(--g);background:color-mix(in srgb,var(--g) 14%,transparent)}.chip.rapp{color:var(--y);background:color-mix(in srgb,var(--y) 14%,transparent)}
 .prow .pb{grid-column:2/4}
 .dot{width:10px;height:10px;border-radius:50%;background:var(--mute)}
 .dot.done{background:var(--g)} .dot.doing{background:var(--y);box-shadow:0 0 0 3px color-mix(in srgb,var(--y) 30%,transparent)} .dot.blocked{background:var(--r)}
@@ -176,7 +182,7 @@ textarea.out{width:100%;min-height:140px;padding:10px;border-radius:10px;border:
 
 <div class="wrap">
   <div class="bar">
-    <div class="left"><nav class="tabs" aria-label="Views"><a id="tab-home" href="#home">Tiles</a><a id="tab-map" href="#map">Connections</a><a id="tab-prog" href="#progress">Progress</a></nav></div>
+    <div class="left"><nav class="tabs" aria-label="Views"><a id="tab-home" href="#home">Tiles</a><a id="tab-map" href="#map">Connections</a><a id="tab-dec" href="#decisions">Decisions<span id="decn" class="decn" hidden></span></a><a id="tab-prog" href="#progress">Progress</a></nav></div>
     <div class="right"><span class="draft">Draft · sample scores</span><button class="btn" id="theme" type="button" aria-label="Switch light or dark theme">Theme</button></div>
   </div>
   <div id="app"></div>
@@ -519,6 +525,8 @@ window.addEventListener('message',ev=>{
   const d=ev.data||{}; if(d.type!=='cc-q-result') return;
   if(d.action==='load'){ if(d.ok){ Q.a=Object.assign({},d.answers||{}); Q.p=Object.assign({},d.parked||{}); Q.d=Object.assign({},d.done||{}); SYNC=cl(Q); try{localStorage.setItem(MK,JSON.stringify(Q))}catch(e){} setSync('Saved to your account'); draw(); } else setSync('Could not load saved answers'); }
   else if(d.action==='progress'){ if(d.ok&&Array.isArray(d.rows)&&d.rows.length){ const cur=JSON.stringify(PROG.map(r=>[r.id,r.pct,r.status,r.note,r.title])), nw=JSON.stringify(d.rows.map(r=>[r.id,r.pct,r.status,r.note,r.title])); const mx=d.rows.reduce((m,r)=>r.updated_at&&r.updated_at>m?r.updated_at:m,''); const first=!PROGLIVE; PROGLIVE=true; if(cur!==nw||first){ PROG=d.rows; try{if(mx)PROGAT=new Date(mx).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'})}catch(e){} if(curId==='home'||curId==='progress') draw(); } } }
+  else if(d.action==='decisions'){ if(d.ok&&Array.isArray(d.rows)){ const cur=JSON.stringify(DEC.map(r=>[r.id,r.status,r.result_note])), nw=JSON.stringify(d.rows.map(r=>[r.id,r.status,r.result_note])); const first=!DECLIVE; DECLIVE=true; if(cur!==nw||first){ DEC=d.rows; decBadge(); if(curId==='home'||curId==='decisions') draw(); } } }
+  else if(d.action==='decide'){ if(d.id) delete decBusy[d.id]; else decBusy={}; if(d.ok){ const r=DEC.find(x=>x.id===d.id); if(r){r.status=d.status; r.decided_at=new Date().toISOString();} decMsg=d.status==='approved'?'Approved. The bot will apply it on its next run.':'Rejected.'; } else decMsg='Not saved: '+(d.error||'error'); decBadge(); draw(); }
   else if(d.action==='save'){ setSync(d.ok?'Saved to your account':'Not saved: '+(d.error||'error')); }
 });
 if(INHUB){ try{parent.postMessage({type:'cc-q',action:'load',req:'l'},'*')}catch(e){} }
@@ -550,6 +558,26 @@ function progressView(){
    <div class="hero">${ring(o,96,10)}<div style="min-width:0"><h1 style="margin:0">Project progress</h1><div class="meta"><span class="chip live">${pCount('done')} done</span><span class="chip qchip">${pCount('doing')} in progress</span><span class="chip">${pCount('next')} next</span>${pCount('blocked')?`<span class="chip" style="color:var(--r)">${pCount('blocked')} waiting on you</span>`:''}<span class="chip ${PROGLIVE?'live':''}">${PROGLIVE?'live, updates every 15 seconds':'sample'}</span></div></div></div>${sec}
    <p class="note">Updated as the work happens${PROGAT?' · last change '+esc(PROGAT):''}.</p>`;
 }
+let DEC=[], DECLIVE=false, decBusy={}, decMsg='';
+const decPend=()=>DEC.filter(r=>r.status==='pending');
+function decCard(r){
+  const risk=r.risk==='low'?'<span class="chip rlow">Low risk, bot may do alone</span>':'<span class="chip rapp">Needs your approval</span>';
+  const st={pending:'Waiting for you',approved:'Approved. Waiting for the bot to apply it',rejected:'Rejected',applied:'Done',failed:'Failed'}[r.status]||r.status;
+  const act=r.status==='pending'?`<div class="dact"><button type="button" class="ok" data-dec="${esc(r.id)}" data-st="approved" ${decBusy[r.id]?'disabled':''}>Approve</button><button type="button" data-dec="${esc(r.id)}" data-st="rejected" ${decBusy[r.id]?'disabled':''}>Reject</button></div>`:`<div class="mute small" style="margin-top:8px">${esc(st)}${r.result_note?' · '+esc(r.result_note):''}</div>`;
+  return `<div class="card dcard"><div class="dh"><span class="chip">${esc(r.bot)}</span>${risk}</div><div class="dt">${esc(r.title)}</div>${r.why?`<div class="dd"><b>Why:</b> ${esc(r.why)}</div>`:''}${r.change_detail?`<div class="dd"><b>What changes:</b> ${esc(r.change_detail)}</div>`:''}${act}</div>`;
+}
+function decisionsView(){
+  const p=decPend(), appr=DEC.filter(r=>r.status==='approved'), rest=DEC.filter(r=>['rejected','applied','failed'].includes(r.status));
+  const sec=(t,a,empty)=>`<h3 style="margin:18px 0 8px">${t} · ${a.length}</h3>${a.length?a.map(decCard).join(''):`<div class="mute small">${empty}</div>`}`;
+  return `<div class="crumbs"><a href="#home">Home</a> <span>›</span> <b>Decisions</b></div><div class="filters" style="margin-top:10px">${navBtns()}</div>
+   <h1 style="margin:10px 0 4px">Decisions</h1><p class="sub">Your bots suggest. You approve or reject here. Nothing changes in your ad accounts until you approve.${DECLIVE?'':' <b>(sample)</b>'}</p>
+   ${decMsg?`<p class="note" role="status">${esc(decMsg)}</p>`:''}
+   ${sec('Waiting for you',p,'Nothing waiting. The bots have no new suggestions.')}${sec('Approved, waiting for the bot to apply',appr,'None.')}${rest.length?sec('History',rest,''):''}`;
+}
+function decBanner(){const n=decPend().length; if(!n) return ''; return `<a class="tile prog" href="#decisions" aria-label="${n} decisions waiting for you"><div class="decn" style="font-size:22px;line-height:44px;min-width:44px;margin:0">${n}</div><div style="flex:1;min-width:200px"><div style="font:700 clamp(18px,3vw,22px)/1.15 var(--display)">${n} decision${n>1?'s':''} waiting for you</div><div class="mute small">Your bots have suggestions. Approve or reject them here.</div></div><span class="go" aria-hidden="true">›</span></a>`}
+function decBadge(){const n=decPend().length, b=document.getElementById('decn'); if(b){b.textContent=n; b.hidden=!n;}}
+function loadDec(){ if(!INHUB) return; try{parent.postMessage({type:'cc-q',action:'decisions',req:'d'},'*')}catch(e){} }
+if(INHUB){ loadDec(); setInterval(loadDec,15000); }
 function loadProg(){ if(!INHUB) return; try{parent.postMessage({type:'cc-q',action:'progress',req:'p'},'*')}catch(e){} }
 if(INHUB){ loadProg(); setInterval(loadProg,15000); }
 function missionBanner(){
@@ -672,7 +700,7 @@ function homeView(){
     ['Semrush','No API. Scheduled report emails land in Gmail, get parsed and saved.'],['Supabase','Live. Boards, suppliers, saved snapshots.']]
     .map(f=>`<div class="card"><b>${f[0]}</b><span class="mute small">${f[1]}</span></div>`).join('');
   return `<h1>Indifeels Command Centre</h1><p class="sub">Eight areas, each scored out of 100. Open a tile to go inside.</p>
-   ${progBanner()}${missionBanner()}${overallView()}${freqView()}${sevPanel()}<div class="grid cats">${tiles}</div>
+   ${decBanner()}${progBanner()}${missionBanner()}${overallView()}${freqView()}${sevPanel()}<div class="grid cats">${tiles}</div>
    <div class="h2">Where the data comes from</div><div class="feeds">${feeds}</div>
    <p class="note">Scores and alerts are sample text until each report feeds its own. Dashed tiles are planned structure only. A tile can sit under several areas; it counts toward each area's score.</p>`;
 }
@@ -753,23 +781,24 @@ function mapView(){
 /* ---------- routing ---------- */
 function draw(){
   stopRec();
-  const isMap=curId==='map', isProg=curId==='progress';
+  const isMap=curId==='map', isProg=curId==='progress', isDec=curId==='decisions';
   document.getElementById('tab-map').classList.toggle('on',isMap);
-  document.getElementById('tab-home').classList.toggle('on',!isMap&&!isProg);
+  document.getElementById('tab-home').classList.toggle('on',!isMap&&!isProg&&!isDec);
+  document.getElementById('tab-dec').classList.toggle('on',isDec);
   document.getElementById('tab-prog').classList.toggle('on',isProg);
-  app.innerHTML=isMap?mapView():isProg?progressView():(MIS[curId]?missionView(curId):N[curId]?nodeView(curId):homeView());
+  app.innerHTML=isMap?mapView():isProg?progressView():isDec?decisionsView():(MIS[curId]?missionView(curId):N[curId]?nodeView(curId):homeView());
   updateNav();
 }
 let fwdStack=[], navKind=null;
 let cur=''; try{cur=decodeURIComponent((location.hash||'').slice(1));}catch(e){}
 function nav(h){ cur=h; try{ if(window.top===window) history.replaceState(null,'','#'+h); }catch(e){} route(); }
-function backTarget(){ if(!curId||curId==='home') return null; if(curId==='map'||curId==='progress'||MIS[curId]) return 'home'; return trail.length>1?trail[trail.length-2]:'home'; }
+function backTarget(){ if(!curId||curId==='home') return null; if(curId==='map'||curId==='progress'||curId==='decisions'||MIS[curId]) return 'home'; return trail.length>1?trail[trail.length-2]:'home'; }
 function updateNav(){}
 function navBtns(){ return `<button type="button" class="btn" data-nav="back" aria-label="Back one level" ${backTarget()?'':'disabled'}>‹ Back</button><button type="button" class="btn" data-nav="fwd" aria-label="Forward" ${fwdStack.length?'':'disabled'}>Forward ›</button>`; }
 function route(){
   if(navKind==='keep') navKind=null; else fwdStack=[];
   const h=cur;
-  const id=(h==='map'||h==='progress'||N[h]||MIS[h])?h:'home';
+  const id=(h==='map'||h==='progress'||h==='decisions'||N[h]||MIS[h])?h:'home';
   if(N[id]){
     bump(id);
     let t;
@@ -787,6 +816,7 @@ app.addEventListener('click',e=>{
   const nb=e.target.closest('[data-nav]'); if(nb){ if(nb.dataset.nav==='back'){const t=backTarget(); if(t){fwdStack.push(curId); navKind='keep'; nav(t);}} else {const t=fwdStack.pop(); if(t){navKind='keep'; nav(t);}} return; }
   const sv=e.target.closest('[data-sev]'); if(sv){const k=sv.dataset.sev||null; sevFilter=(k===sevFilter)?null:k; draw(); return;}
   const f=e.target.closest('[data-flt]'); if(f){flt=f.dataset.flt; draw(); return;}
+  const dc=e.target.closest('[data-dec]'); if(dc){const id=dc.dataset.dec; if(decBusy[id]) return; decBusy[id]=1; decMsg=''; draw(); try{parent.postMessage({type:'cc-q',action:'decide',req:'x'+Date.now(),id:id,status:dc.dataset.st},'*')}catch(x){delete decBusy[id]; decMsg='Not saved: no connection to the hub.'; draw();} return;}
   const op=e.target.closest('[data-open]'); if(op){try{parent.postMessage({type:'cc-open',id:op.dataset.open},'*')}catch(_){} return;}
   const lg=e.target.closest('[data-lang]'); if(lg){VL=lg.dataset.lang; try{localStorage.setItem('cc-lang',VL)}catch(x){} draw(); return;}
   const mc=e.target.closest('[data-mic]'); if(mc){startRec(mc.dataset.mic); return;}

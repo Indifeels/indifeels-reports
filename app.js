@@ -1564,6 +1564,17 @@
         const r = await sb.from("cc_progress").select("id,phase,title,pct,status,note,sort,updated_at").order("sort");
         if (r.error) throw r.error;
         reply({ ok: true, rows: r.data || [] });
+      } else if (d.action === "decisions") {
+        const r = await sb.from("cc_decisions").select("id,bot,area,title,why,change_detail,risk,status,result_note,created_at,decided_at,applied_at").order("created_at", { ascending: false }).limit(100);
+        if (r.error) throw r.error;
+        reply({ ok: true, rows: r.data || [] });
+      } else if (d.action === "decide") {
+        const id = String(d.id || ""), st = String(d.status || "");
+        if (!/^[a-z]-\d{4,6}$/.test(id) || (st !== "approved" && st !== "rejected")) throw new Error("Bad decision.");
+        const r = await sb.from("cc_decisions").update({ status: st, decided_at: new Date().toISOString() }).eq("id", id).eq("status", "pending").select("id");
+        if (r.error) throw r.error;
+        if (!r.data || !r.data.length) throw new Error("That decision was already made.");
+        reply({ ok: true, id, status: st });
       } else if (d.action === "save") {
         const items = (Array.isArray(d.items) ? d.items : []).slice(0, 80).filter((i) => /^m-[a-z-]{1,30}\.[a-z]{1,20}$/.test(String(i.qid))).map((i) => ({ qid: String(i.qid), answer: String(i.answer || "").slice(0, 2000), parked: !!i.parked, updated_at: new Date().toISOString() }));
         const done = (Array.isArray(d.done) ? d.done : []).slice(0, 30).filter((x) => /^m-[a-z-]{1,30}$/.test(String(x))).map((x) => ({ mid: String(x) }));
