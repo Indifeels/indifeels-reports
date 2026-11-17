@@ -81,11 +81,11 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-11-17T06:00+11:00",
-  "code_sha": "d2076cc8c2f9dc25c03c1a15760b7b2fe661590f",
+  "at": "2026-11-17T14:01+11:00",
+  "code_sha": "f90ab80c28e4196cc7749be487bc49731cabfd07",
   "data_through": null,
-  "last_ok": "2026-11-17T06:00+11:00",
-  "manifest_version": "2026-11-11.profit-flow.1",
+  "last_ok": "2026-11-17T14:01+11:00",
+  "manifest_version": "2026-11-17.command-centre.1",
   "ok": true,
   "reason": ""
  },
