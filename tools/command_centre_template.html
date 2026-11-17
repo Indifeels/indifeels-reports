@@ -571,7 +571,7 @@ function decisionsView(){
   const sec=(t,a,empty)=>`<h3 style="margin:18px 0 8px">${t} · ${a.length}</h3>${a.length?a.map(decCard).join(''):`<div class="mute small">${empty}</div>`}`;
   return `<div class="crumbs"><a href="#home">Home</a> <span>›</span> <b>Decisions</b></div><div class="filters" style="margin-top:10px">${navBtns()}</div>
    <h1 style="margin:10px 0 4px">Decisions</h1><p class="sub">Your bots suggest. You approve or reject here. Nothing changes in your ad accounts until you approve.${DECLIVE?'':' <b>(sample)</b>'}</p>
-   <p class="mute small" style="margin:0 0 6px">${DECRUN?'Last bot run: '+esc(new Date(DECRUN.ran_at).toLocaleString('en-AU',{weekday:'short',hour:'2-digit',minute:'2-digit'}))+(DECRUN.summary?' · '+esc(DECRUN.summary):''):'The bot has not run yet.'} · Runs about 8am, 3:30pm and 11pm.</p>
+   <p class="mute small" style="margin:0 0 6px">${DECRUN?'Last bot run: '+esc(new Date(DECRUN.ran_at).toLocaleString('en-AU',{weekday:'short',hour:'2-digit',minute:'2-digit'}))+(DECRUN.summary?' · '+esc(DECRUN.summary):''):'The bot has not run yet.'} · Runs at about 8:15am, 3:15pm and 10:15pm.</p>
    ${decMsg?`<p class="note" role="status">${esc(decMsg)}</p>`:''}
    ${sec('Waiting for you',p,'Nothing waiting. The bots have no new suggestions.')}${sec('Approved, waiting for the bot to apply',appr,'None.')}${rest.length?sec('History',rest,''):''}`;
 }
