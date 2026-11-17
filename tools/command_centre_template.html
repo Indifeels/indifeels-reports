@@ -519,7 +519,8 @@ function lvl(x){const l=Math.floor(x/100); return {n:l+1,name:LV[Math.min(l,LV.l
 const misArr=()=>Object.values(MIS);
 const nextM=()=>misArr().find(m=>!Q.d[m.id]);
 const openQ=area=>misArr().filter(m=>m.area===area&&!Q.d[m.id]).reduce((a,m)=>a+m.qs.filter(q=>!isHandled(q)).length,0);
-function qChip(id){const k=openQ(id); return k?`<span class="chip qchip">${k} question${k>1?'s':''}</span>`:''}
+function kPct(area){const ms=misArr().filter(m=>m.area===area); const t=ms.reduce((n,m)=>n+m.qs.length,0); if(!t) return null; const k=ms.reduce((n,m)=>n+m.qs.filter(isAns).length,0); return Math.round(100*k/t);}
+function qChip(id){const k=openQ(id), p=kPct(id); return (p==null?'':`<span class="chip ${p>=70?'live':'qchip'}" title="Share of this area's questions you have answered">Knowledge ${p}%</span>`)+(k?`<span class="chip qchip">${k} question${k>1?'s':''}</span>`:'');}
 function missionBanner(){
   const x=xpTotal(), L=lvl(x), nm=nextM(), done=misArr().filter(m=>Q.d[m.id]).length;
   const path=misArr().map(m=>`<button type="button" class="pn ${Q.d[m.id]?'done':(nm&&nm.id===m.id?'now':'')}" data-m="${m.id}" aria-label="Mission ${m.no}: ${esc(m.title)}${Q.d[m.id]?' (done)':''}" title="${esc(m.title)}">${Q.d[m.id]?'✓':m.no}</button>`).join('');
