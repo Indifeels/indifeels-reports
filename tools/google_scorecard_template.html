@@ -301,7 +301,7 @@ function bJourney(o){if(o.js==="-")return null;const us=(o.us||"").toLowerCase()
   if(us==="google"&&um==="cpc")return"Google";
   if(um.startsWith("tracked")||um==="paid")return"Facebook";
   return"Organic"}
-const CODE_BY_ID={"24024424291":"A","24030760799":"B","24038797431":"C","24331135133":"E"};
+const CODE_BY_ID={"24024424291":"A","24030760799":"B","24038797431":"C","24331135133":"E","24383403560":"F"};
 function campCode(uc){if(!uc)return null;if(CODE_BY_ID[uc])return CODE_BY_ID[uc];
   if(uc.startsWith("Tracked_MM_Feed"))return"A";if(uc.startsWith("Tracked_MM_Sales"))return"B";if(uc.startsWith("Tracked_MM_Best"))return"C";return null}
 const QD=D.qd||{};
@@ -334,7 +334,7 @@ const gCode=o=>eff(o)==="Google"?campCode(o.uc):null;
 /* ---------- ads ---------- */
 const ADSROWS=D.ads;const CAMP=D.camps;
 const DATES=[...new Set(ADSROWS.map(r=>r.d))].sort();
-const TRACKED=["A","B","C","E"];
+const TRACKED=["A","B","C","E","F"];
 function adsDay(d,codes){let s=0,v=0;ADSROWS.forEach(r=>{if(r.d===d&&codes.includes(r.c)){s+=r.sp;v+=r.val}});return{s,v}}
 function dayRev(d){return ORD.filter(o=>o.d===d&&eff(o)==="Google").reduce((a,o)=>a+o.a,0)}
 function profitDays(){return DATES.map(d=>{const a=adsDay(d,TRACKED);const rev=BASIS==="shopify"?dayRev(d):a.v;const net=rev*NET;return{d,spend:a.s,rev,net,fixed:EXPERT_DAY,profit:net-a.s-EXPERT_DAY}})}
@@ -572,7 +572,7 @@ function build(){
    how:"Score = last-7-day Search impression share ÷ 60% target."});
 
   /* 9. AD-LEVEL VISIBILITY */
-  const pmaxSp=sum(["A","C","E","D"],c=>campAgg(c).sp),allSp=pmaxSp+campAgg("B").sp;
+  const pmaxSp=sum(["A","C","E","F","D"],c=>campAgg(c).sp),allSp=pmaxSp+campAgg("B").sp;
   T.push({id:"vis",step:3,prio:10,w:5,t:"Ad-level Visibility",s:Math.round(100*campAgg("B").sp/allSp),k:pct(campAgg("B").sp/allSp,0),kl:"of spend visible at ad-group / ad level",src:"Google Ads",
    trend:null,att:["w","PMax blind spot"],
    stats:[["Performance Max spend",fmt$(pmaxSp),pct(pmaxSp/allSp,0)+" of spend"],["Search spend",fmt$(campAgg("B").sp),"fully visible"],["Search terms seen","1","brand term only"],["Asset groups seen","0","not in feed"]],

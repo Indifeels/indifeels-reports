@@ -54,11 +54,11 @@
   "reason": ""
  },
  "google-scorecard": {
-  "at": "2026-11-17T05:57+11:00",
-  "code_sha": "6f0ce7d3ad83542b8421f329044b37c99e5fd235",
+  "at": "2026-11-18T05:56+11:00",
+  "code_sha": "1bd671c8f708b58c411f088826fa0a357426ad9d",
   "data_through": null,
-  "last_ok": "2026-11-17T05:57+11:00",
-  "manifest_version": "2026-11-11.profit-flow.1",
+  "last_ok": "2026-11-18T05:56+11:00",
+  "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
  },
