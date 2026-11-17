@@ -1545,6 +1545,31 @@
     if (d.type === "cc-open" && typeof d.id === "string" && /^[a-z0-9-]{1,40}$/.test(d.id)) openReport(d.id);
   });
 
+  // ---------- Master Dashboard missions: save/load answers (admin RLS) on behalf of the sandboxed page ----------
+  window.addEventListener("message", async (event) => {
+    const fr = $("#rep-frame");
+    if (!fr || event.source !== fr.contentWindow || location.hash !== "#command-centre") return;
+    const d = event.data || {};
+    if (d.type !== "cc-q") return;
+    const reply = (o) => { try { fr.contentWindow?.postMessage(Object.assign({ type: "cc-q-result", req: d.req, action: d.action }, o), "*"); } catch (_) {} };
+    try {
+      if (d.action === "load") {
+        const [a, m] = await Promise.all([sb.from("cc_answers").select("qid,answer,parked"), sb.from("cc_missions_done").select("mid")]);
+        if (a.error) throw a.error; if (m.error) throw m.error;
+        const answers = {}, parked = {}, done = {};
+        (a.data || []).forEach((r) => { if (r.parked) parked[r.qid] = 1; else if (r.answer) answers[r.qid] = r.answer; });
+        (m.data || []).forEach((r) => { done[r.mid] = 1; });
+        reply({ ok: true, answers, parked, done });
+      } else if (d.action === "save") {
+        const items = (Array.isArray(d.items) ? d.items : []).slice(0, 80).filter((i) => /^m-[a-z-]{1,30}\.[a-z]{1,20}$/.test(String(i.qid))).map((i) => ({ qid: String(i.qid), answer: String(i.answer || "").slice(0, 2000), parked: !!i.parked, updated_at: new Date().toISOString() }));
+        const done = (Array.isArray(d.done) ? d.done : []).slice(0, 30).filter((x) => /^m-[a-z-]{1,30}$/.test(String(x))).map((x) => ({ mid: String(x) }));
+        if (items.length) { const r = await sb.from("cc_answers").upsert(items); if (r.error) throw r.error; }
+        if (done.length) { const r = await sb.from("cc_missions_done").upsert(done); if (r.error) throw r.error; }
+        reply({ ok: true });
+      }
+    } catch (e) { reply({ ok: false, error: String(e && e.message || e).slice(0, 200) }); }
+  });
+
   // ---------- Profit Flow: owner approves a sale price per product -> Shopify sale price (edge function product-price) ----------
   window.addEventListener("message", async (event) => {
     const fr = $("#rep-frame");

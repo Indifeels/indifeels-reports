@@ -127,6 +127,38 @@ details.card summary{cursor:pointer;font-weight:500}
 .legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 2px;color:var(--mute);font-size:12px}
 .legend i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
 @media(prefers-reduced-motion:reduce){.tile{transition:none}}
+.quest{display:flex;flex-direction:column;gap:14px;margin-bottom:12px}
+.quest .qtop{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.lvl{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;flex:none;background:radial-gradient(circle at 30% 25%,#34383e,#0a0b0d);box-shadow:inset 0 0 0 2px var(--y),0 6px 14px rgba(0,0,0,.5);font:700 24px var(--display);color:var(--y)}
+.lvl small{display:block;font:600 9px var(--body);letter-spacing:.1em;color:var(--mute);margin-top:-2px;text-align:center}
+.xpbar{height:10px;border-radius:99px;background:rgba(0,0,0,.45);box-shadow:inset 0 1px 2px rgba(0,0,0,.7);overflow:hidden;margin:6px 0 2px}
+.xpbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--g));transition:width .5s}
+.path{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pn{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:700 13px var(--display);border:0;background:var(--tile2);color:var(--mute);box-shadow:0 2px 4px rgba(0,0,0,.5)}
+.pn.done{background:var(--g);color:#06140e}
+.pn.now{background:var(--y);color:#1a1200;box-shadow:0 0 0 3px color-mix(in srgb,var(--y) 35%,transparent),0 2px 4px rgba(0,0,0,.5)}
+.pn:focus-visible,.go-btn:focus-visible,.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nowm{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--line)}
+.nowm .t{font:600 18px/1.25 var(--display);text-wrap:balance}
+.go-btn{padding:9px 18px;border-radius:10px;border:0;background:var(--y);color:#1a1200;font-weight:600;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25),0 3px 6px rgba(0,0,0,.4)}
+.go-btn:disabled{opacity:.4;cursor:default}
+.xp{color:var(--y);font:700 13px var(--display)}
+.qcard{background:var(--tile);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.qcard.ok{border-color:color-mix(in srgb,var(--g) 55%,var(--line))}
+.qcard .qq{font-weight:600;margin-bottom:8px}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink)}
+.opt.on{background:var(--accent);border-color:var(--accent);color:#04201c}
+.opt.park{color:var(--mute);border-style:dashed}
+.opt.park.on{background:var(--tile2);color:var(--ink);border-color:var(--mute)}
+.qin{width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit}
+.qin:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.qchip{color:var(--y);background:color-mix(in srgb,var(--y) 14%,transparent)}
+.why{color:var(--mute);margin:6px 0 14px;max-width:70ch}
+.pop{display:inline-block;animation:pop .6s ease-out}
+@keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+@media(prefers-reduced-motion:reduce){.pop{animation:none}.xpbar i{transition:none}}
+textarea.out{width:100%;min-height:140px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:12px/1.5 ui-monospace,monospace}
 </style>
 
 <div class="wrap">
@@ -139,105 +171,179 @@ details.card summary{cursor:pointer;font-weight:500}
 
 <script>
 /* ---------- data ---------- */
-const CATS=[['sales','Sales & Profit'],['inventory','Inventory'],['products','Products & Pricing'],['customers','Customers'],
- ['marketing','Digital Marketing'],['seo','SEO'],['web','Website Health'],['local','Local & Stores'],['ops','Operations & AI']];
+const CATS=[['sales','Sales & Finance'],['stock','Stock & Supply'],['marketing','Marketing'],['web','Website & SEO'],
+ ['customers','Customers & Service'],['local','Stores & Local'],['growth','Growth & Planning'],['admin','Admin & Automation']];
 const N={}; const order=[];
 CATS.forEach(([id,name])=>{N[id]={id,name,cat:true,parents:[],src:[],st:'cat',desc:''};order.push(id)});
 function n(id,name,st,score,parents,src,rep,desc){N[id]={id,name,st,score,parents,src:src||[],rep:rep||'',desc:desc||''};order.push(id)}
-const SH='Shopify',WI='Windsor.ai',SX='Semrush (scheduled email export)',SU='Supabase',MN='Manual upload';
+const SH='Shopify',WI='Windsor.ai',SX='Semrush (scheduled email export)',SU='Supabase',MN='Manual upload',TC='tools-to-connect';
 
-/* Sales & Profit */
+/* Sales & Finance */
 n('profit-flow','Profit Flow','live',78,['sales'],[SH,WI],'Reports hub › Sales Analysis › Profit Flow','Sold, spend and what you keep per $100, by day, week or month.');
 n('cash-report','Cash Report','live',85,['sales'],[SH],'Reports hub › Sales Analysis › Cash Report','Cash-paid orders since 18 Apr, refreshed after every order.');
-n('order-attribution','Order Attribution','live',62,['sales','marketing'],[SH],'Reports hub › Marketing Analysis › Google Scorecard','Orders tagged Google, Facebook or Organic from the order source field.');
+n('order-attribution','Order Attribution','live',62,['sales','marketing','auto-opt'],[SH],'Reports hub › Sales Analysis › Order Attribution','Orders tagged Google, Facebook or Organic from the order source field.');
 n('channels','Channels (18)','plan',null,['sales','marketing'],[SH,WI],'','Sales and spend across all 18 channels.');
-n('cash-flow','Cash Flow','plan',null,['sales'],[SH,MN],'','Money in and out by week.');
-n('margin-poas','Margin & POAS','plan',null,['sales','marketing','products'],[SH,WI],'','Profit on ad spend per product and per channel.');
-n('expenses','Expenses & GST','plan',null,['sales'],[MN],'','Fixed costs and GST from an uploaded expenses list.');
-n('seasonality','Sales Seasonality','plan',null,['sales','customers','marketing'],[SH],'','Which products sell in which months and festivals.');
-/* Inventory */
-n('restock','Restock Planner','live',71,['inventory'],[SH,SU],'Reports hub › Stock Management › Restock Planner','Order list, packing, shipped, order boxes and PDF orders.');
-n('supplier-portal','Supplier Portal','live',80,['inventory','ops'],[SU],'Reports hub › Supplier Portal','Suppliers add to boxes and ship.');
-n('stock-take','Stock Take','live',74,['inventory'],[SH,SU],'Reports hub › Stock Management › Stock Take','Counts, add or remove, bulk transfer, history.');
-n('barcodes','Barcodes & Labels','live',76,['inventory'],[SH],'Reports hub › Stock Management › Stock Take › Barcodes','Print labels and receive boxes.');
-n('procurement','Procurement','live',58,['inventory','products'],[SH,SX,'Search Console'],'Reports hub › Stock Management › Procurement','Demand by category versus options in stock.');
-n('stock-health','Stock Health','live',66,['inventory','sales'],[SH],'Reports hub › Stock Management › Restock Planner','Stock health % against a target of 90.');
-n('dead-stock','Dead & Excess Stock','part',45,['inventory','products'],[SH],'Reports hub › Sales Analysis › Profit Flow','Not-eligible stock value and clear-out candidates.');
-n('size-colour','Size & Colour Gaps','part',52,['inventory','products'],[SH,SX],'Reports hub › Stock Management › Procurement','Sizes and colours sold versus in stock.');
-n('supplier-score','Supplier Scorecard','plan',null,['inventory','ops'],[SU],'','Lead time and fill rate per supplier.');
-/* Products & Pricing */
-n('pricing','Pricing Strategy','plan',null,['products','marketing'],[SH,MN],'','Prices, floors and competitor position.');
-n('sale-planner','Sale & Seasonal Calendar','plan',null,['products','marketing'],[SH],'','Big sale and festival timing.');
-n('velocity','Product Velocity (A/B/C/D)','plan',null,['products','inventory'],[SH],'','Fast and slow sellers by days to sell one unit.');
-n('eligibility','Stock Eligibility','part',70,['products','inventory','sales'],[SH],'Reports hub › Sales Analysis › Profit Flow','Eligible versus not-eligible stock value.');
-n('catalog','Catalogue Quality','part',40,['products','web'],[SH],'Reports hub › Stock Management › Colour Tagging Game','Missing colours, photos and product data.');
-n('competitor-prices','Competitor Prices','plan',null,['products','seo'],[SX],'','What similar stores charge.');
-/* Customers */
-n('demographics','Demographics','plan',null,['customers','marketing'],[SH],'','Who buys: suburb, age and gender where known.');
-n('ltv','LTV & Cohorts','plan',null,['customers'],[SH],'','Lifetime value and cohorts.');
-n('repeat','Repeat Customers','plan',null,['customers','local'],[SH],'','Who comes back, and when.');
-n('suburbs','Suburbs & Reach','plan',null,['customers','local','marketing'],[SH,WI],'','Where buyers live compared with where ads run.');
-/* Digital Marketing */
+n('pl-monthly','Monthly P&L','plan',null,['sales'],[SH,WI,MN],'','Revenue, product cost, ads, fees, shipping and returns by month.');
+n('cash-flow','Cash Flow & Runway','plan',null,['sales'],[SH,MN],'','Money in and out by week, and months of runway before festival buying.');
+n('gst-bas','GST & BAS','plan',null,['sales',TC],['Xero','Shopify Tax'],'','GST collected and BAS-ready figures.');
+n('expenses','Expenses','plan',null,['sales'],[MN],'','Fixed and variable costs from an uploaded list.');
+n('margin-poas','Margin & POAS','plan',null,['sales','marketing'],[SH,WI],'','Profit on ad spend per product and per channel.');
+n('pricing','Pricing Strategy','plan',null,['sales','stock'],[SH,MN],'','Prices, floors and where you sit against competitors.');
+n('sale-planner','Sale & Festival Calendar','plan',null,['sales','marketing','growth'],[SH],'','When to run big and seasonal sales.');
+n('clearance','Clearance Funnel','plan',null,['sales','stock'],[SH],'','Rule-based markdowns for stock that is not selling: 30, 60 and 90 day steps.');
+n('landed-cost','Landed Cost & AUD/INR','plan',null,['sales','stock'],[MN],'','Cost price, freight, duty and exchange rate per unit.');
+n('seasonality','Sales Seasonality','plan',null,['sales','customers','marketing','growth'],[SH],'','Which products sell in which months and festivals.');
+
+/* Stock & Supply */
+n('restock','Restock Planner','live',71,['stock','auto-opt'],[SH,SU],'Reports hub › Stock Management › Restock Planner','Order list, packing, shipped, order boxes and PDF orders.');
+n('supplier-portal','Supplier Portal','live',80,['stock'],[SU],'Reports hub › Supplier Portal','Suppliers add to boxes and ship.');
+n('stock-take','Stock Take','live',74,['stock'],[SH,SU],'Reports hub › Stock Management › Stock Take','Counts, add or remove, bulk transfer, history.');
+n('barcodes','Barcodes & Labels','live',76,['stock'],[SH],'Reports hub › Stock Management › Stock Take › Barcodes','Print labels and receive boxes.');
+n('procurement','Procurement','live',58,['stock'],[SH,SX,'Search Console'],'Reports hub › Stock Management › Procurement','Demand by category versus options in stock.');
+n('stock-health','Stock Health','live',66,['stock','sales'],[SH],'Reports hub › Stock Management › Restock Planner','Stock health % against a target of 90.');
+n('dead-stock','Dead & Excess Stock','part',45,['stock','sales'],[SH],'Reports hub › Sales Analysis › Profit Flow','Not-eligible stock value and clear-out candidates.');
+n('size-colour','Size & Colour Gaps','part',52,['stock'],[SH,SX],'Reports hub › Stock Management › Procurement','Sizes and colours sold versus in stock.');
+n('eligibility','Stock Eligibility','part',70,['stock','sales','auto-opt'],[SH],'Reports hub › Sales Analysis › Profit Flow','Eligible versus not-eligible stock value.');
+n('velocity','Product Velocity (A/B/C/D)','plan',null,['stock'],[SH],'','Fast and slow sellers by days to sell one unit.');
+n('supplier-score','Supplier Scorecard','plan',null,['stock'],[SU],'','Lead time, defects and fill rate per supplier.');
+n('shipping','Shipping & Couriers','plan',null,['stock',TC],['Shippit','Sendle','Australia Post'],'','Fulfilment time, cost and delays.');
+n('returns','Returns & QA','plan',null,['stock','customers'],[SH],'','Return rate and reasons by product and supplier.');
+n('catalog','Catalogue Quality','part',40,['stock','site-health'],[SH],'Reports hub › Stock Management › Colour Tagging Game','Missing colours, photos and product data.');
+n('photo','Photography & Content','plan',null,['stock'],[MN],'','Photos, size charts and descriptions per product.');
+
+/* Marketing */
 n('google-ads','Google Ads','part',null,['marketing'],[WI],'','Campaign settings, signals and results.');
 n('facebook-ads','Facebook & Instagram Ads','part',null,['marketing'],[WI],'','Tracked and non-tracked campaigns.');
-n('ga4','GA4 Traffic & Conversions','plan',null,['marketing','web','seo'],[WI],'','Sessions, funnel and conversion by source.');
-n('email','Email (Klaviyo)','plan',null,['marketing','customers'],['Klaviyo'],'','Flows, campaigns and win-back lists.');
-n('social','Social Posting','plan',null,['marketing'],['Instagram','Facebook','TikTok'],'','Auto-post reels, pick high-CTR ones.');
-/* Google Ads parameters */
-n('ga-scorecard','Google Scorecard','live',63,['google-ads'],[WI,SH,'GA4'],'Reports hub › Marketing Analysis › Google Scorecard','KPI tiles out of 100, campaign to ad breakdown.');
+n('tiktok','TikTok Ads (to test)','plan',null,['marketing',TC],['TikTok Ads'],'','Small test budget, judged after 30 days.');
+n('email','Email & SMS (Klaviyo)','plan',null,['marketing','customers',TC],['Klaviyo'],'','Welcome, abandoned cart, post-purchase and win-back flows.');
+n('upsell','Upsell & Post-purchase (ReConvert)','plan',null,['marketing',TC],['ReConvert'],'','Offers on the thank-you page.');
+n('social','Social Posting','plan',null,['marketing'],['Instagram','Facebook','TikTok','Canva'],'','Auto-create and post reels, pick high-CTR ones.');
+n('influencer','Community & Influencers','plan',null,['marketing','growth'],[MN],'','Community groups, micro-influencers, festival fairs.');
+n('ga-scorecard','Google Scorecard','live',63,['google-ads','auto-opt'],[WI,SH,'GA4'],'Reports hub › Marketing Analysis › Google Scorecard','KPI tiles out of 100, campaign to ad breakdown.');
 n('ga-test','Campaign Tests','live',55,['google-ads'],[WI],'Reports hub › Marketing Analysis › Google Ads Test','Wedding Search test and its signals.');
 n('ga-structure','Campaign Structure','plan',null,['google-ads'],[WI],'','Types, ad groups, naming.');
 n('ga-budget','Budget & Bidding','plan',null,['google-ads'],[WI],'','Daily budgets, bid strategy, targets.');
-n('keywords','Keywords & Search Terms','part',50,['google-ads','seo'],[WI,SX,'Search Console'],'Reports hub › SEO Report','Terms bought versus terms already ranking.');
+n('keywords','Keywords & Search Terms','part',50,['google-ads','seo-group'],[WI,SX,'Search Console'],'Reports hub › SEO Report','Terms bought versus terms already ranking.');
 n('ga-negatives','Negative Keywords','plan',null,['google-ads'],[WI],'','Wasted clicks to block.');
 n('ga-quality','Quality Score & Ad Strength','plan',null,['google-ads'],[WI],'','Relevance, expected CTR, landing page.');
 n('ga-assets','Ad Copy & Assets','plan',null,['google-ads'],[WI],'','Headlines, images, extensions.');
 n('ga-audiences','Audiences','plan',null,['google-ads','customers'],[WI,SH],'','Lists and signals.');
 n('ga-geo','Location & Schedule','plan',null,['google-ads'],[WI],'','Where and when ads run.');
 n('ga-impression','Impression Share','plan',null,['google-ads'],[WI],'','Share lost to budget or rank.');
-n('ga-conversion','Conversion Tracking','plan',null,['google-ads','web'],[WI,'GA4'],'','Tags, values, duplicates.');
-n('ga-landing','Landing Pages','plan',null,['google-ads','web'],['GA4','PageSpeed'],'','Page speed and match to ad.');
-n('ga-feed','Merchant Centre Feed','plan',null,['google-ads','web'],['Merchant Centre'],'','Product feed errors and disapprovals.');
-n('ga-stock','Stock-aware Ads','plan',null,['google-ads','inventory'],[SH,WI],'','Stop advertising what is out of stock.');
+n('ga-conversion','Conversion Tracking','plan',null,['google-ads','tracking-data'],[WI,'GA4'],'','Tags, values, duplicates.');
+n('ga-landing','Landing Pages','plan',null,['google-ads','site-health'],['GA4','PageSpeed'],'','Page speed and match to ad.');
+n('ga-feed','Merchant Centre Feed','plan',null,['google-ads','site-health'],['Merchant Centre'],'','Product feed errors and disapprovals.');
+n('ga-stock','Stock-aware Ads','plan',null,['google-ads','stock'],[SH,WI],'','Stop advertising what is out of stock.');
 n('ga-leaks','Money Leaks','plan',null,['google-ads'],[WI],'','Spend with no return.');
 n('ga-history','Past Performance','plan',null,['google-ads'],[WI],'','Past campaigns and keywords reviewed.');
-/* Facebook parameters */
 n('fb-tracked','Tracked Campaigns','live',66,['facebook-ads'],[WI,SH],'Reports hub › Marketing Analysis › Facebook Tracked','ROAS and real sales per campaign.');
 n('fb-nontracked','Non-tracked Daily Analysis','live',60,['facebook-ads'],[WI],'Reports hub › Marketing Analysis › Facebook Non-tracked','Spend and cost per message.');
-n('fb-nightly','Nightly Spend Report','live',72,['facebook-ads'],[WI],'Scheduled task, 10 pm','Non-tracked spend and cost per message.');
+n('fb-nightly','Nightly Spend Report','live',72,['facebook-ads','auto-done'],[WI],'Scheduled task, 10 pm','Non-tracked spend and cost per message.');
 n('fb-creative','Creative Performance','plan',null,['facebook-ads'],[WI],'','Which images and reels work.');
 n('fb-audiences','Audiences','plan',null,['facebook-ads','customers'],[WI,SH],'','Lookalikes, interests, exclusions.');
 n('fb-budget','Budget & Pacing','plan',null,['facebook-ads'],[WI],'','Daily spend against plan.');
 n('fb-fatigue','Frequency & Fatigue','plan',null,['facebook-ads'],[WI],'','Ads shown too often.');
-n('fb-pixel','Pixel & CAPI Tracking','plan',null,['facebook-ads','web'],[WI],'','Events firing and matching.');
-n('fb-stock','Stock-aware Ads','plan',null,['facebook-ads','inventory'],[SH,WI],'','Stop promoting what is out of stock.');
-/* SEO */
-n('seo-report','SEO Rankings','live',61,['seo'],[SX,'Search Console','GA4'],'Reports hub › SEO Report','Rankings, traffic and Business Profile, refreshed daily.');
-n('backlinks','Backlinks','plan',null,['seo'],[SX],'','Links won and lost.');
-n('competitor-gap','Competitor Gap','plan',null,['seo','products'],[SX],'','Why competitors rank and how to outrank.');
-n('gsc','Search Console','plan',null,['seo','web'],['Search Console'],'','Real queries, clicks and positions.');
-n('tech-audit','Technical Audit','plan',null,['seo','web'],[SX],'','Crawl errors from the Semrush site audit.');
-n('content-pages','Collection & Product Pages','plan',null,['seo','products'],['Search Console',SH],'','Titles, descriptions, copy.');
-n('ai-visibility','AI Search Visibility','plan',null,['seo'],[SX],'','Mentions in AI answers.');
-/* Website Health */
-n('cwv','Core Web Vitals','plan',null,['web'],['PageSpeed'],'','LCP, INP, CLS on key pages.');
-n('uptime','Uptime & Speed','plan',null,['web'],['Monitor'],'','Is the site up and fast.');
-n('funnel','Checkout Funnel','plan',null,['web','sales'],['GA4',SH],'','Where buyers drop off.');
-n('tracking','Tracking Health','plan',null,['web'],['GA4','Tag checks'],'','Tags and pixels firing.');
-n('structured','Structured Data','plan',null,['web','seo'],['Search Console'],'','Product and review markup.');
-n('mobile','Mobile Experience','plan',null,['web'],['PageSpeed'],'','Tap targets, layout, speed on phones.');
-/* Local & Stores */
-n('gbp','Google Business Profile','part',57,['local','seo'],['Windsor.ai (GBP)'],'Reports hub › SEO Report','Melbourne and Sydney profiles, views, calls, directions.');
+n('fb-pixel','Pixel & CAPI Tracking','plan',null,['facebook-ads','tracking-data'],[WI],'','Events firing and matching.');
+n('fb-stock','Stock-aware Ads','plan',null,['facebook-ads','stock'],[SH,WI],'','Stop promoting what is out of stock.');
+
+/* Website & SEO: three groups */
+n('seo-group','Search (SEO)','part',null,['web'],[],'','Rankings, keywords, backlinks and content.');
+n('site-health','Site Health','part',null,['web'],[],'','Speed, mobile, checkout, product data.');
+n('tracking-data','Tracking & Data','part',null,['web'],[],'','Analytics, tags, pixels and the data feeds.');
+n('seo-report','SEO Rankings','live',61,['seo-group'],[SX,'Search Console','GA4'],'Reports hub › SEO Report','Rankings, traffic and Business Profile, refreshed daily.');
+n('backlinks','Backlinks','plan',null,['seo-group'],[SX],'','Links won and lost.');
+n('competitor-gap','Competitor Gap','plan',null,['seo-group','growth'],[SX],'','Why competitors rank and how to outrank.');
+n('content-pages','Collection & Product Pages','plan',null,['seo-group'],['Search Console',SH],'','Titles, descriptions, copy.');
+n('ai-visibility','AI Search Visibility','plan',null,['seo-group'],[SX],'','Mentions in AI answers.');
+n('seo-tools','SEO Tools (Ahrefs, Surfer)','plan',null,['seo-group',TC],['Ahrefs','Surfer SEO'],'','Keyword, backlink and content scoring.');
+n('cwv','Core Web Vitals','plan',null,['site-health'],['PageSpeed'],'','LCP, INP, CLS on key pages.');
+n('uptime','Uptime & Speed','plan',null,['site-health'],['Monitor'],'','Is the site up and fast.');
+n('mobile','Mobile Experience','plan',null,['site-health'],['PageSpeed'],'','Tap targets, layout, speed on phones.');
+n('funnel','Checkout Funnel','plan',null,['site-health','sales'],['GA4',SH],'','Where buyers drop off.');
+n('structured','Structured Data','plan',null,['site-health','seo-group'],['Search Console'],'','Product and review markup.');
+n('tech-audit','Technical Audit','plan',null,['site-health','seo-group'],[SX],'','Crawl errors from the Semrush site audit.');
+n('landing-pages','Landing Pages (PageFly)','plan',null,['site-health',TC],['PageFly'],'','Campaign and festival pages.');
+n('ga4','GA4 Traffic & Conversions','plan',null,['tracking-data','marketing'],[WI],'','Sessions, funnel and conversion by source.');
+n('gsc','Search Console','plan',null,['tracking-data','seo-group'],['Search Console'],'','Real queries, clicks and positions.');
+n('tracking','Tracking Health','plan',null,['tracking-data'],['GA4','Tag checks'],'','Tags and pixels firing.');
+n('windsor','Data Connections (Windsor.ai)','live',80,['tracking-data'],[WI],'','Google Ads, Meta, GA4, Search Console and Business Profile feeds.');
+n('semrush-feed','Semrush Email Feed','plan',null,['tracking-data'],[SX,'Gmail'],'','Scheduled Semrush exports land in Gmail and get parsed.');
+
+/* Customers & Service */
+n('demographics','Demographics','plan',null,['customers','marketing'],[SH],'','Who buys: suburb, age and gender where known.');
+n('ltv','LTV & Cohorts','plan',null,['customers'],[SH],'','Lifetime value and cohorts.');
+n('repeat','Repeat Customers','plan',null,['customers'],[SH],'','Who comes back, and when.');
+n('segments','Customer Segments','plan',null,['customers'],[SH],'','Champions, at-risk, festival-only buyers.');
+n('suburbs','Suburbs & Reach','plan',null,['customers','local','marketing'],[SH,WI],'','Where buyers live compared with where ads run.');
+n('aisha','Aisha Bot','live',82,['customers'],[SU,'Chatwoot'],'Chatwoot','Customer service on chat, Facebook and Instagram.');
+n('support-tool','Support Desk (Gorgias, Tidio)','plan',null,['customers',TC],['Gorgias','Tidio'],'','Order status, tracking, returns and exchanges.');
+n('reviews-tool','Reviews (Judge.me, Loox)','plan',null,['customers',TC],['Judge.me','Loox'],'','Product reviews with photos.');
+n('review-requests','Review Requests (NiceJob, Podium)','plan',null,['customers','local',TC],['NiceJob','Podium'],'','Delivery confirmed, then SMS, then reminder.');
+
+/* Stores & Local */
+n('gbp','Google Business Profile','part',57,['local','seo-group'],['Windsor.ai (GBP)'],'Reports hub › SEO Report','Melbourne and Sydney profiles, views, calls, directions.');
 n('calls','Calls & Directions','plan',null,['local','marketing'],['Call tracking'],'','Calls by number and origin.');
-n('reviews','Reviews','plan',null,['local','seo'],['Windsor.ai (GBP)'],'','Rating and new reviews.');
-n('walkins','Walk-ins & Store Sales','plan',null,['local','sales'],[SH],'','MEL and SYD stores.');
-n('bookings','Visit Bookings','live',68,['local','ops'],[SU],'Aisha booking system','Appointment bookings through Aisha.');
-/* Operations & AI */
-n('aisha','Aisha Bot','live',82,['ops','customers'],[SU,'Chatwoot'],'Chatwoot','Customer service on chat, Facebook and Instagram.');
-n('board','Project Board','live',75,['ops'],[SU],'Reports hub › Admin Panel › Project Board','Tasks from talking to Claude.');
-n('shipping','Shipping','plan',null,['ops','sales'],['Shippit'],'','Fulfilment time and cost.');
-n('returns','Returns & QA','plan',null,['ops','products'],[SH],'','Return rate and reasons.');
-n('alerts','Alerts & Job Health','plan',null,['ops'],[SU],'','Scheduled jobs and failures in one place.');
+n('google-reviews','Google Reviews','plan',null,['local'],['Windsor.ai (GBP)'],'','Rating and new reviews.');
+n('walkins','Walk-ins & Store Sales','plan',null,['local','sales'],[SH],'','Melbourne and Sydney stores.');
+n('bookings','Visit Bookings','live',68,['local','customers'],[SU],'Aisha booking system','Appointment bookings through Aisha.');
+n('mel-store','Melbourne Store','plan',null,['local'],[SH],'','Sales, stock and footfall.');
+n('syd-store','Sydney Store','plan',null,['local'],[SH],'','Sales, stock and footfall.');
+
+/* Growth & Planning */
+n('market-research','Keyword & Demand Research','plan',null,['growth'],[SX,'Google Trends','Keyword Planner'],'','Indian-specific search demand by category.');
+n('competitor-prices','Competitor Prices','plan',null,['growth','sales'],[SX],'','What similar stores charge.');
+n('product-cycle','Product Test Cycle','plan',null,['growth','stock'],[SH],'','Stock, free social test, paid test, restock or clear, repeat.');
+n('expansion','New Markets (NZ, USA, CA, UK)','plan',null,['growth'],[MN],'','Expand when revenue, cash flow and returns pass set triggers.');
+n('new-channels','New Channels (Amazon, eBay, Etsy)','plan',null,['growth',TC],[MN],'','Revenue and cost per new channel.');
+
+/* Admin & Automation */
+n('agents','Agents','part',null,['admin'],[],'','One agent per job, named after your real team.');
+n('ag-chief','Simar · Chief of Staff','plan',null,['agents'],[],'','The only agent that talks to you. Ranks recommendations, asks questions, makes the money case.');
+n('ag-profit','Jess · Profit Guard','plan',null,['agents'],[SH,WI],'','Finds money leaks and margin problems first.');
+n('ag-stock','Sunita · Stock & Pricing','plan',null,['agents'],[SH],'','What to stock, restock, price and clear.');
+n('ag-google','Satwinder · Google Ads','plan',null,['agents'],[WI],'','Plays the Google Ads expert.');
+n('ag-meta','Adnan · Meta Ads','plan',null,['agents'],[WI],'','Plays the Meta Ads expert.');
+n('ag-seo','Veronica · SEO','plan',null,['agents'],[SX,'Search Console'],'','Backlinks, rankings, how to outrank.');
+n('ag-social','Davy · Social Media','plan',null,['agents'],['Instagram','Facebook','TikTok'],'','Creates and posts content from the website.');
+n('ag-cs','Rashi · Customer Service','plan',null,['agents'],[SU],'','Aisha, reviews, returns.');
+n('ag-audit','Professor Bot · Strategy Auditor','plan',null,['agents'],[SU],'','Checks whether each strategy is working against its KPI.');
+n('ag-data','Luciano Bot · Data & Systems','plan',null,['agents'],[SU],'','Keeps connections, data and the knowledge base healthy.');
+n('inbox','Decisions Inbox','plan',null,['admin'],[SU],'','Recommendations and questions, ranked by profit impact, urgency and data readiness. Items without data are parked.');
+n('strategy','Strategy Tracker','plan',null,['admin'],[SU],'','Each strategy with KPI, baseline, target and a verdict: working, not working, too early.');
+n('auto-board','Automation Board','part',null,['admin'],[],'','What is automated, what can be, and what can be improved.');
+n('auto-done','Already Automated','part',null,['auto-board'],[],'','Running now.');
+n('auto-can','Can Be Automated','part',null,['auto-board'],[],'','Rules exist or can be written. Approval stays manual until a rule proves itself.');
+n('auto-opt','Can Be Optimised','part',null,['auto-board'],[],'','Automated, but your own judgement still adjusts the result.');
+n('au-order-source','Order Source Sync','live',80,['auto-done'],[SH],'Reports hub › Sales Analysis › Order Source','Order source written back to Shopify.');
+n('au-cash','Cash Report Refresh','live',90,['auto-done'],[SH],'Reports hub › Sales Analysis › Cash Report','Rebuilt after every order and at midnight.');
+n('au-stockmove','Shop Restock from Backup','live',85,['auto-done'],[SH],'Reports hub › Stock Management › Stock Movement','Shopify moves 1 unit from Backup when Shop hits 0.');
+n('au-st-fix','Website Stock-number Fix','live',90,['auto-done'],[SH],'Reports hub › Stock Management › Stock Movement','Corrects website ST numbers that do not match Shopify.');
+n('au-snapshot','Daily Stock Snapshot','live',85,['auto-done'],[SH,SU],'','Saves stock each day for real in-stock days.');
+n('au-publish','Product Channel Publishing','live',90,['auto-done'],[SH],'Reports hub › Stock Management › Product Visibility','Every active product on all 7 sales channels.');
+n('au-restock-order','Place Restock Orders','plan',null,['auto-can'],[SH,SU],'','From the Restock Planner, with your approval first.');
+n('au-clearance','Clearance Pricing by Rule','plan',null,['auto-can'],[SH],'','30, 60 and 90 day markdown steps.');
+n('au-ad-budget','Ad Budget Changes by Rule','plan',null,['auto-can'],[WI],'','Raise or cut budgets on ROAS rules.');
+n('au-pause-oos','Pause Ads on Out-of-stock','plan',null,['auto-can'],[SH,WI],'','Stops spend on products with no stock.');
+n('au-reviews','Review Request after Delivery','plan',null,['auto-can'],['NiceJob'],'','SMS on day 3, reminder on day 7.');
+n('au-winback','Win-back Emails (90 days)','plan',null,['auto-can'],['Klaviyo'],'','Lapsed buyers.');
+n('au-abandoned','Abandoned Cart Flow','plan',null,['auto-can'],['Klaviyo'],'','Emails at 1, 24 and 72 hours.');
+n('au-social','Auto-create and Post Content','plan',null,['auto-can'],['Instagram','Facebook','TikTok'],'','Posts and videos from website products.');
+n('au-gbp-post','Business Profile Posts','plan',null,['auto-can'],['Windsor.ai (GBP)'],'','Regular posts for both stores.');
+n('au-report-mail','Email Reports to Non-Claude Users','plan',null,['auto-can'],['Gmail'],'','Nightly ads report to the team.');
+n('au-alerts','Failed-job Alerts in One Place','plan',null,['auto-can'],[SU],'','One list instead of GitHub emails.');
+n('au-opt-du','Days to Sell One Unit','part',60,['auto-opt'],[SH,SU],'','Use real in-stock days from daily snapshots.');
+n('board','Project Board','live',75,['admin'],[SU],'Reports hub › Admin Panel › Project Board','Tasks from talking to Claude.');
+n('schedule-panel','Schedule Panel','live',70,['admin'],[SU],'Reports hub › Admin Panel › Schedule Panel','When each report refreshes.');
+n('tech-availability','Tech Availability','live',65,['admin'],[SU],'Reports hub › Admin Panel › Tech Availability','Is each tool and connection up.');
+n('alerts','Alerts & Job Health','plan',null,['admin'],[SU],'','Scheduled jobs and failures in one place.');
+n('kb','Knowledge Base','part',null,['admin'],[],'','What every agent reads before deciding.');
+n('kb-rules','Business Rules','part',30,['kb'],[SU],'','Product cost %, GST rules, eligibility, size rule, fixed costs.');
+n('kb-playbooks','Playbooks (Skills)','plan',null,['kb'],[],'','One playbook per agent.');
+n('kb-decisions','Decision Log','plan',null,['kb'],[SU],'','Every question asked, your answer and why.');
+n('kb-learn','What Worked and What Did Not','plan',null,['kb'],[SU],'','Results of each strategy.');
+n('kb-calendar','Festival & Season Calendar','plan',null,['kb','growth'],[MN],'','Diwali, Navratri, Eid, Holi and the rest, with lead times.');
+n('tools-to-connect','Tools to Connect','part',null,['admin'],[],'','Third-party tools not yet connected, ranked by profit once measured.');
+n('missed','Missed Opportunities','plan',null,['admin'],[SU],'','Gaps agents find, ranked by profit and by whether data exists.');
 
 /* Sample alerts per built tile: [severity, text]. Replace with real signals once reports feed them. */
 const ALERTS={
@@ -247,15 +353,17 @@ const ALERTS={
 'dead-stock':['red','Dead stock tying up cash'],'size-colour':['yel','Missing sizes in top categories'],'eligibility':['yel','Eligible stock below plan'],
 'catalog':['red','Products missing colour tags'],'ga-scorecard':['yel','Google conversions need checking'],'ga-test':['yel','Wedding test has no sales yet'],
 'keywords':['yel','Paid terms already ranking free'],'fb-tracked':['yel','Tracked ROAS below target'],'fb-nontracked':['yel','Cost per message rising'],
-'seo-report':['yel','Rankings flat this week'],'gbp':['yel','Profile calls dipping'],'bookings':['grn','Bookings flowing'],'aisha':['grn','Aisha answering normally'],'board':['grn','Board up to date']
+'seo-report':['yel','Rankings flat this week'],'gbp':['yel','Profile calls dipping'],'bookings':['grn','Bookings flowing'],'aisha':['grn','Aisha answering normally'],
+'board':['grn','Board up to date'],'schedule-panel':['grn','Schedules running'],'tech-availability':['yel','Tech availability check due'],'windsor':['grn','Data feeds connected'],
+'kb-rules':['yel','Business rules not yet written down']
 };
 
-const HUB={'profit-flow':'profit-flow','cash-report':'cash-report','order-attribution':'order-attribution','restock':'restock-plan','supplier-portal':'restock-supplier','stock-take':'stock-take','barcodes':'stock-take','procurement':'procurement','stock-health':'restock-plan','dead-stock':'profit-flow','size-colour':'procurement','eligibility':'profit-flow','catalog':'color-game','ga-scorecard':'google-scorecard','ga-test':'google-ads-test','keywords':'seo-report','fb-tracked':'facebook-tracked','fb-nontracked':'daily','seo-report':'seo-report','gbp':'seo-report','board':'project-board'};
 /* Cross links: from, to, why */
 const L=[
 ['seo-report','keywords','Terms already ranking can skip paid or bid lower'],
 ['gsc','keywords','Real queries and positions'],
 ['keywords','procurement','Search demand sizes what to stock'],
+['market-research','procurement','Indian-specific demand sizes what to stock'],
 ['pricing','google-ads','Sale prices and offers to promote'],
 ['pricing','facebook-ads','Sale prices and offers to promote'],
 ['sale-planner','google-ads','Seasonal and big-sale timing'],
@@ -266,27 +374,48 @@ const L=[
 ['seasonality','google-ads','Which months and products sell'],
 ['seasonality','facebook-ads','Which months and products sell'],
 ['seasonality','restock','Festival peaks set restock timing'],
+['kb-calendar','sale-planner','Festival dates and lead times'],
 ['stock-health','ga-stock','Out-of-stock products stop being advertised'],
 ['stock-health','fb-stock','Out-of-stock products stop being promoted'],
-['dead-stock','pricing','Clearance candidates'],
+['dead-stock','clearance','Clear non-eligible stock first'],
+['clearance','facebook-ads','Clearance items to promote'],
+['clearance','google-ads','Clearance items to promote'],
+['eligibility','restock','Only eligible products are restocked'],
 ['velocity','restock','Fast sellers restocked first'],
 ['supplier-score','restock','Lead time and fill rate'],
+['product-cycle','restock','Winners restocked'],
+['product-cycle','clearance','Losers cleared'],
+['social','product-cycle','Free social test results'],
+['social','fb-creative','Winning organic posts become ads'],
 ['cwv','ga-landing','Slow pages lower Quality Score'],
 ['tracking','ga-conversion','Broken tags hide conversions'],
 ['tracking','fb-pixel','Broken pixel hides sales'],
 ['tech-audit','seo-report','Crawl issues hurt rankings'],
 ['ga4','seo-report','Organic landing-page conversions'],
+['semrush-feed','seo-report','Weekly Semrush export'],
+['windsor','ga-scorecard','Google Ads and GA4 data'],
 ['catalog','content-pages','Better product data lifts organic pages'],
 ['gbp','calls','Profile views become calls'],
+['review-requests','gbp','More reviews lift the profile'],
 ['calls','order-attribution','Calls tied back to a channel'],
 ['ga-scorecard','profit-flow','Google spend and returns'],
 ['fb-tracked','profit-flow','Meta spend and returns'],
 ['order-attribution','ga-scorecard','Which orders came from Google'],
 ['margin-poas','pricing','Floor price per product'],
 ['margin-poas','ga-budget','Break-even bids and budgets'],
+['landed-cost','margin-poas','Real cost per unit'],
 ['returns','margin-poas','Return cost eats margin'],
 ['aisha','catalog','Questions show missing product info'],
-['repeat','email','Win-back lists']
+['repeat','email','Win-back lists'],
+['kb-rules','profit-flow','Product cost % and fixed costs'],
+['kb-rules','pricing','Cost and GST rules'],
+['profit-flow','inbox','Leaks and wins become recommendations'],
+['stock-health','inbox','Stock gaps become recommendations'],
+['ga-scorecard','inbox','Weak signals become recommendations'],
+['fb-tracked','inbox','Weak signals become recommendations'],
+['seo-report','inbox','Ranking drops become recommendations'],
+['strategy','inbox','A not-working verdict raises a recommendation'],
+['kb-decisions','strategy','Past decisions set each strategy baseline']
 ].filter(l=>N[l[0]]&&N[l[1]]);
 
 /* ---------- helpers ---------- */
@@ -308,7 +437,140 @@ const nl=id=>`<a href="#${id}">${esc(N[id].name)}</a>`;
 function linksFor(id){ const S=sub(id); return {out:L.filter(l=>S.has(l[0])&&!S.has(l[1])), inn:L.filter(l=>S.has(l[1])&&!S.has(l[0]))}; }
 function sortKids(ids){ const w={live:0,part:1,plan:2}; return ids.slice().sort((a,b)=>{const sa=kids[a]?'part':N[a].st, sb=kids[b]?'part':N[b].st; return w[sa]-w[sb]||order.indexOf(a)-order.indexOf(b)}); }
 
+/* ---------- missions ---------- */
+const MIS_LIST=[
+['m-stock-gaps','stock','Stop losing sales on sellers that run out',50,'Biggest profit leak. Every day a seller is out of stock loses sales you already paid to attract. The data is ready (Shopify), so this is the fastest win.',[
+ ['lead','How many days from placing a restock order to stock on the shelf (typical)?','t'],
+ ['cash','How much can go into one restock round right now?','t'],
+ ['never','Which products or designs must never be out of stock?','t'],
+ ['elig','Your rule for "eligible": sold at least how many pieces in how many months?','t']]],
+['m-clear','sales','Turn dead stock into cash',50,'The ~$174k of not-eligible stock is cash you cannot use. Clearing it funds everything else. Data is ready, and each price still needs your approval.',[
+ ['recent','How old counts as a "recent, better-margin" product we must not discount?','c',['3 months','6 months','9 months','12 months']],
+ ['disc','Default clearance discount?','c',['25%','30%','40%','Slider per product']],
+ ['never','Any products or collections never to discount?','t'],
+ ['pace','How many products to put on sale per week at first?','c',['10','20','50']]]],
+['m-profit','sales','Know your real profit',40,'Without real margins every other score is a guess. Jess needs the fixed costs and the product cost sheet.',[
+ ['gads','Is Google Ads management still about $670 a month?','c',['Yes','No, it changed']],
+ ['fixed','Other fixed costs to count against sales (rent, wages, shipping, fees)?','t'],
+ ['freight','Is freight inside the 32% product cost, or on top?','c',['Inside','On top','Varies']],
+ ['pcid','When can the product cost sheet (PCID) be filled in?','t']]],
+['m-tracking','marketing','Make every sale traceable',40,'Ads decisions are only as good as attribution. About 70% of revenue is in-store, so blanks in order source hide what works.',[
+ ['who','Who fills in order source, and by what time each day?','t'],
+ ['conv','Does the Google Ads Purchase conversion now match Shopify orders?','c',['Yes','No','Not sure']],
+ ['offl','OK to set up offline conversion import for calls and store visits?','c',['Yes','Later','No']],
+ ['pixel','OK to test whether the Meta Pixel fires Purchase events?','c',['Yes','No']]]],
+['m-stores','local','Confirm your stores and locations',30,'Reports must split by store correctly, or store scores will be wrong.',[
+ ['blk','Is Blacktown still trading?','c',['Yes','No','Closing soon']],
+ ['loc','Which Shopify location is which store?','t'],
+ ['split','Should reports split by store?','c',['Yes, always','Only some reports','No']]]],
+['m-calendar','growth','Lock in the festival calendar',40,'Stock must arrive before a festival, ads before that. Without dates Sunita and Davy cannot plan ahead.',[
+ ['fest','Which festivals matter most for you? List them.','t'],
+ ['lead','How many weeks before a festival must stock be in?','t'],
+ ['kids','Which months do you stock kids clothing?','t']]],
+['m-service','customers','Teach AIsha the answers',30,'Low-confidence answers go to you; each answer here is one fewer question later.',[
+ ['ret','Returns and exchange policy, in your words?','t'],
+ ['ship','Shipping times and cost?','t'],
+ ['size','Your size rule when a customer is between sizes?','t']]],
+['m-social','marketing','Set Davy up to post',30,'Free social tests find winners before you spend on ads. Davy needs your voice and approval route.',[
+ ['acc','Which social accounts are live today?','t'],
+ ['voice','Describe the brand voice in three words.','t'],
+ ['appr','Who approves posts?','c',['Only me','Me or a team member']],
+ ['time','Best posting times, if you know?','t']]],
+['m-seo','web','Point Veronica at the right competitors',30,'Knowing who to outrank turns SEO from a guess into a plan.',[
+ ['comp','Which 3 to 5 competitors do you watch?','t'],
+ ['sem','Are the scheduled Semrush emails set up?','c',['Yes','Not yet','Need help']]]],
+['m-tools','admin','Tell us which tools you already use',20,'Avoids buying or connecting tools you already have. Spend waits until profit covers it.',[
+ ['used','Which of these do you use today: Klaviyo, Judge.me, Gorgias, Xero, Shippit, TikTok?','t']]],
+['m-names','admin','Name the Chief of Staff',10,'Simar is also your name. A different name avoids confusion.',[
+ ['nm','Keep "Simar", or choose another name?','t']]]
+];
+const MIS={}; MIS_LIST.forEach((m,i)=>{MIS[m[0]]={id:m[0],area:m[1],title:m[2],xp:m[3],why:m[4],no:i+1,qs:m[5].map(q=>({id:m[0]+'.'+q[0],q:q[1],t:q[2],o:q[3]||[]}))}});
+const MK='cc-quest';
+let Q={a:{},p:{},d:{}};
+try{Q=Object.assign(Q,JSON.parse(localStorage.getItem(MK))||{})}catch(e){}
+const INHUB=(()=>{try{return window.parent!==window}catch(e){return false}})();
+let SYNC={a:{},p:{},d:{}}, syncT=null, syncMsg='';
+const cl=o=>JSON.parse(JSON.stringify(o));
+function saveQ(){try{localStorage.setItem(MK,JSON.stringify(Q))}catch(e){} cloud();}
+function cloud(){ if(!INHUB) return; clearTimeout(syncT); syncT=setTimeout(flush,600); }
+function flush(){
+  const items=[], ids=new Set([...Object.keys(Q.a),...Object.keys(SYNC.a),...Object.keys(Q.p),...Object.keys(SYNC.p)]);
+  ids.forEach(k=>{const a=Q.a[k]||'',p=!!Q.p[k]; if(a!==(SYNC.a[k]||'')||p!==!!SYNC.p[k]) items.push({qid:k,answer:a,parked:p});});
+  const done=Object.keys(Q.d).filter(k=>!SYNC.d[k]);
+  if(!items.length&&!done.length) return;
+  const snap=cl(Q); try{parent.postMessage({type:'cc-q',action:'save',req:'s'+Date.now(),items,done},'*')}catch(e){}
+  SYNC=snap; setSync('Saving…');
+}
+function setSync(t){syncMsg=t; const e=document.getElementById('syncmsg'); if(e) e.textContent=t;}
+window.addEventListener('message',ev=>{
+  const d=ev.data||{}; if(d.type!=='cc-q-result') return;
+  if(d.action==='load'){ if(d.ok){ Q.a=Object.assign({},d.answers||{}); Q.p=Object.assign({},d.parked||{}); Q.d=Object.assign({},d.done||{}); SYNC=cl(Q); try{localStorage.setItem(MK,JSON.stringify(Q))}catch(e){} setSync('Saved to your account'); draw(); } else setSync('Could not load saved answers'); }
+  else if(d.action==='save'){ setSync(d.ok?'Saved to your account':'Not saved: '+(d.error||'error')); }
+});
+if(INHUB){ try{parent.postMessage({type:'cc-q',action:'load',req:'l'},'*')}catch(e){} }
+const isHandled=q=>!!(Q.p[q.id]||(Q.a[q.id]&&String(Q.a[q.id]).trim()));
+const isAns=q=>!Q.p[q.id]&&Q.a[q.id]&&String(Q.a[q.id]).trim();
+function xpTotal(){let x=0; Object.values(MIS).forEach(m=>{m.qs.forEach(q=>{x+=isAns(q)?10:Q.p[q.id]?3:0}); if(Q.d[m.id])x+=m.xp}); return x}
+const LV=['Rookie','Operator','Manager','Director','Chief'];
+function lvl(x){const l=Math.floor(x/100); return {n:l+1,name:LV[Math.min(l,LV.length-1)],into:x%100}}
+const misArr=()=>Object.values(MIS);
+const nextM=()=>misArr().find(m=>!Q.d[m.id]);
+const openQ=area=>misArr().filter(m=>m.area===area&&!Q.d[m.id]).reduce((a,m)=>a+m.qs.filter(q=>!isHandled(q)).length,0);
+function qChip(id){const k=openQ(id); return k?`<span class="chip qchip">${k} question${k>1?'s':''}</span>`:''}
+function missionBanner(){
+  const x=xpTotal(), L=lvl(x), nm=nextM(), done=misArr().filter(m=>Q.d[m.id]).length;
+  const path=misArr().map(m=>`<button type="button" class="pn ${Q.d[m.id]?'done':(nm&&nm.id===m.id?'now':'')}" data-m="${m.id}" aria-label="Mission ${m.no}: ${esc(m.title)}${Q.d[m.id]?' (done)':''}" title="${esc(m.title)}">${Q.d[m.id]?'✓':m.no}</button>`).join('');
+  const now=nm?`<div class="nowm"><div style="min-width:0"><div class="mute small">NEXT MISSION · ${nm.no} of ${misArr().length} · ${nl(nm.area)}</div><div class="t">${esc(nm.title)}</div><div class="mute small">${nm.qs.filter(q=>!isHandled(q)).length} questions · <span class="xp">+${nm.xp+nm.qs.length*10} XP</span></div></div><button type="button" class="go-btn" data-m="${nm.id}">Start mission ›</button></div>`
+    :`<div class="nowm"><div class="t pop">All missions cleared. Level up complete.</div></div>`;
+  return `<div class="tile quest"><div class="qtop"><div class="lvl" aria-label="Level ${L.n}"><div>${L.n}<small>LEVEL</small></div></div>
+   <div style="flex:1;min-width:180px"><div class="big" style="font:700 clamp(18px,3vw,24px)/1.15 var(--display)">${L.name} · <span class="xp">${x} XP</span></div>
+   <div class="xpbar" role="progressbar" aria-valuenow="${L.into}" aria-valuemin="0" aria-valuemax="100"><i style="width:${L.into}%"></i></div>
+   <div class="mute small">${100-L.into} XP to level ${L.n+1} · ${done} of ${misArr().length} missions done</div></div></div>
+   <div class="path" role="group" aria-label="Missions in order">${path}</div>${now}
+   <details><summary class="mute small" style="cursor:pointer">Answers so far <span id="syncmsg" class="mute"></span></summary>${answersBox()}</details></div>`;
+}
+function answersText(only){
+  let t='';
+  misArr().filter(m=>!only||m.id===only).forEach(m=>{const l=m.qs.filter(isHandled).map(q=>`- ${q.q}\n  ${Q.p[q.id]?'PARKED (not sure yet)':Q.a[q.id]}`); if(l.length) t+=`Mission ${m.no} · ${m.title}\n${l.join('\n')}\n\n`;});
+  return t.trim();
+}
+function answersBox(only){
+  const t=answersText(only);
+  return t?`<textarea class="out" readonly aria-label="Your answers" id="ansout">${esc(t)}</textarea><div style="margin-top:6px"><button type="button" class="btn" data-mcopy="1">Copy answers</button> <span class="mute small" id="cpmsg"></span></div>`:'<p class="mute small">Nothing answered yet.</p>';
+}
+function missionView(id){
+  const m=MIS[id], total=m.qs.length, h=m.qs.filter(isHandled).length, ready=h===total, isDone=!!Q.d[id];
+  const qs=m.qs.map(q=>{
+    const v=Q.a[q.id]||'', pk=!!Q.p[q.id];
+    const inp=q.t==='c'?`<div class="opts">${q.o.map(o=>`<button type="button" class="opt ${v===o&&!pk?'on':''}" data-ans="${q.id}" data-v="${esc(o)}" aria-pressed="${v===o&&!pk}">${esc(o)}</button>`).join('')}<button type="button" class="opt park ${pk?'on':''}" data-park="${q.id}" aria-pressed="${pk}">Not sure yet</button></div>`
+      :`<input class="qin" type="text" data-txt="${q.id}" value="${esc(pk?'':v)}" placeholder="Type your answer" aria-label="${esc(q.q)}"><div class="opts" style="margin-top:6px"><button type="button" class="opt park ${pk?'on':''}" data-park="${q.id}" aria-pressed="${pk}">Not sure yet</button></div>`;
+    return `<div class="qcard ${isHandled(q)?'ok':''}" data-qc="${q.id}"><div class="qq">${esc(q.q)}</div>${inp}</div>`;}).join('');
+  const nx=misArr().find(x=>!Q.d[x.id]&&x.id!==id);
+  return `<div class="crumbs"><a href="#home">Home</a> <span>›</span> <b>Mission ${m.no}</b></div>
+   <div class="filters" style="margin-top:10px">${navBtns()}</div>
+   <div class="mute small" style="margin-top:6px">MISSION ${m.no} OF ${misArr().length} · ${nl(m.area)}</div>
+   <h1 style="margin-top:4px">${esc(m.title)}</h1><p class="why"><b style="color:var(--y)">Why this order:</b> ${esc(m.why)}</p>
+   <div class="mute small" id="mprog" style="margin-bottom:10px"><span class="xp">+${m.xp} XP</span> on completion · <b>${h}</b> of ${total} questions handled · "Not sure yet" parks it and still counts (+3 XP)</div>
+   ${qs}
+   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0"><button type="button" class="go-btn" id="mdone" data-mdone="${id}" ${ready&&!isDone?'':'disabled'}>${isDone?'Mission cleared ✓':'Complete mission'}</button>
+    ${isDone&&nx?`<button type="button" class="go-btn" data-m="${nx.id}">Next mission ›</button>`:''}${isDone?'<span class="xp pop">+'+m.xp+' XP earned</span>':''}</div>
+   <div class="h2">Your answers for this mission</div><div id="mans">${answersBox(id)}</div>
+   <p class="note">Answers save to your account as you type. Claude reads them, adds them to the knowledge base, updates the tile ratings and sets the next mission. Scores do not change until real data is wired in.</p>`;
+}
+function missionsHere(id){
+  const r=root(id), ms=misArr().filter(m=>m.area===r&&!Q.d[m.id]); if(!ms.length) return '';
+  return `<div class="card" style="margin-top:12px"><h3>Open missions in ${nl(r)}</h3>${ms.map(m=>`<div class="rel"><span class="ar">●</span><a href="#${m.id}">Mission ${m.no} · ${esc(m.title)}</a><span class="mute small">${m.qs.filter(q=>!isHandled(q)).length} questions</span></div>`).join('')}</div>`;
+}
+function refreshM(id){
+  const m=MIS[id]; if(!m) return; const h=m.qs.filter(isHandled).length;
+  const p=document.getElementById('mprog'); if(p) p.innerHTML=`<span class="xp">+${m.xp} XP</span> on completion · <b>${h}</b> of ${m.qs.length} questions handled · "Not sure yet" parks it and still counts (+3 XP)`;
+  const b=document.getElementById('mdone'); if(b) b.disabled=!(h===m.qs.length)||!!Q.d[id];
+  m.qs.forEach(q=>{const c=document.querySelector('[data-qc="'+q.id+'"]'); if(c) c.classList.toggle('ok',isHandled(q));});
+  const a=document.getElementById('mans'); if(a) a.innerHTML=answersBox(id);
+}
+
 /* ---------- views ---------- */
+const HUB={'profit-flow':'profit-flow','cash-report':'cash-report','order-attribution':'order-attribution','restock':'restock-plan','supplier-portal':'restock-supplier','stock-take':'stock-take','barcodes':'stock-take','procurement':'procurement','stock-health':'restock-plan','dead-stock':'profit-flow','size-colour':'procurement','eligibility':'profit-flow','catalog':'color-game','ga-scorecard':'google-scorecard','ga-test':'google-ads-test','keywords':'seo-report','fb-tracked':'facebook-tracked','fb-nontracked':'daily','seo-report':'seo-report','gbp':'seo-report','board':'project-board'};
 let flt='all', trail=[], prevId=null, curId=null, mapSel='marketing';
 const app=document.getElementById('app');
 
@@ -349,13 +611,13 @@ function homeView(){
     const li=al.slice(0,3).map(a=>`<li class="${a[0]}">${esc(a[1])}</li>`).join('')||'<li class="none">Nothing tracked yet</li>';
     const more=al.length>3?`<li class="more">+${al.length-3} more inside</li>`:'';
     return `<a class="tile cat" href="#${id}"><span class="go" aria-hidden="true">›</span>
-      <div class="top"><div><div class="nm">${esc(name)}</div><div class="meta"><span class="chip live">${c.built} built</span><span class="chip">${c.plan} planned</span></div></div>${ring(score(id),88,9)}</div>
+      <div class="top"><div><div class="nm">${esc(name)}</div><div class="meta"><span class="chip live">${c.built} built</span><span class="chip">${c.plan} planned</span>${qChip(id)}</div></div>${ring(score(id),88,9)}</div>
       <ul class="alerts">${li}${more}</ul></a>`;}).join('');
   const feeds=[['Shopify','Live. Orders, stock, customers.'],['Windsor.ai','Live. Google Ads, Meta, GA4, Search Console, Business Profile.'],
     ['Semrush','No API. Scheduled report emails land in Gmail, get parsed and saved.'],['Supabase','Live. Boards, suppliers, saved snapshots.']]
     .map(f=>`<div class="card"><b>${f[0]}</b><span class="mute small">${f[1]}</span></div>`).join('');
-  return `<h1>Indifeels Command Centre</h1><p class="sub">Nine areas, each scored out of 100. Open a tile to go inside.</p>
-   ${overallView()}${freqView()}${sevPanel()}<div class="grid cats">${tiles}</div>
+  return `<h1>Indifeels Command Centre</h1><p class="sub">Eight areas, each scored out of 100. Open a tile to go inside.</p>
+   ${missionBanner()}${overallView()}${freqView()}${sevPanel()}<div class="grid cats">${tiles}</div>
    <div class="h2">Where the data comes from</div><div class="feeds">${feeds}</div>
    <p class="note">Scores and alerts are sample text until each report feeds its own. Dashed tiles are planned structure only. A tile can sit under several areas; it counts toward each area's score.</p>`;
 }
@@ -396,6 +658,7 @@ function nodeView(id){
      <div class="card"><h3>Data sources</h3><div class="pills">${nd.src.map(s=>`<span class="chip">${esc(s)}</span>`).join('')||'<span class="mute">To decide</span>'}</div></div>
      <div class="card"><h3>Lives under</h3><div class="pills">${nd.parents.map(p=>`<a class="chip shared" href="#${p}">${esc(N[p].name)}</a>`).join('')}</div></div></div>`;
   }
+  h+=missionsHere(id);
   h+=connSection(id);
   return h;
 }
@@ -404,7 +667,7 @@ function mapView(){
   const narrow=matchMedia('(max-width:640px)').matches;
   const W=narrow?400:820, H=narrow?720:540, cx=W/2, cy=H/2, rx=narrow?138:318, ry=narrow?290:205, hw=narrow?58:76, hh=narrow?25:27;
   const outer=CATS.map(c=>c[0]).filter(x=>x!=='marketing'); const P={marketing:{x:cx,y:cy}};
-  outer.forEach((id,i)=>{const a=(-90+i*45)*Math.PI/180; P[id]={x:cx+rx*Math.cos(a),y:cy+ry*Math.sin(a)}});
+  outer.forEach((id,i)=>{const a=(-90+i*360/outer.length)*Math.PI/180; P[id]={x:cx+rx*Math.cos(a),y:cy+ry*Math.sin(a)}});
   const agg={}; L.forEach(l=>{const a=root(l[0]),b=root(l[1]); if(a===b) return; const k=a+'>'+b; agg[k]=(agg[k]||0)+1;});
   const edge=(p,q)=>{const dx=q.x-p.x,dy=q.y-p.y,s=Math.min((hw+5)/Math.abs(dx||1e-9),(hh+5)/Math.abs(dy||1e-9),1);return{x:p.x+dx*s,y:p.y+dy*s}};
   let paths='',labels='';
@@ -421,7 +684,7 @@ function mapView(){
      <text class="nmt" x="${p.x-hw+10}" y="${p.y-2}">${esc(narrow&&name.length>14?name.split(' ').slice(0,2).join(' '):name)}</text>
      <text class="sct" x="${p.x-hw+10}" y="${p.y+14}">${s==null?'no score yet':s+' / 100'}</text></g>`;}).join('');
   const mk=(id,col)=>`<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:${col}"/></marker>`;
-  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Arrows between the nine areas"><defs>${mk('ahn','var(--mute)')}${mk('ahout','var(--accent)')}${mk('ahin','var(--o)')}</defs>${paths}${labels}${nodes}</svg>`;
+  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Arrows between the eight areas"><defs>${mk('ahn','var(--mute)')}${mk('ahout','var(--accent)')}${mk('ahin','var(--o)')}</defs>${paths}${labels}${nodes}</svg>`;
   const {out,inn}=linksFor(mapSel), nm=N[mapSel].name;
   const rows=(arr,dir)=>arr.map(l=>`<div class="rel"><span class="ar" style="color:${dir==='out'?'var(--accent)':'var(--o)'}">${dir==='out'?'→':'←'}</span><span>${nl(l[0])} → ${nl(l[1])} <span class="mute">· ${esc(l[2])}</span></span></div>`).join('')||'<div class="mute">None yet.</div>';
   return `<h1>Connections</h1><p class="sub">Tap an area to see what feeds it and what it feeds. Numbers are how many links run along an arrow.</p>
@@ -437,19 +700,19 @@ function draw(){
   const isMap=curId==='map';
   document.getElementById('tab-map').classList.toggle('on',isMap);
   document.getElementById('tab-home').classList.toggle('on',!isMap);
-  app.innerHTML=isMap?mapView():(N[curId]?nodeView(curId):homeView());
+  app.innerHTML=isMap?mapView():(MIS[curId]?missionView(curId):N[curId]?nodeView(curId):homeView());
   updateNav();
 }
 let fwdStack=[], navKind=null;
 let cur=''; try{cur=decodeURIComponent((location.hash||'').slice(1));}catch(e){}
 function nav(h){ cur=h; try{ if(window.top===window) history.replaceState(null,'','#'+h); }catch(e){} route(); }
-function backTarget(){ if(!curId||curId==='home') return null; if(curId==='map') return 'home'; return trail.length>1?trail[trail.length-2]:'home'; }
+function backTarget(){ if(!curId||curId==='home') return null; if(curId==='map'||MIS[curId]) return 'home'; return trail.length>1?trail[trail.length-2]:'home'; }
 function updateNav(){}
 function navBtns(){ return `<button type="button" class="btn" data-nav="back" aria-label="Back one level" ${backTarget()?'':'disabled'}>‹ Back</button><button type="button" class="btn" data-nav="fwd" aria-label="Forward" ${fwdStack.length?'':'disabled'}>Forward ›</button>`; }
 function route(){
   if(navKind==='keep') navKind=null; else fwdStack=[];
   const h=cur;
-  const id=(h==='map'||N[h])?h:'home';
+  const id=(h==='map'||N[h]||MIS[h])?h:'home';
   if(N[id]){
     bump(id);
     let t;
@@ -464,12 +727,18 @@ window.addEventListener('hashchange',()=>{try{cur=decodeURIComponent(location.ha
 document.addEventListener('click',e=>{const a=e.target.closest('a[href^="#"]'); if(!a) return; e.preventDefault(); nav(a.getAttribute('href').slice(1));});
 app.addEventListener('click',e=>{
   if(e.target.closest('[data-fqreset]')){visits={}; saveVisits(); draw(); return;}
-  const op=e.target.closest('[data-open]'); if(op){try{parent.postMessage({type:'cc-open',id:op.dataset.open},'*')}catch(_){} return;}
   const nb=e.target.closest('[data-nav]'); if(nb){ if(nb.dataset.nav==='back'){const t=backTarget(); if(t){fwdStack.push(curId); navKind='keep'; nav(t);}} else {const t=fwdStack.pop(); if(t){navKind='keep'; nav(t);}} return; }
   const sv=e.target.closest('[data-sev]'); if(sv){const k=sv.dataset.sev||null; sevFilter=(k===sevFilter)?null:k; draw(); return;}
   const f=e.target.closest('[data-flt]'); if(f){flt=f.dataset.flt; draw(); return;}
+  const op=e.target.closest('[data-open]'); if(op){try{parent.postMessage({type:'cc-open',id:op.dataset.open},'*')}catch(_){} return;}
+  const mb=e.target.closest('[data-m]'); if(mb){nav(mb.dataset.m); return;}
+  const an=e.target.closest('[data-ans]'); if(an){Q.a[an.dataset.ans]=an.dataset.v; delete Q.p[an.dataset.ans]; saveQ(); draw(); return;}
+  const pk=e.target.closest('[data-park]'); if(pk){const k=pk.dataset.park; if(Q.p[k]) delete Q.p[k]; else Q.p[k]=1; saveQ(); draw(); return;}
+  const dn=e.target.closest('[data-mdone]'); if(dn){Q.d[dn.dataset.mdone]=1; saveQ(); draw(); window.scrollTo(0,0); return;}
+  if(e.target.closest('[data-mcopy]')){const ta=document.getElementById('ansout'); if(ta){ta.select(); const msg=document.getElementById('cpmsg'); try{navigator.clipboard.writeText(ta.value).then(()=>{if(msg)msg.textContent='Copied.'},()=>{if(msg)msg.textContent='Select the text and copy it.'});}catch(x){if(msg)msg.textContent='Select the text and copy it.'}} return;}
   const s=e.target.closest('[data-sel]'); if(s){mapSel=s.dataset.sel; draw();}
 });
+app.addEventListener('input',e=>{const t=e.target.closest('[data-txt]'); if(!t) return; const k=t.dataset.txt; Q.a[k]=t.value; if(t.value.trim()) delete Q.p[k]; saveQ(); refreshM(k.split('.')[0]);});
 app.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){const s=e.target.closest('[data-sel]'); if(s){e.preventDefault(); mapSel=s.dataset.sel; draw();}}});
 matchMedia('(max-width:640px)').addEventListener('change',()=>{if(curId==='map')draw();});
 try{const t=localStorage.getItem('cc-theme'); if(t) document.documentElement.dataset.theme=t;}catch(e){}

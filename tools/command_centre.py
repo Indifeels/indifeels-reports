@@ -32,7 +32,7 @@ def enc(payload):
 
 now = dt.datetime.now(ZoneInfo("Australia/Melbourne"))
 meta = dict(updated=now.strftime("%d %b %Y, %H:%M"),
-            stats=[["63", "overall score (sample)"], ["9", "areas"], ["23", "built tiles"], ["70+", "planned tiles"]],
+            stats=[["66", "overall score (sample)"], ["8", "areas"], ["11", "missions"], ["0", "missions cleared"]],
             signal=dict(code="hold", label="DRAFT", reason="Sample scores and alerts until each report feeds its own."))
 os.makedirs(RDIR, exist_ok=True)
 open(os.path.join(RDIR, f"{RID}.bin"), "wb").write(enc(page.encode("utf-8")))
