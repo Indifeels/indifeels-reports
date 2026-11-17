@@ -34,3 +34,9 @@ alter table public.cc_bot_runs enable row level security;
 drop policy if exists cc_bot_runs_admin on public.cc_bot_runs;
 create policy cc_bot_runs_admin on public.cc_bot_runs for all to authenticated
   using ((select public.is_admin())) with check ((select public.is_admin()));
+
+-- Cancel (before the bot applies) and Revert (after)
+alter table public.cc_decisions drop constraint if exists cc_decisions_status_check;
+alter table public.cc_decisions add constraint cc_decisions_status_check check (status in ('pending','approved','rejected','applied','failed','seen','cancelled','revert_requested','reverted'));
+alter table public.cc_decisions add column if not exists reversible text not null default 'yes' check (reversible in ('yes','partly','no'));
+alter table public.cc_decisions add column if not exists undo_detail text;

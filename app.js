@@ -1565,16 +1565,26 @@
         if (r.error) throw r.error;
         reply({ ok: true, rows: r.data || [] });
       } else if (d.action === "decisions") {
-        const r = await sb.from("cc_decisions").select("id,bot,area,title,why,change_detail,risk,status,result_note,created_at,decided_at,applied_at").order("created_at", { ascending: false }).limit(100);
+        const r = await sb.from("cc_decisions").select("id,bot,area,title,why,change_detail,risk,status,result_note,reversible,undo_detail,created_at,decided_at,applied_at").order("created_at", { ascending: false }).limit(100);
         if (r.error) throw r.error;
         const lr = await sb.from("cc_bot_runs").select("bot,ran_at,summary").order("ran_at", { ascending: false }).limit(1);
         reply({ ok: true, rows: r.data || [], lastRun: (lr.data && lr.data[0]) || null });
       } else if (d.action === "decide") {
         const id = String(d.id || ""), st = String(d.status || "");
-        if (!/^[a-z]-\d{4,6}$/.test(id) || (st !== "approved" && st !== "rejected" && st !== "seen")) throw new Error("Bad decision.");
-        const r = await sb.from("cc_decisions").update({ status: st, decided_at: new Date().toISOString() }).eq("id", id).eq("status", "pending").in("risk", st === "seen" ? ["info"] : ["low", "approval"]).select("id");
+        const FROM = { approved: ["pending"], rejected: ["pending"], seen: ["pending"], cancelled: ["approved"], revert_requested: ["applied"] };
+        if (!/^[a-z]-\d{4,6}$/.test(id) || !FROM[st]) throw new Error("Bad decision.");
+        let q = sb.from("cc_decisions").update({ status: st, decided_at: new Date().toISOString() }).eq("id", id).in("status", FROM[st]);
+        q = q.in("risk", st === "seen" ? ["info"] : ["low", "approval"]);
+        if (st === "revert_requested") q = q.neq("reversible", "no");
+        const r = await q.select("id");
         if (r.error) throw r.error;
-        if (!r.data || !r.data.length) throw new Error("That decision was already made.");
+        if (!r.data || !r.data.length) {
+          const c = await sb.from("cc_decisions").select("status").eq("id", id).maybeSingle();
+          const cs = c.data && c.data.status;
+          if (st === "cancelled" && cs === "applied") throw new Error("Too late to cancel. The bot has already applied it. Use Revert instead.");
+          if (st === "cancelled" && cs === "revert_requested") throw new Error("Too late to cancel. It has already been applied.");
+          throw new Error("That decision has already changed.");
+        }
         reply({ ok: true, id, status: st });
       } else if (d.action === "save") {
         const items = (Array.isArray(d.items) ? d.items : []).slice(0, 80).filter((i) => /^m-[a-z-]{1,30}\.[a-z]{1,20}$/.test(String(i.qid))).map((i) => ({ qid: String(i.qid), answer: String(i.answer || "").slice(0, 2000), parked: !!i.parked, updated_at: new Date().toISOString() }));
