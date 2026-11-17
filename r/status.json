@@ -9,11 +9,11 @@
   "reason": ""
  },
  "color-game": {
-  "at": "2026-11-16T10:28+11:00",
-  "code_sha": "fab9146382feb46adc64c2f2548af4eadb6affe4",
+  "at": "2026-11-17T13:34+11:00",
+  "code_sha": "703456aceba28c82437e0f96cb52daf57c6284aa",
   "data_through": null,
-  "last_ok": "2026-11-16T10:28+11:00",
-  "manifest_version": "2026-11-11.profit-flow.1",
+  "last_ok": "2026-11-17T13:34+11:00",
+  "manifest_version": "2026-11-17.command-centre.1",
   "ok": true,
   "reason": ""
  },
