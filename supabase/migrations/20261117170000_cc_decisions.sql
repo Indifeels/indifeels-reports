@@ -18,3 +18,19 @@ alter table public.cc_decisions enable row level security;
 drop policy if exists cc_decisions_admin on public.cc_decisions;
 create policy cc_decisions_admin on public.cc_decisions for all to authenticated
   using ((select public.is_admin())) with check ((select public.is_admin()));
+
+-- Info cards ("for your info", Got it) and a log of bot runs
+alter table public.cc_decisions drop constraint if exists cc_decisions_risk_check;
+alter table public.cc_decisions add constraint cc_decisions_risk_check check (risk in ('low','approval','info'));
+alter table public.cc_decisions drop constraint if exists cc_decisions_status_check;
+alter table public.cc_decisions add constraint cc_decisions_status_check check (status in ('pending','approved','rejected','applied','failed','seen'));
+create table if not exists public.cc_bot_runs (
+  id bigserial primary key,
+  bot text not null,
+  ran_at timestamptz not null default now(),
+  summary text
+);
+alter table public.cc_bot_runs enable row level security;
+drop policy if exists cc_bot_runs_admin on public.cc_bot_runs;
+create policy cc_bot_runs_admin on public.cc_bot_runs for all to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
