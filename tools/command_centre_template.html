@@ -159,6 +159,9 @@ details.card summary{cursor:pointer;font-weight:500}
 @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
 @media(prefers-reduced-motion:reduce){.pop{animation:none}.xpbar i{transition:none}}
 textarea.out{width:100%;min-height:140px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:12px/1.5 ui-monospace,monospace}
+.opt.mic{border-color:var(--accent);color:var(--accent)}
+.opt.mic.rec{background:var(--r);border-color:var(--r);color:#fff}
+.lang{display:flex;gap:6px;align-items:center;margin:0 0 10px;flex-wrap:wrap}
 </style>
 
 <div class="wrap">
@@ -538,12 +541,32 @@ function answersBox(only){
   const t=answersText(only);
   return t?`<textarea class="out" readonly aria-label="Your answers" id="ansout">${esc(t)}</textarea><div style="margin-top:6px"><button type="button" class="btn" data-mcopy="1">Copy answers</button> <span class="mute small" id="cpmsg"></span></div>`:'<p class="mute small">Nothing answered yet.</p>';
 }
+let VL='en-AU'; try{VL=localStorage.getItem('cc-lang')||'en-AU'}catch(e){}
+let REC=null, RECQ=null;
+function micMsg(t){const e=document.getElementById('micmsg'); if(e) e.textContent=t;}
+function markMic(){document.querySelectorAll('[data-mic]').forEach(b=>{const on=b.dataset.mic===RECQ; b.classList.toggle('rec',on); b.textContent=on?'⏹ Stop':'🎤 Speak'; b.setAttribute('aria-pressed',on?'true':'false');});}
+function stopRec(){ if(REC){try{REC.stop()}catch(e){}} }
+function setTxt(k,val){Q.a[k]=val; if(val.trim()) delete Q.p[k]; saveQ(); refreshM(k.split('.')[0]);}
+function startRec(qid){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){micMsg('Voice typing is not available in this browser. Use the microphone key on your phone keyboard, or open the hub in Chrome.'); return;}
+  const same=RECQ===qid; if(REC){stopRec(); if(same) return;}
+  const inp=document.querySelector('[data-txt="'+qid+'"]'); if(!inp) return;
+  const base=inp.value.trim()?inp.value.trim()+' ':''; let fin='';
+  const r=new SR(); r.lang=VL; r.interimResults=true; r.continuous=true;
+  r.onresult=e=>{let it=''; for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript; if(e.results[i].isFinal) fin+=t+' '; else it+=t;} inp.value=(base+fin+it).trim(); setTxt(qid,inp.value);};
+  r.onerror=e=>{micMsg(e.error==='not-allowed'||e.error==='service-not-allowed'?'Microphone is blocked here. Allow the microphone for this site (lock icon in the address bar), then try again.':e.error==='no-speech'?'Heard nothing. Try again.':'Voice error: '+e.error);};
+  r.onend=()=>{REC=null; RECQ=null; markMic();};
+  REC=r; RECQ=qid; micMsg('Listening… speak now, tap Stop when done.');
+  try{r.start()}catch(x){REC=null; RECQ=null; micMsg('Could not start the microphone.');}
+  markMic();
+}
 function missionView(id){
   const m=MIS[id], total=m.qs.length, h=m.qs.filter(isHandled).length, ready=h===total, isDone=!!Q.d[id];
   const qs=m.qs.map(q=>{
     const v=Q.a[q.id]||'', pk=!!Q.p[q.id];
     const inp=q.t==='c'?`<div class="opts">${q.o.map(o=>`<button type="button" class="opt ${v===o&&!pk?'on':''}" data-ans="${q.id}" data-v="${esc(o)}" aria-pressed="${v===o&&!pk}">${esc(o)}</button>`).join('')}<button type="button" class="opt park ${pk?'on':''}" data-park="${q.id}" aria-pressed="${pk}">Not sure yet</button></div>`
-      :`<input class="qin" type="text" data-txt="${q.id}" value="${esc(pk?'':v)}" placeholder="Type your answer" aria-label="${esc(q.q)}"><div class="opts" style="margin-top:6px"><button type="button" class="opt park ${pk?'on':''}" data-park="${q.id}" aria-pressed="${pk}">Not sure yet</button></div>`;
+      :`<input class="qin" type="text" data-txt="${q.id}" value="${esc(pk?'':v)}" placeholder="Type your answer" aria-label="${esc(q.q)}"><div class="opts" style="margin-top:6px"><button type="button" class="opt mic" data-mic="${q.id}" aria-pressed="false">🎤 Speak</button><button type="button" class="opt park ${pk?'on':''}" data-park="${q.id}" aria-pressed="${pk}">Not sure yet</button></div>`;
     return `<div class="qcard ${isHandled(q)?'ok':''}" data-qc="${q.id}"><div class="qq">${esc(q.q)}</div>${inp}</div>`;}).join('');
   const nx=misArr().find(x=>!Q.d[x.id]&&x.id!==id);
   return `<div class="crumbs"><a href="#home">Home</a> <span>›</span> <b>Mission ${m.no}</b></div>
@@ -551,7 +574,7 @@ function missionView(id){
    <div class="mute small" style="margin-top:6px">MISSION ${m.no} OF ${misArr().length} · ${nl(m.area)}</div>
    <h1 style="margin-top:4px">${esc(m.title)}</h1><p class="why"><b style="color:var(--y)">Why this order:</b> ${esc(m.why)}</p>
    <div class="mute small" id="mprog" style="margin-bottom:10px"><span class="xp">+${m.xp} XP</span> on completion · <b>${h}</b> of ${total} questions handled · "Not sure yet" parks it and still counts (+3 XP)</div>
-   ${qs}
+   <div class="lang" role="group" aria-label="Speaking language"><span class="mute small">Speak in:</span><button type="button" class="opt ${VL==='en-AU'?'on':''}" data-lang="en-AU" aria-pressed="${VL==='en-AU'}">English</button><button type="button" class="opt ${VL==='hi-IN'?'on':''}" data-lang="hi-IN" aria-pressed="${VL==='hi-IN'}">हिन्दी</button><span class="mute small" id="micmsg"></span></div>${qs}
    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0"><button type="button" class="go-btn" id="mdone" data-mdone="${id}" ${ready&&!isDone?'':'disabled'}>${isDone?'Mission cleared ✓':'Complete mission'}</button>
     ${isDone&&nx?`<button type="button" class="go-btn" data-m="${nx.id}">Next mission ›</button>`:''}${isDone?'<span class="xp pop">+'+m.xp+' XP earned</span>':''}</div>
    <div class="h2">Your answers for this mission</div><div id="mans">${answersBox(id)}</div>
@@ -697,6 +720,7 @@ function mapView(){
 
 /* ---------- routing ---------- */
 function draw(){
+  stopRec();
   const isMap=curId==='map';
   document.getElementById('tab-map').classList.toggle('on',isMap);
   document.getElementById('tab-home').classList.toggle('on',!isMap);
@@ -731,6 +755,8 @@ app.addEventListener('click',e=>{
   const sv=e.target.closest('[data-sev]'); if(sv){const k=sv.dataset.sev||null; sevFilter=(k===sevFilter)?null:k; draw(); return;}
   const f=e.target.closest('[data-flt]'); if(f){flt=f.dataset.flt; draw(); return;}
   const op=e.target.closest('[data-open]'); if(op){try{parent.postMessage({type:'cc-open',id:op.dataset.open},'*')}catch(_){} return;}
+  const lg=e.target.closest('[data-lang]'); if(lg){VL=lg.dataset.lang; try{localStorage.setItem('cc-lang',VL)}catch(x){} draw(); return;}
+  const mc=e.target.closest('[data-mic]'); if(mc){startRec(mc.dataset.mic); return;}
   const mb=e.target.closest('[data-m]'); if(mb){nav(mb.dataset.m); return;}
   const an=e.target.closest('[data-ans]'); if(an){Q.a[an.dataset.ans]=an.dataset.v; delete Q.p[an.dataset.ans]; saveQ(); draw(); return;}
   const pk=e.target.closest('[data-park]'); if(pk){const k=pk.dataset.park; if(Q.p[k]) delete Q.p[k]; else Q.p[k]=1; saveQ(); draw(); return;}
