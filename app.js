@@ -1560,6 +1560,10 @@
         (a.data || []).forEach((r) => { if (r.parked) parked[r.qid] = 1; else if (r.answer) answers[r.qid] = r.answer; });
         (m.data || []).forEach((r) => { done[r.mid] = 1; });
         reply({ ok: true, answers, parked, done });
+      } else if (d.action === "progress") {
+        const r = await sb.from("cc_progress").select("id,phase,title,pct,status,note,sort,updated_at").order("sort");
+        if (r.error) throw r.error;
+        reply({ ok: true, rows: r.data || [] });
       } else if (d.action === "save") {
         const items = (Array.isArray(d.items) ? d.items : []).slice(0, 80).filter((i) => /^m-[a-z-]{1,30}\.[a-z]{1,20}$/.test(String(i.qid))).map((i) => ({ qid: String(i.qid), answer: String(i.answer || "").slice(0, 2000), parked: !!i.parked, updated_at: new Date().toISOString() }));
         const done = (Array.isArray(d.done) ? d.done : []).slice(0, 30).filter((x) => /^m-[a-z-]{1,30}$/.test(String(x))).map((x) => ({ mid: String(x) }));

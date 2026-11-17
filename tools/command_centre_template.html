@@ -162,11 +162,21 @@ textarea.out{width:100%;min-height:140px;padding:10px;border-radius:10px;border:
 .opt.mic{border-color:var(--accent);color:var(--accent)}
 .opt.mic.rec{background:var(--r);border-color:var(--r);color:#fff}
 .lang{display:flex;gap:6px;align-items:center;margin:0 0 10px;flex-wrap:wrap}
+.prog{display:flex;gap:16px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.pbar{height:10px;border-radius:99px;background:rgba(0,0,0,.45);box-shadow:inset 0 1px 2px rgba(0,0,0,.7);overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--g));transition:width .6s}
+.pbar.y i{background:linear-gradient(90deg,var(--y),#e8b84a)}
+.prow{display:grid;grid-template-columns:18px 1fr 52px;gap:6px 10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.prow:first-of-type{border-top:0}
+.prow .pb{grid-column:2/4}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--mute)}
+.dot.done{background:var(--g)} .dot.doing{background:var(--y);box-shadow:0 0 0 3px color-mix(in srgb,var(--y) 30%,transparent)} .dot.blocked{background:var(--r)}
+.live{color:var(--g);font-size:11px}
 </style>
 
 <div class="wrap">
   <div class="bar">
-    <div class="left"><nav class="tabs" aria-label="Views"><a id="tab-home" href="#home">Tiles</a><a id="tab-map" href="#map">Connections</a></nav></div>
+    <div class="left"><nav class="tabs" aria-label="Views"><a id="tab-home" href="#home">Tiles</a><a id="tab-map" href="#map">Connections</a><a id="tab-prog" href="#progress">Progress</a></nav></div>
     <div class="right"><span class="draft">Draft · sample scores</span><button class="btn" id="theme" type="button" aria-label="Switch light or dark theme">Theme</button></div>
   </div>
   <div id="app"></div>
@@ -508,6 +518,7 @@ function setSync(t){syncMsg=t; const e=document.getElementById('syncmsg'); if(e)
 window.addEventListener('message',ev=>{
   const d=ev.data||{}; if(d.type!=='cc-q-result') return;
   if(d.action==='load'){ if(d.ok){ Q.a=Object.assign({},d.answers||{}); Q.p=Object.assign({},d.parked||{}); Q.d=Object.assign({},d.done||{}); SYNC=cl(Q); try{localStorage.setItem(MK,JSON.stringify(Q))}catch(e){} setSync('Saved to your account'); draw(); } else setSync('Could not load saved answers'); }
+  else if(d.action==='progress'){ if(d.ok&&Array.isArray(d.rows)&&d.rows.length){ const cur=JSON.stringify(PROG.map(r=>[r.id,r.pct,r.status,r.note,r.title])), nw=JSON.stringify(d.rows.map(r=>[r.id,r.pct,r.status,r.note,r.title])); const mx=d.rows.reduce((m,r)=>r.updated_at&&r.updated_at>m?r.updated_at:m,''); const first=!PROGLIVE; PROGLIVE=true; if(cur!==nw||first){ PROG=d.rows; try{if(mx)PROGAT=new Date(mx).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'})}catch(e){} if(curId==='home'||curId==='progress') draw(); } } }
   else if(d.action==='save'){ setSync(d.ok?'Saved to your account':'Not saved: '+(d.error||'error')); }
 });
 if(INHUB){ try{parent.postMessage({type:'cc-q',action:'load',req:'l'},'*')}catch(e){} }
@@ -521,6 +532,26 @@ const nextM=()=>misArr().find(m=>!Q.d[m.id]);
 const openQ=area=>misArr().filter(m=>m.area===area&&!Q.d[m.id]).reduce((a,m)=>a+m.qs.filter(q=>!isHandled(q)).length,0);
 function kPct(area){const ms=misArr().filter(m=>m.area===area); const t=ms.reduce((n,m)=>n+m.qs.length,0); if(!t) return null; const k=ms.reduce((n,m)=>n+m.qs.filter(isAns).length,0); return Math.round(100*k/t);}
 function qChip(id){const k=openQ(id), p=kPct(id); return (p==null?'':`<span class="chip ${p>=70?'live':'qchip'}" title="Share of this area's questions you have answered">Knowledge ${p}%</span>`)+(k?`<span class="chip qchip">${k} question${k>1?'s':''}</span>`:'');}
+const PSEED=[{"id": "a1", "phase": "Foundation", "title": "Command Centre front page, tiles, map", "pct": 100, "status": "done", "note": "", "sort": 1}, {"id": "a2", "phase": "Foundation", "title": "Published in the reports hub, admin only", "pct": 100, "status": "done", "note": "", "sort": 2}, {"id": "a3", "phase": "Foundation", "title": "Missions, XP and voice answers", "pct": 100, "status": "done", "note": "", "sort": 3}, {"id": "a4", "phase": "Foundation", "title": "Answers saved to your account", "pct": 100, "status": "done", "note": "", "sort": 4}, {"id": "a5", "phase": "Foundation", "title": "Knowledge base and 10 agent playbooks", "pct": 80, "status": "doing", "note": "Your 31 answers are in. A few TO CONFIRM items still open.", "sort": 5}, {"id": "a6", "phase": "Foundation", "title": "Live project progress (this page)", "pct": 90, "status": "doing", "note": "Updates as work happens.", "sort": 6}, {"id": "b1", "phase": "Profit first", "title": "Clearance tiers in Profit Flow", "pct": 80, "status": "doing", "note": "Tiers are live. You approve each price.", "sort": 10}, {"id": "b2", "phase": "Profit first", "title": "Social Push List for Davy", "pct": 60, "status": "doing", "note": "List is live. Auto-posting is not built yet.", "sort": 11}, {"id": "b3", "phase": "Profit first", "title": "Stock gaps on sellers, by variant", "pct": 25, "status": "doing", "note": "By product: 34 sold out, 9 low. Variant list next.", "sort": 12}, {"id": "b4", "phase": "Profit first", "title": "Check Google Purchase conversion against Shopify", "pct": 0, "status": "next", "note": "", "sort": 13}, {"id": "b5", "phase": "Profit first", "title": "Meta Pixel purchase test", "pct": 0, "status": "next", "note": "", "sort": 14}, {"id": "b6", "phase": "Profit first", "title": "Offline conversion import (calls, store visits)", "pct": 0, "status": "next", "note": "", "sort": 15}, {"id": "b7", "phase": "Profit first", "title": "Exact Tarneit and Blacktown dates from Shopify", "pct": 0, "status": "next", "note": "", "sort": 16}, {"id": "b8", "phase": "Profit first", "title": "Competitor websites (8 names)", "pct": 0, "status": "next", "note": "", "sort": 17}, {"id": "c1", "phase": "Intelligence", "title": "Real performance score on each tile", "pct": 10, "status": "doing", "note": "Knowledge % only so far. Real numbers next.", "sort": 20}, {"id": "c2", "phase": "Intelligence", "title": "Decisions Inbox: bots suggest, you approve", "pct": 0, "status": "next", "note": "", "sort": 21}, {"id": "c3", "phase": "Intelligence", "title": "Strategy Tracker", "pct": 0, "status": "next", "note": "", "sort": 22}, {"id": "c4", "phase": "Intelligence", "title": "Automation Board", "pct": 0, "status": "next", "note": "", "sort": 23}, {"id": "c5", "phase": "Intelligence", "title": "Reports open on the same screen", "pct": 0, "status": "next", "note": "", "sort": 24}, {"id": "c6", "phase": "Intelligence", "title": "Semrush scheduled emails", "pct": 0, "status": "blocked", "note": "Waiting for you to schedule them.", "sort": 25}, {"id": "c7", "phase": "Intelligence", "title": "Bots plan test campaigns ($5 to $15 a day, you approve)", "pct": 0, "status": "next", "note": "", "sort": 26}];
+let PROG=PSEED.slice(), PROGAT=null, PROGLIVE=false;
+const pOverall=()=>PROG.length?Math.round(PROG.reduce((n,r)=>n+r.pct,0)/PROG.length):0;
+const pCount=s=>PROG.filter(r=>r.status===s).length;
+function progBanner(){
+  const o=pOverall();
+  return `<a class="tile prog" href="#progress" aria-label="Project progress ${o} percent. Open details">${ring(o,72,8)}<div style="flex:1;min-width:200px"><div style="font:700 clamp(18px,3vw,22px)/1.15 var(--display)">Project progress</div>
+   <div class="pbar" style="margin:8px 0 6px" role="progressbar" aria-valuenow="${o}" aria-valuemin="0" aria-valuemax="100"><i style="width:${o}%"></i></div>
+   <div class="mute small"><b style="color:var(--g)">${pCount('done')}</b> done · <b style="color:var(--y)">${pCount('doing')}</b> in progress · ${pCount('next')} next${pCount('blocked')?` · <b style="color:var(--r)">${pCount('blocked')}</b> waiting on you`:''} · <span class="${PROGLIVE?'live':''}">${PROGLIVE?'● live':'sample'}</span></div></div><span class="go" aria-hidden="true">›</span></a>`;
+}
+function progressView(){
+  const o=pOverall(), phases=[...new Set(PROG.map(r=>r.phase))];
+  const sec=phases.map(ph=>{const rs=PROG.filter(r=>r.phase===ph), p=Math.round(rs.reduce((n,r)=>n+r.pct,0)/rs.length);
+    return `<div class="card" style="margin-bottom:12px"><h3>${esc(ph)} · ${p}%</h3><div class="pbar" style="margin-bottom:6px"><i style="width:${p}%"></i></div>${rs.map(r=>`<div class="prow"><span class="dot ${r.status}" title="${r.status}"></span><div style="min-width:0"><div>${esc(r.title)}</div>${r.note?`<div class="mute small">${esc(r.note)}</div>`:''}</div><b style="text-align:right;font:700 14px var(--display)">${r.pct}%</b><div class="pbar pb ${r.status==='doing'?'y':''}"><i style="width:${r.pct}%"></i></div></div>`).join('')}</div>`}).join('');
+  return `<div class="crumbs"><a href="#home">Home</a> <span>›</span> <b>Progress</b></div><div class="filters" style="margin-top:10px">${navBtns()}</div>
+   <div class="hero">${ring(o,96,10)}<div style="min-width:0"><h1 style="margin:0">Project progress</h1><div class="meta"><span class="chip live">${pCount('done')} done</span><span class="chip qchip">${pCount('doing')} in progress</span><span class="chip">${pCount('next')} next</span>${pCount('blocked')?`<span class="chip" style="color:var(--r)">${pCount('blocked')} waiting on you</span>`:''}<span class="chip ${PROGLIVE?'live':''}">${PROGLIVE?'live, updates every 15 seconds':'sample'}</span></div></div></div>${sec}
+   <p class="note">Updated as the work happens${PROGAT?' · last change '+esc(PROGAT):''}.</p>`;
+}
+function loadProg(){ if(!INHUB) return; try{parent.postMessage({type:'cc-q',action:'progress',req:'p'},'*')}catch(e){} }
+if(INHUB){ loadProg(); setInterval(loadProg,15000); }
 function missionBanner(){
   const x=xpTotal(), L=lvl(x), nm=nextM(), done=misArr().filter(m=>Q.d[m.id]).length;
   const path=misArr().map(m=>`<button type="button" class="pn ${Q.d[m.id]?'done':(nm&&nm.id===m.id?'now':'')}" data-m="${m.id}" aria-label="Mission ${m.no}: ${esc(m.title)}${Q.d[m.id]?' (done)':''}" title="${esc(m.title)}">${Q.d[m.id]?'✓':m.no}</button>`).join('');
@@ -641,7 +672,7 @@ function homeView(){
     ['Semrush','No API. Scheduled report emails land in Gmail, get parsed and saved.'],['Supabase','Live. Boards, suppliers, saved snapshots.']]
     .map(f=>`<div class="card"><b>${f[0]}</b><span class="mute small">${f[1]}</span></div>`).join('');
   return `<h1>Indifeels Command Centre</h1><p class="sub">Eight areas, each scored out of 100. Open a tile to go inside.</p>
-   ${missionBanner()}${overallView()}${freqView()}${sevPanel()}<div class="grid cats">${tiles}</div>
+   ${progBanner()}${missionBanner()}${overallView()}${freqView()}${sevPanel()}<div class="grid cats">${tiles}</div>
    <div class="h2">Where the data comes from</div><div class="feeds">${feeds}</div>
    <p class="note">Scores and alerts are sample text until each report feeds its own. Dashed tiles are planned structure only. A tile can sit under several areas; it counts toward each area's score.</p>`;
 }
@@ -722,22 +753,23 @@ function mapView(){
 /* ---------- routing ---------- */
 function draw(){
   stopRec();
-  const isMap=curId==='map';
+  const isMap=curId==='map', isProg=curId==='progress';
   document.getElementById('tab-map').classList.toggle('on',isMap);
-  document.getElementById('tab-home').classList.toggle('on',!isMap);
-  app.innerHTML=isMap?mapView():(MIS[curId]?missionView(curId):N[curId]?nodeView(curId):homeView());
+  document.getElementById('tab-home').classList.toggle('on',!isMap&&!isProg);
+  document.getElementById('tab-prog').classList.toggle('on',isProg);
+  app.innerHTML=isMap?mapView():isProg?progressView():(MIS[curId]?missionView(curId):N[curId]?nodeView(curId):homeView());
   updateNav();
 }
 let fwdStack=[], navKind=null;
 let cur=''; try{cur=decodeURIComponent((location.hash||'').slice(1));}catch(e){}
 function nav(h){ cur=h; try{ if(window.top===window) history.replaceState(null,'','#'+h); }catch(e){} route(); }
-function backTarget(){ if(!curId||curId==='home') return null; if(curId==='map'||MIS[curId]) return 'home'; return trail.length>1?trail[trail.length-2]:'home'; }
+function backTarget(){ if(!curId||curId==='home') return null; if(curId==='map'||curId==='progress'||MIS[curId]) return 'home'; return trail.length>1?trail[trail.length-2]:'home'; }
 function updateNav(){}
 function navBtns(){ return `<button type="button" class="btn" data-nav="back" aria-label="Back one level" ${backTarget()?'':'disabled'}>‹ Back</button><button type="button" class="btn" data-nav="fwd" aria-label="Forward" ${fwdStack.length?'':'disabled'}>Forward ›</button>`; }
 function route(){
   if(navKind==='keep') navKind=null; else fwdStack=[];
   const h=cur;
-  const id=(h==='map'||N[h]||MIS[h])?h:'home';
+  const id=(h==='map'||h==='progress'||N[h]||MIS[h])?h:'home';
   if(N[id]){
     bump(id);
     let t;
