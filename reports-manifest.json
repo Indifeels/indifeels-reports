@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-11-17.command-centre.1",
+  "manifest_version": "2026-11-17.social-push.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -472,6 +472,28 @@
       "outputs": [
         "r/command-centre.bin",
         "r/command-centre.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "none"
+    },
+    {
+      "id": "social-push",
+      "title": "Social Push List",
+      "workflow": "claude-scheduled-task",
+      "refresh_times": [
+        "on request"
+      ],
+      "required_env": [
+        "PROFIT_FLOW_KEY",
+        "SOCIAL_PUSH_KEY"
+      ],
+      "builders": [
+        "tools/social_push.py",
+        "tools/social_push_template.html"
+      ],
+      "outputs": [
+        "r/social-push.bin",
+        "r/social-push.meta.bin"
       ],
       "supabase_sync": false,
       "schedule_control": "none"

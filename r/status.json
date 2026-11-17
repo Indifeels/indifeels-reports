@@ -134,6 +134,15 @@
   "ok": false,
   "reason": "Semrush campaigns call reported 100 API units beyond the one allowed snapshots call; stopped without publishing partial data"
  },
+ "social-push": {
+  "at": "2026-11-17T14:12+11:00",
+  "code_sha": "bb721fad04fdc9fb1ebfbb3742dc2672b02a2ea0",
+  "data_through": null,
+  "last_ok": "2026-11-17T14:12+11:00",
+  "manifest_version": "2026-11-17.social-push.1",
+  "ok": true,
+  "reason": ""
+ },
  "stock": {
   "at": "2026-11-17T07:01+11:00",
   "code_sha": "8d5fcb3c7c08a41412c37831b098db86d0d90e9e",

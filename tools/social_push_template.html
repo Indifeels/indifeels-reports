@@ -1,0 +1,55 @@
+<title>Social Push List</title>
+<style>
+:root{--bg:#22252a;--ink:#eceff2;--mute:#9ba4ae;--line:#3a4047;--accent:#2bb5a5;--y:#d9a23b;--g:#3dbb8a;--tile:linear-gradient(145deg,#1d1f23 0%,#0c0d0f 50%,#050506 100%);--sh:inset 0 -3px 0 rgba(0,0,0,.65),0 2px 3px rgba(0,0,0,.6),0 12px 22px rgba(0,0,0,.5);--panel:#1b1e22;color-scheme:dark}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#eceff2;--ink:#1d2227;--mute:#5f6b76;--line:#d5dade;--accent:#0f8f82;--y:#b57f14;--g:#1f9d6e;--tile:#fff;--sh:0 4px 14px rgba(20,30,40,.08);--panel:#f1f3f5;color-scheme:light}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif;padding:0 max(16px,env(safe-area-inset-right,0px)) 56px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:900px;margin:0 auto}
+h1{font:600 clamp(24px,5vw,34px)/1.1 "Space Grotesk",system-ui,sans-serif;margin:22px 0 4px}
+.sub{color:var(--mute);margin:0 0 16px;max-width:70ch}
+.sum{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.k{background:var(--tile);box-shadow:var(--sh);border-radius:14px;padding:12px 16px;min-width:140px}
+.k small{display:block;color:var(--mute);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.k b{font:700 22px "Space Grotesk",system-ui,sans-serif}
+.it{display:grid;grid-template-columns:72px 1fr;gap:12px;background:var(--tile);box-shadow:var(--sh);border-radius:14px;padding:12px;margin-bottom:10px}
+.it img,.ph{width:72px;height:96px;object-fit:cover;border-radius:8px;background:var(--panel)}
+.it a{color:var(--ink);font-weight:600;text-decoration:none}
+.m{color:var(--mute);font-size:12px;margin-top:2px}
+.chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--y) 14%,transparent);color:var(--y);margin-right:6px}
+.cap{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--panel);font-size:12.5px;white-space:pre-wrap;word-break:break-word}
+button{font:inherit;cursor:pointer;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 14px;margin-top:6px}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.more{display:block;margin:14px auto}
+.note{color:var(--mute);font-size:12px;margin-top:20px}
+@media(max-width:480px){.it{grid-template-columns:56px 1fr}.it img,.ph{width:56px;height:76px}}
+</style>
+<div class="wrap">
+<h1>Social Push List</h1>
+<p class="sub">Not-eligible products that sell, just slowly (50 to 100 days per unit). They stay at full price. Post them often so more people see them. Every post needs your approval first. Davy does not post on its own yet.</p>
+<div class="sum" id="sum"></div>
+<div id="list"></div><button class="more" id="more" hidden>Show more</button>
+<p class="note" id="note"></p>
+</div>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(function(){
+var D=JSON.parse(document.getElementById("data").textContent),N=30;
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function money(v){return"$"+Math.round(v).toLocaleString("en-AU")}
+function cap(r){return r.t+"\nNow in store and online. Affordable Indian wear, all in one place, from a local Australian brand.\nShop: "+(r.u||"indifeels.com")}
+document.getElementById("sum").innerHTML='<div class="k"><small>Products</small><b>'+D.rows.length+'</b></div><div class="k"><small>Stock value</small><b>'+money(D.value)+'</b></div><div class="k"><small>As of</small><b>'+esc(D.asOf)+'</b></div>';
+function draw(){
+ document.getElementById("list").innerHTML=D.rows.slice(0,N).map(function(r,i){
+  return'<div class="it">'+(r.i?'<img src="'+esc(r.i)+'?width=160" loading="lazy" alt="">':'<div class="ph"></div>')+'<div style="min-width:0"><a href="'+esc(r.u)+'" target="_blank" rel="noopener">'+esc(r.t)+'</a>'
+  +'<div class="m"><span class="chip">Push</span>'+money(r.p)+' · '+r.s+' in stock ('+money(r.v)+') · '+r.du+' days per unit · sold '+r.sold+'</div>'
+  +'<div class="cap" id="c'+i+'">'+esc(cap(r))+'</div><button data-i="'+i+'">Copy caption</button></div></div>'}).join("");
+ document.getElementById("more").hidden=N>=D.rows.length}
+document.getElementById("list").addEventListener("click",function(e){var b=e.target.closest("button[data-i]");if(!b)return;
+ var el=document.getElementById("c"+b.getAttribute("data-i")),t=el.textContent;
+ var done=function(){b.textContent="Copied"};
+ try{navigator.clipboard.writeText(t).then(done,function(){var s=window.getSelection(),r=document.createRange();r.selectNodeContents(el);s.removeAllRanges();s.addRange(r);b.textContent="Select and copy"})}catch(x){b.textContent="Select and copy"}});
+document.getElementById("more").onclick=function(){N+=30;draw()};
+document.getElementById("note").textContent="Captions are drafts in the brand voice: affordable, one-stop shop, local Australian brand. Edit before posting. Ranked by stock value. Data from Profit Flow, "+D.asOf+".";
+draw();
+})();
+</script>
