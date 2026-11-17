@@ -249,9 +249,9 @@ function drawTrends(){
 }
 function syncTg(){[["gran","gran"],["ser","ser"]].forEach(function(p){var g=document.getElementById(p[0]);Array.prototype.forEach.call(g.children,function(b){b.setAttribute("aria-pressed",b.getAttribute("data-v")===TR[p[1]])})})}
 ["gran","ser"].forEach(function(id){document.getElementById(id).addEventListener("click",function(e){var v=e.target.getAttribute&&e.target.getAttribute("data-v");if(!v)return;TR[id]=v;try{localStorage.setItem("pf-tr",JSON.stringify(TR))}catch(x){}syncTg();drawTrends()})});
-var F=D.flow,SF={view:"intro",unit:"count",cum:false,fy:null};
-try{var q0=JSON.parse(localStorage.getItem("pf-sf")||"null");if(q0)SF=Object.assign(SF,q0)}catch(e){}
-function sfSave(){try{localStorage.setItem("pf-sf",JSON.stringify(SF))}catch(e){}}
+var F=D.flow,SF={view:"shelf",unit:"value",cum:true,fy:null};
+try{var q0=JSON.parse(localStorage.getItem("pf-sf2")||"null");if(q0)SF=Object.assign(SF,q0)}catch(e){}
+function sfSave(){try{localStorage.setItem("pf-sf2",JSON.stringify(SF))}catch(e){}}
 function fmt(n){return n==null?"–":Number(n).toLocaleString("en-AU")}
 function esc(t){return String(t==null?"":t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function mk(n){var a=Math.abs(n),s=n<0?"-":"";return a>=1e6?s+"$"+(a/1e6).toFixed(2)+"M":a>=1e4?s+"$"+Math.round(a/1e3)+"k":a>=1e3?s+"$"+(a/1e3).toFixed(1)+"k":s+"$"+Math.round(a)}
