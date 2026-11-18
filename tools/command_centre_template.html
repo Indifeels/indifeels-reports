@@ -173,11 +173,12 @@ textarea.out{width:100%;min-height:140px;padding:10px;border-radius:10px;border:
 .flwrap{overflow:auto;height:min(68vh,640px);border:1px solid var(--line);border-radius:14px;background-color:var(--panel);background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:22px 22px}
 .flcv{position:relative;transform-origin:0 0}
 .flcv svg{position:absolute;left:0;top:0;pointer-events:none}.flcv svg .fle path{pointer-events:stroke}
-.fll{fill:var(--ink);font:600 11px var(--body);paint-order:stroke;stroke:var(--panel);stroke-width:4px}
-.fln{position:absolute;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;width:max-content;max-width:210px}
+.fll{fill:var(--ink);font:600 13px var(--body);paint-order:stroke;stroke:var(--panel);stroke-width:4px}
+.fln{position:absolute;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;width:max-content;min-width:180px;max-width:250px}
 .fln.sel{filter:drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 1px var(--accent))}.fln.src{filter:drop-shadow(0 0 5px var(--y))}
-.flni{padding:10px 14px;border-radius:10px;font:600 13px/1.25 var(--body);text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.35)}
-.flni small{display:block;font-weight:400;font-size:11px;opacity:.85;margin-top:3px}
+.flni{padding:12px 16px;border-radius:12px;font:600 15px/1.25 var(--body);text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.flni small{display:block;font-weight:400;font-size:12px;opacity:.85;margin-top:3px}
+.flni.label{background:transparent;box-shadow:none;text-align:left;padding:4px 0;font-size:17px;letter-spacing:.04em}.flni.label small{font-size:12px}
 .flni.oval{border-radius:999px;padding:12px 22px}.flni.diamond{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);padding:30px 40px;min-width:160px;box-shadow:none}
 .flpanel input[type=text],.flpanel textarea{width:100%;box-sizing:border-box;min-height:44px;margin-top:6px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--tile2);color:var(--ink);font:14px var(--body)}
 .fll2{display:block;margin:12px 0 0;font-size:12px;color:var(--mute)}
@@ -791,38 +792,61 @@ const flTc=h=>{h=okc(h); const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,
 const flS=s=>String(s==null?'':s);
 function flSeed(){
   const nodes=[], edges=[], id={};
+  const CX=[40,400,760,1120,1480,1840], RY=[130,280,430,580,730];
+  const sc=k=>{ const ct=counts(k), s=score(k); return `${ct.built} built, ${ct.plan} planned`+(s==null?'':' · score '+s+'/100'); };
   const add=(k,title,details,shape,color,x,y)=>{id[k]='n_'+k; nodes.push({id:id[k],title,details:details||'',shape,color,x,y});};
-  const E=(a,b,o)=>{ if(id[a]&&id[b]) edges.push(Object.assign({id:flid('e'),from:id[a],to:id[b],label:'',arrow:'to',line:'solid',color:'#8a9199'},o||{})); };
-  const SRC=[[SH,'Shopify','Orders, products, stock and customers.'],[WI,'Windsor.ai','Pulls Google Ads, Meta and Shopify numbers.'],['gads','Google Ads','Account 788-887-6041.'],['meta','Meta Ads','Facebook and Instagram ads.'],[SX,'Semrush','Scheduled email exports.'],[SU,'Supabase','Your account database: answers, progress, decisions and the knowledge base.'],[MN,'Manual uploads','Files you upload by hand.']];
-  SRC.forEach((s,i)=>add('s'+i,s[1],s[2],'oval','#8db39b',30,60+i*115));
-  const AX=[330,580], AY=[80,215,350,485];
-  CATS.forEach((c,i)=>{ const ct=counts(c[0]), sc=score(c[0]); add(c[0],c[1],`${ct.built} built, ${ct.plan} planned${sc==null?'':' · score '+sc+'/100'}`,'box','#41565f',AX[i%2],AY[Math.floor(i/2)]); });
-  add('simar','Simar · Chief of Staff','Approves everything that spends money or changes prices.','box','#d9a441',880,120);
-  add('dec','Decisions Inbox','Bots suggest here. You approve, cancel or revert.','diamond','#cd6663',870,280);
-  add('cc','Command Centre','This dashboard: tiles, missions, progress, connections.','box','#41565f',880,470);
-  add('kb','Knowledge base','All bots read this: playbooks and your rules.','box','#41565f',880,610);
-  const TEAM=[['satwinder','Satwinder · Google Ads bot','sales'],['adnan','Adnan · Meta Ads bot','marketing'],['davy','Davy · Social Media','marketing'],['veronica','Veronica · SEO','web'],['sunita','Sunita · Stock & Pricing','stock'],['rashi','Rashi · Customer Service','customers'],['jess','Jess · Profit Guard','sales'],['luciano','Luciano Bot · Data & Systems','admin'],['prof','Professor Bot · Strategy Auditor','growth']];
-  const AN={sales:'Sales & Finance',marketing:'Marketing',web:'Website & SEO',stock:'Stock & Supply',customers:'Customers & Service',admin:'Admin & Automation',growth:'Growth & Planning'};
-  TEAM.forEach((t,i)=>add(t[0],t[1],'Works on: '+AN[t[2]]+'. Only suggests. You approve.','box','#8a6fb0',1180,30+i*90));
-  const areaOf={satwinder:'marketing',adnan:'marketing',davy:'marketing',veronica:'web',sunita:'stock',rashi:'customers',jess:'sales',luciano:'admin',prof:'growth'};
-  // data sources into the areas that use them
-  const cnt={}; order.forEach(k=>{ if(kids[k]) return; const r=root(k); (N[k].src||[]).forEach(sx=>{ const si=SRC.findIndex(s=>s[0]===sx); if(si<0) return; cnt[r]=cnt[r]||{}; cnt[r][si]=(cnt[r][si]||0)+1; }); });
-  Object.keys(cnt).forEach(r=>{ Object.entries(cnt[r]).sort((a,b)=>b[1]-a[1]).slice(0,2).forEach(([si])=>E('s'+si,r,{color:'#6f8f7a'})); });
-  E('gads','s1',{arrow:'to',color:'#6f8f7a'}); E('meta','s1',{arrow:'to',color:'#6f8f7a'});
-  // links between areas (counts from the old chart)
-  const agg={}; L.forEach(l=>{ if(!N[l[0]]||!N[l[1]]) return; const a=root(l[0]),b=root(l[1]); if(a===b) return; const k=a+'>'+b; agg[k]=(agg[k]||0)+1; });
-  Object.keys(agg).forEach(k=>{ if(agg[k]<2) return; const [a,b]=k.split('>'); E(a,b,{line:'dotted',label:String(agg[k]),color:'#4f7cac'}); });
-  TEAM.forEach(t=>{ E(t[0],'dec',{color:'#cd6663'}); });
-  E('dec','simar',{arrow:'both',label:'approve',color:'#d9a441'});
-  E('satwinder','gads',{arrow:'both',color:'#8a6fb0'}); E('adnan','meta',{arrow:'both',color:'#8a6fb0'});
-  return {v:1,nodes,edges};
+  const E=(a,b,o)=>{ if(id[a]&&id[b]) edges.push(Object.assign({id:flid('e'),from:id[a],to:id[b],label:'',arrow:'to',line:'solid',shape:'curve',color:'#8a9199'},o||{})); };
+  const SAGE='#8db39b', SLATE='#41565f', PURP='#8a6fb0', RED='#cd6663', AMB='#d9a441', BLUE='#4f7cac', TEAL='#3b9c9c';
+  const HEAD=[['1 · Demand starts','People search and scroll'],['2 · We reach them','Ads, SEO and posts'],['3 · They visit','Site, store, chat'],['4 · They buy','Online and in store'],['5 · Stock and price','What we hold and clear'],['6 · Profit and learn','What we keep, what worked']];
+  HEAD.forEach((h,i)=>add('h'+i,h[0],h[1],'label','#9aa3ab',CX[i],36));
+  // journey
+  add('kw','Keyword searches','What people type: "kurta pajama", "indian clothes near me", "indifeels". Seen in Search Console and Semrush.','box',SAGE,CX[0],RY[0]);
+  add('season','Seasons and festivals','Weddings, Diwali, Eid, Navratri. Decides what to stock and when to push.','box',SAGE,CX[0],RY[1]);
+  add('feeds','Social feeds','Instagram and Facebook: what people see without searching.','box',SAGE,CX[0],RY[3]);
+  add('seo','SEO · Veronica','Organic rankings and content. '+sc('web'),'box',PURP,CX[1],RY[0]);
+  add('gads','Google Ads · Satwinder bot','Search, Shopping and Performance Max. Bot suggests, you approve.','box',PURP,CX[1],RY[1]);
+  add('meta','Meta Ads · Adnan bot','Facebook and Instagram ads, including message campaigns.','box',PURP,CX[1],RY[2]);
+  add('davy','Social posting · Davy','Posts the Social Push List products.','box',PURP,CX[1],RY[4]);
+  add('stores','Stores · Tarneit and Blacktown','Walk-ins and calls. '+sc('local'),'box',SLATE,CX[2],RY[1]);
+  add('web','Website · indifeels.com','Shopify store: browse, size help, cart.','box',SLATE,CX[2],RY[2]);
+  add('chat','Customer chat · Rashi','Aisha bot on chat, Facebook and Instagram. '+sc('customers'),'box',PURP,CX[2],RY[3]);
+  add('instore','In-store sales','Sales at the Tarneit and Blacktown stores.','box',SLATE,CX[3],RY[1]);
+  add('orders','Online orders','Shopify orders, tagged by source.','box',SLATE,CX[3],RY[2]);
+  add('stock','Stock and supply · Sunita','What to stock, restock, supplier orders. '+sc('stock'),'box',PURP,CX[4],RY[1]);
+  add('clear','Clearance · Profit Flow','New products protected. Slow sellers get 15% or 25% off. You approve each price.','box',SLATE,CX[4],RY[2]);
+  add('push','Social Push List','Slightly slow products: promote them on social instead of discounting.','box',SLATE,CX[4],RY[4]);
+  add('fin','Sales and finance · Jess','Profit per $100, cash, what you keep. '+sc('sales'),'box',PURP,CX[5],RY[1]);
+  add('grow','Growth and planning · Professor Bot','Strategy audit and what worked. '+sc('growth'),'box',PURP,CX[5],RY[3]);
+  E('kw','seo',{label:'organic'}); E('kw','gads',{label:'paid search'}); E('season','gads'); E('season','meta'); E('feeds','meta'); E('feeds','davy');
+  E('seo','web'); E('gads','web'); E('gads','stores',{label:'calls and visits'}); E('meta','web'); E('meta','chat',{label:'messages'}); E('davy','chat');
+  E('stores','instore'); E('web','orders'); E('chat','orders',{label:'help to buy'});
+  E('instore','stock'); E('orders','stock'); E('stock','clear',{label:'slow sellers'}); E('clear','push',{label:'needs a push'});
+  E('stock','fin'); E('clear','fin',{label:'profit'}); E('fin','grow',{label:'what worked'});
+  E('push','davy',{line:'dotted',label:'posts these',color:'#cd6663'});
+  // control lane
+  add('hc','Control · bots suggest, you decide','Nothing spends money or changes prices without your approval.','label','#9aa3ab',CX[0],860);
+  add('kb','Knowledge base','What the bots read: playbooks and your rules.','box',SLATE,CX[0],920);
+  add('team','Bot team','Satwinder, Adnan, Davy, Veronica, Sunita, Rashi, Jess, Luciano Bot, Professor Bot.','box',PURP,CX[1],920);
+  add('dec','Decisions Inbox','Approve, cancel or revert.','diamond',RED,CX[2],905);
+  add('simar','Simar · Chief of Staff','Approves anything that spends money or changes prices.','box',AMB,CX[3],920);
+  add('applied','Ad accounts and Shopify','Approved changes are applied here by the bots.','box',SLATE,CX[4],920);
+  E('kb','team',{label:'read'}); E('team','dec',{label:'suggest'}); E('dec','simar',{arrow:'both',label:'approve',color:'#d9a441'}); E('simar','applied',{label:'approved'});
+  // data lane
+  add('hd','Data · how numbers get here','Refreshed by the reports hub.','label','#9aa3ab',CX[0],1090);
+  add('d_sh','Shopify','Orders, products, stock, customers.','oval',SAGE,CX[0],1150);
+  add('d_wi','Windsor.ai','Google Ads, Meta and Shopify numbers.','oval',SAGE,CX[1],1150);
+  add('d_su','Supabase','Your account database: answers, progress, decisions.','oval',SAGE,CX[2],1150);
+  add('d_hub','Reports hub','Profit Flow, Cash, Restock, Google and Meta reports.','box',SLATE,CX[3],1150);
+  add('d_cc','Command Centre','This dashboard.','box',SLATE,CX[4],1150);
+  E('d_sh','d_wi'); E('d_wi','d_su'); E('d_su','d_hub'); E('d_hub','d_cc');
+  return {v:2,nodes,edges};
 }
 function flClean(d){
-  if(!d||d.v!==1||!Array.isArray(d.nodes)||!Array.isArray(d.edges)) return null;
-  const nodes=d.nodes.slice(0,300).filter(x=>x&&x.id).map(x=>({id:flS(x.id).slice(0,40),title:flS(x.title).slice(0,80),details:flS(x.details).slice(0,2000),shape:['box','diamond','oval'].includes(x.shape)?x.shape:'box',color:okc(x.color),x:Math.max(0,+x.x||0),y:Math.max(0,+x.y||0)}));
+  if(!d||d.v!==2||!Array.isArray(d.nodes)||!Array.isArray(d.edges)) return null;
+  const nodes=d.nodes.slice(0,300).filter(x=>x&&x.id).map(x=>({id:flS(x.id).slice(0,40),title:flS(x.title).slice(0,80),details:flS(x.details).slice(0,2000),shape:['box','diamond','oval','label'].includes(x.shape)?x.shape:'box',color:okc(x.color),x:Math.max(0,+x.x||0),y:Math.max(0,+x.y||0)}));
   const ids=new Set(nodes.map(x=>x.id));
-  const edges=d.edges.slice(0,600).filter(e=>e&&ids.has(e.from)&&ids.has(e.to)&&e.from!==e.to).map(e=>({id:flS(e.id||flid('e')).slice(0,40),from:e.from,to:e.to,label:flS(e.label).slice(0,40),arrow:['to','from','both','none'].includes(e.arrow)?e.arrow:'to',line:['solid','dotted','dashed'].includes(e.line)?e.line:'solid',color:okc(e.color)}));
-  return {v:1,nodes,edges};
+  const edges=d.edges.slice(0,600).filter(e=>e&&ids.has(e.from)&&ids.has(e.to)&&e.from!==e.to).map(e=>({id:flS(e.id||flid('e')).slice(0,40),from:e.from,to:e.to,label:flS(e.label).slice(0,40),arrow:['to','from','both','none'].includes(e.arrow)?e.arrow:'to',line:['solid','dotted','dashed'].includes(e.line)?e.line:'solid',shape:['curve','straight','elbow'].includes(e.shape)?e.shape:'curve',color:okc(e.color)}));
+  return {v:2,nodes,edges};
 }
 function flSave(){
   clearTimeout(FLTIMER);
@@ -834,12 +858,12 @@ function flSyncMsg(){ const e=document.getElementById('flsync'); if(e) e.textCon
 const flN=id=>FL.nodes.find(n=>n.id===id), flE=id=>FL.edges.find(e=>e.id===id);
 function flNodeHTML(n){
   const det=n.details?`<small>${esc(n.details.length>70?n.details.slice(0,68)+'…':n.details)}</small>`:'';
-  return `<div class="flni ${n.shape}" style="background:${okc(n.color)};color:${flTc(n.color)}"><b>${esc(n.title||'Untitled')}</b>${det}</div>`;
+  return `<div class="flni ${n.shape}" style="${n.shape==='label'?'color:'+okc(n.color):'background:'+okc(n.color)+';color:'+flTc(n.color)}"><b>${esc(n.title||'Untitled')}</b>${det}</div>`;
 }
 function flMount(){
   const wrap=document.getElementById('flwrap'); if(!wrap) return;
   if(!FL){ FL=flSeed(); if(INHUB){ try{parent.postMessage({type:'cc-q',action:'flow_load',req:'fl'},'*')}catch(e){} } else FLSYNC='Draft only. Opens saved inside the reports hub.'; }
-  if(!FLZ) FLZ=Math.max((wrap.clientWidth||900)<600?.6:.4,Math.min(1,(wrap.clientWidth||900)/1450,(wrap.clientHeight||640)/1000));
+  if(!FLZ) flFit(false);
   flRender(); flPanel(); flSyncMsg();
 }
 function flRender(){
@@ -851,27 +875,40 @@ function flRender(){
   const svg=document.getElementById('fledges'); svg.setAttribute('width',W); svg.setAttribute('height',H);
   flEdges();
 }
-function flAnchor(n,el,tx,ty){
-  const w=el.offsetWidth,h=el.offsetHeight,cx=n.x+w/2,cy=n.y+h/2,dx=tx-cx,dy=ty-cy; if(!dx&&!dy) return [cx,cy];
-  let s;
-  if(n.shape==='diamond') s=1/(Math.abs(dx)/(w/2)+Math.abs(dy)/(h/2));
-  else if(n.shape==='oval') s=1/Math.sqrt((dx/(w/2))**2+(dy/(h/2))**2);
-  else s=Math.min((w/2)/Math.abs(dx||1e-9),(h/2)/Math.abs(dy||1e-9));
-  return [cx+dx*s,cy+dy*s];
-}
 function flEdges(){
   const svg=document.getElementById('fledges'); if(!svg) return;
   const els={}; document.querySelectorAll('#flnodes .fln').forEach(e=>{els[e.dataset.n]=e;});
-  const cols=new Set(FL.edges.map(e=>okc(e.color))); const defs=[...cols].map(c=>`<marker id="mk${c.slice(1)}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker>`).join('');
+  const geo=id=>{const n=flN(id),el=els[id]; return n&&el?{n,w:el.offsetWidth,h:el.offsetHeight,cx:n.x+el.offsetWidth/2,cy:n.y+el.offsetHeight/2}:null;};
+  const side=(a,b)=>{const dx=b.cx-a.cx,dy=b.cy-a.cy; return Math.abs(dx)*0.55>=Math.abs(dy)?(dx>=0?'R':'L'):(dy>=0?'B':'T');};
+  const opp={R:'L',L:'R',B:'T',T:'B'};
+  const list=[], grp={};
+  FL.edges.forEach(e=>{ const a=geo(e.from),b=geo(e.to); if(!a||!b) return; const sa=side(a,b), sb=opp[side(a,b)]; const it={e,a,b,sa,sb,oa:0,ob:0}; list.push(it);
+    (grp[e.from+'|'+sa]=grp[e.from+'|'+sa]||[]).push([it,'a',b]); (grp[e.to+'|'+sb]=grp[e.to+'|'+sb]||[]).push([it,'b',a]); });
+  Object.values(grp).forEach(g=>{ const horiz=g[0][1]==='a'?(g[0][0].sa==='R'||g[0][0].sa==='L'):(g[0][0].sb==='R'||g[0][0].sb==='L');
+    g.sort((p,q)=>horiz?p[2].cy-q[2].cy:p[2].cx-q[2].cx);
+    const nd=g[0][1]==='a'?g[0][0].a:g[0][0].b; if(nd.n.shape==='diamond') return;
+    const dim=horiz?nd.h:nd.w, gap=Math.min(26,(dim*0.7)/Math.max(1,g.length)); g.forEach((x,i)=>{ x[0][x[1]==='a'?'oa':'ob']=(i-(g.length-1)/2)*gap; }); });
+  const pt=(g,s,o)=>{ if(s==='R'||s==='L'){ const k=g.n.shape==='oval'?Math.sqrt(Math.max(0,1-(o/(g.h/2))**2)):1; return [g.cx+(s==='R'?1:-1)*(g.w/2)*k,g.cy+o]; } const k=g.n.shape==='oval'?Math.sqrt(Math.max(0,1-(o/(g.w/2))**2)):1; return [g.cx+o,g.cy+(s==='B'?1:-1)*(g.h/2)*k]; };
+  const cols=new Set(FL.edges.map(e=>okc(e.color))); const defs=[...cols].map(c=>`<marker id="mk${c.slice(1)}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker>`).join('');
   let body='';
-  FL.edges.forEach(e=>{
-    const a=flN(e.from),b=flN(e.to),ea=els[e.from],eb=els[e.to]; if(!a||!b||!ea||!eb) return;
-    const ca=[a.x+ea.offsetWidth/2,a.y+ea.offsetHeight/2], cb=[b.x+eb.offsetWidth/2,b.y+eb.offsetHeight/2];
-    const p1=flAnchor(a,ea,cb[0],cb[1]), p2=flAnchor(b,eb,ca[0],ca[1]);
+  list.forEach(it=>{
+    const e=it.e, p1=pt(it.a,it.sa,it.oa), p2=pt(it.b,it.sb,it.ob), f=v=>v.toFixed(1);
+    const hz=s=>s==='R'||s==='L', dir=s=>(s==='R'||s==='B')?1:-1;
+    let d;
+    if(e.shape==='straight') d=`M${f(p1[0])} ${f(p1[1])}L${f(p2[0])} ${f(p2[1])}`;
+    else if(e.shape==='elbow'){
+      if(hz(it.sa)&&hz(it.sb)){ const m=(p1[0]+p2[0])/2; d=`M${f(p1[0])} ${f(p1[1])}L${f(m)} ${f(p1[1])}L${f(m)} ${f(p2[1])}L${f(p2[0])} ${f(p2[1])}`; }
+      else if(!hz(it.sa)&&!hz(it.sb)){ const m=(p1[1]+p2[1])/2; d=`M${f(p1[0])} ${f(p1[1])}L${f(p1[0])} ${f(m)}L${f(p2[0])} ${f(m)}L${f(p2[0])} ${f(p2[1])}`; }
+      else if(hz(it.sa)) d=`M${f(p1[0])} ${f(p1[1])}L${f(p2[0])} ${f(p1[1])}L${f(p2[0])} ${f(p2[1])}`;
+      else d=`M${f(p1[0])} ${f(p1[1])}L${f(p1[0])} ${f(p2[1])}L${f(p2[0])} ${f(p2[1])}`;
+    } else {
+      const k=Math.max(50,(hz(it.sa)?Math.abs(p2[0]-p1[0]):Math.abs(p2[1]-p1[1]))*0.5);
+      const c1=hz(it.sa)?[p1[0]+dir(it.sa)*k,p1[1]]:[p1[0],p1[1]+dir(it.sa)*k], c2=hz(it.sb)?[p2[0]+dir(it.sb)*k,p2[1]]:[p2[0],p2[1]+dir(it.sb)*k];
+      d=`M${f(p1[0])} ${f(p1[1])}C${f(c1[0])} ${f(c1[1])} ${f(c2[0])} ${f(c2[1])} ${f(p2[0])} ${f(p2[1])}`;
+    }
     const c=okc(e.color), sel=FLSELKIND==='e'&&FLSEL===e.id, m=`url(#mk${c.slice(1)})`;
-    const da=e.line==='dotted'?'1 7':e.line==='dashed'?'10 7':'';
-    const d=`M${p1[0].toFixed(1)} ${p1[1].toFixed(1)}L${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
-    body+=`<g class="fle ${sel?'sel':''}" data-e="${esc(e.id)}"><path d="${d}" stroke="transparent" stroke-width="18" fill="none" style="cursor:pointer"/><path d="${d}" stroke="${c}" stroke-width="${sel?3.5:2}" fill="none" ${da?`stroke-dasharray="${da}" stroke-linecap="round"`:''} ${(e.arrow==='to'||e.arrow==='both')?`marker-end="${m}"`:''} ${(e.arrow==='from'||e.arrow==='both')?`marker-start="${m}"`:''} ${sel?'style="filter:drop-shadow(0 0 3px '+c+')"':''}/>${e.label?`<text class="fll" x="${((p1[0]+p2[0])/2).toFixed(1)}" y="${((p1[1]+p2[1])/2+4).toFixed(1)}" text-anchor="middle">${esc(e.label)}</text>`:''}</g>`;
+    const da=e.line==='dotted'?'1 8':e.line==='dashed'?'12 8':'';
+    body+=`<g class="fle ${sel?'sel':''}" data-e="${esc(e.id)}"><path d="${d}" stroke="transparent" stroke-width="22" fill="none" style="cursor:pointer"/><path d="${d}" stroke="${c}" stroke-width="${sel?4:2.5}" fill="none" ${da?`stroke-dasharray="${da}" stroke-linecap="round"`:''} ${(e.arrow==='to'||e.arrow==='both')?`marker-end="${m}"`:''} ${(e.arrow==='from'||e.arrow==='both')?`marker-start="${m}"`:''} ${sel?'style="filter:drop-shadow(0 0 3px '+c+')"':''}/>${e.label?`<text class="fll" x="${f((p1[0]+p2[0])/2)}" y="${f((p1[1]+p2[1])/2+4)}" text-anchor="middle">${esc(e.label)}</text>`:''}</g>`;
   });
   svg.innerHTML=`<defs>${defs}</defs>${body}`;
 }
@@ -883,7 +920,7 @@ function flPanel(){
     const n=flN(FLSEL);
     p.innerHTML=`<h3>Box</h3><label class="fll2">Name<input type="text" data-flf="title" value="${esc(n.title)}" maxlength="80"></label>
      <label class="fll2">Details<textarea data-flf="details" rows="4" maxlength="2000" placeholder="What is this? Who owns it? What feeds it?">${esc(n.details)}</textarea></label>
-     <div class="fll2">Shape ${seg([['box','Box'],['oval','Oval'],['diamond','Diamond']],n.shape,'shape')}</div>
+     <div class="fll2">Shape ${seg([['box','Box'],['oval','Oval'],['diamond','Diamond'],['label','Text only']],n.shape,'shape')}</div>
      <div class="fll2">Colour ${sw(n.color,'n')}</div>
      <div class="flrow"><button type="button" class="btn" data-fl="connect">Connect from this box</button><button type="button" class="btn" data-fl="delnode">Delete box</button></div>`;
   } else if(FLSELKIND==='e'&&flE(FLSEL)){
@@ -891,6 +928,7 @@ function flPanel(){
     p.innerHTML=`<h3>Line: ${esc(a?a.title:'?')} → ${esc(b?b.title:'?')}</h3><label class="fll2">Label (optional)<input type="text" data-flf="label" value="${esc(e.label)}" maxlength="40" placeholder="e.g. feeds, approves, reads"></label>
      <div class="fll2">Arrow ${seg([['none','No arrow'],['to','One side →'],['from','One side ←'],['both','Both sides ↔']],e.arrow,'arrow')}</div>
      <div class="fll2">Line ${seg([['solid','Solid'],['dotted','Dotted'],['dashed','Dashed']],e.line,'line')}</div>
+     <div class="fll2">Path ${seg([['curve','Curved'],['straight','Straight'],['elbow','Right angles']],e.shape||'curve','shape')}</div>
      <div class="fll2">Colour ${sw(e.color,'e')}</div>
      <div class="flrow"><button type="button" class="btn" data-fl="deledge">Delete line</button></div>`;
   } else {
@@ -906,15 +944,16 @@ function flConnTap(id){
   if(!FLCONN.from){ FLCONN.from=id; flRender(); flPanel(); return; }
   if(FLCONN.from===id) return;
   let e=FL.edges.find(x=>x.from===FLCONN.from&&x.to===id);
-  if(!e){ e={id:flid('e'),from:FLCONN.from,to:id,label:'',arrow:'to',line:'solid',color:'#8a9199'}; FL.edges.push(e); }
+  if(!e){ e={id:flid('e'),from:FLCONN.from,to:id,label:'',arrow:'to',line:'solid',shape:'curve',color:'#8a9199'}; FL.edges.push(e); }
   FLCONN=null; setConnBtn(); FLSELKIND='e'; FLSEL=e.id; flRender(); flPanel(); flSave();
 }
 function setConnBtn(){ const b=document.getElementById('flconn'); if(b){ b.classList.toggle('on',!!FLCONN); b.textContent=FLCONN?'Cancel connecting':'Connect'; } }
+function flFit(draw){ const w=document.getElementById('flwrap'); let W=1500,H=900; FL.nodes.forEach(n=>{W=Math.max(W,n.x+320);H=Math.max(H,n.y+200)}); FLZ=Math.max((w.clientWidth||900)<600?.5:.35,Math.min(1,(w.clientWidth||900)/W)); if(draw){ flRender(); w.scrollLeft=0; w.scrollTop=0; } }
 function flZoom(d){ const w=document.getElementById('flwrap'); const cx=(w.scrollLeft+w.clientWidth/2)/FLZ, cy=(w.scrollTop+w.clientHeight/2)/FLZ; FLZ=Math.max(.3,Math.min(1.6,Math.round((FLZ+d)*100)/100)); flRender(); w.scrollLeft=cx*FLZ-w.clientWidth/2; w.scrollTop=cy*FLZ-w.clientHeight/2; }
 function flView(){
   return `<h1 style="margin:10px 0 4px">Connections</h1><p class="sub">Your business as one picture. Drag boxes, tap to edit, add your own boxes and draw lines between them.</p>
    <div class="filters" style="margin:0 0 10px">${navBtns()}</div>
-   <div class="fltool"><button type="button" class="btn" data-fl="add">+ Add box</button><button type="button" class="btn" id="flconn" data-fl="conn">Connect</button><button type="button" class="btn" data-fl="zout" aria-label="Zoom out">−</button><button type="button" class="btn" data-fl="zin" aria-label="Zoom in">+</button><button type="button" class="btn" data-fl="reset">Start again</button><span class="mute small" id="flsync" role="status"></span></div>
+   <div class="fltool"><button type="button" class="btn" data-fl="add">+ Add box</button><button type="button" class="btn" id="flconn" data-fl="conn">Connect</button><button type="button" class="btn" data-fl="zout" aria-label="Zoom out">−</button><button type="button" class="btn" data-fl="zin" aria-label="Zoom in">+</button><button type="button" class="btn" data-fl="fit">Fit all</button><button type="button" class="btn" data-fl="reset">Start again</button><span class="mute small" id="flsync" role="status"></span></div>
    <div class="flwrap" id="flwrap"><div id="flsize"><div id="flcv" class="flcv"><svg id="fledges"></svg><div id="flnodes"></div></div></div></div>
    <div class="card flpanel" id="flpanel" style="margin-top:12px"></div>`;
 }
@@ -950,7 +989,7 @@ function flView(){
       const a=b.dataset.fl;
       if(a==='add') flAdd();
       else if(a==='conn'||a==='connect'){ if(FLCONN){FLCONN=null;} else { FLCONN={from:a==='connect'?FLSEL:null}; } setConnBtn(); flRender(); flPanel(); }
-      else if(a==='zin') flZoom(.15); else if(a==='zout') flZoom(-.15);
+      else if(a==='fit') flFit(true); else if(a==='zin') flZoom(.15); else if(a==='zout') flZoom(-.15);
       else if(a==='delnode'){ const id=FLSEL; FL.nodes=FL.nodes.filter(n=>n.id!==id); FL.edges=FL.edges.filter(x=>x.from!==id&&x.to!==id); FLSEL=null; FLSELKIND=null; flRender(); flPanel(); flSave(); }
       else if(a==='deledge'){ const id=FLSEL; FL.edges=FL.edges.filter(x=>x.id!==id); FLSEL=null; FLSELKIND=null; flRender(); flPanel(); flSave(); }
       else if(a==='reset'){ if(Date.now()-FLRESET<4000){ FL=flSeed(); FLSEL=null; FLSELKIND=null; FLCONN=null; FLRESET=0; flMount(); flSave(); b.textContent='Start again'; } else { FLRESET=Date.now(); b.textContent='Tap again to reset'; setTimeout(()=>{ if(b.isConnected) b.textContent='Start again'; },4000); } }

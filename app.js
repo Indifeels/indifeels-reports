@@ -1575,7 +1575,7 @@
         reply({ ok: true, data: (r.data && r.data.data) || null });
       } else if (d.action === "flow_save") {
         const dg = d.data;
-        if (!dg || dg.v !== 1 || !Array.isArray(dg.nodes) || !Array.isArray(dg.edges) || dg.nodes.length > 300 || dg.edges.length > 600 || JSON.stringify(dg).length > 300000) throw new Error("Diagram is too big or not valid.");
+        if (!dg || dg.v !== 2 || !Array.isArray(dg.nodes) || !Array.isArray(dg.edges) || dg.nodes.length > 300 || dg.edges.length > 600 || JSON.stringify(dg).length > 300000) throw new Error("Diagram is too big or not valid.");
         const r = await sb.from("cc_diagram").upsert({ id: "main", data: dg, updated_at: new Date().toISOString() });
         if (r.error) throw r.error;
         reply({ ok: true });
