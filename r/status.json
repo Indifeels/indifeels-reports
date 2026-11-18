@@ -9,11 +9,11 @@
   "reason": ""
  },
  "color-game": {
-  "at": "2026-11-17T13:34+11:00",
-  "code_sha": "703456aceba28c82437e0f96cb52daf57c6284aa",
+  "at": "2026-11-18T12:48+11:00",
+  "code_sha": "db36edef1f9365051262e61bd7e47954daee0412",
   "data_through": null,
-  "last_ok": "2026-11-17T13:34+11:00",
-  "manifest_version": "2026-11-17.command-centre.1",
+  "last_ok": "2026-11-18T12:48+11:00",
+  "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
  },
