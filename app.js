@@ -1569,6 +1569,16 @@
         if (r.error) throw r.error;
         const lr = await sb.from("cc_bot_runs").select("bot,ran_at,summary").order("ran_at", { ascending: false }).limit(1);
         reply({ ok: true, rows: r.data || [], lastRun: (lr.data && lr.data[0]) || null });
+      } else if (d.action === "flow_load") {
+        const r = await sb.from("cc_diagram").select("data").eq("id", "main").maybeSingle();
+        if (r.error) throw r.error;
+        reply({ ok: true, data: (r.data && r.data.data) || null });
+      } else if (d.action === "flow_save") {
+        const dg = d.data;
+        if (!dg || dg.v !== 1 || !Array.isArray(dg.nodes) || !Array.isArray(dg.edges) || dg.nodes.length > 300 || dg.edges.length > 600 || JSON.stringify(dg).length > 300000) throw new Error("Diagram is too big or not valid.");
+        const r = await sb.from("cc_diagram").upsert({ id: "main", data: dg, updated_at: new Date().toISOString() });
+        if (r.error) throw r.error;
+        reply({ ok: true });
       } else if (d.action === "decide") {
         const id = String(d.id || ""), st = String(d.status || "");
         const FROM = { approved: ["pending"], rejected: ["pending"], seen: ["pending"], cancelled: ["approved"], revert_requested: ["applied"] };
