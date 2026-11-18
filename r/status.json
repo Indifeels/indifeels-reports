@@ -126,13 +126,13 @@
   "reason": ""
  },
  "seo-report": {
-  "at": "2026-11-16T05:59+11:00",
-  "code_sha": "99433b38c67d7ac1528ca00f3b90190de03c6166",
+  "at": "2026-11-19T05:58+11:00",
+  "code_sha": "33b7837037fad2479152235c69af2d6123dca915",
   "data_through": null,
   "last_ok": "2026-11-15T23:41+11:00",
-  "manifest_version": "2026-11-11.profit-flow.1",
+  "manifest_version": "2026-11-17.social-push.1",
   "ok": false,
-  "reason": "Semrush campaigns call reported 100 API units beyond the one allowed snapshots call; stopped without publishing partial data"
+  "reason": "Semrush API units balance is zero (snapshots, position tracking, backlinks)"
  },
  "social-push": {
   "at": "2026-11-17T14:12+11:00",
