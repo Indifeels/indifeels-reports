@@ -63,10 +63,10 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-11-18T06:01+11:00",
-  "code_sha": "d39302bbbf68d82abbb3d6f10ae95458b8f4afc7",
+  "at": "2026-11-18T14:00+11:00",
+  "code_sha": "f6db3b310f85901f0d1bbe8e3041ecb8dfc474b2",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-11-18T06:01+11:00",
+  "last_ok": "2026-11-18T14:00+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
