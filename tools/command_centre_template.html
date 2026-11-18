@@ -546,6 +546,8 @@ window.addEventListener('message',ev=>{
   else if(d.action==='progress'){ if(d.ok&&Array.isArray(d.rows)&&d.rows.length){ const cur=JSON.stringify(PROG.map(r=>[r.id,r.pct,r.status,r.note,r.title])), nw=JSON.stringify(d.rows.map(r=>[r.id,r.pct,r.status,r.note,r.title])); const mx=d.rows.reduce((m,r)=>r.updated_at&&r.updated_at>m?r.updated_at:m,''); const first=!PROGLIVE; PROGLIVE=true; if(cur!==nw||first){ PROG=d.rows; try{if(mx)PROGAT=new Date(mx).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'})}catch(e){} if(curId==='home'||curId==='progress') draw(); } } }
   else if(d.action==='decisions'){ if(d.ok&&Array.isArray(d.rows)){ const cur=JSON.stringify(DEC.map(r=>[r.id,r.status,r.result_note])), nw=JSON.stringify(d.rows.map(r=>[r.id,r.status,r.result_note])); const first=!DECLIVE; DECLIVE=true; const lr=JSON.stringify(d.lastRun||null)!==JSON.stringify(DECRUN); DECRUN=d.lastRun||null; if(cur!==nw||first||lr){ DEC=d.rows; decBadge(); if(curId==='home'||curId==='decisions') draw(); } } }
   else if(d.action==='decide'){ if(d.id) delete decBusy[d.id]; else decBusy={}; if(d.ok){ const r=DEC.find(x=>x.id===d.id); if(r){r.status=d.status; r.decided_at=new Date().toISOString();} decMsg={approved:'Approved. The bot will apply it on its next run.',seen:'Marked as seen.',cancelled:'Cancelled. Nothing was changed.',revert_requested:'Revert requested. The bot will undo it on its next run.'}[d.status]||'Rejected.'; } else decMsg='Not saved: '+(d.error||'error'); decBadge(); draw(); }
+  else if(d.action==='flow_load'){ if(d.ok&&d.data){ const c=flClean(d.data); if(c&&!flDirty()){ FL=c; FLSAVED=JSON.stringify(FL); FLSEL=null; FLSELKIND=null; if(document.getElementById('flwrap')){ flRender(); flPanel(); } FLSYNC='Loaded your last save.'; flSyncMsg(); } } else if(!d.ok){ FLSYNC='Could not load your saved diagram.'; flSyncMsg(); } else { FLSYNC='Nothing saved yet.'; flSyncMsg(); } }
+  else if(d.action==='flow_save'){ if(d.ok){ FLSAVED=FLPEND; FLSYNC='Saved.'; } else FLSYNC='Not saved: '+(d.error||'error'); flSyncMsg(); }
   else if(d.action==='save'){ setSync(d.ok?'Saved to your account':'Not saved: '+(d.error||'error')); }
 });
 if(INHUB){ try{parent.postMessage({type:'cc-q',action:'load',req:'l'},'*')}catch(e){} }
@@ -848,13 +850,18 @@ function flClean(d){
   const edges=d.edges.slice(0,600).filter(e=>e&&ids.has(e.from)&&ids.has(e.to)&&e.from!==e.to).map(e=>({id:flS(e.id||flid('e')).slice(0,40),from:e.from,to:e.to,label:flS(e.label).slice(0,40),arrow:['to','from','both','none'].includes(e.arrow)?e.arrow:'to',line:['solid','dotted','dashed'].includes(e.line)?e.line:'solid',shape:['curve','straight','elbow'].includes(e.shape)?e.shape:'curve',color:okc(e.color)}));
   return {v:2,nodes,edges};
 }
+let FLSAVED='';
+function flDirty(){ return !!FL&&JSON.stringify(FL)!==FLSAVED; }
 function flSave(){
-  clearTimeout(FLTIMER);
-  if(!INHUB){ FLSYNC='Draft only. Opens saved inside the reports hub.'; flSyncMsg(); return; }
-  FLSYNC='Saving…'; flSyncMsg();
-  FLTIMER=setTimeout(()=>{ try{parent.postMessage({type:'cc-q',action:'flow_save',req:'fs'+Date.now(),data:FL},'*')}catch(e){FLSYNC='Not saved: no connection to the hub.'; flSyncMsg();} },800);
+  FLSYNC=!INHUB?'Draft only. Opens saved inside the reports hub.':flDirty()?'Unsaved changes. Tap Save to keep them.':'Saved.'; flSyncMsg();
 }
-function flSyncMsg(){ const e=document.getElementById('flsync'); if(e) e.textContent=FLSYNC; }
+function flDoSave(){
+  if(!INHUB){ FLSYNC='Draft only. Opens saved inside the reports hub.'; flSyncMsg(); return; }
+  FLSYNC='Saving…'; flSyncMsg(); FLPEND=JSON.stringify(FL);
+  try{parent.postMessage({type:'cc-q',action:'flow_save',req:'fs'+Date.now(),data:JSON.parse(FLPEND)},'*')}catch(e){FLSYNC='Not saved: no connection to the hub.'; flSyncMsg();}
+}
+let FLPEND='';
+function flSyncMsg(){ const e=document.getElementById('flsync'); if(e) e.textContent=FLSYNC; const d=flDirty(); document.querySelectorAll('[data-fl=save],[data-fl=undo]').forEach(b=>{b.disabled=!d; b.classList.toggle('on',d&&b.dataset.fl==='save');}); }
 const flN=id=>FL.nodes.find(n=>n.id===id), flE=id=>FL.edges.find(e=>e.id===id);
 function flNodeHTML(n){
   const det=n.details?`<small>${esc(n.details.length>70?n.details.slice(0,68)+'…':n.details)}</small>`:'';
@@ -862,7 +869,7 @@ function flNodeHTML(n){
 }
 function flMount(){
   const wrap=document.getElementById('flwrap'); if(!wrap) return;
-  if(!FL){ FL=flSeed(); if(INHUB){ try{parent.postMessage({type:'cc-q',action:'flow_load',req:'fl'},'*')}catch(e){} } else FLSYNC='Draft only. Opens saved inside the reports hub.'; }
+  if(!FL){ FL=flSeed(); FLSAVED=JSON.stringify(FL); if(INHUB){ try{parent.postMessage({type:'cc-q',action:'flow_load',req:'fl'},'*')}catch(e){} } else FLSYNC='Draft only. Opens saved inside the reports hub.'; }
   if(!FLZ) flFit(false);
   flRender(); flPanel(); flSyncMsg();
 }
@@ -953,7 +960,7 @@ function flZoom(d){ const w=document.getElementById('flwrap'); const cx=(w.scrol
 function flView(){
   return `<h1 style="margin:10px 0 4px">Connections</h1><p class="sub">Your business as one picture. Drag boxes, tap to edit, add your own boxes and draw lines between them.</p>
    <div class="filters" style="margin:0 0 10px">${navBtns()}</div>
-   <div class="fltool"><button type="button" class="btn" data-fl="add">+ Add box</button><button type="button" class="btn" id="flconn" data-fl="conn">Connect</button><button type="button" class="btn" data-fl="zout" aria-label="Zoom out">−</button><button type="button" class="btn" data-fl="zin" aria-label="Zoom in">+</button><button type="button" class="btn" data-fl="fit">Fit all</button><button type="button" class="btn" data-fl="reset">Start again</button><span class="mute small" id="flsync" role="status"></span></div>
+   <div class="fltool"><button type="button" class="btn" data-fl="add">+ Add box</button><button type="button" class="btn" id="flconn" data-fl="conn">Connect</button><button type="button" class="btn" data-fl="zout" aria-label="Zoom out">−</button><button type="button" class="btn" data-fl="zin" aria-label="Zoom in">+</button><button type="button" class="btn" data-fl="fit">Fit all</button><button type="button" class="btn" data-fl="save" disabled>Save</button><button type="button" class="btn" data-fl="undo" disabled>Reset to last save</button><button type="button" class="btn" data-fl="reset">Start again</button><span class="mute small" id="flsync" role="status"></span></div>
    <div class="flwrap" id="flwrap"><div id="flsize"><div id="flcv" class="flcv"><svg id="fledges"></svg><div id="flnodes"></div></div></div></div>
    <div class="card flpanel" id="flpanel" style="margin-top:12px"></div>`;
 }
@@ -992,7 +999,9 @@ function flView(){
       else if(a==='fit') flFit(true); else if(a==='zin') flZoom(.15); else if(a==='zout') flZoom(-.15);
       else if(a==='delnode'){ const id=FLSEL; FL.nodes=FL.nodes.filter(n=>n.id!==id); FL.edges=FL.edges.filter(x=>x.from!==id&&x.to!==id); FLSEL=null; FLSELKIND=null; flRender(); flPanel(); flSave(); }
       else if(a==='deledge'){ const id=FLSEL; FL.edges=FL.edges.filter(x=>x.id!==id); FLSEL=null; FLSELKIND=null; flRender(); flPanel(); flSave(); }
-      else if(a==='reset'){ if(Date.now()-FLRESET<4000){ FL=flSeed(); FLSEL=null; FLSELKIND=null; FLCONN=null; FLRESET=0; flMount(); flSave(); b.textContent='Start again'; } else { FLRESET=Date.now(); b.textContent='Tap again to reset'; setTimeout(()=>{ if(b.isConnected) b.textContent='Start again'; },4000); } }
+      else if(a==='save'){ flDoSave(); }
+      else if(a==='undo'){ if(Date.now()-FLRESET<4000){ try{FL=JSON.parse(FLSAVED);}catch(e){} FLSEL=null; FLSELKIND=null; FLCONN=null; FLRESET=0; flRender(); flPanel(); FLSYNC='Back to your last save.'; flSyncMsg(); b.textContent='Reset to last save'; } else { FLRESET=Date.now(); b.textContent='Tap again to reset'; setTimeout(()=>{ if(b.isConnected) b.textContent='Reset to last save'; },4000); } }
+      else if(a==='reset'){ if(Date.now()-FLRESET<4000){ FL=flSeed(); FLSEL=null; FLSELKIND=null; FLCONN=null; FLRESET=0; flRender(); flPanel(); flSave(); b.textContent='Start again'; } else { FLRESET=Date.now(); b.textContent='Tap again to reset'; setTimeout(()=>{ if(b.isConnected) b.textContent='Start again'; },4000); } }
       return;
     }
     const cs=e.target.closest('[data-flcol]'); if(cs){ const t=cs.dataset.for==='n'?flN(FLSEL):flE(FLSEL); if(t){ t.color=cs.dataset.flcol; flRender(); flPanel(); flSave(); } return; }
