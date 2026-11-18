@@ -28,6 +28,9 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 a{color:inherit;text-decoration:none}
 button{font:inherit;color:inherit;cursor:pointer}
 .wrap{max-width:1080px;margin:0 auto}
+.wrap.full{max-width:none}
+.wrap.full .flwrap{height:max(460px,calc(100vh - 290px))}
+.flwrap{overscroll-behavior:contain}
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;flex-wrap:wrap;
   gap:10px 14px;align-items:center;justify-content:space-between;padding:12px 0}
 .tabs{display:flex;gap:6px}
@@ -875,7 +878,7 @@ function flMount(){
 }
 function flRender(){
   const cv=document.getElementById('flcv'); if(!cv) return;
-  let W=1500,H=900; FL.nodes.forEach(n=>{W=Math.max(W,n.x+320);H=Math.max(H,n.y+200)});
+  let W=400,H=300; FL.nodes.forEach(n=>{W=Math.max(W,n.x+320);H=Math.max(H,n.y+200)});
   const sz=document.getElementById('flsize'); sz.style.width=W*FLZ+'px'; sz.style.height=H*FLZ+'px';
   cv.style.width=W+'px'; cv.style.height=H+'px'; cv.style.transform=`scale(${FLZ})`;
   document.getElementById('flnodes').innerHTML=FL.nodes.map(n=>`<div class="fln ${FLSELKIND==='n'&&FLSEL===n.id?'sel':''} ${FLCONN&&FLCONN.from===n.id?'src':''}" data-n="${esc(n.id)}" style="left:${n.x}px;top:${n.y}px">${flNodeHTML(n)}</div>`).join('');
@@ -955,8 +958,17 @@ function flConnTap(id){
   FLCONN=null; setConnBtn(); FLSELKIND='e'; FLSEL=e.id; flRender(); flPanel(); flSave();
 }
 function setConnBtn(){ const b=document.getElementById('flconn'); if(b){ b.classList.toggle('on',!!FLCONN); b.textContent=FLCONN?'Cancel connecting':'Connect'; } }
-function flFit(draw){ const w=document.getElementById('flwrap'); let W=1500,H=900; FL.nodes.forEach(n=>{W=Math.max(W,n.x+320);H=Math.max(H,n.y+200)}); FLZ=Math.max((w.clientWidth||900)<600?.5:.35,Math.min(1,(w.clientWidth||900)/W)); if(draw){ flRender(); w.scrollLeft=0; w.scrollTop=0; } }
-function flZoom(d){ const w=document.getElementById('flwrap'); const cx=(w.scrollLeft+w.clientWidth/2)/FLZ, cy=(w.scrollTop+w.clientHeight/2)/FLZ; FLZ=Math.max(.3,Math.min(1.6,Math.round((FLZ+d)*100)/100)); flRender(); w.scrollLeft=cx*FLZ-w.clientWidth/2; w.scrollTop=cy*FLZ-w.clientHeight/2; }
+function flFit(draw){ const w=document.getElementById('flwrap'); let W=400,H=300; FL.nodes.forEach(n=>{W=Math.max(W,n.x+320);H=Math.max(H,n.y+200)}); const cw=(w.clientWidth||900)-4, ch=(w.clientHeight||600)-4; FLZ=Math.max(.15,Math.min(2,cw/W,ch/H)); if(draw){ flRender(); w.scrollLeft=0; w.scrollTop=0; } }
+function flZoomAt(nz,px,py){ const w=document.getElementById('flwrap'); if(!w) return; nz=Math.max(.15,Math.min(2.5,Math.round(nz*100)/100)); if(nz===FLZ) return; const cx=(w.scrollLeft+px)/FLZ, cy=(w.scrollTop+py)/FLZ; FLZ=nz; flRender(); w.scrollLeft=cx*FLZ-px; w.scrollTop=cy*FLZ-py; }
+function flZoom(d){ const w=document.getElementById('flwrap'); flZoomAt(FLZ+d,w.clientWidth/2,w.clientHeight/2); }
+(function(){
+  document.addEventListener('wheel',e=>{
+    const w=e.target.closest&&e.target.closest('#flwrap'); if(!w||!FL||!(e.ctrlKey||e.metaKey)) return;
+    e.preventDefault(); const r=w.getBoundingClientRect();
+    flZoomAt(FLZ*Math.exp(-e.deltaY*0.0015),e.clientX-r.left,e.clientY-r.top);
+  },{passive:false});
+  let rz; window.addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(curId==='map'&&FL&&document.getElementById('flwrap')) flFit(true); },200); });
+})();
 function flView(){
   return `<h1 style="margin:10px 0 4px">Connections</h1><p class="sub">Your business as one picture. Drag boxes, tap to edit, add your own boxes and draw lines between them.</p>
    <div class="filters" style="margin:0 0 10px">${navBtns()}</div>
@@ -1025,6 +1037,7 @@ function draw(){
   document.getElementById('tab-home').classList.toggle('on',!isMap&&!isProg&&!isDec);
   document.getElementById('tab-dec').classList.toggle('on',isDec);
   document.getElementById('tab-prog').classList.toggle('on',isProg);
+  document.querySelector('.wrap').classList.toggle('full',isMap);
   app.innerHTML=isMap?flView():isProg?progressView():isDec?decisionsView():(MIS[curId]?missionView(curId):N[curId]?nodeView(curId):homeView());
   if(isMap) flMount();
   updateNav();
