@@ -108,10 +108,10 @@
   "reason": ""
  },
  "profit-flow": {
-  "at": "2026-11-21T00:01+11:00",
-  "code_sha": "7dbea1206e5711ca00eee86520613e0913bc3e12",
+  "at": "2026-11-21T06:01+11:00",
+  "code_sha": "3bac041f6a3bc216ae8082936f9b3ad310ad2f42",
   "data_through": null,
-  "last_ok": "2026-11-21T00:01+11:00",
+  "last_ok": "2026-11-21T06:01+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
