@@ -54,13 +54,13 @@
   "reason": ""
  },
  "google-scorecard": {
-  "at": "2026-11-20T05:58+11:00",
-  "code_sha": "eb911f74b30c5ea0c28a086d29c7558a0556058c",
+  "at": "2026-11-21T05:54+11:00",
+  "code_sha": "5a6392f91597fe2e6ecbdab9e12e9eb700190151",
   "data_through": null,
   "last_ok": "2026-11-20T05:58+11:00",
   "manifest_version": "2026-11-17.social-push.1",
-  "ok": true,
-  "reason": ""
+  "ok": false,
+  "reason": "Scheduled run has no API credentials (Windsor/Shopify/Supabase via MCP only); bulk order and ads inputs not collectable reliably"
  },
  "google-tracked": {
   "at": "2026-11-20T20:00+11:00",
