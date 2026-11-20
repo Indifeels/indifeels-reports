@@ -255,6 +255,7 @@ n('photo','Photography & Content','plan',null,['stock'],[MN],'','Photos, size ch
 /* Marketing */
 n('google-ads','Google Ads','part',null,['marketing'],[WI],'','Campaign settings, signals and results.');
 n('facebook-ads','Facebook & Instagram Ads','part',null,['marketing'],[WI],'','Tracked and non-tracked campaigns.');
+n('chatgpt-ads','ChatGPT Ads (started)','part',null,['marketing',TC],['ChatGPT Ads'],'','Started. Setup and tracking still pending: spend, clicks and orders from ChatGPT.');
 n('tiktok','TikTok Ads (to test)','plan',null,['marketing',TC],['TikTok Ads'],'','Small test budget, judged after 30 days.');
 n('email','Email & SMS (Klaviyo)','plan',null,['marketing','customers',TC],['Klaviyo'],'','Welcome, abandoned cart, post-purchase and win-back flows.');
 n('upsell','Upsell & Post-purchase (ReConvert)','plan',null,['marketing',TC],['ReConvert'],'','Offers on the thank-you page.');
@@ -811,6 +812,7 @@ function flSeed(){
   add('seo','SEO · Veronica','Organic rankings and content. '+sc('web'),'box',PURP,CX[1],RY[0]);
   add('gads','Google Ads · Satwinder bot','Search, Shopping and Performance Max. Bot suggests, you approve.','box',PURP,CX[1],RY[1]);
   add('meta','Meta Ads · Adnan bot','Facebook and Instagram ads, including message campaigns.','box',PURP,CX[1],RY[2]);
+  add('chatgpt','ChatGPT Ads','Started. Ads inside ChatGPT. Setup and tracking still pending.','box',TEAL,CX[1],RY[3]-140);
   add('davy','Social posting · Davy','Posts the Social Push List products.','box',PURP,CX[1],RY[4]);
   add('stores','Stores · Tarneit and Blacktown','Walk-ins and calls. '+sc('local'),'box',SLATE,CX[2],RY[1]);
   add('web','Website · indifeels.com','Shopify store: browse, size help, cart.','box',SLATE,CX[2],RY[2]);
@@ -823,7 +825,7 @@ function flSeed(){
   add('fin','Sales and finance · Jess','Profit per $100, cash, what you keep. '+sc('sales'),'box',PURP,CX[5],RY[1]);
   add('grow','Growth and planning · Professor Bot','Strategy audit and what worked. '+sc('growth'),'box',PURP,CX[5],RY[3]);
   E('kw','seo',{label:'organic'}); E('kw','gads',{label:'paid search'}); E('season','gads'); E('season','meta'); E('feeds','meta'); E('feeds','davy');
-  E('seo','web'); E('gads','web'); E('gads','stores',{label:'calls and visits'}); E('meta','web'); E('meta','chat',{label:'messages'}); E('davy','chat');
+  E('chatgpt','web',{label:'visits',line:'dashed'}); E('seo','web'); E('gads','web'); E('gads','stores',{label:'calls and visits'}); E('meta','web'); E('meta','chat',{label:'messages'}); E('davy','chat');
   E('stores','instore'); E('web','orders'); E('chat','orders',{label:'help to buy'});
   E('instore','stock'); E('orders','stock'); E('stock','clear',{label:'slow sellers'}); E('clear','push',{label:'needs a push'});
   E('stock','fin'); E('clear','fin',{label:'profit'}); E('fin','grow',{label:'what worked'});
