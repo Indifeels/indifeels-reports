@@ -9,10 +9,10 @@
   "reason": ""
  },
  "color-game": {
-  "at": "2026-11-19T12:22+11:00",
-  "code_sha": "81c64e56ebac3f84358a7a0406fc53b20afc724b",
+  "at": "2026-11-20T12:24+11:00",
+  "code_sha": "e07ee88c2d99259f703a5a81a274ea17f160eb4c",
   "data_through": null,
-  "last_ok": "2026-11-19T12:22+11:00",
+  "last_ok": "2026-11-20T12:24+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
