@@ -63,13 +63,13 @@
   "reason": "Scheduled run has no API credentials (Windsor/Shopify/Supabase via MCP only); bulk order and ads inputs not collectable reliably"
  },
  "google-tracked": {
-  "at": "2026-11-20T20:00+11:00",
-  "code_sha": "672a5e3c2fded1012a8003572b5adf4e327c0f2e",
+  "at": "2026-11-21T06:01+11:00",
+  "code_sha": "3bac041f6a3bc216ae8082936f9b3ad310ad2f42",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-11-20T06:01+11:00",
+  "last_ok": "2026-11-21T06:01+11:00",
   "manifest_version": "2026-11-17.social-push.1",
-  "ok": false,
-  "reason": "Google tracked refresh failed; check GitHub Actions"
+  "ok": true,
+  "reason": ""
  },
  "monthly": {
   "at": "2026-11-20T21:37+11:00",
