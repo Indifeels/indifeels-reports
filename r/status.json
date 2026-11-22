@@ -144,10 +144,10 @@
   "reason": ""
  },
  "stock": {
-  "at": "2026-11-23T07:01+11:00",
-  "code_sha": "60d20a3772a293ad1702e95921ae440081a6fd9f",
+  "at": "2026-11-23T09:59+11:00",
+  "code_sha": "6323856a358e2e2dc038578d95dc84cff8eccee0",
   "data_through": null,
-  "last_ok": "2026-11-23T07:01+11:00",
+  "last_ok": "2026-11-23T09:59+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
