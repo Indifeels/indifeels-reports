@@ -1,9 +1,9 @@
 {
  "cash-report": {
-  "at": "2026-11-22T18:41+11:00",
-  "code_sha": "b9c2d464bec623ff3f420fd47bbe1e33698f32aa",
+  "at": "2026-11-22T19:38+11:00",
+  "code_sha": "efd497bfa4c7e35485ec79955012ed3347951228",
   "data_through": null,
-  "last_ok": "2026-11-22T18:41+11:00",
+  "last_ok": "2026-11-22T19:38+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
