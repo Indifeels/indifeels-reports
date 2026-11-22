@@ -63,13 +63,13 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-11-22T14:01+11:00",
-  "code_sha": "c39adc61d55d45979c695ee3e3308f9f9bff8436",
+  "at": "2026-11-22T20:00+11:00",
+  "code_sha": "c412bc5e209fda719c1f9738e3fd104018cffcdd",
   "data_through": "2026-10-05T23:59:59+11:00",
   "last_ok": "2026-11-22T14:01+11:00",
   "manifest_version": "2026-11-17.social-push.1",
-  "ok": true,
-  "reason": ""
+  "ok": false,
+  "reason": "Google tracked refresh failed; check GitHub Actions"
  },
  "monthly": {
   "at": "2026-11-22T14:12+11:00",
