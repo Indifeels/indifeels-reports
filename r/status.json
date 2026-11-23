@@ -27,10 +27,10 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-11-23T14:07+11:00",
-  "code_sha": "3dd0ffb4f2bcb74f426f07bd22e052e10709935a",
-  "data_through": "2026-11-23T14:00:16.196989+11:00",
-  "last_ok": "2026-11-23T14:07+11:00",
+  "at": "2026-11-23T21:36+11:00",
+  "code_sha": "21b9d4c760a81e9cd55d5adbe70cefe1553d6767",
+  "data_through": "2026-11-23T21:30:16.746466+11:00",
+  "last_ok": "2026-11-23T21:36+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
@@ -72,10 +72,10 @@
   "reason": ""
  },
  "monthly": {
-  "at": "2026-11-23T14:07+11:00",
-  "code_sha": "3dd0ffb4f2bcb74f426f07bd22e052e10709935a",
-  "data_through": "2026-11-23T14:00:16.196989+11:00",
-  "last_ok": "2026-11-23T14:07+11:00",
+  "at": "2026-11-23T21:36+11:00",
+  "code_sha": "21b9d4c760a81e9cd55d5adbe70cefe1553d6767",
+  "data_through": "2026-11-23T21:30:16.746466+11:00",
+  "last_ok": "2026-11-23T21:36+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
