@@ -36,10 +36,10 @@
   "reason": ""
  },
  "facebook-tracked": {
-  "at": "2026-11-23T06:01+11:00",
-  "code_sha": "afe765c86c5e0ee644fea1032be62e3f8c495f75",
-  "data_through": "2026-11-22T23:59:59+11:00",
-  "last_ok": "2026-11-23T06:01+11:00",
+  "at": "2026-11-23T14:01+11:00",
+  "code_sha": "3dd0ffb4f2bcb74f426f07bd22e052e10709935a",
+  "data_through": "2026-11-23T14:00:17.299140+11:00",
+  "last_ok": "2026-11-23T14:01+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
