@@ -125,6 +125,15 @@
   "ok": true,
   "reason": ""
  },
+ "seo-final": {
+  "at": "2026-11-24T15:09+11:00",
+  "code_sha": "89d2b2a2703525c70271b999df294a93dfd143d3",
+  "data_through": null,
+  "last_ok": "2026-11-24T15:09+11:00",
+  "manifest_version": "2026-11-17.social-push.1",
+  "ok": true,
+  "reason": ""
+ },
  "seo-report": {
   "at": "2026-11-23T05:57+11:00",
   "code_sha": "ff54b55a4c4d52e51bc9864e377f1d17a99f98f9",

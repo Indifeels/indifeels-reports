@@ -340,6 +340,27 @@
       "schedule_control": "none"
     },
     {
+      "id": "seo-final",
+      "title": "SEO Final",
+      "workflow": "manual",
+      "refresh_times": [
+        "on request"
+      ],
+      "required_env": [
+        "SEO_FINAL_KEY"
+      ],
+      "builders": [
+        "tools/seo_final.py",
+        "tools/seo_final_REFRESH.md"
+      ],
+      "outputs": [
+        "r/seo-final.bin",
+        "r/seo-final.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "none"
+    },
+    {
       "id": "color-game",
       "title": "Colour Tagging Game",
       "workflow": "color-game.yml",
