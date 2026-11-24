@@ -27,10 +27,10 @@
   "reason": ""
  },
  "daily": {
-  "at": "2026-11-24T14:09+11:00",
-  "code_sha": "532081b65e009b9fd9abc67b51a564ba8f9a426e",
-  "data_through": "2026-11-24T14:00:32.129232+11:00",
-  "last_ok": "2026-11-24T14:09+11:00",
+  "at": "2026-11-24T21:37+11:00",
+  "code_sha": "3dd2df7500dd02876902de4a22584d8862f53679",
+  "data_through": "2026-11-24T21:30:16.300574+11:00",
+  "last_ok": "2026-11-24T21:37+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
@@ -72,10 +72,10 @@
   "reason": "Google tracked refresh failed; check GitHub Actions"
  },
  "monthly": {
-  "at": "2026-11-24T14:09+11:00",
-  "code_sha": "532081b65e009b9fd9abc67b51a564ba8f9a426e",
-  "data_through": "2026-11-24T14:00:32.129232+11:00",
-  "last_ok": "2026-11-24T14:09+11:00",
+  "at": "2026-11-24T21:37+11:00",
+  "code_sha": "3dd2df7500dd02876902de4a22584d8862f53679",
+  "data_through": "2026-11-24T21:30:16.300574+11:00",
+  "last_ok": "2026-11-24T21:37+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
