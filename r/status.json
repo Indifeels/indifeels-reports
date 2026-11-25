@@ -18,10 +18,10 @@
   "reason": ""
  },
  "command-centre": {
-  "at": "2026-11-26T10:41+11:00",
-  "code_sha": "9bc21ebbb7a7b95baf114482fb45a533c3b7e047",
+  "at": "2026-11-26T10:49+11:00",
+  "code_sha": "33726ccd61c2235f78809a4123844d59d6edb216",
   "data_through": null,
-  "last_ok": "2026-11-26T10:41+11:00",
+  "last_ok": "2026-11-26T10:49+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""

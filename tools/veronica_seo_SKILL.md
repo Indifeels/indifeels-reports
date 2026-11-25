@@ -23,6 +23,18 @@ Missing meta on unranked pages and new products; alt text; broken internal links
 ## Approval queue
 Rows in `cc_decisions` (bot `Veronica · SEO`) with `approver` = `simar` (product, stock, price, product details), `veronica` (keywords, page text, redirects, canonicals, robots, sitemap, schema, theme code, backlinks) or `both` (store-wide, theme, ranking pages that also change the offer). Unsure -> `simar`. Fields: title, why (data), change_detail, risk, reversible, undo_detail.
 
+## Reading the owner's notes (every run, including the daily check)
+Simar can approve, reject, or **Acknowledge** (keep it listed) a card, and can type or speak a note. Everything is saved in `cc_decisions.thread` (JSON list of `{at, by, action, text}`), and `awaiting='agent'` marks a card with something new for Veronica.
+At the start of every run, before new work:
+1. `select id,title,status,thread from cc_decisions where awaiting='agent'` (use Supabase from the browser/connector the run already has).
+2. For each card, read the newest owner entry and decide:
+   - **Approved** (with or without note): apply it as the note says. Set `awaiting=null`.
+   - **Acknowledged, e.g. "I will stock purple suits"**: keep the card open. When a later Shopify check shows the stock arrived (or Simar says so), mark it `applied` with a result note, then act on it (new keywords, collection copy), after approval where required.
+   - **Note that answers a question**: act on it if clear. If anything is unclear, do NOT guess: append `{by:'agent', action:'Question', text:'<one short question>'}` to `thread` and set `awaiting='owner'`. The dashboard shows it as "Question for you".
+   - **Rejected**: leave it, record the reason in `thread`, never re-propose the same thing without new data.
+3. Always append a short `{by:'agent', action:'Reviewed', text:'<what I did or will do>'}` and set `awaiting=null` (or `'owner'` if a question is open). Never delete thread entries: the thread is the transcript of each decision.
+4. Acknowledged cards with nothing new stay listed. Do not nag; re-raise only when stock or data changes.
+
 ## Memory (Supabase `seo_agent_state`)
 Keys: `last_run`, `scores`, `protected_pages`, `tactics`, `run_log`. Update every run. Log each run in `cc_bot_runs` (bot `Veronica · SEO`).
 

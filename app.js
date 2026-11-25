@@ -1565,7 +1565,7 @@
         if (r.error) throw r.error;
         reply({ ok: true, rows: r.data || [] });
       } else if (d.action === "decisions") {
-        const r = await sb.from("cc_decisions").select("id,bot,area,title,why,change_detail,risk,status,result_note,reversible,undo_detail,approver,created_at,decided_at,applied_at").order("created_at", { ascending: false }).limit(100);
+        const r = await sb.from("cc_decisions").select("id,bot,area,title,why,change_detail,risk,status,result_note,reversible,undo_detail,approver,thread,awaiting,created_at,decided_at,applied_at").order("created_at", { ascending: false }).limit(100);
         if (r.error) throw r.error;
         const lr = await sb.from("cc_bot_runs").select("bot,ran_at,summary").order("ran_at", { ascending: false }).limit(1);
         reply({ ok: true, rows: r.data || [], lastRun: (lr.data && lr.data[0]) || null });
@@ -1581,10 +1581,17 @@
         reply({ ok: true });
       } else if (d.action === "decide") {
         const id = String(d.id || ""), st = String(d.status || "");
-        const FROM = { approved: ["pending"], rejected: ["pending"], seen: ["pending"], cancelled: ["approved"], revert_requested: ["applied"] };
-        if (!/^[a-z]-\d{4,6}$/.test(id) || !FROM[st]) throw new Error("Bad decision.");
-        let q = sb.from("cc_decisions").update({ status: st, decided_at: new Date().toISOString() }).eq("id", id).in("status", FROM[st]);
-        q = q.in("risk", st === "seen" ? ["info"] : ["low", "approval"]);
+        const FROM = { approved: ["pending", "acknowledged"], rejected: ["pending", "acknowledged"], acknowledged: ["pending"], seen: ["pending"], cancelled: ["approved"], revert_requested: ["applied"] };
+        if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(id) || !FROM[st]) throw new Error("Bad decision.");
+        const note = String(d.note || "").trim().slice(0, 2000);
+        const cur = await sb.from("cc_decisions").select("thread").eq("id", id).maybeSingle();
+        const th = Array.isArray(cur.data && cur.data.thread) ? cur.data.thread.slice(-60) : [];
+        const LBL = { approved: "Approved", rejected: "Rejected", acknowledged: "Acknowledged (kept on the list)", seen: "Seen", cancelled: "Cancelled", revert_requested: "Revert requested" };
+        th.push({ at: new Date().toISOString(), by: "owner", action: LBL[st], text: note });
+        const upd = { status: st, decided_at: new Date().toISOString(), updated_at: new Date().toISOString(), thread: th };
+        if (note || st === "acknowledged") upd.awaiting = "agent"; else if (st !== "acknowledged") upd.awaiting = null;
+        let q = sb.from("cc_decisions").update(upd).eq("id", id).in("status", FROM[st]);
+        q = q.in("risk", st === "seen" ? ["info"] : ["low", "approval", "info"]);
         if (st === "revert_requested") q = q.neq("reversible", "no");
         const r = await q.select("id");
         if (r.error) throw r.error;
@@ -1595,7 +1602,18 @@
           if (st === "cancelled" && cs === "revert_requested") throw new Error("Too late to cancel. It has already been applied.");
           throw new Error("That decision has already changed.");
         }
-        reply({ ok: true, id, status: st });
+        reply({ ok: true, id, status: st, thread: th, awaiting: upd.awaiting === undefined ? null : upd.awaiting });
+      } else if (d.action === "note") {
+        const id = String(d.id || "");
+        const note = String(d.note || "").trim().slice(0, 2000);
+        if (!/^[a-z0-9][a-z0-9-]{1,40}$/.test(id) || !note) throw new Error("Write a note first.");
+        const cur = await sb.from("cc_decisions").select("thread").eq("id", id).maybeSingle();
+        if (cur.error || !cur.data) throw new Error("Decision not found.");
+        const th = Array.isArray(cur.data.thread) ? cur.data.thread.slice(-60) : [];
+        th.push({ at: new Date().toISOString(), by: "owner", action: "Note", text: note });
+        const r = await sb.from("cc_decisions").update({ thread: th, awaiting: "agent", updated_at: new Date().toISOString() }).eq("id", id).select("id");
+        if (r.error) throw r.error;
+        reply({ ok: true, id, noted: true, thread: th, awaiting: "agent" });
       } else if (d.action === "save") {
         const items = (Array.isArray(d.items) ? d.items : []).slice(0, 80).filter((i) => /^m-[a-z-]{1,30}\.[a-z]{1,20}$/.test(String(i.qid))).map((i) => ({ qid: String(i.qid), answer: String(i.answer || "").slice(0, 2000), parked: !!i.parked, updated_at: new Date().toISOString() }));
         const done = (Array.isArray(d.done) ? d.done : []).slice(0, 30).filter((x) => /^m-[a-z-]{1,30}$/.test(String(x))).map((x) => ({ mid: String(x) }));

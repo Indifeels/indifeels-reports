@@ -194,6 +194,12 @@ textarea.out{width:100%;min-height:140px;padding:10px;border-radius:10px;border:
 .dcard{margin-bottom:12px}.dcard .dh{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
 .dcard .dt{font:700 16px/1.3 var(--display);margin:4px 0}.dcard .dd{margin:6px 0;font-size:14px}.dcard .dd b{color:var(--mute);font-weight:600}
 .dact{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.dact button{min-height:44px;padding:0 20px;border-radius:12px;border:1px solid var(--line);background:var(--tile2);color:var(--fg);font:700 14px var(--display);cursor:pointer}
+.dnote{width:100%;box-sizing:border-box;min-height:64px;margin-top:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--tile2);color:var(--fg);font:14px/1.4 var(--body,inherit);resize:vertical}
+.dact button.mic{min-width:44px;padding:0 14px}.dact button.mic.on{background:#c0392b;color:#fff;border-color:transparent}
+.dthread{margin-top:10px;border-top:1px solid var(--line);padding-top:8px;font-size:13px}.dthread summary{cursor:pointer;color:var(--mute)}
+.dthread .tm{margin:6px 0;padding:6px 10px;border-radius:10px;background:var(--tile2)}.dthread .tm.ag{border-left:3px solid #8a6ad8}.dthread .tm.ow{border-left:3px solid var(--g)}.dthread .tm small{color:var(--mute);display:block}
+.dq{margin-top:8px;padding:8px 10px;border-radius:10px;background:#3b2f10;color:#ffd98a;font-size:13px}
+.dact button.ack{border-color:#d9a441}
 .dact button.ok{background:var(--g);color:#06140a;border-color:transparent}.dact button[disabled]{opacity:.5;cursor:default}
 .chip.rlow{color:var(--g);background:color-mix(in srgb,var(--g) 14%,transparent)}.chip.rapp{color:var(--y);background:color-mix(in srgb,var(--y) 14%,transparent)}
 .prow .pb{grid-column:2/4}
@@ -550,8 +556,9 @@ window.addEventListener('message',ev=>{
   const d=ev.data||{}; if(d.type!=='cc-q-result') return;
   if(d.action==='load'){ if(d.ok){ Q.a=Object.assign({},d.answers||{}); Q.p=Object.assign({},d.parked||{}); Q.d=Object.assign({},d.done||{}); SYNC=cl(Q); try{localStorage.setItem(MK,JSON.stringify(Q))}catch(e){} setSync('Saved to your account'); draw(); } else setSync('Could not load saved answers'); }
   else if(d.action==='progress'){ if(d.ok&&Array.isArray(d.rows)&&d.rows.length){ const cur=JSON.stringify(PROG.map(r=>[r.id,r.pct,r.status,r.note,r.title])), nw=JSON.stringify(d.rows.map(r=>[r.id,r.pct,r.status,r.note,r.title])); const mx=d.rows.reduce((m,r)=>r.updated_at&&r.updated_at>m?r.updated_at:m,''); const first=!PROGLIVE; PROGLIVE=true; if(cur!==nw||first){ PROG=d.rows; try{if(mx)PROGAT=new Date(mx).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'})}catch(e){} if(curId==='home'||curId==='progress') draw(); } } }
-  else if(d.action==='decisions'){ if(d.ok&&Array.isArray(d.rows)){ const cur=JSON.stringify(DEC.map(r=>[r.id,r.status,r.result_note])), nw=JSON.stringify(d.rows.map(r=>[r.id,r.status,r.result_note])); const first=!DECLIVE; DECLIVE=true; const lr=JSON.stringify(d.lastRun||null)!==JSON.stringify(DECRUN); DECRUN=d.lastRun||null; if(cur!==nw||first||lr){ DEC=d.rows; decBadge(); if(curId==='home'||curId==='decisions') draw(); } } }
-  else if(d.action==='decide'){ if(d.id) delete decBusy[d.id]; else decBusy={}; if(d.ok){ const r=DEC.find(x=>x.id===d.id); if(r){r.status=d.status; r.decided_at=new Date().toISOString();} decMsg={approved:'Approved. The bot will apply it on its next run.',seen:'Marked as seen.',cancelled:'Cancelled. Nothing was changed.',revert_requested:'Revert requested. The bot will undo it on its next run.'}[d.status]||'Rejected.'; } else decMsg='Not saved: '+(d.error||'error'); decBadge(); draw(); }
+  else if(d.action==='decisions'){ if(d.ok&&Array.isArray(d.rows)){ const cur=JSON.stringify(DEC.map(r=>[r.id,r.status,r.result_note,r.awaiting,(r.thread||[]).length])), nw=JSON.stringify(d.rows.map(r=>[r.id,r.status,r.result_note,r.awaiting,(r.thread||[]).length])); const first=!DECLIVE; DECLIVE=true; const lr=JSON.stringify(d.lastRun||null)!==JSON.stringify(DECRUN); DECRUN=d.lastRun||null; if(cur!==nw||first||lr){ DEC=d.rows; decBadge(); const ae=document.activeElement; if((curId==='home'||curId==='decisions')&&!(ae&&ae.matches&&ae.matches('[data-dnote]'))&&!MICON) draw(); } } }
+  else if(d.action==='decide'){ if(d.id) delete decBusy[d.id]; else decBusy={}; if(d.ok){ const r=DEC.find(x=>x.id===d.id); if(r){r.status=d.status; r.decided_at=new Date().toISOString(); if(d.thread) r.thread=d.thread; r.awaiting=d.awaiting||null;} delete DDRAFT[d.id]; decMsg={acknowledged:'Acknowledged. It stays on the list and Veronica reads your note at the next run.',approved:'Approved. The bot will apply it on its next run.',seen:'Marked as seen.',cancelled:'Cancelled. Nothing was changed.',revert_requested:'Revert requested. The bot will undo it on its next run.'}[d.status]||'Rejected.'; } else decMsg='Not saved: '+(d.error||'error'); decBadge(); draw(); }
+  else if(d.action==='note'){ if(d.id) delete decBusy[d.id]; if(d.ok){ const r=DEC.find(x=>x.id===d.id); if(r){r.thread=d.thread; r.awaiting='agent';} delete DDRAFT[d.id]; decMsg='Note saved. It will be reviewed at the next run.'; } else decMsg='Not saved: '+(d.error||'error'); draw(); }
   else if(d.action==='flow_load'){ if(d.ok&&d.data){ const c=flClean(d.data); if(c&&!flDirty()){ FL=c; FLSAVED=JSON.stringify(FL); FLSEL=null; FLSELKIND=null; if(document.getElementById('flwrap')){ flRender(); flPanel(); } FLSYNC='Loaded your last save.'; flSyncMsg(); } } else if(!d.ok){ FLSYNC='Could not load your saved diagram.'; flSyncMsg(); } else { FLSYNC='Nothing saved yet.'; flSyncMsg(); } }
   else if(d.action==='flow_save'){ if(d.ok){ FLSAVED=FLPEND; FLSYNC='Saved.'; } else FLSYNC='Not saved: '+(d.error||'error'); flSyncMsg(); }
   else if(d.action==='save'){ setSync(d.ok?'Saved to your account':'Not saved: '+(d.error||'error')); }
@@ -586,7 +593,7 @@ function progressView(){
    <p class="note">Updated as the work happens${PROGAT?' · last change '+esc(PROGAT):''}.</p>`;
 }
 let DEC=[], DECLIVE=false, decBusy={}, decMsg='', DECRUN=null;
-const decPend=()=>DEC.filter(r=>r.status==='pending');
+const decPend=()=>DEC.filter(r=>r.status==='pending'||(r.status==='acknowledged'&&r.awaiting==='owner'));
 function nextRun(){
   try{
     const f=new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Melbourne',hour:'numeric',minute:'numeric',hour12:false}).formatToParts(new Date());
@@ -595,30 +602,41 @@ function nextRun(){
     return n?'today at '+n[1]:'tomorrow at 8:15am';
   }catch(e){return 'at the next run'}
 }
+var DDRAFT={},MICON=null,MICREC=null;
 function decCard(r){
   const b=(st,cls,t)=>`<button type="button" ${cls?`class="${cls}" `:''}data-dec="${esc(r.id)}" data-st="${st}" ${decBusy[r.id]?'disabled':''}>${t}</button>`;
   const risk=r.risk==='info'?'<span class="chip">For your info</span>':r.risk==='low'?'<span class="chip rlow">Low risk, bot may do alone</span>':'<span class="chip rapp">Needs your approval</span>';
-  const SL={pending:'Waiting for you',approved:'Approved',rejected:'Rejected',applied:'Done',failed:'Failed',seen:'Seen',cancelled:'Cancelled',revert_requested:'Revert requested',reverted:'Reverted'};
+  const SL={acknowledged:'Acknowledged',pending:'Waiting for you',approved:'Approved',rejected:'Rejected',applied:'Done',failed:'Failed',seen:'Seen',cancelled:'Cancelled',revert_requested:'Revert requested',reverted:'Reverted'};
   const note=r.result_note?' · '+esc(r.result_note):'';
   const small=t=>`<div class="mute small" style="margin-top:8px">${t}</div>`;
   let act;
-  if(r.status==='pending') act=r.risk==='info'?`<div class="dact">${b('seen','ok','Got it')}</div>`:`<div class="dact">${b('approved','ok','Approve')}${b('rejected','','Reject')}</div>`;
+  const thr=Array.isArray(r.thread)?r.thread:[];
+  const open=r.status==='pending'||r.status==='acknowledged';
+  const box=open?`<textarea class="dnote" data-dnote="${esc(r.id)}" rows="2" placeholder="Type or speak your answer or details (optional)">${esc(DDRAFT[r.id]||'')}</textarea>`:'';
+  const mic=open?`<button type="button" class="mic${MICON===r.id?' on':''}" data-mic="${esc(r.id)}" aria-label="Speak your answer">${MICON===r.id?'■ Stop':'🎤'}</button>`:'';
+  const nb=open?`<button type="button" data-dnotesave="${esc(r.id)}" ${decBusy[r.id]?'disabled':''}>Save note</button>`:'';
+  if(open&&r.risk==='info') act=box+`<div class="dact">${mic}${nb}${b('seen','ok','Got it')}${r.status==='pending'?b('acknowledged','ack','Acknowledge, keep listed'):''}</div>`;
+  else if(open) act=box+`<div class="dact">${mic}${nb}${b('approved','ok','Approve')}${r.status==='pending'?b('acknowledged','ack','Acknowledge, keep listed'):''}${b('rejected','','Reject')}</div>`+(r.status==='acknowledged'?small('Acknowledged. Kept on the list. Veronica reads your notes at the next run and may come back with questions.'):'');
   else if(r.status==='approved') act=`<div class="dact">${b('cancelled','','Cancel')}</div>`+small(`Approved. The bot applies it ${nextRun()}. <b>Cancel before then.</b> After that it can only be reverted.`);
   else if(r.status==='applied') act=r.reversible==='no'?small('Done'+note+'. <b>This cannot be undone.</b>'):`<div class="dact">${b('revert_requested','','Revert')}</div>`+small('Done'+note+(r.reversible==='partly'?'. Can be reverted, but money already spent is not returned.':'. Can be reverted.'));
   else if(r.status==='revert_requested') act=small(`Revert requested. The bot undoes it ${nextRun()}.`);
   else act=small(esc(SL[r.status]||r.status)+note);
+  const lastAg=[...thr].reverse().find(t=>t.by==='agent');
+  const q=(r.awaiting==='owner'&&lastAg)?`<div class="dq"><b>Question for you:</b> ${esc(lastAg.text)}</div>`:'';
+  const wait=r.awaiting==='agent'?small('Your note is saved. It will be reviewed at the next run.'):'';
+  const th=thr.length?`<details class="dthread"><summary>Conversation (${thr.length})</summary>${thr.map(t=>`<div class="tm ${t.by==='agent'?'ag':'ow'}"><small>${esc(t.by==='agent'?'Veronica':'You')}${t.action?' · '+esc(t.action):''} · ${esc(new Date(t.at).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))}</small>${esc(t.text||'')}</div>`).join('')}</details>`:'';
   const undo=(r.undo_detail&&['applied','approved','pending'].includes(r.status)&&r.risk!=='info')?`<div class="dd"><b>To undo:</b> ${esc(r.undo_detail)}</div>`:'';
   const AP={simar:'Approver: Simar',veronica:'Approver: Veronica',both:'Approver: Simar + Veronica'};const apv=r.approver?`<span class="chip" style="background:${r.approver==='simar'?'#7a4a1f':r.approver==='veronica'?'#4b3a7a':'#2f5b4f'};color:#fff">${AP[r.approver]||''}</span>`:'';
-  return `<div class="card dcard"><div class="dh"><span class="chip">${esc(r.bot)}</span>${apv}${risk}</div><div class="dt">${esc(r.title)}</div>${r.why?`<div class="dd"><b>Why:</b> ${esc(r.why)}</div>`:''}${r.change_detail?`<div class="dd"><b>What changes:</b> ${esc(r.change_detail)}</div>`:''}${undo}${act}</div>`;
+  return `<div class="card dcard"><div class="dh"><span class="chip">${esc(r.bot)}</span>${apv}${risk}</div><div class="dt">${esc(r.title)}</div>${r.why?`<div class="dd"><b>Why:</b> ${esc(r.why)}</div>`:''}${r.change_detail?`<div class="dd"><b>What changes:</b> ${esc(r.change_detail)}</div>`:''}${undo}${q}${act}${wait}${th}</div>`;
 }
 function decisionsView(){
-  const p=decPend(), appr=DEC.filter(r=>r.status==='approved'||r.status==='revert_requested'), rest=DEC.filter(r=>['rejected','applied','failed','seen','cancelled','reverted'].includes(r.status));
+  const p=decPend(), appr=DEC.filter(r=>r.status==='approved'||r.status==='revert_requested'), ack=DEC.filter(r=>r.status==='acknowledged'&&r.awaiting!=='owner'), rest=DEC.filter(r=>['rejected','applied','failed','seen','cancelled','reverted'].includes(r.status));
   const sec=(t,a,empty)=>`<h3 style="margin:18px 0 8px">${t} · ${a.length}</h3>${a.length?a.map(decCard).join(''):`<div class="mute small">${empty}</div>`}`;
   return `<div class="crumbs"><a href="#home">Home</a> <span>›</span> <b>Decisions</b></div><div class="filters" style="margin-top:10px">${navBtns()}</div>
-   <h1 style="margin:10px 0 4px">Decisions</h1><p class="sub">Your bots suggest. You approve or reject here. Nothing changes in your ad accounts until you approve.${DECLIVE?'':' <b>(sample)</b>'}</p>
+   <h1 style="margin:10px 0 4px">Decisions</h1><p class="sub">Your bots suggest. You approve, reject or acknowledge here, and can add a note or speak your answer. Nothing changes in your ad accounts until you approve.${DECLIVE?'':' <b>(sample)</b>'}</p>
    <p class="mute small" style="margin:0 0 6px">${DECRUN?'Last bot run: '+esc(new Date(DECRUN.ran_at).toLocaleString('en-AU',{weekday:'short',hour:'2-digit',minute:'2-digit'}))+(DECRUN.summary?' · '+esc(DECRUN.summary):''):'The bot has not run yet.'} · Runs at about 8:15am, 3:15pm and 10:15pm. Next: ${nextRun()}.</p>
    ${decMsg?`<p class="note" role="status">${esc(decMsg)}</p>`:''}
-   ${sec('Waiting for you',p,'Nothing waiting. The bots have no new suggestions.')}${sec('With the bot, waiting for its next run',appr,'None.')}${rest.length?sec('History',rest,''):''}`;
+   ${sec('Waiting for you',p,'Nothing waiting. The bots have no new suggestions.')}${ack.length?sec('Acknowledged, kept on the list',ack,''):''}${sec('With the bot, waiting for its next run',appr,'None.')}${rest.length?sec('History',rest,''):''}`;
 }
 function decBanner(){const n=decPend().length; if(!n) return ''; return `<a class="tile prog" href="#decisions" aria-label="${n} decisions waiting for you"><div class="decn" style="font-size:22px;line-height:44px;min-width:44px;margin:0">${n}</div><div style="flex:1;min-width:200px"><div style="font:700 clamp(18px,3vw,22px)/1.15 var(--display)">${n} decision${n>1?'s':''} waiting for you</div><div class="mute small">Your bots have suggestions. Approve or reject them here.</div></div><span class="go" aria-hidden="true">›</span></a>`}
 function decBadge(){const n=decPend().length, b=document.getElementById('decn'); if(b){b.textContent=n; b.hidden=!n;}}
@@ -1068,13 +1086,28 @@ function route(){
 }
 window.addEventListener('hashchange',()=>{try{cur=decodeURIComponent(location.hash.slice(1));}catch(e){} route();});
 /* Inside the hub the page runs in a srcdoc frame, where '#x' links would load the hub itself. Route in the page instead. */
+function stopMic(){ try{ if(MICREC) MICREC.stop(); }catch(x){} MICREC=null; MICON=null; }
+function startMic(id){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ decMsg='Voice typing is not available here. Use the microphone key on your phone keyboard instead.'; draw(); return; }
+  stopMic(); const rec=new SR(); rec.lang='en-AU'; rec.continuous=true; rec.interimResults=false;
+  rec.onresult=ev=>{ let t=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ if(ev.results[i].isFinal) t+=ev.results[i][0].transcript+' '; } if(t){ DDRAFT[id]=((DDRAFT[id]||'')+(DDRAFT[id]?' ':'')+t).trim(); const el=document.querySelector('[data-dnote="'+id+'"]'); if(el) el.value=DDRAFT[id]; } };
+  rec.onerror=ev=>{ decMsg=(ev.error==='not-allowed'||ev.error==='service-not-allowed')?'Microphone is blocked. Allow it for this site, or use your keyboard mic.':'Voice typing stopped ('+ev.error+').'; MICON=null; MICREC=null; draw(); };
+  rec.onend=()=>{ if(MICON===id){ MICON=null; MICREC=null; draw(); } };
+  try{ rec.start(); MICREC=rec; MICON=id; draw(); }catch(x){ decMsg='Could not start the microphone.'; draw(); }
+}
+document.addEventListener('click',e=>{
+  const m=e.target.closest('[data-mic]'); if(m){ const id=m.dataset.mic; if(MICON===id){ stopMic(); draw(); } else startMic(id); return; }
+  const ns=e.target.closest('[data-dnotesave]'); if(ns){ const id=ns.dataset.dnotesave; const t=(DDRAFT[id]||'').trim(); if(!t){ decMsg='Type or speak something first.'; draw(); return; } stopMic(); decBusy[id]=1; decMsg=''; draw(); try{parent.postMessage({type:'cc-q',action:'note',req:'n'+Date.now(),id:id,note:t},'*')}catch(x){delete decBusy[id]; decMsg='Not saved: no connection to the hub.'; draw();} }
+});
+document.addEventListener('input',e=>{ const t=e.target.closest('[data-dnote]'); if(t) DDRAFT[t.dataset.dnote]=t.value; });
 document.addEventListener('click',e=>{const a=e.target.closest('a[href^="#"]'); if(!a) return; e.preventDefault(); nav(a.getAttribute('href').slice(1));});
 app.addEventListener('click',e=>{
   if(e.target.closest('[data-fqreset]')){visits={}; saveVisits(); draw(); return;}
   const nb=e.target.closest('[data-nav]'); if(nb){ if(nb.dataset.nav==='back'){const t=backTarget(); if(t){fwdStack.push(curId); navKind='keep'; nav(t);}} else {const t=fwdStack.pop(); if(t){navKind='keep'; nav(t);}} return; }
   const sv=e.target.closest('[data-sev]'); if(sv){const k=sv.dataset.sev||null; sevFilter=(k===sevFilter)?null:k; draw(); return;}
   const f=e.target.closest('[data-flt]'); if(f){flt=f.dataset.flt; draw(); return;}
-  const dc=e.target.closest('[data-dec]'); if(dc){const id=dc.dataset.dec; if(decBusy[id]) return; decBusy[id]=1; decMsg=''; draw(); try{parent.postMessage({type:'cc-q',action:'decide',req:'x'+Date.now(),id:id,status:dc.dataset.st},'*')}catch(x){delete decBusy[id]; decMsg='Not saved: no connection to the hub.'; draw();} return;}
+  const dc=e.target.closest('[data-dec]'); if(dc){const id=dc.dataset.dec; if(decBusy[id]) return; decBusy[id]=1; decMsg=''; draw(); stopMic(); try{parent.postMessage({type:'cc-q',action:'decide',req:'x'+Date.now(),id:id,status:dc.dataset.st,note:(DDRAFT[id]||'')},'*')}catch(x){delete decBusy[id]; decMsg='Not saved: no connection to the hub.'; draw();} return;}
   const op=e.target.closest('[data-open]'); if(op){try{parent.postMessage({type:'cc-open',id:op.dataset.open},'*')}catch(_){} return;}
   const lg=e.target.closest('[data-lang]'); if(lg){VL=lg.dataset.lang; try{localStorage.setItem('cc-lang',VL)}catch(x){} draw(); return;}
   const mc=e.target.closest('[data-mic]'); if(mc){startRec(mc.dataset.mic); return;}
