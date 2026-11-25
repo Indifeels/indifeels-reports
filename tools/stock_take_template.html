@@ -342,6 +342,9 @@ select,input[type=text],input[type=date],input[type=time],.ssb{background:var(--
         <div class="wzb">
           <div class="row" style="align-items:flex-end"><label class="fld">Add stock at<select id="bxLoc"></select></label></div>
           <div id="bxPrev" style="margin-top:8px"></div>
+          <div id="bxLeft" hidden style="margin-top:10px"><b>What about the pieces you did not receive?</b>
+            <div class="seg" id="bxLeftSeg" style="margin-top:6px"><button type="button" data-m="hold" class="on">Hold · due to receive (no alert)</button><button type="button" data-m="short">Underreported · alert the supplier</button></div>
+            <div class="sub" id="bxLeftSub" style="margin-top:4px"></div></div>
           <div class="foot"><span class="sum" id="bxFinSum"></span><button type="button" class="pri" id="bxAdd">Add stock to Shopify</button></div>
           <div class="msg" id="bxMsg2"></div>
         </div></section>
@@ -435,11 +438,13 @@ const WZ = (() => {
     $('wzFlows').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.f === flow));
     $('wzAgain').hidden = !(flow && st[recvFlow() ? '5' : '4'].done);
     $('wzWait').hidden = !((window.__lq || 0) > 0 && !flow);
+    try { if (flow === 'box') localStorage.setItem('st-wz-v1', JSON.stringify({t: Date.now(), flow, st, sel: window.bxGetSel ? window.bxGetSel() : [], qv: window.bxGetQv ? window.bxGetQv() : {}, mode: window.bxGetMode ? window.bxGetMode() : 'hold'})); else if (!flow) localStorage.removeItem('st-wz-v1'); } catch (e) {}
   }
   const api = {
     get flow() { return flow; },
     done: n => !!(st[n] && st[n].done),
     render,
+    restore(f, saved) { flow = f; Object.keys(saved || {}).forEach(k => { if (st[k]) Object.assign(st[k], saved[k]); }); render(); },
     start(f) {
       flow = f; init();
       if (f === 'print') { st['3'].reached = true; st['3'].open = true; } else st['1'].open = true;
@@ -1098,7 +1103,9 @@ const adMsg = (t, k) => { const m = $('adMsg'); m.textContent = t || ''; m.class
     }).join('') : '<div class="empty">No labels added yet. Use <b>Print label</b> on a finished stock take, or tick "Needs a barcode label" when adding stock.</div>';
     $('lqFoot').hidden = !labelRows.length; window.__lq = n; $('wzWaitT').textContent = `${n} label${n === 1 ? '' : 's'} waiting to print`; WZ.render(); $('lqBar').hidden = !(labelRows.length || undoSt.length || redoSt.length); $('lqUndo').disabled = !undoSt.length; $('lqRedo').disabled = !redoSt.length;
   }
-  async function loadLabels() { try { const r = await Store.labels('list'); labelRows = r.rows || []; drawLabels(); } catch (e) { lqMsg('Could not load the label list: ' + e.message, 'bad'); } }
+  /* same product stays together (all sizes side by side), products in the order they were first added */
+  const groupByProduct = rows => { const order = []; const m = new Map(); rows.forEach(r => { const k = String(r.product || ''); if (!m.has(k)) { m.set(k, []); order.push(k); } m.get(k).push(r); }); return order.flatMap(k => m.get(k)); };
+  async function loadLabels() { try { const r = await Store.labels('list'); labelRows = groupByProduct(r.rows || []); drawLabels(); } catch (e) { lqMsg('Could not load the label list: ' + e.message, 'bad'); } }
   window.refreshLabels = loadLabels;
   $('lqList').onclick = async e => {
     const row = e.target.closest('.bkit'); if (!row) return; const r = labelRows.find(x => String(x.vid) === row.dataset.v); if (!r) return;
@@ -1894,6 +1901,9 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
   (() => {
     let lines = [], box = '', qv = {}, armed = '', yesArmed = false, pdfPend = [], pdfArmed = '';
     /* several boxes / PDFs can be picked for one print run: their lines all show together in step 4 */
+    const btnBusy = (b, t) => { if (b.dataset.t == null) b.dataset.t = b.textContent; b.disabled = true; b.textContent = t; b.style.background = '#e0a030'; b.style.color = '#111'; };
+    const btnFree = (b, t) => { b.disabled = false; b.style.background = ''; b.style.color = ''; b.textContent = t || b.dataset.t || b.textContent; delete b.dataset.t; };
+    let leftMode = 'hold';
     const selBoxes = new Set(); const selList = () => selBoxes.size ? [...selBoxes] : (box ? [box] : []);
     window.__bxRecv = false;
     const msg = (t, k) => { const e = $('bxMsg'); e.textContent = t || ''; e.className = 'msg' + (k ? ' ' + k : ''); };
@@ -1901,9 +1911,9 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     const norm = x => String(x || '').trim().toLowerCase();
     const match = l => V.find(v => v.pid === String(l.product_id) && norm(v.t) === norm(l.variant_title));
     const rem = l => Math.max(0, (l.qty || 0) - (l.recv_qty || 0));
-    const boxes = () => { const m = new Map(); lines.forEach(l => { const b = m.get(l.box_no) || {box: l.box_no, shipped: l.line_status === 'shipped' || l.box_status === 'shipped', date: l.shipped_at, sup: l.supplier || '', units: 0, n: 0}; b.units += (l.qty || 0); b.n++; m.set(l.box_no, b); }); return [...m.values()]; };
+    const boxes = () => { const m = new Map(); lines.forEach(l => { const b = m.get(l.box_no) || {box: l.box_no, shipped: l.line_status === 'shipped' || l.box_status === 'shipped', date: l.shipped_at, sup: l.supplier || '', units: 0, n: 0}; b.units += rem(l); b.n++; if (l.recv_qty > 0 || l.line_status === 'on_the_way') b.part = true; m.set(l.box_no, b); }); return [...m.values()]; };
     const cur = () => lines.filter(l => selList().includes(l.box_no));
-    const lineShipped = l => l.line_status === 'shipped' || l.box_status === 'shipped' || l.line_status === 'on_the_way' || (l.line_status === 'received' && rem(l) > 0);
+    const lineShipped = l => rem(l) > 0;
     const rcv = () => cur().filter(lineShipped);   /* only shipped lines can be counted and added to stock; packed boxes get barcodes only */
     const isShipped = () => cur().some(lineShipped);
     const disarm = () => { armed = ''; yesArmed = false; $('bxAdd').classList.remove('arm'); $('bxAdd').textContent = 'Add stock to Shopify'; $('bxYes').textContent = 'Yes, all barcodes applied'; };
@@ -1914,32 +1924,40 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       const all = boxes(), sups = [...new Set(all.map(x => x.sup).filter(Boolean))].sort(), sel = $('bxSup').value;
       $('bxSup').innerHTML = '<option value="">All suppliers</option>' + sups.map(x => `<option${x === sel ? ' selected' : ''}>${E(x)}</option>`).join('');
       const b = sel ? all.filter(x => x.sup === sel) : all;
-      $('bxTiles').innerHTML = pdfHtml(sel) + (b.length ? b.map(x => `<button type="button" data-b="${E(x.box)}" class="${selBoxes.has(x.box) ? 'in' : ''}">${E(x.box)}${x.sup ? ' · ' + E(x.sup) : ''}<small>${x.shipped ? 'Shipped' + (x.date ? ' ' + new Date(x.date).toLocaleDateString() : '') : 'Packed (not shipped)'} · ${x.units} pcs</small></button>`).join('') : (pdfHtml(sel) ? '' : '<div class="empty">No packed or shipped boxes waiting.</div>'));
+      $('bxTiles').innerHTML = pdfHtml(sel) + (b.length ? b.map(x => `<button type="button" data-b="${E(x.box)}" class="${selBoxes.has(x.box) ? 'in' : ''}">${E(x.box)}${x.sup ? ' · ' + E(x.sup) : ''}<small>${x.part ? '<b style="color:#e0a030">Partially published</b> · ' : ''}${x.shipped ? 'Shipped' + (x.date ? ' ' + new Date(x.date).toLocaleDateString() : '') : 'Packed (not shipped)'} · ${x.units} pcs pending</small></button>`).join('') : (pdfHtml(sel) ? '' : '<div class="empty">No packed or shipped boxes waiting.</div>'));
     }
     function drawLines() {
       $('bxDetail').hidden = !selList().length; if (!selList().length) return;
       const sh = isShipped(); window.__bxRecv = sh;
-      { const ls = cur(); $('bxDetS').textContent = `Items in this box · ${ls.length} line${ls.length === 1 ? '' : 's'}, ${ls.reduce((a, l) => a + (l.qty || 0), 0)} pcs shipped (tap to show)`; }
+      { const ls = cur(); $('bxDetS').textContent = `Items in this box · ${ls.length} line${ls.length === 1 ? '' : 's'}, ${ls.reduce((a, l) => a + rem(l), 0)} pcs to receive (tap to show)`; }
       $('bxLines').innerHTML = cur().map(l => { const v = match(l);
-        return `<div class="bxl"><img src="${E(l.image || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${E(l.variant_title)} · shipped ${l.qty}${l.recv_qty ? ' · <span style="color:var(--amber,#e0a030)">' + l.recv_qty + ' already added to stock earlier (label still printed)</span>' : ''}${v ? '' : ' · <span style="color:var(--red)">not on the website</span> <button type="button" data-cv="' + E(l.id) + '" style="padding:2px 10px;font-size:12px">Create + barcode</button>'}${v && !v.bc.length ? ' · <span style="color:var(--red)">no barcode</span> <button type="button" data-g="' + E(v.vid) + '" style="padding:2px 10px;font-size:12px">Create</button>' : ''}</div></div><b>${l.qty}</b></div>`; }).join('');
+        return `<div class="bxl"><img src="${E(l.image || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${E(l.variant_title)} · pending ${rem(l)}${l.recv_qty ? ' · <span style="color:var(--amber,#e0a030)">' + l.recv_qty + ' already added to stock earlier</span>' : ''}${l.hold_tag ? ' · <span style="color:var(--amber,#e0a030)">' + E(l.hold_tag) + '</span>' : ''}${v ? '' : ' · <span style="color:var(--red)">not on the website</span> <button type="button" data-cv="' + E(l.id) + '" style="padding:2px 10px;font-size:12px">Create + barcode</button>'}${v && !v.bc.length ? ' · <span style="color:var(--red)">no barcode</span> <button type="button" data-g="' + E(v.vid) + '" style="padding:2px 10px;font-size:12px">Create</button>' : ''}</div></div><b>${rem(l)}</b></div>`; }).join('');
       /* strict count: one label per piece the supplier shipped. Nothing may be skipped, so printing stays locked until every line has a Shopify variant and barcode. */
-      const ls = cur(), shipped = ls.reduce((a, l) => a + (l.qty || 0), 0);
+      const ls = cur(), shipped = ls.reduce((a, l) => a + rem(l), 0);
       const noVar = ls.filter(l => !match(l)), noBc = ls.filter(l => { const v = match(l); return v && !v.bc.length; });
-      const missQty = [...noVar, ...noBc].reduce((a, l) => a + (l.qty || 0), 0), ready = shipped - missQty;
+      const missQty = [...noVar, ...noBc].reduce((a, l) => a + rem(l), 0), ready = shipped - missQty;
       const cEl = $('bxCount'), blocked = noVar.length + noBc.length;
       if (!ls.length) { cEl.textContent = ''; cEl.className = 'msg'; }
-      else if (!blocked) { cEl.className = 'msg ok'; cEl.innerHTML = `<b>Supplier shipped ${shipped} pcs</b> (${ls.length} line${ls.length === 1 ? '' : 's'}) · <b>${shipped} barcodes will print</b> · exact match ✓`; }
-      else { cEl.className = 'msg bad'; cEl.innerHTML = `<b>Supplier shipped ${shipped} pcs</b> (${ls.length} line${ls.length === 1 ? '' : 's'}) · barcodes ready for ${ready} · <b>${missQty} pcs NOT ready</b>.<br>` + (noVar.length ? `Not on Shopify yet (${noVar.length}): ` + noVar.map(l => E(l.product_title + ' · ' + l.variant_title) + ' ×' + l.qty).join('; ') + '. ' : '') + (noBc.length ? `No barcode (${noBc.length}): ` + noBc.map(l => E(l.product_title + ' · ' + l.variant_title) + ' ×' + l.qty).join('; ') + '.' : '') + '<br>Create them first. Printing stays locked so no barcode is missed.'; }
-      $('bxSum').textContent = sh ? `Print all the barcodes first; you confirm what you received after printing.` : `Packed — barcodes only until it is shipped`;
+      else if (!blocked) { cEl.className = 'msg ok'; cEl.innerHTML = `<b>${shipped} pcs to receive</b> (${ls.length} line${ls.length === 1 ? '' : 's'}) · <b>${shipped} barcodes will print</b> · exact match ✓`; }
+      else { cEl.className = 'msg'; cEl.innerHTML = `<b>${shipped} pcs to receive</b> (${ls.length} line${ls.length === 1 ? '' : 's'}) · ${noVar.length ? noVar.length + ' size' + (noVar.length === 1 ? '' : 's') + ' not on Shopify yet' : ''}${noVar.length && noBc.length ? ' · ' : ''}${noBc.length ? noBc.length + ' without a barcode' : ''}. <b>They are created on Shopify automatically (same price as the other sizes) when you add the barcodes.</b>`; }
+      $('bxSum').textContent = `Print all the barcodes first; you confirm what you received after printing.`;
       $('bxMkAll').hidden = !noVar.length; $('bxMkAll').classList.toggle('pri', !!noVar.length);
       $('bxGenAll').hidden = !noBc.length || !!noVar.length; $('bxGenAll').classList.toggle('pri', !!noBc.length && !noVar.length);
-      $('bxBar').hidden = !!blocked || !ls.length;
+      $('bxBar').hidden = !ls.length;
       WZ.render();
     }
     async function load() {
-      try { lines = (await Store.boxList()) || []; try { pdfPend = ((await Store.exportList()) || []).filter(e => e.status === 'sent' && !e.shipped_at); } catch (e) { pdfPend = []; } for (const k of [...selBoxes]) if (!lines.some(l => l.box_no === k)) selBoxes.delete(k); if (box && !lines.some(l => l.box_no === box)) box = ''; drawTiles(); drawLines(); if (!lines.length) msg(''); }
+      try { lines = (await Store.boxList()) || []; try { pdfPend = ((await Store.exportList()) || []).filter(e => e.status === 'sent' && !e.shipped_at); } catch (e) { pdfPend = []; } for (const k of [...selBoxes]) if (!lines.some(l => l.box_no === k)) selBoxes.delete(k); if (box && !lines.some(l => l.box_no === box)) box = ''; drawTiles(); drawLines(); tryRestore(); if (!lines.length) msg(''); }
       catch (e) { $('bxTiles').innerHTML = '<div class="empty">Could not load boxes.</div>'; msg(e.message, 'bad'); }
     }
+    window.bxGetSel = () => selList(); window.bxGetQv = () => qv; window.bxGetMode = () => leftMode;
+    let restored = false;
+    const tryRestore = () => { if (restored) return; restored = true; try {
+      const o = JSON.parse(localStorage.getItem('st-wz-v1') || 'null'); if (!o || o.flow !== 'box' || Date.now() - o.t > 12 * 3600e3) return;
+      const have = new Set(lines.map(l => l.box_no).concat(pdfPend.map(x => x.code))); const sel = (o.sel || []).filter(k => have.has(k)); if (!sel.length) return;
+      selBoxes.clear(); sel.forEach(k => selBoxes.add(k)); box = sel[sel.length - 1]; qv = o.qv || {}; leftMode = o.mode === 'short' ? 'short' : 'hold';
+      WZ.restore('box', o.st); drawTiles(); drawLines(); pickSum(); if (WZ.done('4')) drawFinal();
+    } catch (e) {} };
     window.bxHasSel = () => selList().length > 0; window.bxFinal = () => drawFinal();
     window.bxReset = () => { box = ''; selBoxes.clear(); try { pickSum(); } catch (e) {} qv = {}; window.__bxRecv = false; try { disarm(); } catch (e) {} $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); $('bxPrev').innerHTML = ''; msg(''); msg2(''); drawTiles(); drawLines(); };
     $('bxSup').onchange = () => { box = ''; drawTiles(); drawLines(); };
@@ -1972,21 +1990,34 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     const regVar = (l, r) => { const p = DATA.products.find(x => String(x.id) === String(l.product_id)); const base = V.find(x => x.pid === String(l.product_id)); const nv = {vid: String(r.vid), pid: String(l.product_id), pt: base ? base.pt : l.product_title, image: base ? base.image : (l.image || ''), pr: r.price || (base ? base.pr : ''), ca: base ? base.ca : '', sup: base ? base.sup : '', st: base ? base.st : '', t: r.title || l.variant_title, col: base ? base.col : '', cols: base ? base.cols : [], bc: r.barcode ? [r.barcode] : [], q: {}}; V.push(nv); byVid.set(nv.vid, nv); if (nv.bc[0]) { const k = bcn(nv.bc[0]); byBc.set(k, nv); allBc.set(k, [nv]); } if (p) p.variants.push({vid: nv.vid, t: nv.t, pr: nv.pr, bc: nv.bc, q: {}}); return nv; };
     const mkVar = async l => { let last = null; for (let k = 0; k < 6; k++) { try { return regVar(l, await Store.createVariant(String(l.product_id), l.variant_title, genBc())); } catch (e) { last = e; if (/already exists/i.test(e.message || '')) { try { const r = await Store.productVariants(String(l.product_id)); mergeLive(l.product_id, r && r.variants, l); const m = match(l); if (m) return m; } catch (e2) {} } if (!/already uses/i.test(e.message || '')) throw e; } } throw last; };
     $('bxLines').addEventListener('click', async e => { const c = e.target.closest('[data-cv]'); if (!c) return; e.stopImmediatePropagation(); const l = lines.find(x => String(x.id) === c.dataset.cv); if (!l) return; c.disabled = true; c.textContent = 'Creating…'; try { const v = await mkVar(l); msg(l.product_title + ' · ' + v.t + ' created on Shopify with barcode ' + (v.bc[0] || '') + '.', 'ok'); drawLines(); } catch (err) { msg(err.message, 'bad'); c.disabled = false; c.textContent = 'Create + barcode'; } }, true);
-    $('bxMkAll').onclick = async () => { const todo = cur().filter(l => !match(l)); if (!todo.length) return; $('bxMkAll').disabled = true; let ok = 0; try { for (const l of todo) { await mkVar(l); ok++; } msg(ok + ' variant' + (ok === 1 ? '' : 's') + ' created with barcodes.', 'ok'); } catch (err) { msg(ok + ' created, then: ' + err.message, 'bad'); } $('bxMkAll').disabled = false; drawLines(); };
-    $('bxGenAll').onclick = async () => { const todo = cur().map(match).filter(v => v && !v.bc.length); if (!todo.length) return; $('bxGenAll').disabled = true; let ok = 0; try { for (const v of todo) { await gen1(v.vid); ok++; } msg(ok + ' barcode' + (ok === 1 ? '' : 's') + ' created.', 'ok'); } catch (err) { msg(ok + ' created, then: ' + err.message, 'bad'); } $('bxGenAll').disabled = false; drawLines(); };
+    $('bxMkAll').onclick = async () => { const todo = cur().filter(l => !match(l)); if (!todo.length) return; btnBusy($('bxMkAll'), 'Creating… please wait'); let ok = 0; try { for (const l of todo) { await mkVar(l); ok++; } msg(ok + ' variant' + (ok === 1 ? '' : 's') + ' created with barcodes.', 'ok'); } catch (err) { msg(ok + ' created, then: ' + err.message, 'bad'); } btnFree($('bxMkAll'), 'Create missing variants'); drawLines(); };
+    $('bxGenAll').onclick = async () => { const todo = cur().map(match).filter(v => v && !v.bc.length); if (!todo.length) return; btnBusy($('bxGenAll'), 'Creating… please wait'); let ok = 0; try { for (const v of todo) { await gen1(v.vid); ok++; } msg(ok + ' barcode' + (ok === 1 ? '' : 's') + ' created.', 'ok'); } catch (err) { msg(ok + ' created, then: ' + err.message, 'bad'); } btnFree($('bxGenAll'), 'Create missing barcodes'); drawLines(); };
     const bxAdded = new Set(); let bxArm = false;
     $('bxBar').onclick = async () => {
-      const pdfSel = [...selBoxes].filter(k => pdfPend.some(x => x.code === k));
-      if (pdfSel.length) { try { for (const code of pdfSel) await Store.exportShipped(code); await load(); } catch (err) { return msg(err.message, 'bad'); } }
-      const ls = cur(), items = [], bad = [];
-      ls.forEach(l => { const q = rem(l); if (q <= 0) return; const v = match(l); if (v && v.bc.length) items.push({vid: v.vid, qty: q}); else bad.push(l.product_title + ' · ' + l.variant_title + ' ×' + q); });
-      if (bad.length) return msg('Cannot print yet. Not ready: ' + bad.join('; ') + '. Create them first.', 'bad');
-      if (!items.length) return msg('Nothing to add.', 'bad');
-      const shipped = sumBy(ls, rem), t = items.reduce((a, i) => a + i.qty, 0);
-      if (t !== shipped) return msg(`Count mismatch: ${t} labels vs ${shipped} shipped. Nothing added.`, 'bad');
-      const key = selList().slice().sort().join(','); if (bxAdded.has(key) && !bxArm) { bxArm = true; $('bxBar').textContent = 'Tap again: add a 2nd copy'; msg('The labels for this box are already in the list. Tap again only if you want them added a second time.', 'bad'); return; }
-      try { await Store.labels('add', items); await window.refreshLabels(); bxAdded.add(key); bxArm = false; $('bxBar').textContent = 'Add barcodes to the sheet'; msg(`${t} label${t === 1 ? '' : 's'} added = ${shipped} shipped ✓ (${items.length} line${items.length === 1 ? '' : 's'}).`, 'ok'); WZ.set('2', true, t + ' label' + (t === 1 ? '' : 's') + ' added'); }
-      catch (e) { msg(e.message, 'bad'); }
+      const b = $('bxBar'); if (b.disabled) return;
+      if (!cur().length) return;
+      const key = selList().slice().sort().join(',');
+      if (bxAdded.has(key) && !bxArm) { bxArm = true; b.textContent = 'Tap again: add a 2nd copy'; msg('The labels for this selection are already in the list. Tap again only if you want them added a second time.', 'bad'); return; }
+      btnBusy(b, 'Working… please wait, do not tap again'); msg('');
+      try {
+        const pdfSel = [...selBoxes].filter(k => pdfPend.some(x => x.code === k));
+        if (pdfSel.length) { b.textContent = 'Marking PDFs as arrived…'; for (const code of pdfSel) await Store.exportShipped(code); await load(); }
+        const needV = cur().filter(l => !match(l));
+        for (let k = 0; k < needV.length; k++) { b.textContent = `Creating size ${k + 1} of ${needV.length} on Shopify…`; await mkVar(needV[k]); }
+        const needB = cur().map(match).filter(v => v && !v.bc.length);
+        for (let k = 0; k < needB.length; k++) { b.textContent = `Creating barcode ${k + 1} of ${needB.length}…`; await gen1(needB[k].vid); }
+        drawLines();
+        const ls = cur(), items = [], bad = [];
+        ls.forEach(l => { const q = rem(l); if (q <= 0) return; const v = match(l); if (v && v.bc.length) items.push({vid: v.vid, qty: q}); else bad.push(l.product_title + ' · ' + l.variant_title + ' ×' + q); });
+        if (bad.length) throw new Error('Not ready: ' + bad.join('; '));
+        if (!items.length) throw new Error('Nothing to add.');
+        const shipped = sumBy(ls, rem), t = items.reduce((a, i) => a + i.qty, 0);
+        if (t !== shipped) throw new Error(`Count mismatch: ${t} labels vs ${shipped} pieces. Nothing added.`);
+        b.textContent = `Adding ${t} labels to the sheet…`;
+        await Store.labels('add', items); await window.refreshLabels(); bxAdded.add(key); bxArm = false;
+        msg(`${t} label${t === 1 ? '' : 's'} added = ${shipped} pieces ✓ (${items.length} line${items.length === 1 ? '' : 's'}).`, 'ok'); WZ.set('2', true, t + ' label' + (t === 1 ? '' : 's') + ' added');
+      } catch (e) { msg(e.message, 'bad'); }
+      btnFree(b, 'Add barcodes to the sheet');
     };
     /* ----- step 4: did every printed barcode match what arrived? Yes = all of it; No = adjust, the gap is "overreported" ----- */
     const locName = () => $('bxLoc').selectedOptions[0] ? $('bxLoc').selectedOptions[0].textContent : '';
@@ -1998,7 +2029,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
         return bxRow(l, `<span class="stp"><button type="button" data-d="-1" data-i="${E(l.id)}">−</button><b style="min-width:24px;text-align:center">${q}</b><button type="button" data-d="1" data-i="${E(l.id)}">+</button></span>`,
           `${E(l.variant_title)} · printed ${r}` + (s > 0 ? ` · <span style="color:var(--red);font-weight:700">overreported ${s}</span>` : '')); }).join('');
       const got = sumBy(ls, qr), all = sumBy(ls, rem);
-      $('bxAdjSum').textContent = `Received ${got} of ${all} pcs` + (all > got ? ` · ${all - got} overreported` : '');
+      $('bxAdjSum').textContent = `Received ${got} of ${all} pcs` + (all > got ? ` · ${all - got} not received` : ''); try { WZ.render(); } catch (e) {}
     }
     /* step 5: before / adding / after per variant at the chosen location, plus the overreported list */
     function drawFinal() {
@@ -2010,9 +2041,12 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
         ? `<div class="bxl" style="font-size:12px;color:var(--muted);padding-top:4px;padding-bottom:4px"><div style="flex:1">Product · size</div><span style="width:46px;text-align:right">Before</span><span style="width:46px;text-align:right">Adding</span><span style="width:46px;text-align:right">After</span></div>` +
           rows.map(o => { const b = (o.v.q && o.v.q[loc]) || 0; return bxRow(o.l, `<span ${num}>${b}</span><span ${num} style="width:46px;text-align:right;font-weight:700;color:var(--ok,#3fb950)">+${o.q}</span><span ${num}>${b + o.q}</span>`, E(o.l.variant_title)); }).join('')
         : '<div class="empty">No stock to add.</div>') +
-        (under.length ? `<div style="margin-top:10px;font-weight:700;color:var(--red)">Overreported · ${u} pcs</div>` + under.map(x => bxRow(x.l, `<b style="color:var(--red)">${x.n}</b>`, E(x.l.variant_title))).join('') + `<div style="color:var(--muted);font-size:12.5px;margin-top:4px">These are kept separately and go back to the supplier's "Not received" list.</div>` : '');
-      $('bxFinSum').textContent = `Adding ${tot} of ${all} pcs` + (u ? ` · ${u} overreported` : '');
+        (under.length ? `<div style="margin-top:10px;font-weight:700;color:var(--red)">Not received · ${u} pcs</div>` + under.map(x => bxRow(x.l, `<b style="color:var(--red)">${x.n}</b>`, E(x.l.variant_title))).join('') + `` : '');
+      $('bxLeft').hidden = !u; if (u) leftSub();
+      $('bxFinSum').textContent = `Adding ${tot} of ${all} pcs` + (u ? (leftMode === 'hold' ? ` · ${u} on the way (held)` : ` · ${u} underreported`) : '');
     }
+    const leftSub = () => { $('bxLeftSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === leftMode)); $('bxLeftSub').textContent = leftMode === 'hold' ? 'They are already on the way. Nothing goes to the order sheet and the supplier gets no alert. The box or PDF stays in Barcodes with a "Partially published" tag and only the pending pieces show next time.' : 'The supplier gets an alert, and the missing pieces go back on the main order list for them to send again.'; };
+    $('bxLeftSeg').onclick = e => { const b = e.target.closest('[data-m]'); if (!b) return; leftMode = b.dataset.m; disarm(); leftSub(); drawFinal(); };
     $('bxLoc').onchange = () => { disarm(); drawFinal(); };
     $('bxNo').onclick = () => { $('bxAdj').hidden = false; $('bxNo').classList.add('arm'); drawAdj(); };
     $('bxAdjLines').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; const l = lines.find(x => x.id === b.dataset.i); if (!l) return; qv[l.id] = Math.max(0, Math.min(rem(l), qr(l) + Number(b.dataset.d))); disarm(); drawAdj(); };
@@ -2032,8 +2066,8 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       if (!ls.length && !under) return msg2('Nothing to add.', 'bad');
       const bad = ls.filter(x => !x.v); if (bad.length) return msg2('Not on the website yet: ' + bad.map(x => x.l.product_title + ' · ' + x.l.variant_title).join('; ') + '. Open "Items in this box" and tap Create + barcode (or Create missing variants).', 'bad');
       const tot = ls.reduce((a, x) => a + x.q, 0), ln = locName();
-      if (armed !== 'add') { armed = 'add'; $('bxAdd').classList.add('arm'); $('bxAdd').textContent = `Tap again: add ${tot} pcs to ${ln}` + (under ? ` · ${under} on the way` : ''); return; }
-      disarm(); $('bxAdd').disabled = true; msg2('Adding stock…');
+      if (armed !== 'add') { armed = 'add'; $('bxAdd').classList.add('arm'); $('bxAdd').textContent = `Tap again: add ${tot} pcs to ${ln}` + (under ? (leftMode === 'hold' ? ` · hold ${under} on the way` : ` · report ${under} underreported`) : ''); return; }
+      disarm(); btnBusy($('bxAdd'), 'Adding stock… please wait'); msg2('Adding stock… do not tap again.');
       try {
         if (ls.length) {
           const sum = {}; ls.forEach(x => { sum[x.v.vid] = (sum[x.v.vid] || 0) + x.q; });
@@ -2042,12 +2076,12 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
           try { await Store.boxReceive(ls.map(x => ({id: x.l.id, qty: x.q}))); } catch (e) { msg2('Stock WAS added to Shopify, but the box list could not be updated: ' + e.message + ' — do not add it again. Refresh and check the box.', 'bad'); return; }
         }
         let shortErr = '';
-        if (under) { try { await Store.boxHold(selList()); } catch (e) { shortErr = e.message; } }
+        if (under) { try { if (leftMode === 'hold') await Store.boxHold(selList()); else for (const bx of selList()) await Store.boxShort(bx); } catch (e) { shortErr = e.message; } }
         qv = {}; await load(); try { window.lgLoad(); } catch (e) {}
-        msg2(`Box received. ${tot} pcs added to ${ln}.` + (under && !shortErr ? ` ${under} pcs on the way, kept under ${selList().join(', ')}. No alert sent to the supplier.` : '') + (shortErr ? ` Stock WAS added, but the ${under} pcs could not be put on the way: ${shortErr}` : ''), shortErr ? 'bad' : 'ok');
-        WZ.set('5', true, `${tot} pcs added` + (under ? ` · ${under} on the way` : ''));
+        msg2(`Box received. ${tot} pcs added to ${ln}.` + (under && !shortErr ? (leftMode === 'hold' ? ` ${under} pcs held on the way under ${selList().join(', ')}. No alert sent to the supplier.` : ` ${under} pcs underreported: the supplier is alerted and they are back on the order list.`) : '') + (shortErr ? ` Stock WAS added, but the ${under} pcs could not be put on the way: ${shortErr}` : ''), shortErr ? 'bad' : 'ok');
+        WZ.set('5', true, `${tot} pcs added` + (under ? (leftMode === 'hold' ? ` · ${under} on the way` : ` · ${under} underreported`) : ''));
       } catch (e) { msg2(e.message, 'bad'); }
-      $('bxAdd').disabled = false;
+      btnFree($('bxAdd'), 'Add stock to Shopify');
     };
     loadLocs().then(() => { $('bxLoc').innerHTML = locs.map(l => `<option value="${E(l.id)}">${E(l.name)}</option>`).join(''); const shop = locs.find(l => /shop/i.test(l.name)); if (shop) $('bxLoc').value = shop.id; }).catch(() => {});
     window.refreshBoxes = load; load();
