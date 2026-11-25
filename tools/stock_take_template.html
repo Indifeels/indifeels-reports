@@ -270,7 +270,7 @@ select,input[type=text],input[type=date],input[type=time],.ssb{background:var(--
       <div id="phList"><div class="empty">Loading…</div></div></div>
 
     <div id="wzBox" hidden>
-      <section class="bk wzs" data-s="1"><div class="wzh"><span class="wzn">1</span><b>Select the box</b><span class="wzsum"></span><button type="button" class="wzchg">Change</button></div>
+      <section class="bk wzs" data-s="1"><div class="wzh"><span class="wzn">1</span><b>Select the boxes or PDFs</b><small style="color:var(--muted);margin-left:6px">Ctrl+click to pick more than one</small><span class="wzsum"></span><button type="button" class="wzchg">Change</button></div>
         <div class="wzb">
           <div class="row" style="align-items:flex-end"><label class="fld" style="flex:1">Supplier<select id="bxSup"><option value="">All suppliers</option></select></label><button type="button" id="bxRefresh">Refresh</button></div>
           <div id="bxTiles" class="chips"><div class="empty">Loading boxes…</div></div>
@@ -1897,7 +1897,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     const disarm = () => { armed = ''; yesArmed = false; $('bxAdd').classList.remove('arm'); $('bxAdd').textContent = 'Add stock to Shopify'; $('bxYes').textContent = 'Yes, all barcodes applied'; };
     const qr = l => qv[l.id] == null ? rem(l) : qv[l.id];   /* quantity actually received for a line (defaults to everything sent) */
     /* PDF orders exported in the Restock Planner but not yet marked arrived: tap twice to mark arrived, then the box is received like any other */
-    const pdfHtml = sel => pdfPend.filter(e => !sel || String(e.supplier) === sel).map(e => `<button type="button" data-pdf="${E(e.code)}" class="${pdfArmed === e.code ? 'in' : ''}">📄 ${E(e.code)} · ${E(e.supplier)}<small>${pdfArmed === e.code ? 'Tap again: mark arrived' : 'PDF order, not arrived yet'} · ${e.units} pcs</small></button>`).join('');
+    const pdfHtml = sel => pdfPend.filter(e => !sel || String(e.supplier) === sel).map(e => `<button type="button" data-b="${E(e.code)}" class="${selBoxes.has(e.code) ? 'in' : ''}">📄 ${E(e.code)} · ${E(e.supplier)}<small>PDF order, not arrived yet · ${e.units} pcs</small></button>`).join('');
     function drawTiles() {
       const all = boxes(), sups = [...new Set(all.map(x => x.sup).filter(Boolean))].sort(), sel = $('bxSup').value;
       $('bxSup').innerHTML = '<option value="">All suppliers</option>' + sups.map(x => `<option${x === sel ? ' selected' : ''}>${E(x)}</option>`).join('');
@@ -1931,18 +1931,13 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     window.bxReset = () => { box = ''; selBoxes.clear(); qv = {}; window.__bxRecv = false; try { disarm(); } catch (e) {} $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); $('bxPrev').innerHTML = ''; msg(''); msg2(''); drawTiles(); drawLines(); };
     $('bxSup').onchange = () => { box = ''; drawTiles(); drawLines(); };
     $('bxRefresh').onclick = () => { disarm(); load(); };
-    $('bxTiles').addEventListener('click', async e => {
-      const p = e.target.closest('[data-pdf]'); if (!p) return;
-      const code = p.dataset.pdf;
-      if (pdfArmed !== code) { pdfArmed = code; drawTiles(); return; }
-      pdfArmed = ''; p.disabled = true;
-      try { await Store.exportShipped(code); msg(code + ' marked arrived. Now print the barcodes and add the stock.', 'ok'); }
-      catch (err) { msg(err.message, 'bad'); }
-      await load();
-    });
-    $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; const bx = b.dataset.b; if (selBoxes.has(bx)) { selBoxes.delete(bx); if (box === bx) box = [...selBoxes].pop() || ''; } else { selBoxes.add(bx); box = bx; }
+    $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; const bx = b.dataset.b;
       /* once labels are added / printed / counted, picking a box must not wipe the counts already entered */
       const late = WZ.done('2') || WZ.done('3') || WZ.done('4');
+      /* Ctrl/Cmd+click adds or removes one box or PDF; a plain click picks just that one (after step 1 a plain click adds) */
+      const multi = e.ctrlKey || e.metaKey || late;
+      if (selBoxes.has(bx) && (multi || selBoxes.size === 1)) { selBoxes.delete(bx); if (box === bx) box = [...selBoxes].pop() || ''; }
+      else { if (!multi) selBoxes.clear(); selBoxes.add(bx); box = bx; }
       if (!late) { qv = {}; $('bxDet').open = false; disarm(); $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); msg(''); msg2(''); try { bxArm = false; $('bxBar').textContent = 'Add barcodes to the sheet'; } catch (e) {} }
       drawTiles(); drawLines();
       if (!late) { const ss = boxes().filter(z => selList().includes(z.box)); WZ.set('1', true, ss.map(z => z.box).join(' + ') + ' · ' + ss.reduce((a, z) => a + z.units, 0) + ' pcs'); }
@@ -1965,6 +1960,8 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     $('bxGenAll').onclick = async () => { const todo = cur().map(match).filter(v => v && !v.bc.length); if (!todo.length) return; $('bxGenAll').disabled = true; let ok = 0; try { for (const v of todo) { await gen1(v.vid); ok++; } msg(ok + ' barcode' + (ok === 1 ? '' : 's') + ' created.', 'ok'); } catch (err) { msg(ok + ' created, then: ' + err.message, 'bad'); } $('bxGenAll').disabled = false; drawLines(); };
     const bxAdded = new Set(); let bxArm = false;
     $('bxBar').onclick = async () => {
+      const pdfSel = [...selBoxes].filter(k => pdfPend.some(x => x.code === k));
+      if (pdfSel.length) { try { for (const code of pdfSel) await Store.exportShipped(code); await load(); } catch (err) { return msg(err.message, 'bad'); } }
       const ls = cur(), items = [], bad = [];
       ls.forEach(l => { const q = rem(l); if (q <= 0) return; const v = match(l); if (v && v.bc.length) items.push({vid: v.vid, qty: q}); else bad.push(l.product_title + ' · ' + l.variant_title + ' ×' + q); });
       if (bad.length) return msg('Cannot print yet. Not ready: ' + bad.join('; ') + '. Create them first.', 'bad');
