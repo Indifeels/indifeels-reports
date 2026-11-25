@@ -1687,7 +1687,7 @@ function renderBoxes(){
   $('bxCount').textContent = bxPlural(pk.length, 'box') + ' packing · ' + bxPlural(sh.length, 'box') + ' shipped';
   const unders = [...orders.values()].filter(r => r.status === 'saved' && r.short_box);
   const tile = ({b, lines}) => bxTile(b, lines, {ro: true, trk: true, recv: true, rem: remOf, open: myOpen.get(b.box_no) === true, who: b.supplier, unders});
-  el.innerHTML = pdfSec(who, 'bx') + bxSec('bx-pack', '📦 Packing', bxPlural(pk.length, 'box') + (pk.length ? ' · ' + bxPlural(pk.reduce((t, x) => t + x.lines.length, 0), 'item') : ''), pk.length ? pk.map(tile).join('') : '<div class="empty">Nothing is being packed. Boxes appear when a supplier adds an item.</div>', {cls: 'pack'})
+  el.innerHTML = onWaySec('bx') + pdfSec(who, 'bx') + bxSec('bx-pack', '📦 Packing', bxPlural(pk.length, 'box') + (pk.length ? ' · ' + bxPlural(pk.reduce((t, x) => t + x.lines.length, 0), 'item') : ''), pk.length ? pk.map(tile).join('') : '<div class="empty">Nothing is being packed. Boxes appear when a supplier adds an item.</div>', {cls: 'pack'})
     + bxSec('bx-ship', '🚚 Shipped', bxPlural(sh.length, 'box'), sh.length ? sh.map(tile).join('') : '<div class="empty">No shipped boxes yet.</div>', {cls: 'ship'});
 }
 $('bxSup').addEventListener('change', renderBoxes);
@@ -2429,6 +2429,13 @@ $('svExport').addEventListener('click', async () => {
   } catch (err) { notify('Could not export: ' + err.message); }
   b.disabled = false; renderSv();
 });
+/* On the way: held due to receive. No order sheet, no supplier alert. Keeps its box / PDF code; the tag says what is still to come. */
+function onWaySec(pre) {
+  const byBox = new Map();
+  [...orders.values()].filter(r => r.status === 'on_the_way').forEach(r => { const k = r.box_no || '-'; if (!byBox.has(k)) byBox.set(k, []); byBox.get(k).push(r); });
+  const tile = ([box, ls]) => `<section class="bx"><div class="bx-h"><span class="bx-title">📦 ${esc(box)} · ${esc(ls[0].supplier)}</span><span class="bx-pill op">On the way</span><span class="bx-sum">${esc(ls[0].hold_tag || '')}</span></div><div class="sub" style="margin:4px 0 0">${ls.map(r => esc(r.product_title + ' · ' + r.variant_title) + ' ×' + ((r.ship_qty || r.qty) - (r.recv_qty || 0))).join('<br>')}</div></section>`;
+  return bxSec(pre + '-onway', '🛫 On the way', byBox.size ? bxPlural(byBox.size, 'box') + ' held, no alert sent to the supplier' : 'none held', byBox.size ? [...byBox.entries()].map(tile).join('') : '<div class="empty">Nothing held on the way.</div>', {cls: 'pack', open: byBox.size > 0});
+}
 /* PDF orders: each exported file has a code (PDF-IN1-01) and its items are a shipped box with that code. Here: files still waiting to be received. */
 function pdfSec(who, pre) {
   const open = new Set([...orders.values()].filter(r => r.status === 'saved' && /^PDF-/.test(r.box_no || '')).map(r => r.box_no));
