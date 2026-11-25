@@ -558,6 +558,7 @@ window.addEventListener('message',ev=>{
   else if(d.action==='progress'){ if(d.ok&&Array.isArray(d.rows)&&d.rows.length){ const cur=JSON.stringify(PROG.map(r=>[r.id,r.pct,r.status,r.note,r.title])), nw=JSON.stringify(d.rows.map(r=>[r.id,r.pct,r.status,r.note,r.title])); const mx=d.rows.reduce((m,r)=>r.updated_at&&r.updated_at>m?r.updated_at:m,''); const first=!PROGLIVE; PROGLIVE=true; if(cur!==nw||first){ PROG=d.rows; try{if(mx)PROGAT=new Date(mx).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'})}catch(e){} if(curId==='home'||curId==='progress') draw(); } } }
   else if(d.action==='decisions'){ if(d.ok&&Array.isArray(d.rows)){ const cur=JSON.stringify(DEC.map(r=>[r.id,r.status,r.result_note,r.awaiting,(r.thread||[]).length])), nw=JSON.stringify(d.rows.map(r=>[r.id,r.status,r.result_note,r.awaiting,(r.thread||[]).length])); const first=!DECLIVE; DECLIVE=true; const lr=JSON.stringify(d.lastRun||null)!==JSON.stringify(DECRUN); DECRUN=d.lastRun||null; if(cur!==nw||first||lr){ DEC=d.rows; decBadge(); const ae=document.activeElement; if((curId==='home'||curId==='decisions')&&!(ae&&ae.matches&&ae.matches('[data-dnote]'))&&!MICON) draw(); } } }
   else if(d.action==='decide'){ if(d.id) delete decBusy[d.id]; else decBusy={}; if(d.ok){ const r=DEC.find(x=>x.id===d.id); if(r){r.status=d.status; r.decided_at=new Date().toISOString(); if(d.thread) r.thread=d.thread; r.awaiting=d.awaiting||null;} delete DDRAFT[d.id]; decMsg={acknowledged:'Acknowledged. It stays on the list and Veronica reads your note at the next run.',approved:'Approved. The bot will apply it on its next run.',seen:'Marked as seen.',cancelled:'Cancelled. Nothing was changed.',revert_requested:'Revert requested. The bot will undo it on its next run.'}[d.status]||'Rejected.'; } else decMsg='Not saved: '+(d.error||'error'); decBadge(); draw(); }
+  else if(d.action==='mic_start'){ const id=d.id; if(d.text){ DDRAFT[id]=((DDRAFT[id]||'')+(DDRAFT[id]?' ':'')+d.text).trim(); const el=document.querySelector('[data-dnote="'+id+'"]'); if(el) el.value=DDRAFT[id]; } if(d.error){ MICON=null; decMsg=(d.error==='not-allowed'||d.error==='service-not-allowed')?'Microphone is blocked. Click the lock icon in the address bar, allow the microphone for this site, then try again.':d.error==='unsupported'?'This browser has no voice typing. Use the microphone key on your phone keyboard.':d.error==='no-speech'?'Did not hear anything. Tap the mic and try again.':'Voice typing stopped ('+d.error+').'; draw(); } else if(d.ended){ if(MICON===id){ MICON=null; draw(); } } }
   else if(d.action==='note'){ if(d.id) delete decBusy[d.id]; if(d.ok){ const r=DEC.find(x=>x.id===d.id); if(r){r.thread=d.thread; r.awaiting='agent';} delete DDRAFT[d.id]; decMsg='Note saved. It will be reviewed at the next run.'; } else decMsg='Not saved: '+(d.error||'error'); draw(); }
   else if(d.action==='flow_load'){ if(d.ok&&d.data){ const c=flClean(d.data); if(c&&!flDirty()){ FL=c; FLSAVED=JSON.stringify(FL); FLSEL=null; FLSELKIND=null; if(document.getElementById('flwrap')){ flRender(); flPanel(); } FLSYNC='Loaded your last save.'; flSyncMsg(); } } else if(!d.ok){ FLSYNC='Could not load your saved diagram.'; flSyncMsg(); } else { FLSYNC='Nothing saved yet.'; flSyncMsg(); } }
   else if(d.action==='flow_save'){ if(d.ok){ FLSAVED=FLPEND; FLSYNC='Saved.'; } else FLSYNC='Not saved: '+(d.error||'error'); flSyncMsg(); }
@@ -1086,15 +1087,11 @@ function route(){
 }
 window.addEventListener('hashchange',()=>{try{cur=decodeURIComponent(location.hash.slice(1));}catch(e){} route();});
 /* Inside the hub the page runs in a srcdoc frame, where '#x' links would load the hub itself. Route in the page instead. */
-function stopMic(){ try{ if(MICREC) MICREC.stop(); }catch(x){} MICREC=null; MICON=null; }
+function stopMic(){ if(MICON){ try{parent.postMessage({type:'cc-q',action:'mic_stop',req:'ms'},'*')}catch(x){} } MICON=null; }
 function startMic(id){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){ decMsg='Voice typing is not available here. Use the microphone key on your phone keyboard instead.'; draw(); return; }
-  stopMic(); const rec=new SR(); rec.lang='en-AU'; rec.continuous=true; rec.interimResults=false;
-  rec.onresult=ev=>{ let t=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ if(ev.results[i].isFinal) t+=ev.results[i][0].transcript+' '; } if(t){ DDRAFT[id]=((DDRAFT[id]||'')+(DDRAFT[id]?' ':'')+t).trim(); const el=document.querySelector('[data-dnote="'+id+'"]'); if(el) el.value=DDRAFT[id]; } };
-  rec.onerror=ev=>{ decMsg=(ev.error==='not-allowed'||ev.error==='service-not-allowed')?'Microphone is blocked. Allow it for this site, or use your keyboard mic.':'Voice typing stopped ('+ev.error+').'; MICON=null; MICREC=null; draw(); };
-  rec.onend=()=>{ if(MICON===id){ MICON=null; MICREC=null; draw(); } };
-  try{ rec.start(); MICREC=rec; MICON=id; draw(); }catch(x){ decMsg='Could not start the microphone.'; draw(); }
+  if(!INHUB){ decMsg='Voice typing works inside the hub. Use the microphone key on your phone keyboard here.'; draw(); return; }
+  MICON=id; decMsg=''; draw();
+  try{parent.postMessage({type:'cc-q',action:'mic_start',req:'m'+Date.now(),id:id},'*')}catch(x){ MICON=null; decMsg='Could not start the microphone.'; draw(); }
 }
 document.addEventListener('click',e=>{
   const m=e.target.closest('[data-mic]'); if(m){ const id=m.dataset.mic; if(MICON===id){ stopMic(); draw(); } else startMic(id); return; }

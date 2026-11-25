@@ -1553,6 +1553,21 @@
     if (d.type !== "cc-q") return;
     const reply = (o) => { try { fr.contentWindow?.postMessage(Object.assign({ type: "cc-q-result", req: d.req, action: d.action }, o), "*"); } catch (_) {} };
     try {
+      if (d.action === "mic_stop") { try { window.__ccRec && window.__ccRec.stop(); } catch (_) {} window.__ccRec = null; return; }
+      if (d.action === "mic_start") {
+        // The dashboard page is sandboxed and cannot reach the microphone, so voice-to-text runs here and only the text goes back.
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const send = (o) => reply(Object.assign({ ok: true, id: d.id }, o));
+        if (!SR) { send({ error: "unsupported" }); return; }
+        try { window.__ccRec && window.__ccRec.stop(); } catch (_) {}
+        const rec = new SR(); rec.lang = "en-AU"; rec.continuous = true; rec.interimResults = false;
+        rec.onresult = (ev) => { let t = ""; for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) t += ev.results[i][0].transcript + " "; if (t) send({ text: t }); };
+        rec.onerror = (ev) => send({ error: String(ev.error || "error") });
+        rec.onend = () => { if (window.__ccRec === rec) window.__ccRec = null; send({ ended: true }); };
+        window.__ccRec = rec;
+        try { rec.start(); send({ started: true }); } catch (_) { window.__ccRec = null; send({ error: "start-failed" }); }
+        return;
+      }
       if (d.action === "load") {
         const [a, m] = await Promise.all([sb.from("cc_answers").select("qid,answer,parked"), sb.from("cc_missions_done").select("mid")]);
         if (a.error) throw a.error; if (m.error) throw m.error;
