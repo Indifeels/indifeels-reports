@@ -162,10 +162,10 @@
   "reason": ""
  },
  "stock-take": {
-  "at": "2026-11-25T16:38+11:00",
-  "code_sha": "94c70a237383111172f3934ec2028b52cb28030b",
+  "at": "2026-11-25T16:41+11:00",
+  "code_sha": "72e254c346801a7a3da72b8cc8f23a50c86e5c3c",
   "data_through": null,
-  "last_ok": "2026-11-25T16:38+11:00",
+  "last_ok": "2026-11-25T16:41+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
