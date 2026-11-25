@@ -274,6 +274,7 @@ select,input[type=text],input[type=date],input[type=time],.ssb{background:var(--
         <div class="wzb">
           <div class="row" style="align-items:flex-end"><label class="fld" style="flex:1">Supplier<select id="bxSup"><option value="">All suppliers</option></select></label><button type="button" id="bxRefresh">Refresh</button></div>
           <div id="bxTiles" class="chips"><div class="empty">Loading boxes…</div></div>
+          <div class="foot"><span class="sum" id="bxPickSum"></span><button type="button" class="pri" id="bxPickGo" hidden>Continue</button></div>
         </div></section>
       <section class="bk wzs" data-s="2"><div class="wzh"><span class="wzn">2</span><b>Add the box to the label list</b><span class="wzsum"></span><button type="button" class="wzchg">Change</button></div>
         <div class="wzb">
@@ -454,7 +455,7 @@ const WZ = (() => {
       render();
     },
     reopen(n) {
-      if (flow === 'box' && n === '1') { ['2', '3', '4', '5'].forEach(m => { st[m] = fresh(m); }); try { window.bxReset(); } catch (e) {} }
+      if (flow === 'box' && n === '1') { ['2', '3', '4', '5'].forEach(m => { st[m] = fresh(m); }); try { window.bxSoft(); } catch (e) {} }
       if (flow !== 'box' && n === '1') { st['2'].open = false; try { window.lbReset(); } catch (e) {} }
       st[n].done = false; st[n].open = true; render();
     },
@@ -1928,9 +1929,12 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       try { lines = (await Store.boxList()) || []; try { pdfPend = ((await Store.exportList()) || []).filter(e => e.status === 'sent' && !e.shipped_at); } catch (e) { pdfPend = []; } for (const k of [...selBoxes]) if (!lines.some(l => l.box_no === k)) selBoxes.delete(k); if (box && !lines.some(l => l.box_no === box)) box = ''; drawTiles(); drawLines(); if (!lines.length) msg(''); }
       catch (e) { $('bxTiles').innerHTML = '<div class="empty">Could not load boxes.</div>'; msg(e.message, 'bad'); }
     }
-    window.bxReset = () => { box = ''; selBoxes.clear(); qv = {}; window.__bxRecv = false; try { disarm(); } catch (e) {} $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); $('bxPrev').innerHTML = ''; msg(''); msg2(''); drawTiles(); drawLines(); };
+    window.bxReset = () => { box = ''; selBoxes.clear(); try { pickSum(); } catch (e) {} qv = {}; window.__bxRecv = false; try { disarm(); } catch (e) {} $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); $('bxPrev').innerHTML = ''; msg(''); msg2(''); drawTiles(); drawLines(); };
     $('bxSup').onchange = () => { box = ''; drawTiles(); drawLines(); };
     $('bxRefresh').onclick = () => { disarm(); load(); };
+    const pickSum = () => { const ss = boxes().filter(z => selList().includes(z.box)); const t = ss.length ? ss.map(z => z.box).join(' + ') + ' · ' + ss.reduce((a, z) => a + z.units, 0) + ' pcs' : ''; $('bxPickSum').textContent = ss.length ? 'Selected: ' + t + ' (Ctrl+click to add more)' : ''; $('bxPickGo').hidden = !ss.length; $('bxPickGo').dataset.sum = t; };
+    $('bxPickGo').onclick = () => { WZ.set('1', true, $('bxPickGo').dataset.sum || ''); liveFix(); };
+    window.bxSoft = () => { qv = {}; try { disarm(); } catch (e) {} $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); msg(''); msg2(''); try { bxArm = false; $('bxBar').textContent = 'Add barcodes to the sheet'; } catch (e) {} drawTiles(); drawLines(); pickSum(); };
     $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; const bx = b.dataset.b;
       /* once labels are added / printed / counted, picking a box must not wipe the counts already entered */
       const late = WZ.done('2') || WZ.done('3') || WZ.done('4');
@@ -1940,7 +1944,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       else { if (!multi) selBoxes.clear(); selBoxes.add(bx); box = bx; }
       if (!late) { qv = {}; $('bxDet').open = false; disarm(); $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); msg(''); msg2(''); try { bxArm = false; $('bxBar').textContent = 'Add barcodes to the sheet'; } catch (e) {} }
       drawTiles(); drawLines();
-      if (!late) { const ss = boxes().filter(z => selList().includes(z.box)); WZ.set('1', true, ss.map(z => z.box).join(' + ') + ' · ' + ss.reduce((a, z) => a + z.units, 0) + ' pcs'); }
+      if (!late) { pickSum(); }
       else { if (!$('bxAdj').hidden) drawAdj(); msg2('Selection changed. Your counts are kept; boxes you added are not yet in the label list, so add and print them before counting.', 'bad'); }
       liveFix(); };
     /* DATA can be hours old: re-read the live sizes + barcodes from Shopify for this box's products so nothing shows as missing by mistake */
