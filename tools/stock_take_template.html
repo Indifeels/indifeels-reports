@@ -437,6 +437,7 @@ const WZ = (() => {
   }
   const api = {
     get flow() { return flow; },
+    done: n => !!(st[n] && st[n].done),
     render,
     start(f) {
       flow = f; init();
@@ -1939,7 +1940,14 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       catch (err) { msg(err.message, 'bad'); }
       await load();
     });
-    $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; const bx = b.dataset.b; if (selBoxes.has(bx)) { selBoxes.delete(bx); if (box === bx) box = [...selBoxes].pop() || ''; } else { selBoxes.add(bx); box = bx; } qv = {}; $('bxDet').open = false; disarm(); $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); msg(''); msg2(''); try { bxArm = false; $('bxBar').textContent = 'Add barcodes to the sheet'; } catch (e) {} drawTiles(); drawLines(); { const ss = boxes().filter(z => selList().includes(z.box)); WZ.set('1', true, ss.map(z => z.box).join(' + ') + ' · ' + ss.reduce((a, z) => a + z.units, 0) + ' pcs'); } liveFix(); };
+    $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; const bx = b.dataset.b; if (selBoxes.has(bx)) { selBoxes.delete(bx); if (box === bx) box = [...selBoxes].pop() || ''; } else { selBoxes.add(bx); box = bx; }
+      /* once labels are added / printed / counted, picking a box must not wipe the counts already entered */
+      const late = WZ.done('2') || WZ.done('3') || WZ.done('4');
+      if (!late) { qv = {}; $('bxDet').open = false; disarm(); $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); msg(''); msg2(''); try { bxArm = false; $('bxBar').textContent = 'Add barcodes to the sheet'; } catch (e) {} }
+      drawTiles(); drawLines();
+      if (!late) { const ss = boxes().filter(z => selList().includes(z.box)); WZ.set('1', true, ss.map(z => z.box).join(' + ') + ' · ' + ss.reduce((a, z) => a + z.units, 0) + ' pcs'); }
+      else { if (!$('bxAdj').hidden) drawAdj(); msg2('Selection changed. Your counts are kept; boxes you added are not yet in the label list, so add and print them before counting.', 'bad'); }
+      liveFix(); };
     /* DATA can be hours old: re-read the live sizes + barcodes from Shopify for this box's products so nothing shows as missing by mistake */
     let liveTok = 0;
     const liveFix = async () => {
