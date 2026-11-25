@@ -49,3 +49,6 @@ If tokens, Semrush or a tool is unavailable: save progress, schedule the next ru
 
 ## Self-audit
 Monthly and 30 days after each new tactic: did the page/keyword move vs 14/30/60 days before? Mark Worked / Neutral / Hurt; keep what works, pause what hurts, propose refinements; roll back (with approval) if rankings dropped.
+
+## Product links on every card
+Whenever a card concerns products or pages, put them in `cc_decisions.payload` as `{"products":[{"t":"title","h":"product-handle","i":"numeric Shopify product id"} or {"t":"label","u":"https://indifeels.com/..."}]}`. The dashboard shows them as links that open in a new tab (shop page plus an "Edit in Shopify" link). Never guess a product match: if a name does not match exactly, link a store search and say so.

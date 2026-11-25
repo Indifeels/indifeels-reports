@@ -1580,10 +1580,10 @@
         if (r.error) throw r.error;
         reply({ ok: true, rows: r.data || [] });
       } else if (d.action === "decisions") {
-        const r = await sb.from("cc_decisions").select("id,bot,area,title,why,change_detail,risk,status,result_note,reversible,undo_detail,approver,thread,awaiting,created_at,decided_at,applied_at").order("created_at", { ascending: false }).limit(100);
+        const r = await sb.from("cc_decisions").select("id,bot,area,title,why,change_detail,risk,status,result_note,reversible,undo_detail,approver,thread,awaiting,payload,created_at,decided_at,applied_at").order("created_at", { ascending: false }).limit(100);
         if (r.error) throw r.error;
         const lr = await sb.from("cc_bot_runs").select("bot,ran_at,summary").order("ran_at", { ascending: false }).limit(1);
-        reply({ ok: true, rows: r.data || [], lastRun: (lr.data && lr.data[0]) || null });
+        reply({ ok: true, rows: (r.data || []).map((x) => { const pl = x.payload; delete x.payload; x.products = (pl && Array.isArray(pl.products) ? pl.products : []).slice(0, 12).map((q) => ({ t: String(q.t || "").slice(0, 120), u: q.u && /^https:\/\/indifeels\.com\//.test(q.u) ? q.u : q.h ? "https://indifeels.com/products/" + encodeURIComponent(String(q.h)) : "", a: q.i && /^\d{6,20}$/.test(String(q.i)) ? "https://admin.shopify.com/store/bvdxj3-r8/products/" + q.i : "" })); return x; }), lastRun: (lr.data && lr.data[0]) || null });
       } else if (d.action === "flow_load") {
         const r = await sb.from("cc_diagram").select("data").eq("id", "main").maybeSingle();
         if (r.error) throw r.error;
