@@ -1894,7 +1894,9 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     const rem = l => Math.max(0, (l.qty || 0) - (l.recv_qty || 0));
     const boxes = () => { const m = new Map(); lines.forEach(l => { const b = m.get(l.box_no) || {box: l.box_no, shipped: l.line_status === 'shipped' || l.box_status === 'shipped', date: l.shipped_at, sup: l.supplier || '', units: 0, n: 0}; b.units += (l.qty || 0); b.n++; m.set(l.box_no, b); }); return [...m.values()]; };
     const cur = () => lines.filter(l => selList().includes(l.box_no));
-    const isShipped = () => { const b = boxes().find(x => x.box === box); return !!(b && b.shipped); };
+    const lineShipped = l => l.line_status === 'shipped' || l.box_status === 'shipped' || l.line_status === 'on_the_way' || (l.line_status === 'received' && rem(l) > 0);
+    const rcv = () => cur().filter(lineShipped);   /* only shipped lines can be counted and added to stock; packed boxes get barcodes only */
+    const isShipped = () => cur().some(lineShipped);
     const disarm = () => { armed = ''; yesArmed = false; $('bxAdd').classList.remove('arm'); $('bxAdd').textContent = 'Add stock to Shopify'; $('bxYes').textContent = 'Yes, all barcodes applied'; };
     const qr = l => qv[l.id] == null ? rem(l) : qv[l.id];   /* quantity actually received for a line (defaults to everything sent) */
     /* PDF orders exported in the Restock Planner but not yet marked arrived: tap twice to mark arrived, then the box is received like any other */
@@ -1981,7 +1983,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     const sumBy = (a, f) => a.reduce((s, l) => s + f(l), 0);
     const bxRow = (l, right, sub) => `<div class="bxl"><img src="${E(l.image || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${sub}</div></div>${right}</div>`;
     function drawAdj() {
-      const ls = cur();
+      const ls = rcv();
       $('bxAdjLines').innerHTML = ls.map(l => { const r = rem(l), q = qr(l), s = r - q;
         return bxRow(l, `<span class="stp"><button type="button" data-d="-1" data-i="${E(l.id)}">−</button><b style="min-width:24px;text-align:center">${q}</b><button type="button" data-d="1" data-i="${E(l.id)}">+</button></span>`,
           `${E(l.variant_title)} · printed ${r}` + (s > 0 ? ` · <span style="color:var(--red);font-weight:700">overreported ${s}</span>` : '')); }).join('');
@@ -1990,7 +1992,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     }
     /* step 5: before / adding / after per variant at the chosen location, plus the overreported list */
     function drawFinal() {
-      const loc = $('bxLoc').value, ls = cur(), add = new Map(), under = [];
+      const loc = $('bxLoc').value, ls = rcv(), add = new Map(), under = [];
       ls.forEach(l => { const q = qr(l), v = match(l); if (q > 0 && v) { const o = add.get(v.vid) || {v, l, q: 0}; o.q += q; add.set(v.vid, o); } if (rem(l) - q > 0) under.push({l, n: rem(l) - q}); });
       const rows = [...add.values()], tot = rows.reduce((a, o) => a + o.q, 0), all = sumBy(ls, rem), u = under.reduce((a, x) => a + x.n, 0);
       const num = 'style="width:46px;text-align:right;font-weight:700"';
@@ -2008,15 +2010,15 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     $('bxYes').onclick = async () => {
       if (!yesArmed) { yesArmed = true; $('bxYes').textContent = 'Tap again to confirm'; setTimeout(() => { if (yesArmed) { yesArmed = false; $('bxYes').textContent = 'Yes, all barcodes applied'; } }, 6000); return; }
       yesArmed = false; $('bxYes').textContent = 'Yes, all barcodes applied';
-      try { qv = {}; await labelsDone(); const all = sumBy(cur(), rem); drawFinal(); WZ.set('4', true, `All ${all} pcs matched`); msg2(''); }
+      try { qv = {}; await labelsDone(); const all = sumBy(rcv(), rem); drawFinal(); WZ.set('4', true, `All ${all} pcs matched`); msg2(''); }
       catch (e) { msg(e.message, 'bad'); }
     };
     $('bxAdjOk').onclick = async () => {
-      try { await labelsDone(); const ls = cur(), got = sumBy(ls, qr), all = sumBy(ls, rem); drawFinal(); WZ.set('4', true, `Received ${got} of ${all} pcs`); msg2(''); }
+      try { await labelsDone(); const ls = rcv(), got = sumBy(ls, qr), all = sumBy(ls, rem); drawFinal(); WZ.set('4', true, `Received ${got} of ${all} pcs`); msg2(''); }
       catch (e) { msg(e.message, 'bad'); }
     };
     $('bxAdd').onclick = async () => {
-      const loc = $('bxLoc').value, ls = cur().map(l => ({l, q: qr(l), v: match(l)})).filter(x => x.q > 0), under = sumBy(cur(), l => rem(l) - qr(l));
+      const loc = $('bxLoc').value, ls = rcv().map(l => ({l, q: qr(l), v: match(l)})).filter(x => x.q > 0), under = sumBy(rcv(), l => rem(l) - qr(l));
       if (!ls.length && !under) return msg2('Nothing to add.', 'bad');
       const bad = ls.filter(x => !x.v); if (bad.length) return msg2('Not on the website yet: ' + bad.map(x => x.l.product_title + ' · ' + x.l.variant_title).join('; ') + '. Open "Items in this box" and tap Create + barcode (or Create missing variants).', 'bad');
       const tot = ls.reduce((a, x) => a + x.q, 0), ln = locName();
