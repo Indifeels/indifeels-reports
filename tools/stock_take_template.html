@@ -2022,7 +2022,8 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     /* ----- step 4: did every printed barcode match what arrived? Yes = all of it; No = adjust, the gap is "overreported" ----- */
     const locName = () => $('bxLoc').selectedOptions[0] ? $('bxLoc').selectedOptions[0].textContent : '';
     const sumBy = (a, f) => a.reduce((s, l) => s + f(l), 0);
-    const bxRow = (l, right, sub) => `<div class="bxl"><img src="${E(l.image || '')}" alt=""><div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.product_title)}</div><div style="color:var(--muted);font-size:12.5px">${sub}</div></div>${right}</div>`;
+    const bxLink = (l, inner, st) => l.product_id ? `<a href="https://admin.shopify.com/store/bvdxj3-r8/products/${E(String(l.product_id))}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;${st || ''}">${inner}</a>` : inner;
+    const bxRow = (l, right, sub) => `<div class="bxl">${bxLink(l, `<img src="${E(l.image || '')}" alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">`, 'flex:none;display:block')}<div style="flex:1;min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${bxLink(l, E(l.product_title), 'text-decoration:underline dotted')}</div><div style="color:var(--muted);font-size:12.5px">${sub}</div></div>${right}</div>`;
     function drawAdj() {
       const ls = rcv();
       $('bxAdjLines').innerHTML = ls.map(l => { const r = rem(l), q = qr(l), s = r - q;
@@ -2067,18 +2068,18 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       const bad = ls.filter(x => !x.v); if (bad.length) return msg2('Not on the website yet: ' + bad.map(x => x.l.product_title + ' · ' + x.l.variant_title).join('; ') + '. Open "Items in this box" and tap Create + barcode (or Create missing variants).', 'bad');
       const tot = ls.reduce((a, x) => a + x.q, 0), ln = locName();
       if (armed !== 'add') { armed = 'add'; $('bxAdd').classList.add('arm'); $('bxAdd').textContent = `Tap again: add ${tot} pcs to ${ln}` + (under ? (leftMode === 'hold' ? ` · hold ${under} on the way` : ` · report ${under} underreported`) : ''); return; }
-      disarm(); btnBusy($('bxAdd'), 'Adding stock… please wait'); msg2('Adding stock… do not tap again.');
+      let pubWarn = ''; disarm(); btnBusy($('bxAdd'), 'Adding stock… please wait'); msg2('Adding stock… do not tap again.');
       try {
         if (ls.length) {
           const sum = {}; ls.forEach(x => { sum[x.v.vid] = (sum[x.v.vid] || 0) + x.q; });
-          await Store.adjust(loc, 'add', Object.keys(sum).map(vid => ({vid, qty: sum[vid]})), false, selList().join(', '));
+          const ar = await Store.adjust(loc, 'add', Object.keys(sum).map(vid => ({vid, qty: sum[vid]})), false, selList().join(', ')); if (ar && ar.warn) pubWarn = ar.warn;
           if (!PREVIEW) Object.keys(sum).forEach(vid => { const v = byVid.get(String(vid)); if (v) { v.q = v.q || {}; v.q[loc] = (v.q[loc] || 0) + sum[vid]; } });
           try { await Store.boxReceive(ls.map(x => ({id: x.l.id, qty: x.q}))); } catch (e) { msg2('Stock WAS added to Shopify, but the box list could not be updated: ' + e.message + ' — do not add it again. Refresh and check the box.', 'bad'); return; }
         }
         let shortErr = '';
         if (under) { try { if (leftMode === 'hold') await Store.boxHold(selList()); else for (const bx of selList()) await Store.boxShort(bx); } catch (e) { shortErr = e.message; } }
         qv = {}; await load(); try { window.lgLoad(); } catch (e) {}
-        msg2(`Box received. ${tot} pcs added to ${ln}.` + (under && !shortErr ? (leftMode === 'hold' ? ` ${under} pcs held on the way under ${selList().join(', ')}. No alert sent to the supplier.` : ` ${under} pcs underreported: the supplier is alerted and they are back on the order list.`) : '') + (shortErr ? ` Stock WAS added, but the ${under} pcs could not be put on the way: ${shortErr}` : ''), shortErr ? 'bad' : 'ok');
+        msg2(`Box received. ${tot} pcs added to ${ln}.` + (under && !shortErr ? (leftMode === 'hold' ? ` ${under} pcs held on the way under ${selList().join(', ')}. No alert sent to the supplier.` : ` ${under} pcs underreported: the supplier is alerted and they are back on the order list.`) : '') + (shortErr ? ` Stock WAS added, but the ${under} pcs could not be put on the way: ${shortErr}` : '') + (pubWarn ? ' ' + pubWarn : ''), (shortErr || pubWarn) ? 'bad' : 'ok');
         WZ.set('5', true, `${tot} pcs added` + (under ? (leftMode === 'hold' ? ` · ${under} on the way` : ` · ${under} underreported`) : ''));
       } catch (e) { msg2(e.message, 'bad'); }
       btnFree($('bxAdd'), 'Add stock to Shopify');

@@ -37,6 +37,7 @@ async function gql(query: string, variables: Record<string, unknown>) {
   throw new Error("Shopify kept throttling");
 }
 
+const ONLINE_STORE = "gid://shopify/Publication/260418306405";
 const q = (x: any) => (x?.quantities?.[0]?.quantity ?? 0) as number;
 const LOCID = /^gid:\/\/shopify\/Location\/\d{1,20}$/;
 const toLoc = (x: unknown) => { const s = String(x || ""); return /^\d{1,20}$/.test(s) ? `gid://shopify/Location/${s}` : s; };
@@ -59,15 +60,15 @@ async function adjustList(body: any, svc: any, by: string) {
   const mode = body.mode === "remove" ? "remove" : "add", sign = mode === "add" ? 1 : -1;
   const want = items(body, 500, 1000);
   if (!want.size) return json({ error: "Nothing in the list" }, 400);
-  const READ = `query($ids:[ID!]!,$l:ID!){ nodes(ids:$ids){ ... on ProductVariant{ id title product{ title } inventoryItem{ id
+  const READ = `query($ids:[ID!]!,$l:ID!){ nodes(ids:$ids){ ... on ProductVariant{ id title product{ id title status } inventoryItem{ id
     f: inventoryLevel(locationId:$l){ quantities(names:["available"]){ quantity } } } } } }`;
-  const rows: { vid: string; item: string; title: string; cur: number; has: boolean; qty: number }[] = [];
+  const rows: { vid: string; item: string; title: string; cur: number; has: boolean; qty: number; pid: string; active: boolean }[] = [];
   for (const ids of chunk([...want.keys()], 50)) {
     const d = await gql(READ, { ids: ids.map((i) => `gid://shopify/ProductVariant/${i}`), l: loc });
     d.nodes.forEach((n: any) => {
       if (!n) throw new Error("A variant in the list no longer exists");
       const vid = n.id.split("/").pop();
-      rows.push({ vid, item: n.inventoryItem.id, title: `${n.product?.title || ""} ${n.title || ""}`.trim(), cur: q(n.inventoryItem.f), has: !!n.inventoryItem.f, qty: want.get(vid)! });
+      rows.push({ vid, item: n.inventoryItem.id, title: `${n.product?.title || ""} ${n.title || ""}`.trim(), cur: q(n.inventoryItem.f), has: !!n.inventoryItem.f, qty: want.get(vid)!, pid: n.product?.id || "", active: n.product?.status === "ACTIVE" });
     });
   }
   if (mode === "remove") {
@@ -105,6 +106,17 @@ async function adjustList(body: any, svc: any, by: string) {
       const me = mf.metafieldsSet.userErrors;
       if (me?.length) { warn = (warn ? warn + " " : "") + "Stock updated, but the website ST number didn't update for some items: " + me[0].message; break; }
     }
+  }
+  if (mode === "add") {   // stock is back: make sure the Online Store sales channel is on for every active product that got stock (idempotent, never blocks the stock change)
+    try {
+      const pids = [...new Set(rows.filter((r) => r.pid && r.active).map((r) => r.pid))];
+      for (const part of chunk(pids, 20)) {
+        const body = part.map((id, i) => `p${i}: publishablePublish(id:"${id}", input:[{publicationId:"${ONLINE_STORE}"}]){ userErrors{ message } }`).join("\n");
+        const pm = await gql(`mutation{ ${body} }`, {});
+        const pe = Object.values(pm).flatMap((x: any) => x?.userErrors || []);
+        if (pe.length) { warn = (warn ? warn + " " : "") + "Stock updated, but Online Store could not be switched on for some products: " + pe[0].message; break; }
+      }
+    } catch (e) { warn = (warn ? warn + " " : "") + "Stock updated, but Online Store could not be switched on: " + String((e as Error)?.message || e).slice(0, 120); }
   }
   return json({ ok: true, mode, variants: rows.length, units: rows.reduce((a, r) => a + r.qty, 0), ...(warn ? { warn } : {}) });
 }
