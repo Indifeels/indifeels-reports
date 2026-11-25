@@ -347,7 +347,7 @@ n('ag-profit','Jess · Profit Guard','plan',null,['agents'],[SH,WI],'','Finds mo
 n('ag-stock','Sunita · Stock & Pricing','plan',null,['agents'],[SH],'','What to stock, restock, price and clear.');
 n('ag-google','Satwinder · Google Ads','plan',null,['agents'],[WI],'','Plays the Google Ads expert.');
 n('ag-meta','Adnan · Meta Ads','plan',null,['agents'],[WI],'','Plays the Meta Ads expert.');
-n('ag-seo','Veronica · SEO','plan',null,['agents'],[SX,'Search Console'],'','Backlinks, rankings, how to outrank.');
+n('ag-seo','Veronica · SEO','part',null,['agents'],[SX,'Search Console'],'Reports hub › SEO › SEO Final','Skill written, daily and Monday runs scheduled, approvals tagged. First full run Mon 30 Nov. Score appears after it.');
 n('ag-social','Davy · Social Media','plan',null,['agents'],['Instagram','Facebook','TikTok'],'','Creates and posts content from the website.');
 n('ag-cs','Rashi · Customer Service','plan',null,['agents'],[SU],'','Aisha, reviews, returns.');
 n('ag-audit','Professor Bot · Strategy Auditor','plan',null,['agents'],[SU],'','Checks whether each strategy is working against its KPI.');
@@ -608,7 +608,8 @@ function decCard(r){
   else if(r.status==='revert_requested') act=small(`Revert requested. The bot undoes it ${nextRun()}.`);
   else act=small(esc(SL[r.status]||r.status)+note);
   const undo=(r.undo_detail&&['applied','approved','pending'].includes(r.status)&&r.risk!=='info')?`<div class="dd"><b>To undo:</b> ${esc(r.undo_detail)}</div>`:'';
-  return `<div class="card dcard"><div class="dh"><span class="chip">${esc(r.bot)}</span>${risk}</div><div class="dt">${esc(r.title)}</div>${r.why?`<div class="dd"><b>Why:</b> ${esc(r.why)}</div>`:''}${r.change_detail?`<div class="dd"><b>What changes:</b> ${esc(r.change_detail)}</div>`:''}${undo}${act}</div>`;
+  const AP={simar:'Approver: Simar',veronica:'Approver: Veronica',both:'Approver: Simar + Veronica'};const apv=r.approver?`<span class="chip" style="background:${r.approver==='simar'?'#7a4a1f':r.approver==='veronica'?'#4b3a7a':'#2f5b4f'};color:#fff">${AP[r.approver]||''}</span>`:'';
+  return `<div class="card dcard"><div class="dh"><span class="chip">${esc(r.bot)}</span>${apv}${risk}</div><div class="dt">${esc(r.title)}</div>${r.why?`<div class="dd"><b>Why:</b> ${esc(r.why)}</div>`:''}${r.change_detail?`<div class="dd"><b>What changes:</b> ${esc(r.change_detail)}</div>`:''}${undo}${act}</div>`;
 }
 function decisionsView(){
   const p=decPend(), appr=DEC.filter(r=>r.status==='approved'||r.status==='revert_requested'), rest=DEC.filter(r=>['rejected','applied','failed','seen','cancelled','reverted'].includes(r.status));

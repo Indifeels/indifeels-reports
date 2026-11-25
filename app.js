@@ -1565,7 +1565,7 @@
         if (r.error) throw r.error;
         reply({ ok: true, rows: r.data || [] });
       } else if (d.action === "decisions") {
-        const r = await sb.from("cc_decisions").select("id,bot,area,title,why,change_detail,risk,status,result_note,reversible,undo_detail,created_at,decided_at,applied_at").order("created_at", { ascending: false }).limit(100);
+        const r = await sb.from("cc_decisions").select("id,bot,area,title,why,change_detail,risk,status,result_note,reversible,undo_detail,approver,created_at,decided_at,applied_at").order("created_at", { ascending: false }).limit(100);
         if (r.error) throw r.error;
         const lr = await sb.from("cc_bot_runs").select("bot,ran_at,summary").order("ran_at", { ascending: false }).limit(1);
         reply({ ok: true, rows: r.data || [], lastRun: (lr.data && lr.data[0]) || null });
