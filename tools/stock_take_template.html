@@ -600,6 +600,8 @@ const Store = PREVIEW ? {
   transfer: (from, to, items) => call('bulktransfer', {from, to, items}, 90000),
   takePush: (loc, items, dry, mode) => call('takepush', {loc, items, dry, mode}, 120000),
   boxList: () => call('boxlist'),
+  exportList: () => call('exportlist'),
+  exportShipped: code => call('exportshipped', {code}),
   boxReceive: items => call('boxreceive', {items}, 60000),
   boxShort: box => call('boxshort', {box}, 60000),
   adjust: (loc, mode, items, dry, box) => call('adjustlist', {loc, mode, items, dry, box: box || ''}, 120000),
@@ -1877,7 +1879,7 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
 
   /* ----- print barcodes for a box + add its stock to Shopify ----- */
   (() => {
-    let lines = [], box = '', qv = {}, armed = '', yesArmed = false;
+    let lines = [], box = '', qv = {}, armed = '', yesArmed = false, pdfPend = [], pdfArmed = '';
     window.__bxRecv = false;
     const msg = (t, k) => { const e = $('bxMsg'); e.textContent = t || ''; e.className = 'msg' + (k ? ' ' + k : ''); };
     const msg2 = (t, k) => { const e = $('bxMsg2'); e.textContent = t || ''; e.className = 'msg' + (k ? ' ' + k : ''); };
@@ -1889,11 +1891,13 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
     const isShipped = () => { const b = boxes().find(x => x.box === box); return !!(b && b.shipped); };
     const disarm = () => { armed = ''; yesArmed = false; $('bxAdd').classList.remove('arm'); $('bxAdd').textContent = 'Add stock to Shopify'; $('bxYes').textContent = 'Yes, all barcodes applied'; };
     const qr = l => qv[l.id] == null ? rem(l) : qv[l.id];   /* quantity actually received for a line (defaults to everything sent) */
+    /* PDF orders exported in the Restock Planner but not yet marked arrived: tap twice to mark arrived, then the box is received like any other */
+    const pdfHtml = sel => pdfPend.filter(e => !sel || String(e.supplier) === sel).map(e => `<button type="button" data-pdf="${E(e.code)}" class="${pdfArmed === e.code ? 'in' : ''}">📄 ${E(e.code)} · ${E(e.supplier)}<small>${pdfArmed === e.code ? 'Tap again: mark arrived' : 'PDF order, not arrived yet'} · ${e.units} pcs</small></button>`).join('');
     function drawTiles() {
       const all = boxes(), sups = [...new Set(all.map(x => x.sup).filter(Boolean))].sort(), sel = $('bxSup').value;
       $('bxSup').innerHTML = '<option value="">All suppliers</option>' + sups.map(x => `<option${x === sel ? ' selected' : ''}>${E(x)}</option>`).join('');
       const b = sel ? all.filter(x => x.sup === sel) : all;
-      $('bxTiles').innerHTML = b.length ? b.map(x => `<button type="button" data-b="${E(x.box)}" class="${x.box === box ? 'in' : ''}">${E(x.box)}${x.sup ? ' · ' + E(x.sup) : ''}<small>${x.shipped ? 'Shipped' + (x.date ? ' ' + new Date(x.date).toLocaleDateString() : '') : 'Packed (not shipped)'} · ${x.units} pcs</small></button>`).join('') : '<div class="empty">No packed or shipped boxes waiting.</div>';
+      $('bxTiles').innerHTML = pdfHtml(sel) + (b.length ? b.map(x => `<button type="button" data-b="${E(x.box)}" class="${x.box === box ? 'in' : ''}">${E(x.box)}${x.sup ? ' · ' + E(x.sup) : ''}<small>${x.shipped ? 'Shipped' + (x.date ? ' ' + new Date(x.date).toLocaleDateString() : '') : 'Packed (not shipped)'} · ${x.units} pcs</small></button>`).join('') : (pdfHtml(sel) ? '' : '<div class="empty">No packed or shipped boxes waiting.</div>'));
     }
     function drawLines() {
       $('bxDetail').hidden = !box; if (!box) return;
@@ -1916,12 +1920,21 @@ $('rsBack').onclick = () => { $('tkResult').hidden = true; $('pushBox2').hidden 
       WZ.render();
     }
     async function load() {
-      try { lines = (await Store.boxList()) || []; if (box && !lines.some(l => l.box_no === box)) box = ''; drawTiles(); drawLines(); if (!lines.length) msg(''); }
+      try { lines = (await Store.boxList()) || []; try { pdfPend = ((await Store.exportList()) || []).filter(e => e.status === 'sent' && !e.shipped_at); } catch (e) { pdfPend = []; } if (box && !lines.some(l => l.box_no === box)) box = ''; drawTiles(); drawLines(); if (!lines.length) msg(''); }
       catch (e) { $('bxTiles').innerHTML = '<div class="empty">Could not load boxes.</div>'; msg(e.message, 'bad'); }
     }
     window.bxReset = () => { box = ''; qv = {}; window.__bxRecv = false; try { disarm(); } catch (e) {} $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); $('bxPrev').innerHTML = ''; msg(''); msg2(''); drawTiles(); drawLines(); };
     $('bxSup').onchange = () => { box = ''; drawTiles(); drawLines(); };
     $('bxRefresh').onclick = () => { disarm(); load(); };
+    $('bxTiles').addEventListener('click', async e => {
+      const p = e.target.closest('[data-pdf]'); if (!p) return;
+      const code = p.dataset.pdf;
+      if (pdfArmed !== code) { pdfArmed = code; drawTiles(); return; }
+      pdfArmed = ''; p.disabled = true;
+      try { await Store.exportShipped(code); msg(code + ' marked arrived. Now print the barcodes and add the stock.', 'ok'); }
+      catch (err) { msg(err.message, 'bad'); }
+      await load();
+    });
     $('bxTiles').onclick = e => { const b = e.target.closest('[data-b]'); if (!b) return; box = b.dataset.b; qv = {}; $('bxDet').open = false; disarm(); $('bxAdj').hidden = true; $('bxNo').classList.remove('arm'); msg(''); msg2(''); try { bxArm = false; $('bxBar').textContent = 'Add barcodes to the sheet'; } catch (e) {} drawTiles(); drawLines(); { const bb = boxes().find(z => z.box === box); WZ.set('1', true, box + (bb ? ' · ' + bb.units + ' pcs' : '')); } liveFix(); };
     /* DATA can be hours old: re-read the live sizes + barcodes from Shopify for this box's products so nothing shows as missing by mistake */
     let liveTok = 0;

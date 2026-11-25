@@ -1989,6 +1989,8 @@
   }
   const rpVidQty = (a, max) => (Array.isArray(a) ? a : []).slice(0, max).map((i) => ({ vid: rpText(i && i.vid, 20), qty: Math.trunc(Number(i && (i.qty ?? i.copies)) || 0) }));
   rpBridge("stock-take", {
+    exportlist: async () => rpOk(await sb.rpc("restock_owner_export_list")) || [],
+    exportshipped: async (d) => rpOk(await sb.rpc("restock_owner_export_shipped", { p_code: rpText(d.code, 60), p_date: null })),
     setstatus: async (d) => rpAdjCall({ action: "setstatus", pid: rpText(d.pid, 20), status: d.status === "UNLISTED" ? "UNLISTED" : "ACTIVE" }, "Couldn't change the product status"),
     printlabels: async (d) => {
       // Same layout as the Barcode Man "Indifeels" template: A4, 5 x 13 = 65 labels of 38.1 x 21.2 mm (margins L/R 5 mm, T/B 10.7 mm).
