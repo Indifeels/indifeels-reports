@@ -99,10 +99,10 @@
   "reason": ""
  },
  "product-visibility": {
-  "at": "2026-11-25T20:00+11:00",
-  "code_sha": "56f9873223d43f0fc9e321daaf234b5d5c2de23a",
+  "at": "2026-11-26T07:00+11:00",
+  "code_sha": "f9ab4fc6e3e488bc787c973accc1b30171281e06",
   "data_through": null,
-  "last_ok": "2026-11-25T20:00+11:00",
+  "last_ok": "2026-11-26T07:00+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
