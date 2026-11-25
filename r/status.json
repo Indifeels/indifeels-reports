@@ -135,13 +135,13 @@
   "reason": ""
  },
  "seo-report": {
-  "at": "2026-11-23T05:57+11:00",
-  "code_sha": "ff54b55a4c4d52e51bc9864e377f1d17a99f98f9",
+  "at": "2026-11-26T05:58+11:00",
+  "code_sha": "6bcab0512852d6fe5482540de8700307a7cbf6af",
   "data_through": null,
   "last_ok": "2026-11-15T23:41+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": false,
-  "reason": "Semrush site audit info report charged 100 API units beyond the allowed snapshots call; stopped per cost rule"
+  "reason": "Semrush Site Audit info call reported 100 API units (only snapshots is allowed to cost units); stopped without publishing"
  },
  "social-push": {
   "at": "2026-11-17T14:12+11:00",
