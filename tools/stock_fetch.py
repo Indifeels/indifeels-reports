@@ -25,6 +25,9 @@ MOVE = """mutation($input: InventoryAdjustQuantitiesInput!, $key: String!){ inve
 ITEMS = """query($ids:[ID!]!){ nodes(ids:$ids){ ... on InventoryItem { id sku variant { id title image { url }
  product { title status featuredMedia { preview { image { url } } } } } } } }"""
 
+ORDERS = """query($after:String,$q:String){ orders(first:100, after:$after, query:$q, sortKey:CREATED_AT){ pageInfo{hasNextPage endCursor}
+ nodes{ createdAt lineItems(first:100){ nodes{ sku variantTitle } } } } }"""
+
 SETMF = """mutation($m:[MetafieldsSetInput!]!){ metafieldsSet(metafields:$m){ userErrors{ field message code } } }"""
 VARCHECK = """query($after:String){ productVariants(first:100, after:$after){ pageInfo{hasNextPage endCursor} nodes{ id
  m: metafield(namespace:"custom", key:"melbourne_stock"){value} st: metafield(namespace:"custom", key:"storage_stock"){value}
@@ -61,6 +64,31 @@ def gql(query, variables):
     raise RuntimeError("Shopify API kept throttling")
 
 
+def sales_since(days):
+    """{(sku, variant_title): [order created_at ISO UTC, ...]} for every order line in the last `days` days."""
+    import datetime as dt
+    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    out, after = {}, None
+    while True:
+        pg = gql(ORDERS, {"after": after, "q": f"created_at:>={since}"})["data"]["orders"]
+        for o in pg["nodes"]:
+            for li in o["lineItems"]["nodes"]:
+                if li.get("sku"): out.setdefault((li["sku"], li.get("variantTitle") or ""), []).append(o["createdAt"])
+        if not pg["pageInfo"]["hasNextPage"]: break
+        after = pg["pageInfo"]["endCursor"]
+    return out
+
+
+def sold_before(sales, sku, variant, at_iso, hours=72):
+    """True if that exact variant was sold in the `hours` before `at_iso` (a real sale is what empties Shop location)."""
+    import datetime as dt
+    at = dt.datetime.fromisoformat(at_iso).astimezone(dt.timezone.utc)
+    for c in sales.get((sku, variant or ""), []):
+        t = dt.datetime.fromisoformat(c.replace("Z", "+00:00"))
+        if at - dt.timedelta(hours=hours) <= t <= at + dt.timedelta(minutes=5): return True
+    return False
+
+
 def status(ok, reason=""):
     subprocess.run([sys.executable, os.path.join(T, "status.py"), os.path.join(ROOT, "r"), "stock", "ok" if ok else "fail", reason], check=True)
 
@@ -83,12 +111,26 @@ def main():
             q = lambda x: (x or [{}])[0].get("quantity") or 0
             lv[nd["item"]["id"]] = [q((nd["item"].get("s") or {}).get("q")), q(nd.get("q"))]
     # --- automatic moves: Shop location exactly 0 and Backup has stock ---
-    cand = [i for i, (sh, bk) in lv.items() if sh == 0 and bk > 0]
+    # Only move when Shop location has just been emptied by a SALE. Stock added to Backup while Shop was already 0
+    # (new boxes, Add/remove, a stock take) is NOT a restock request and must not land on the tick list.
+    log = stock_moves.load(r_dir, key); moved = []
+    seen = log.get("shop_seen")            # Shop level of every item at the previous run
+    zero = [i for i, (sh, bk) in lv.items() if sh == 0 and bk > 0]
+    if seen is None:                       # first run with this rule: no history yet, so confirm each against real sales
+        sales = sales_since(4)
+        zi = {}
+        for i in range(0, len(zero), 100):
+            for nd in gql(ITEMS, {"ids": zero[i:i + 100]})["data"]["nodes"]:
+                if nd: zi[nd["id"]] = stock_moves.item_info(nd)
+        cand = [i for i in zero if sold_before(sales, zi.get(i, {}).get("sku", ""), zi.get(i, {}).get("variant", ""),
+                stock_moves.now_iso(), hours=96)]
+    else:
+        cand = [i for i in zero if (seen.get(i) or 0) > 0]
+    print(f"Shop=0 with Backup stock: {len(zero)}; moved only if just sold: {len(cand)}")
     info = {}
     for i in range(0, len(cand), 100):
         for nd in gql(ITEMS, {"ids": cand[i:i + 100]})["data"]["nodes"]:
             if nd: info[nd["id"]] = stock_moves.item_info(nd)
-    log = stock_moves.load(r_dir, key); moved = []
     for it in cand:
         sh, bk = lv[it]
         res = gql(MOVE, {"key": str(uuid.uuid4()), "input": {"name": "available", "reason": "movement_created",
@@ -101,6 +143,20 @@ def main():
         lv[it] = [sh + 1, bk - 1]
         stock_moves.record(log, it, info.get(it, {}), sh + 1, bk - 1, os.environ.get("ORDER", ""))
         moved.append(it)
+    # One-off clean-up (runs once): drop logged moves from the last 14 days where that exact variant was NOT sold
+    # in the 3 days before the move - those were stock newly added to Backup, never a restock request.
+    if not log.get("purged_unsold"):
+        import datetime as dt
+        cut = (dt.datetime.now(stock_moves.TZ) - dt.timedelta(days=14)).isoformat()
+        recent = [m for m in log["moves"] if m["moved_at"] >= cut and m.get("sku")]
+        if recent:
+            sales = sales_since(20)
+            drop = [m for m in recent if not sold_before(sales, m["sku"], m.get("variant", ""), m["moved_at"])]
+            for m in drop: print("purged (no sale):", m["product"], m.get("variant"), m["moved_at"])
+            ids = {m["id"] for m in drop}
+            log["moves"] = [m for m in log["moves"] if m["id"] not in ids]
+        log["purged_unsold"] = True
+    log["shop_seen"] = {i: sh for i, (sh, bk) in lv.items()}
     for m in log["moves"]:
         if m["item"] in lv: log["now"][m["item"]] = {"shop": lv[m["item"]][0], "backup": lv[m["item"]][1]}
     stock_moves.save(r_dir, key, log)   # save moves before anything else can fail
