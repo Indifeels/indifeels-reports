@@ -81,10 +81,10 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-11-26T06:00+11:00",
-  "code_sha": "3818262da758e4d04b2d1229a9f0c503d6ab9e45",
+  "at": "2026-11-26T14:00+11:00",
+  "code_sha": "d39ae9c9ee3098245a78d1a07d9d0e74a9d39470",
   "data_through": null,
-  "last_ok": "2026-11-26T06:00+11:00",
+  "last_ok": "2026-11-26T14:00+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
