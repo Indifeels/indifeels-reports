@@ -54,10 +54,10 @@
   "reason": ""
  },
  "google-scorecard": {
-  "at": "2026-11-26T05:58+11:00",
-  "code_sha": "6bcab0512852d6fe5482540de8700307a7cbf6af",
+  "at": "2026-11-27T05:57+11:00",
+  "code_sha": "8790b394586ef0f0e003b4a38661ed66ed820b34",
   "data_through": null,
-  "last_ok": "2026-11-26T05:58+11:00",
+  "last_ok": "2026-11-27T05:57+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
