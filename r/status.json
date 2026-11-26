@@ -81,13 +81,13 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-11-26T20:01+11:00",
-  "code_sha": "d68cfc61e28efa7ed7db9c18e6da0e12780be2ef",
+  "at": "2026-11-27T06:00+11:00",
+  "code_sha": "ddd115b77f4a7c21b21e253dcf14e3076dac58f2",
   "data_through": null,
-  "last_ok": "2026-11-26T14:00+11:00",
+  "last_ok": "2026-11-27T06:00+11:00",
   "manifest_version": "2026-11-17.social-push.1",
-  "ok": false,
-  "reason": "Order Source refresh failed; check GitHub Actions"
+  "ok": true,
+  "reason": ""
  },
  "procurement": {
   "at": "2026-11-11T14:28+11:00",
