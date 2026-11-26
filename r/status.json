@@ -135,10 +135,10 @@
   "reason": ""
  },
  "seo-intelligence": {
-  "at": "2026-11-26T14:39+11:00",
-  "code_sha": "4d8a22d1b4a782056afdb7b68fe64df2c179ae58",
+  "at": "2026-11-26T14:45+11:00",
+  "code_sha": "6e18261b7d21f99038d0235d041cdaf0d04408aa",
   "data_through": null,
-  "last_ok": "2026-11-26T14:39+11:00",
+  "last_ok": "2026-11-26T14:45+11:00",
   "manifest_version": "2026-11-17.social-push.1",
   "ok": true,
   "reason": ""
