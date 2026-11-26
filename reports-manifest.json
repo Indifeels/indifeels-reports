@@ -518,6 +518,26 @@
       ],
       "supabase_sync": false,
       "schedule_control": "none"
+    },
+    {
+      "id": "seo-intelligence",
+      "title": "SEO Intelligence",
+      "workflow": "manual",
+      "refresh_times": [
+        "on request"
+      ],
+      "required_env": [
+        "SEO_INTELLIGENCE_KEY"
+      ],
+      "builders": [
+        "tools/seo_progress.py"
+      ],
+      "outputs": [
+        "r/seo-intelligence.bin",
+        "r/seo-intelligence.meta.bin"
+      ],
+      "supabase_sync": false,
+      "schedule_control": "none"
     }
   ]
 }

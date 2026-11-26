@@ -134,6 +134,15 @@
   "ok": true,
   "reason": ""
  },
+ "seo-intelligence": {
+  "at": "2026-11-26T14:39+11:00",
+  "code_sha": "4d8a22d1b4a782056afdb7b68fe64df2c179ae58",
+  "data_through": null,
+  "last_ok": "2026-11-26T14:39+11:00",
+  "manifest_version": "2026-11-17.social-push.1",
+  "ok": true,
+  "reason": ""
+ },
  "seo-report": {
   "at": "2026-11-26T05:58+11:00",
   "code_sha": "6bcab0512852d6fe5482540de8700307a7cbf6af",
