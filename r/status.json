@@ -63,11 +63,11 @@
   "reason": "Shopify orders + Supabase queue could not be exported to a file in the cloud run"
  },
  "google-tracked": {
-  "at": "2026-11-27T20:00+11:00",
-  "code_sha": "0892247274a9f78d473ff3e3091d7a1f03009daf",
+  "at": "2026-11-28T06:01+11:00",
+  "code_sha": "d5314d5546c97f220d9a0c76ab6481a824d4cb82",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-11-27T20:00+11:00",
-  "manifest_version": "2026-11-17.social-push.1",
+  "last_ok": "2026-11-28T06:01+11:00",
+  "manifest_version": "2026-11-27.seo-tracker.1",
   "ok": true,
   "reason": ""
  },
