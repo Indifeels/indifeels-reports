@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_version": "2026-11-17.social-push.1",
+  "manifest_version": "2026-11-27.seo-tracker.1",
   "timezone": "Australia/Melbourne",
   "policy": {
     "source_of_truth_branch": "main",
@@ -344,14 +344,17 @@
       "title": "SEO Final",
       "workflow": "manual",
       "refresh_times": [
-        "on request"
+        "demand/stock on request",
+        "tracker weekly mornings 4 Dec 2026\u20131 Jan 2027 via ChatGPT automation"
       ],
       "required_env": [
         "SEO_FINAL_KEY"
       ],
       "builders": [
         "tools/seo_final.py",
-        "tools/seo_final_REFRESH.md"
+        "tools/seo_final_REFRESH.md",
+        "tools/seo_change_tracker.py",
+        "tools/SEO_CHANGE_TRACKER.md"
       ],
       "outputs": [
         "r/seo-final.bin",

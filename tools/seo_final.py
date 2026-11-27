@@ -72,6 +72,24 @@ h1{{font-size:22px;margin:4px 0 2px}}.sub{{color:#8f959d;font-size:11px}}h2{{fon
 <h2>Price vs AU competitors</h2><div class=sub>Median price · HoN House of Nepal · TDO Designer Outfit · Fab Fabricoz · right = suggested</div>{ph}
 </body></html>'''
 
+# Preserve the private tracker on ordinary report rebuilds. Explicit data wins.
+from seo_change_tracker import inject as inject_tracker, BEGIN as TRACKER_BEGIN, END as TRACKER_END
+tracker_path=os.environ.get('SEO_CHANGE_TRACKER_DATA')
+if tracker_path:
+    page=inject_tracker(page,json.load(open(tracker_path)))
+elif os.environ.get('SEO_FINAL_KEY'):
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    from pathlib import Path
+    existing=Path(__file__).resolve().parent.parent/'r'/'seo-final.bin'
+    if existing.exists():
+        old=existing.read_bytes()
+        old_page=gzip.decompress(AESGCM(base64.b64decode(os.environ['SEO_FINAL_KEY'])).decrypt(old[:12],old[12:],None)).decode()
+        if TRACKER_BEGIN in old_page:
+            import re
+            match=re.search(re.escape(TRACKER_BEGIN)+r'.*?'+re.escape(TRACKER_END),old_page,re.S)
+            if not match: raise ValueError('Incomplete saved SEO tracker')
+            page=page.replace('</body>',match.group(0)+'\n</body>')
+
 if '--html' in sys.argv:
     open(sys.argv[sys.argv.index('--html')+1],'w').write(page);sys.exit(0)
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
