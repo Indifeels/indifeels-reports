@@ -117,10 +117,10 @@
   "reason": ""
  },
  "restock-plan": {
-  "at": "2026-11-28T11:19+11:00",
-  "code_sha": "37962b2e3f3929c506ea859c52da34ccace30dc1",
+  "at": "2026-11-28T11:44+11:00",
+  "code_sha": "aa2ad9b6f05fc8b4aaee5d9205178ccf2bba76f8",
   "data_through": null,
-  "last_ok": "2026-11-28T11:19+11:00",
+  "last_ok": "2026-11-28T11:44+11:00",
   "manifest_version": "2026-11-27.seo-tracker.1",
   "ok": true,
   "reason": ""
