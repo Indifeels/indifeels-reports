@@ -9,11 +9,11 @@
   "reason": ""
  },
  "color-game": {
-  "at": "2026-11-27T13:21+11:00",
-  "code_sha": "d82f1e009ae218b743e59b452cf4d79df812c63e",
+  "at": "2026-11-28T13:06+11:00",
+  "code_sha": "4de360e460eb8e843eed7db89c2d7afbb9f07090",
   "data_through": null,
-  "last_ok": "2026-11-27T13:21+11:00",
-  "manifest_version": "2026-11-17.social-push.1",
+  "last_ok": "2026-11-28T13:06+11:00",
+  "manifest_version": "2026-11-27.seo-tracker.1",
   "ok": true,
   "reason": ""
  },
