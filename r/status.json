@@ -81,10 +81,10 @@
   "reason": ""
  },
  "order-source": {
-  "at": "2026-11-28T20:00+11:00",
-  "code_sha": "a4abe8946cdcb9605c8f787eb72e5baa619f8887",
+  "at": "2026-11-29T06:00+11:00",
+  "code_sha": "67df28ff02d004de3068f683dfbd1100fa697294",
   "data_through": null,
-  "last_ok": "2026-11-28T20:00+11:00",
+  "last_ok": "2026-11-29T06:00+11:00",
   "manifest_version": "2026-11-27.seo-tracker.1",
   "ok": true,
   "reason": ""
