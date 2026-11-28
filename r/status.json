@@ -63,10 +63,10 @@
   "reason": ""
  },
  "google-tracked": {
-  "at": "2026-11-28T20:00+11:00",
-  "code_sha": "c3feb005183caa808c2f45008c8d2a3ddb6ee9cc",
+  "at": "2026-11-29T06:01+11:00",
+  "code_sha": "67df28ff02d004de3068f683dfbd1100fa697294",
   "data_through": "2026-10-05T23:59:59+11:00",
-  "last_ok": "2026-11-28T20:00+11:00",
+  "last_ok": "2026-11-29T06:01+11:00",
   "manifest_version": "2026-11-27.seo-tracker.1",
   "ok": true,
   "reason": ""
