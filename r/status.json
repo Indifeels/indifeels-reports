@@ -54,13 +54,13 @@
   "reason": ""
  },
  "google-scorecard": {
-  "at": "2026-11-28T05:55+11:00",
-  "code_sha": "4ffc1a8cfc671c24fd6d6cc9ba54f2fd169e40be",
+  "at": "2026-11-29T05:56+11:00",
+  "code_sha": "1c254c429ecd1d0375b2b9754beb68dfb08d42f0",
   "data_through": null,
-  "last_ok": "2026-11-27T05:57+11:00",
+  "last_ok": "2026-11-29T05:56+11:00",
   "manifest_version": "2026-11-27.seo-tracker.1",
-  "ok": false,
-  "reason": "Shopify orders + Supabase queue could not be exported to a file in the cloud run"
+  "ok": true,
+  "reason": ""
  },
  "google-tracked": {
   "at": "2026-11-28T20:00+11:00",
