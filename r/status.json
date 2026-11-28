@@ -162,10 +162,10 @@
   "reason": ""
  },
  "stock": {
-  "at": "2026-11-28T16:35+11:00",
-  "code_sha": "e80b785b1f797550a44666e349b1fa9ce806cf3f",
+  "at": "2026-11-28T20:02+11:00",
+  "code_sha": "a4abe8946cdcb9605c8f787eb72e5baa619f8887",
   "data_through": null,
-  "last_ok": "2026-11-28T16:35+11:00",
+  "last_ok": "2026-11-28T20:02+11:00",
   "manifest_version": "2026-11-27.seo-tracker.1",
   "ok": true,
   "reason": ""
